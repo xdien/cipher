@@ -1,0 +1,44 @@
+{
+	"name": "@byterover/cipher",
+	"version": "0.1.0",
+	"engines": {
+		"node": ">=20.0.0",
+		"pnpm": ">=9.14.0"
+	},
+	"description": "Build effective agents's memory with Model Context Protocol (MCP) with composable patterns",
+	"type": "module",
+	"scripts": {
+		"build": "tsup",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run",
+		"logger:example": "tsx src/core/logger/examples/basic-usage.ts",
+		"logger:test": "tsx src/core/logger/test/basic-test.ts"
+	},
+	"keywords": [
+		"mcp",
+		"model-context-protocol",
+		"memory",
+		"vibe-coding",
+		"byterover"
+	],
+	"author": "BYTEROVER",
+	"license": "Apache-2.0",
+	"devDependencies": {
+		"@eslint/js": "^9.29.0",
+		"@types/node": "^24.0.3",
+		"@typescript-eslint/eslint-plugin": "^8.34.1",
+		"@typescript-eslint/parser": "^8.34.1",
+		"@vitest/coverage-v8": "^3.2.4",
+		"eslint": "^9.29.0",
+		"eslint-config-prettier": "^10.1.5",
+		"prettier": "^3.5.3",
+		"ts-node": "^10.9.2",
+		"tsup": "^8.5.0",
+		"tsx": "^4.19.2",
+		"vitest": "^3.2.4"
+	},
+	"dependencies": {
+		"typescript": "^5.8.3",
+		"zod": "^3.25.67"
+	}
+}
