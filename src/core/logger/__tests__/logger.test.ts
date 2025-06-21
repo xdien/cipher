@@ -18,7 +18,7 @@ import {
   NoOpTransport,
   generateSessionId,
   generateRequestId,
-} from './index.js';
+} from '../index.js';
 
 /**
  * Test event listener that captures events for verification
