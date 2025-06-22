@@ -24,7 +24,21 @@ export interface ICipherApp {
 }
 
 export interface IServerRegistry {
-  // TODO: Add server registry methods
+  initialize(settings?: any, configPath?: string): Promise<void>;
+  addServer(serverName: string, serverConfig: any): Promise<void>;
+  removeServer(serverName: string): Promise<void>;
+  getServerNames(): string[];
+  getEnabledServerNames(): string[];
+  getServerConfig(serverName: string): any;
+  setServerEnabled(serverName: string, enabled: boolean): void;
+  registerInitHook(serverName: string, hook: any): void;
+  unregisterInitHook(serverName: string): void;
+  startServer(serverName: string, clientSessionFactory?: any, sessionId?: string): AsyncGenerator<any, void, unknown>;
+  initializeServer(serverName: string, clientSessionFactory?: any, initHook?: any, sessionId?: string): AsyncGenerator<any, void, unknown>;
+  getStatistics(): any;
+  exportConfiguration(): any;
+  saveConfiguration(filePath: string, format?: 'json' | 'yaml'): Promise<void>;
+  shutdown(): Promise<void>;
 }
 
 export interface IActivityRegistry {
