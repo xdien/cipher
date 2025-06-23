@@ -13,9 +13,9 @@ import { Logger } from '../logger/core/logger.js';
  * @returns Default settings object
  */
 function getDefaultSettings(): ISettings {
-  return {
-    // TODO: Add default settings
-  };
+	return {
+		// TODO: Add default settings
+	};
 }
 
 /**
@@ -24,10 +24,10 @@ function getDefaultSettings(): ISettings {
  * @returns Configured executor
  */
 async function configureExecutor(config: ISettings) {
-  // TODO: Implement executor configuration
-  return {
-    uuid: () => uuidv4()
-  };
+	// TODO: Implement executor configuration
+	return {
+		uuid: () => uuidv4(),
+	};
 }
 
 /**
@@ -37,8 +37,8 @@ async function configureExecutor(config: ISettings) {
  * @returns Configured workflow registry
  */
 async function configureWorkflowRegistry(config: ISettings, executor: any) {
-  // TODO: Implement workflow registry configuration
-  return {};
+	// TODO: Implement workflow registry configuration
+	return {};
 }
 
 /**
@@ -48,8 +48,8 @@ async function configureWorkflowRegistry(config: ISettings, executor: any) {
  * @returns Configured logger
  */
 function configureLogger(config: ISettings, sessionId: string): Logger {
-  // Create a root logger with the session ID
-  return new Logger('cipher', sessionId);
+	// Create a root logger with the session ID
+	return new Logger('cipher', sessionId);
 }
 
 /**
@@ -57,46 +57,41 @@ function configureLogger(config: ISettings, sessionId: string): Logger {
  * @param options Context initialization options
  * @returns Initialized Context instance
  */
-export async function initializeContext(
-  options: ContextInitOptions = {}
-): Promise<Context> {
-  // Use provided config or get default
-  const config = options.config || getDefaultSettings();
-  
-  // Create initial context
-  const context = new Context();
-  context.config = config;
-  
-  // Configure server registry (placeholder)
-  context.serverRegistry = {};
-  
-  // Configure executor
-  context.executor = await configureExecutor(config);
-  
-  // Configure workflow registry
-  context.workflowRegistry = await configureWorkflowRegistry(
-    config,
-    context.executor
-  );
-  
-  // Generate session ID or use provided one
-  context.sessionId = options.sessionId || context.executor.uuid();
-  
-  // Configure logger
-  const logger = options.logger || configureLogger(config, context.sessionId);
-  context.logger = logger;
-  
-  // Set registries from options or create empty ones
-  context.taskRegistry = options.taskRegistry || {};
-  context.signalRegistry = options.signalRegistry || {};
-  context.decoratorRegistry = options.decoratorRegistry || {};
-  
-  // Store globally if requested
-  if (options.storeGlobally) {
-    setGlobalContext(context);
-  }
-  
-  return context;
+export async function initializeContext(options: ContextInitOptions = {}): Promise<Context> {
+	// Use provided config or get default
+	const config = options.config || getDefaultSettings();
+
+	// Create initial context
+	const context = new Context();
+	context.config = config;
+
+	// Configure server registry (placeholder)
+	context.serverRegistry = undefined;
+
+	// Configure executor
+	context.executor = await configureExecutor(config);
+
+	// Configure workflow registry
+	context.workflowRegistry = await configureWorkflowRegistry(config, context.executor);
+
+	// Generate session ID or use provided one
+	context.sessionId = options.sessionId || context.executor.uuid();
+
+	// Configure logger
+	const logger = options.logger || configureLogger(config, context.sessionId);
+	context.logger = logger;
+
+	// Set registries from options or create empty ones
+	context.taskRegistry = options.taskRegistry || {};
+	context.signalRegistry = options.signalRegistry || {};
+	context.decoratorRegistry = options.decoratorRegistry || {};
+
+	// Store globally if requested
+	if (options.storeGlobally) {
+		setGlobalContext(context);
+	}
+
+	return context;
 }
 
 /**
@@ -105,16 +100,16 @@ export async function initializeContext(
  * @returns A minimal Context instance for testing
  */
 export function createTestContext(overrides: Partial<Context> = {}): Context {
-  const sessionId = uuidv4();
-  const logger = new Logger('test', sessionId);
-  
-  return new Context({
-    sessionId,
-    logger,
-    config: {},
-    executor: {
-      uuid: () => uuidv4()
-    },
-    ...overrides
-  });
+	const sessionId = uuidv4();
+	const logger = new Logger('test', sessionId);
+
+	return new Context({
+		sessionId,
+		logger,
+		config: {},
+		executor: {
+			uuid: () => uuidv4(),
+		},
+		...overrides,
+	});
 }

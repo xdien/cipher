@@ -1,6 +1,6 @@
 /**
  * MCP Module Index
- * 
+ *
  * Exports components for the Model Context Protocol module.
  */
 
@@ -15,13 +15,13 @@ export { MCPAgentClientSession } from './client/agent-session.js';
 
 // Convenience APIs - Simple functions for common MCP usage patterns
 export {
-  genClient,
-  connect,
-  disconnect,
-  withTemporaryClient,
-  validateServerRegistry,
-  getServerStatuses,
-  waitForServerHealth,
+	genClient,
+	connect,
+	disconnect,
+	withTemporaryClient,
+	validateServerRegistry,
+	getServerStatuses,
+	waitForServerHealth,
 } from './client-utils.js';
 
 // Managers - Connection pooling and lifecycle management

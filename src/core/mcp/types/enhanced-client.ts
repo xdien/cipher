@@ -1,10 +1,9 @@
 /**
  * Enhanced MCP Client Types
- * 
- * These types extend the base MCP client interfaces to add support for 
+ *
+ * These types extend the base MCP client interfaces to add support for
  * agent-specific functionality like sampling callbacks and session management.
  */
-
 
 import { IMCPClient } from './client.js';
 import { IContext } from '../../context/types.js';
@@ -16,7 +15,7 @@ import { McpServerConfig } from './config.js';
  * This is called when an MCP server needs to generate text using an AI model
  */
 export interface ISamplingCallback {
-  (params: SamplingParams): Promise<SamplingResult>;
+	(params: SamplingParams): Promise<SamplingResult>;
 }
 
 /**
@@ -24,7 +23,7 @@ export interface ISamplingCallback {
  * This is called when an MCP server wants to know what root resources are available
  */
 export interface IListRootsCallback {
-  (): Promise<Root[]>;
+	(): Promise<Root[]>;
 }
 
 /**
@@ -32,39 +31,39 @@ export interface IListRootsCallback {
  * This is used for HTTP transport types that support session tracking
  */
 export interface ISessionIdCallback {
-  (): string | null;
+	(): string | null;
 }
 
 /**
  * Parameters for a sampling request
  */
 export interface SamplingParams {
-  model: string;
-  prompt: string;
-  max_tokens?: number;
-  temperature?: number;
-  top_p?: number;
-  stop?: string[];
-  [key: string]: any;
+	model: string;
+	prompt: string;
+	max_tokens?: number;
+	temperature?: number;
+	top_p?: number;
+	stop?: string[];
+	[key: string]: any;
 }
 
 /**
  * Result from a sampling operation
  */
 export interface SamplingResult {
-  text: string;
-  finish_reason?: 'stop' | 'length' | 'content_filter' | string;
-  error?: string;
-  [key: string]: any;
+	text: string;
+	finish_reason?: 'stop' | 'length' | 'content_filter' | string;
+	error?: string;
+	[key: string]: any;
 }
 
 /**
  * Root resource information
  */
 export interface Root {
-  id: string;
-  displayName: string;
-  description?: string;
+	id: string;
+	displayName: string;
+	description?: string;
 }
 
 /**
@@ -72,37 +71,37 @@ export interface Root {
  * with agent-specific functionality
  */
 export interface IEnhancedMCPClient extends IMCPClient {
-  // Session management
-  setSessionIdCallback(callback: ISessionIdCallback): void;
-  getSessionId(): string | null;
+	// Session management
+	setSessionIdCallback(callback: ISessionIdCallback): void;
+	getSessionId(): string | null;
 
-  // Progress notification
-  sendProgressNotification(token: string, progress: number, total?: number): Promise<void>;
-  
-  // Custom callbacks
-  setSamplingCallback(callback: ISamplingCallback): void;
-  setListRootsCallback(callback: IListRootsCallback): void;
-  
-  // Handle sampling requests
-  handleSampling(params: SamplingParams): Promise<SamplingResult>;
-  
-  // Context integration
-  getContext(): IContext | undefined;
-  getLogger(): Logger;
-  
-  // Enhanced operations with logging
-  callToolWithLogging(name: string, args: any): Promise<any>;
+	// Progress notification
+	sendProgressNotification(token: string, progress: number, total?: number): Promise<void>;
+
+	// Custom callbacks
+	setSamplingCallback(callback: ISamplingCallback): void;
+	setListRootsCallback(callback: IListRootsCallback): void;
+
+	// Handle sampling requests
+	handleSampling(params: SamplingParams): Promise<SamplingResult>;
+
+	// Context integration
+	getContext(): IContext | undefined;
+	getLogger(): Logger;
+
+	// Enhanced operations with logging
+	callToolWithLogging(name: string, args: any): Promise<any>;
 }
 
 /**
  * Configuration for an enhanced MCP client session
  */
 export interface MCPAgentSessionConfig {
-  serverConfig: McpServerConfig;
-  serverName: string;
-  context?: IContext;
-  samplingCallback?: ISamplingCallback;
-  listRootsCallback?: IListRootsCallback;
-  sessionIdCallback?: ISessionIdCallback;
-  upstreamSession?: IEnhancedMCPClient;
+	serverConfig: McpServerConfig;
+	serverName: string;
+	context?: IContext;
+	samplingCallback?: ISamplingCallback;
+	listRootsCallback?: IListRootsCallback;
+	sessionIdCallback?: ISessionIdCallback;
+	upstreamSession?: IEnhancedMCPClient;
 }

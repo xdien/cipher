@@ -10,457 +10,461 @@ import { McpServerConfig } from '../types/config.js';
 import { ConnectionPoolConfig } from '../types/connection-config.js';
 
 // Mock server config factory
-const createTestServerConfig = (type: 'stdio' | 'websocket' = 'stdio'): McpServerConfig => ({
-  type,
-  command: type === 'stdio' ? 'test-command' : undefined,
-  url: type === 'websocket' ? 'ws://localhost:8080' : undefined,
-  timeout: 30000,
-  terminateOnClose: true,
-} as McpServerConfig);
+const createTestServerConfig = (type: 'stdio' | 'websocket' = 'stdio'): McpServerConfig =>
+	({
+		type,
+		command: type === 'stdio' ? 'test-command' : undefined,
+		url: type === 'websocket' ? 'ws://localhost:8080' : undefined,
+		timeout: 30000,
+		terminateOnClose: true,
+	}) as McpServerConfig;
 
 // Simple test classes that demonstrate the patterns
 class TestableConfiguration {
-  private config: ConnectionPoolConfig;
-  private initialized = false;
-  private context?: Context;
+	private config: ConnectionPoolConfig;
+	private initialized = false;
+	private context?: Context;
 
-  constructor(config: Partial<ConnectionPoolConfig> = {}) {
-    this.config = {
-      persistentConnections: true,
-      maxPoolSize: 20,
-      connectionTimeout: 60000,
-      healthCheckInterval: 30000,
-      maxRetryAttempts: 3,
-      idleTimeout: 300000,
-      enableConnectionWarming: true,
-      warmupOnStartup: false,
-      ...config,
-    };
-  }
+	constructor(config: Partial<ConnectionPoolConfig> = {}) {
+		this.config = {
+			persistentConnections: true,
+			maxPoolSize: 20,
+			connectionTimeout: 60000,
+			healthCheckInterval: 30000,
+			maxRetryAttempts: 3,
+			idleTimeout: 300000,
+			enableConnectionWarming: true,
+			warmupOnStartup: false,
+			...config,
+		};
+	}
 
-  // Expose internal state for testing
-  public getConfig(): ConnectionPoolConfig {
-    return { ...this.config };
-  }
+	// Expose internal state for testing
+	public getConfig(): ConnectionPoolConfig {
+		return { ...this.config };
+	}
 
-  public updateConfig(newConfig: Partial<ConnectionPoolConfig>): void {
-    this.config = { ...this.config, ...newConfig };
-  }
+	public updateConfig(newConfig: Partial<ConnectionPoolConfig>): void {
+		this.config = { ...this.config, ...newConfig };
+	}
 
-  public async initialize(context?: Context): Promise<void> {
-    this.context = context;
-    this.initialized = true;
-  }
+	public async initialize(context?: Context): Promise<void> {
+		this.context = context;
+		this.initialized = true;
+	}
 
-  public isInitialized(): boolean {
-    return this.initialized;
-  }
+	public isInitialized(): boolean {
+		return this.initialized;
+	}
 
-  public getContext(): Context | undefined {
-    return this.context;
-  }
+	public getContext(): Context | undefined {
+		return this.context;
+	}
 }
 
 class TestableServerRegistry {
-  private servers: Map<string, McpServerConfig> = new Map();
-  private logger: Logger;
+	private servers: Map<string, McpServerConfig> = new Map();
+	private logger: Logger;
 
-  constructor(context?: Context) {
-    this.logger = new Logger('test-server-registry');
-  }
+	constructor(context?: Context) {
+		this.logger = new Logger('test-server-registry');
+	}
 
-  public async addServer(name: string, config: McpServerConfig): Promise<void> {
-    if (this.servers.has(name)) {
-      throw new Error(`Server '${name}' already exists`);
-    }
-    this.servers.set(name, config);
-    this.logger.debug(`Added server: ${name}`);
-  }
+	public async addServer(name: string, config: McpServerConfig): Promise<void> {
+		if (this.servers.has(name)) {
+			throw new Error(`Server '${name}' already exists`);
+		}
+		this.servers.set(name, config);
+		this.logger.debug(`Added server: ${name}`);
+	}
 
-  public async removeServer(name: string): Promise<void> {
-    if (!this.servers.has(name)) {
-      this.logger.warning(`Server '${name}' not found`);
-      return;
-    }
-    this.servers.delete(name);
-    this.logger.debug(`Removed server: ${name}`);
-  }
+	public async removeServer(name: string): Promise<void> {
+		if (!this.servers.has(name)) {
+			this.logger.warning(`Server '${name}' not found`);
+			return;
+		}
+		this.servers.delete(name);
+		this.logger.debug(`Removed server: ${name}`);
+	}
 
-  public getServer(name: string): McpServerConfig | undefined {
-    return this.servers.get(name);
-  }
+	public getServer(name: string): McpServerConfig | undefined {
+		return this.servers.get(name);
+	}
 
-  public getAllServers(): Record<string, McpServerConfig> {
-    return Object.fromEntries(this.servers);
-  }
+	public getAllServers(): Record<string, McpServerConfig> {
+		return Object.fromEntries(this.servers);
+	}
 
-  public getServerNames(): string[] {
-    return Array.from(this.servers.keys());
-  }
+	public getServerNames(): string[] {
+		return Array.from(this.servers.keys());
+	}
 
-  public getServerCount(): number {
-    return this.servers.size;
-  }
+	public getServerCount(): number {
+		return this.servers.size;
+	}
 
-  public clear(): void {
-    this.servers.clear();
-  }
+	public clear(): void {
+		this.servers.clear();
+	}
 }
 
 class TestableAggregatorStats {
-  private stats = {
-    totalOperations: 0,
-    successfulOperations: 0,
-    failedOperations: 0,
-    serverCount: 0,
-    initialized: false,
-    startTime: new Date(),
-  };
+	private stats = {
+		totalOperations: 0,
+		successfulOperations: 0,
+		failedOperations: 0,
+		serverCount: 0,
+		initialized: false,
+		startTime: new Date(),
+	};
 
-  public recordOperation(success: boolean): void {
-    this.stats.totalOperations++;
-    if (success) {
-      this.stats.successfulOperations++;
-    } else {
-      this.stats.failedOperations++;
-    }
-  }
+	public recordOperation(success: boolean): void {
+		this.stats.totalOperations++;
+		if (success) {
+			this.stats.successfulOperations++;
+		} else {
+			this.stats.failedOperations++;
+		}
+	}
 
-  public updateServerCount(count: number): void {
-    this.stats.serverCount = count;
-  }
+	public updateServerCount(count: number): void {
+		this.stats.serverCount = count;
+	}
 
-  public setInitialized(initialized: boolean): void {
-    this.stats.initialized = initialized;
-  }
+	public setInitialized(initialized: boolean): void {
+		this.stats.initialized = initialized;
+	}
 
-  public getStats() {
-    return {
-      ...this.stats,
-      uptime: Date.now() - this.stats.startTime.getTime(),
-      successRate: this.stats.totalOperations > 0 
-        ? (this.stats.successfulOperations / this.stats.totalOperations) * 100 
-        : 0,
-    };
-  }
+	public getStats() {
+		return {
+			...this.stats,
+			uptime: Date.now() - this.stats.startTime.getTime(),
+			successRate:
+				this.stats.totalOperations > 0
+					? (this.stats.successfulOperations / this.stats.totalOperations) * 100
+					: 0,
+		};
+	}
 
-  public reset(): void {
-    this.stats = {
-      totalOperations: 0,
-      successfulOperations: 0,
-      failedOperations: 0,
-      serverCount: 0,
-      initialized: false,
-      startTime: new Date(),
-    };
-  }
+	public reset(): void {
+		this.stats = {
+			totalOperations: 0,
+			successfulOperations: 0,
+			failedOperations: 0,
+			serverCount: 0,
+			initialized: false,
+			startTime: new Date(),
+		};
+	}
 }
 
 describe('MCP Module - Core Functionality Tests', () => {
-  let mockContext: Context;
+	let mockContext: Context;
 
-  beforeEach(() => {
-    // Create fresh context for each test
-    mockContext = new Context({
-      sessionId: 'test-session',
-      logger: new Logger('test-mcp')
-    });
-  });
+	beforeEach(() => {
+		// Create fresh context for each test
+		mockContext = new Context({
+			sessionId: 'test-session',
+			logger: new Logger('test-mcp'),
+		});
+	});
 
-  describe('Configuration Management', () => {
-    let configManager: TestableConfiguration;
+	describe('Configuration Management', () => {
+		let configManager: TestableConfiguration;
 
-    beforeEach(() => {
-      configManager = new TestableConfiguration();
-    });
+		beforeEach(() => {
+			configManager = new TestableConfiguration();
+		});
 
-    test('should create configuration with default values', () => {
-      const config = configManager.getConfig();
-      
-      expect(config.persistentConnections).toBe(true);
-      expect(config.maxPoolSize).toBe(20);
-      expect(config.connectionTimeout).toBe(60000);
-      expect(config.warmupOnStartup).toBe(false);
-    });
+		test('should create configuration with default values', () => {
+			const config = configManager.getConfig();
 
-    test('should create configuration with custom values', () => {
-      const customConfig = {
-        maxPoolSize: 10,
-        connectionTimeout: 30000,
-        warmupOnStartup: true,
-      };
+			expect(config.persistentConnections).toBe(true);
+			expect(config.maxPoolSize).toBe(20);
+			expect(config.connectionTimeout).toBe(60000);
+			expect(config.warmupOnStartup).toBe(false);
+		});
 
-      configManager = new TestableConfiguration(customConfig);
-      const config = configManager.getConfig();
+		test('should create configuration with custom values', () => {
+			const customConfig = {
+				maxPoolSize: 10,
+				connectionTimeout: 30000,
+				warmupOnStartup: true,
+			};
 
-      expect(config.maxPoolSize).toBe(10);
-      expect(config.connectionTimeout).toBe(30000);
-      expect(config.warmupOnStartup).toBe(true);
-      // Should maintain defaults for non-specified values
-      expect(config.persistentConnections).toBe(true);
-    });
+			configManager = new TestableConfiguration(customConfig);
+			const config = configManager.getConfig();
 
-    test('should update configuration successfully', () => {
-      const initialConfig = configManager.getConfig();
-      expect(initialConfig.maxPoolSize).toBe(20);
+			expect(config.maxPoolSize).toBe(10);
+			expect(config.connectionTimeout).toBe(30000);
+			expect(config.warmupOnStartup).toBe(true);
+			// Should maintain defaults for non-specified values
+			expect(config.persistentConnections).toBe(true);
+		});
 
-      configManager.updateConfig({ maxPoolSize: 15 });
-      
-      const updatedConfig = configManager.getConfig();
-      expect(updatedConfig.maxPoolSize).toBe(15);
-      // Other values should remain unchanged
-      expect(updatedConfig.connectionTimeout).toBe(60000);
-    });
+		test('should update configuration successfully', () => {
+			const initialConfig = configManager.getConfig();
+			expect(initialConfig.maxPoolSize).toBe(20);
 
-    test('should handle initialization with context', async () => {
-      expect(configManager.isInitialized()).toBe(false);
-      expect(configManager.getContext()).toBeUndefined();
+			configManager.updateConfig({ maxPoolSize: 15 });
 
-      await configManager.initialize(mockContext);
+			const updatedConfig = configManager.getConfig();
+			expect(updatedConfig.maxPoolSize).toBe(15);
+			// Other values should remain unchanged
+			expect(updatedConfig.connectionTimeout).toBe(60000);
+		});
 
-      expect(configManager.isInitialized()).toBe(true);
-      expect(configManager.getContext()).toBe(mockContext);
-    });
-  });
+		test('should handle initialization with context', async () => {
+			expect(configManager.isInitialized()).toBe(false);
+			expect(configManager.getContext()).toBeUndefined();
 
-  describe('Server Registry', () => {
-    let registry: TestableServerRegistry;
-    let stdioConfig: McpServerConfig;
-    let websocketConfig: McpServerConfig;
+			await configManager.initialize(mockContext);
 
-    beforeEach(() => {
-      registry = new TestableServerRegistry(mockContext);
-      stdioConfig = createTestServerConfig('stdio');
-      websocketConfig = createTestServerConfig('websocket');
-    });
+			expect(configManager.isInitialized()).toBe(true);
+			expect(configManager.getContext()).toBe(mockContext);
+		});
+	});
 
-    test('should add servers successfully', async () => {
-      expect(registry.getServerCount()).toBe(0);
+	describe('Server Registry', () => {
+		let registry: TestableServerRegistry;
+		let stdioConfig: McpServerConfig;
+		let websocketConfig: McpServerConfig;
 
-      await registry.addServer('server1', stdioConfig);
-      await registry.addServer('server2', websocketConfig);
+		beforeEach(() => {
+			registry = new TestableServerRegistry(mockContext);
+			stdioConfig = createTestServerConfig('stdio');
+			websocketConfig = createTestServerConfig('websocket');
+		});
 
-      expect(registry.getServerCount()).toBe(2);
-      expect(registry.getServerNames()).toContain('server1');
-      expect(registry.getServerNames()).toContain('server2');
-    });
+		test('should add servers successfully', async () => {
+			expect(registry.getServerCount()).toBe(0);
 
-    test('should throw error when adding duplicate server', async () => {
-      await registry.addServer('server1', stdioConfig);
+			await registry.addServer('server1', stdioConfig);
+			await registry.addServer('server2', websocketConfig);
 
-      await expect(registry.addServer('server1', websocketConfig))
-        .rejects.toThrow('Server \'server1\' already exists');
-    });
+			expect(registry.getServerCount()).toBe(2);
+			expect(registry.getServerNames()).toContain('server1');
+			expect(registry.getServerNames()).toContain('server2');
+		});
 
-    test('should remove servers successfully', async () => {
-      await registry.addServer('server1', stdioConfig);
-      await registry.addServer('server2', websocketConfig);
-      expect(registry.getServerCount()).toBe(2);
+		test('should throw error when adding duplicate server', async () => {
+			await registry.addServer('server1', stdioConfig);
 
-      await registry.removeServer('server1');
-      
-      expect(registry.getServerCount()).toBe(1);
-      expect(registry.getServerNames()).not.toContain('server1');
-      expect(registry.getServerNames()).toContain('server2');
-    });
+			await expect(registry.addServer('server1', websocketConfig)).rejects.toThrow(
+				"Server 'server1' already exists"
+			);
+		});
 
-    test('should handle removal of non-existent server gracefully', async () => {
-      await expect(registry.removeServer('non-existent')).resolves.not.toThrow();
-      expect(registry.getServerCount()).toBe(0);
-    });
+		test('should remove servers successfully', async () => {
+			await registry.addServer('server1', stdioConfig);
+			await registry.addServer('server2', websocketConfig);
+			expect(registry.getServerCount()).toBe(2);
 
-    test('should retrieve server configurations', async () => {
-      await registry.addServer('server1', stdioConfig);
+			await registry.removeServer('server1');
 
-      const retrievedConfig = registry.getServer('server1');
-      expect(retrievedConfig).toEqual(stdioConfig);
+			expect(registry.getServerCount()).toBe(1);
+			expect(registry.getServerNames()).not.toContain('server1');
+			expect(registry.getServerNames()).toContain('server2');
+		});
 
-      const nonExistentConfig = registry.getServer('non-existent');
-      expect(nonExistentConfig).toBeUndefined();
-    });
+		test('should handle removal of non-existent server gracefully', async () => {
+			await expect(registry.removeServer('non-existent')).resolves.not.toThrow();
+			expect(registry.getServerCount()).toBe(0);
+		});
 
-    test('should get all servers', async () => {
-      await registry.addServer('server1', stdioConfig);
-      await registry.addServer('server2', websocketConfig);
+		test('should retrieve server configurations', async () => {
+			await registry.addServer('server1', stdioConfig);
 
-      const allServers = registry.getAllServers();
-      expect(Object.keys(allServers)).toHaveLength(2);
-      expect(allServers.server1).toEqual(stdioConfig);
-      expect(allServers.server2).toEqual(websocketConfig);
-    });
+			const retrievedConfig = registry.getServer('server1');
+			expect(retrievedConfig).toEqual(stdioConfig);
 
-    test('should clear all servers', async () => {
-      await registry.addServer('server1', stdioConfig);
-      await registry.addServer('server2', websocketConfig);
-      expect(registry.getServerCount()).toBe(2);
+			const nonExistentConfig = registry.getServer('non-existent');
+			expect(nonExistentConfig).toBeUndefined();
+		});
 
-      registry.clear();
-      
-      expect(registry.getServerCount()).toBe(0);
-      expect(registry.getServerNames()).toHaveLength(0);
-    });
-  });
+		test('should get all servers', async () => {
+			await registry.addServer('server1', stdioConfig);
+			await registry.addServer('server2', websocketConfig);
 
-  describe('Statistics Tracking', () => {
-    let statsTracker: TestableAggregatorStats;
+			const allServers = registry.getAllServers();
+			expect(Object.keys(allServers)).toHaveLength(2);
+			expect(allServers.server1).toEqual(stdioConfig);
+			expect(allServers.server2).toEqual(websocketConfig);
+		});
 
-    beforeEach(() => {
-      statsTracker = new TestableAggregatorStats();
-    });
+		test('should clear all servers', async () => {
+			await registry.addServer('server1', stdioConfig);
+			await registry.addServer('server2', websocketConfig);
+			expect(registry.getServerCount()).toBe(2);
 
-    test('should initialize with zero statistics', () => {
-      const stats = statsTracker.getStats();
-      
-      expect(stats.totalOperations).toBe(0);
-      expect(stats.successfulOperations).toBe(0);
-      expect(stats.failedOperations).toBe(0);
-      expect(stats.serverCount).toBe(0);
-      expect(stats.initialized).toBe(false);
-      expect(stats.successRate).toBe(0);
-    });
+			registry.clear();
 
-    test('should record successful operations', () => {
-      statsTracker.recordOperation(true);
-      statsTracker.recordOperation(true);
-      
-      const stats = statsTracker.getStats();
-      expect(stats.totalOperations).toBe(2);
-      expect(stats.successfulOperations).toBe(2);
-      expect(stats.failedOperations).toBe(0);
-      expect(stats.successRate).toBe(100);
-    });
+			expect(registry.getServerCount()).toBe(0);
+			expect(registry.getServerNames()).toHaveLength(0);
+		});
+	});
 
-    test('should record failed operations', () => {
-      statsTracker.recordOperation(false);
-      statsTracker.recordOperation(false);
-      
-      const stats = statsTracker.getStats();
-      expect(stats.totalOperations).toBe(2);
-      expect(stats.successfulOperations).toBe(0);
-      expect(stats.failedOperations).toBe(2);
-      expect(stats.successRate).toBe(0);
-    });
+	describe('Statistics Tracking', () => {
+		let statsTracker: TestableAggregatorStats;
 
-    test('should calculate success rate correctly', () => {
-      statsTracker.recordOperation(true);
-      statsTracker.recordOperation(true);
-      statsTracker.recordOperation(false);
-      statsTracker.recordOperation(true);
-      
-      const stats = statsTracker.getStats();
-      expect(stats.totalOperations).toBe(4);
-      expect(stats.successfulOperations).toBe(3);
-      expect(stats.failedOperations).toBe(1);
-      expect(stats.successRate).toBe(75);
-    });
+		beforeEach(() => {
+			statsTracker = new TestableAggregatorStats();
+		});
 
-    test('should track server count', () => {
-      statsTracker.updateServerCount(5);
-      
-      const stats = statsTracker.getStats();
-      expect(stats.serverCount).toBe(5);
-    });
+		test('should initialize with zero statistics', () => {
+			const stats = statsTracker.getStats();
 
-    test('should track initialization state', () => {
-      expect(statsTracker.getStats().initialized).toBe(false);
-      
-      statsTracker.setInitialized(true);
-      
-      expect(statsTracker.getStats().initialized).toBe(true);
-    });
+			expect(stats.totalOperations).toBe(0);
+			expect(stats.successfulOperations).toBe(0);
+			expect(stats.failedOperations).toBe(0);
+			expect(stats.serverCount).toBe(0);
+			expect(stats.initialized).toBe(false);
+			expect(stats.successRate).toBe(0);
+		});
 
-    test('should calculate uptime', async () => {
-      const initialStats = statsTracker.getStats();
-      expect(initialStats.uptime).toBeGreaterThanOrEqual(0);
-      
-      // Wait a small amount of time
-      await new Promise(resolve => setTimeout(resolve, 10));
-      
-      const laterStats = statsTracker.getStats();
-      expect(laterStats.uptime).toBeGreaterThan(initialStats.uptime);
-    });
+		test('should record successful operations', () => {
+			statsTracker.recordOperation(true);
+			statsTracker.recordOperation(true);
 
-    test('should reset statistics', () => {
-      // Add some data
-      statsTracker.recordOperation(true);
-      statsTracker.recordOperation(false);
-      statsTracker.updateServerCount(3);
-      statsTracker.setInitialized(true);
-      
-      expect(statsTracker.getStats().totalOperations).toBe(2);
-      
-      // Reset
-      statsTracker.reset();
-      
-      const stats = statsTracker.getStats();
-      expect(stats.totalOperations).toBe(0);
-      expect(stats.successfulOperations).toBe(0);
-      expect(stats.failedOperations).toBe(0);
-      expect(stats.serverCount).toBe(0);
-      expect(stats.initialized).toBe(false);
-    });
-  });
+			const stats = statsTracker.getStats();
+			expect(stats.totalOperations).toBe(2);
+			expect(stats.successfulOperations).toBe(2);
+			expect(stats.failedOperations).toBe(0);
+			expect(stats.successRate).toBe(100);
+		});
 
-  describe('Error Handling Patterns', () => {
-    test('should handle invalid server configurations', () => {
-      const invalidConfig = {
-        type: 'invalid',
-        timeout: -1,
-      } as any;
+		test('should record failed operations', () => {
+			statsTracker.recordOperation(false);
+			statsTracker.recordOperation(false);
 
-      expect(() => {
-        // Simulate validation
-        if (invalidConfig.type !== 'stdio' && invalidConfig.type !== 'websocket') {
-          throw new Error(`Invalid server type: ${invalidConfig.type}`);
-        }
-        if (invalidConfig.timeout < 0) {
-          throw new Error('Timeout must be positive');
-        }
-      }).toThrow();
-    });
+			const stats = statsTracker.getStats();
+			expect(stats.totalOperations).toBe(2);
+			expect(stats.successfulOperations).toBe(0);
+			expect(stats.failedOperations).toBe(2);
+			expect(stats.successRate).toBe(0);
+		});
 
-    test('should handle connection failures gracefully', async () => {
-      const mockConnectionFailure = vi.fn().mockRejectedValue(new Error('Connection failed'));
-      
-      // Simulate connection attempt with error handling
-      const result = await mockConnectionFailure().catch(error => ({
-        success: false,
-        error: error.message,
-      }));
+		test('should calculate success rate correctly', () => {
+			statsTracker.recordOperation(true);
+			statsTracker.recordOperation(true);
+			statsTracker.recordOperation(false);
+			statsTracker.recordOperation(true);
 
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Connection failed');
-    });
+			const stats = statsTracker.getStats();
+			expect(stats.totalOperations).toBe(4);
+			expect(stats.successfulOperations).toBe(3);
+			expect(stats.failedOperations).toBe(1);
+			expect(stats.successRate).toBe(75);
+		});
 
-    test('should handle async operation timeouts', async () => {
-      const slowOperation = () => new Promise(resolve => setTimeout(resolve, 1000));
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Operation timed out')), 100)
-      );
+		test('should track server count', () => {
+			statsTracker.updateServerCount(5);
 
-      await expect(Promise.race([slowOperation(), timeoutPromise]))
-        .rejects.toThrow('Operation timed out');
-    });
-  });
+			const stats = statsTracker.getStats();
+			expect(stats.serverCount).toBe(5);
+		});
 
-  describe('Context Integration', () => {
-    test('should use context for logging and session management', () => {
-      const contextWithSession = new Context({
-        sessionId: 'test-session-123',
-        logger: new Logger('context-test')
-      });
+		test('should track initialization state', () => {
+			expect(statsTracker.getStats().initialized).toBe(false);
 
-      const registry = new TestableServerRegistry(contextWithSession);
-      
-      // Verify context is properly integrated
-      expect(contextWithSession.sessionId).toBe('test-session-123');
-    });
+			statsTracker.setInitialized(true);
 
-    test('should handle missing context gracefully', () => {
-      const registry = new TestableServerRegistry();
-      
-      // Should not throw even without context
-      expect(() => registry.getServerCount()).not.toThrow();
-    });
-  });
-}); 
+			expect(statsTracker.getStats().initialized).toBe(true);
+		});
+
+		test('should calculate uptime', async () => {
+			const initialStats = statsTracker.getStats();
+			expect(initialStats.uptime).toBeGreaterThanOrEqual(0);
+
+			// Wait a small amount of time
+			await new Promise(resolve => setTimeout(resolve, 10));
+
+			const laterStats = statsTracker.getStats();
+			expect(laterStats.uptime).toBeGreaterThan(initialStats.uptime);
+		});
+
+		test('should reset statistics', () => {
+			// Add some data
+			statsTracker.recordOperation(true);
+			statsTracker.recordOperation(false);
+			statsTracker.updateServerCount(3);
+			statsTracker.setInitialized(true);
+
+			expect(statsTracker.getStats().totalOperations).toBe(2);
+
+			// Reset
+			statsTracker.reset();
+
+			const stats = statsTracker.getStats();
+			expect(stats.totalOperations).toBe(0);
+			expect(stats.successfulOperations).toBe(0);
+			expect(stats.failedOperations).toBe(0);
+			expect(stats.serverCount).toBe(0);
+			expect(stats.initialized).toBe(false);
+		});
+	});
+
+	describe('Error Handling Patterns', () => {
+		test('should handle invalid server configurations', () => {
+			const invalidConfig = {
+				type: 'invalid',
+				timeout: -1,
+			} as any;
+
+			expect(() => {
+				// Simulate validation
+				if (invalidConfig.type !== 'stdio' && invalidConfig.type !== 'websocket') {
+					throw new Error(`Invalid server type: ${invalidConfig.type}`);
+				}
+				if (invalidConfig.timeout < 0) {
+					throw new Error('Timeout must be positive');
+				}
+			}).toThrow();
+		});
+
+		test('should handle connection failures gracefully', async () => {
+			const mockConnectionFailure = vi.fn().mockRejectedValue(new Error('Connection failed'));
+
+			// Simulate connection attempt with error handling
+			const result = await mockConnectionFailure().catch(error => ({
+				success: false,
+				error: error.message,
+			}));
+
+			expect(result.success).toBe(false);
+			expect(result.error).toBe('Connection failed');
+		});
+
+		test('should handle async operation timeouts', async () => {
+			const slowOperation = () => new Promise(resolve => setTimeout(resolve, 1000));
+			const timeoutPromise = new Promise((_, reject) =>
+				setTimeout(() => reject(new Error('Operation timed out')), 100)
+			);
+
+			await expect(Promise.race([slowOperation(), timeoutPromise])).rejects.toThrow(
+				'Operation timed out'
+			);
+		});
+	});
+
+	describe('Context Integration', () => {
+		test('should use context for logging and session management', () => {
+			const contextWithSession = new Context({
+				sessionId: 'test-session-123',
+				logger: new Logger('context-test'),
+			});
+
+			const registry = new TestableServerRegistry(contextWithSession);
+
+			// Verify context is properly integrated
+			expect(contextWithSession.sessionId).toBe('test-session-123');
+		});
+
+		test('should handle missing context gracefully', () => {
+			const registry = new TestableServerRegistry();
+
+			// Should not throw even without context
+			expect(() => registry.getServerCount()).not.toThrow();
+		});
+	});
+});

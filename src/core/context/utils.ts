@@ -16,7 +16,7 @@ let _globalContext: Context | undefined;
  * @param context The context to set as global or undefined to clear
  */
 export function setGlobalContextRef(context: Context | undefined): void {
-  _globalContext = context;
+	_globalContext = context;
 }
 
 /**
@@ -24,5 +24,5 @@ export function setGlobalContextRef(context: Context | undefined): void {
  * @returns The global context or undefined if not set
  */
 export function getGlobalContextRef(): Context | undefined {
-  return _globalContext;
+	return _globalContext;
 }

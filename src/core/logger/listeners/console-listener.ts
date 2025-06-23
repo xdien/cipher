@@ -9,246 +9,244 @@ import { BaseFilteredListener } from './base.js';
  * ANSI color codes for console output
  */
 const COLORS = {
-  reset: '\x1b[0m',
-  bright: '\x1b[1m',
-  dim: '\x1b[2m',
-  red: '\x1b[31m',
-  green: '\x1b[32m',
-  yellow: '\x1b[33m',
-  blue: '\x1b[34m',
-  magenta: '\x1b[35m',
-  cyan: '\x1b[36m',
-  white: '\x1b[37m',
-  gray: '\x1b[90m',
+	reset: '\x1b[0m',
+	bright: '\x1b[1m',
+	dim: '\x1b[2m',
+	red: '\x1b[31m',
+	green: '\x1b[32m',
+	yellow: '\x1b[33m',
+	blue: '\x1b[34m',
+	magenta: '\x1b[35m',
+	cyan: '\x1b[36m',
+	white: '\x1b[37m',
+	gray: '\x1b[90m',
 } as const;
 
 /**
  * Color mapping for different event types
  */
 const TYPE_COLORS = {
-  debug: COLORS.gray,
-  info: COLORS.blue,
-  warning: COLORS.yellow,
-  error: COLORS.red,
-  progress: COLORS.green,
+	debug: COLORS.gray,
+	info: COLORS.blue,
+	warning: COLORS.yellow,
+	error: COLORS.red,
+	progress: COLORS.green,
 } as const;
 
 export class ConsoleListener extends BaseFilteredListener {
-  private config: Required<ConsoleTransportConfig>;
+	private config: Required<ConsoleTransportConfig>;
 
-  constructor(config: ConsoleTransportConfig = {}, filter?: EventFilter) {
-    super(filter);
-    
-    this.config = {
-      colorize: config.colorize ?? true,
-      format: config.format ?? 'pretty',
-      includeTimestamp: config.includeTimestamp ?? true,
-    };
-  }
+	constructor(config: ConsoleTransportConfig = {}, filter?: EventFilter) {
+		super(filter);
 
-  async handleMatchedEvent(event: Event): Promise<void> {
-    const formatted = this.formatEvent(event);
-    
-    // Use appropriate console method based on event type
-    switch (event.type) {
-      case 'error':
-        console.error(formatted);
-        break;
-      case 'warning':
-        console.warn(formatted);
-        break;
-      case 'debug':
-        console.debug(formatted);
-        break;
-      default:
-        console.log(formatted);
-    }
-  }
+		this.config = {
+			colorize: config.colorize ?? true,
+			format: config.format ?? 'pretty',
+			includeTimestamp: config.includeTimestamp ?? true,
+		};
+	}
 
-  /**
-   * Format an event for console output
-   */
-  private formatEvent(event: Event): string {
-    switch (this.config.format) {
-      case 'json':
-        return JSON.stringify(event, null, 2);
-      case 'text':
-        return this.formatAsText(event);
-      case 'pretty':
-      default:
-        return this.formatAsPretty(event);
-    }
-  }
+	async handleMatchedEvent(event: Event): Promise<void> {
+		const formatted = this.formatEvent(event);
 
-  /**
-   * Format event as simple text
-   */
-  private formatAsText(event: Event): string {
-    const parts: string[] = [];
+		// Use appropriate console method based on event type
+		switch (event.type) {
+			case 'error':
+				console.error(formatted);
+				break;
+			case 'warning':
+				console.warn(formatted);
+				break;
+			case 'debug':
+				console.debug(formatted);
+				break;
+			default:
+				console.log(formatted);
+		}
+	}
 
-    if (this.config.includeTimestamp) {
-      parts.push(event.timestamp.toISOString());
-    }
+	/**
+	 * Format an event for console output
+	 */
+	private formatEvent(event: Event): string {
+		switch (this.config.format) {
+			case 'json':
+				return JSON.stringify(event, null, 2);
+			case 'text':
+				return this.formatAsText(event);
+			case 'pretty':
+			default:
+				return this.formatAsPretty(event);
+		}
+	}
 
-    parts.push(`[${event.type.toUpperCase()}]`);
-    parts.push(`[${event.namespace}]`);
+	/**
+	 * Format event as simple text
+	 */
+	private formatAsText(event: Event): string {
+		const parts: string[] = [];
 
-    if (event.name) {
-      parts.push(`[${event.name}]`);
-    }
+		if (this.config.includeTimestamp) {
+			parts.push(event.timestamp.toISOString());
+		}
 
-    parts.push(event.message);
+		parts.push(`[${event.type.toUpperCase()}]`);
+		parts.push(`[${event.namespace}]`);
 
-    return parts.join(' ');
-  }
+		if (event.name) {
+			parts.push(`[${event.name}]`);
+		}
 
-  /**
-   * Format event with colors and enhanced formatting
-   */
-  private formatAsPretty(event: Event): string {
-    const parts: string[] = [];
-    const typeColor = TYPE_COLORS[event.type] || COLORS.white;
+		parts.push(event.message);
 
-    // Timestamp
-    if (this.config.includeTimestamp) {
-      const timestamp = this.config.colorize 
-        ? `${COLORS.gray}${event.timestamp.toISOString()}${COLORS.reset}`
-        : event.timestamp.toISOString();
-      parts.push(timestamp);
-    }
+		return parts.join(' ');
+	}
 
-    // Event type
-    const typeLabel = this.config.colorize
-      ? `${typeColor}[${event.type.toUpperCase()}]${COLORS.reset}`
-      : `[${event.type.toUpperCase()}]`;
-    parts.push(typeLabel);
+	/**
+	 * Format event with colors and enhanced formatting
+	 */
+	private formatAsPretty(event: Event): string {
+		const parts: string[] = [];
+		const typeColor = TYPE_COLORS[event.type] || COLORS.white;
 
-    // Namespace
-    const namespace = this.config.colorize
-      ? `${COLORS.cyan}[${event.namespace}]${COLORS.reset}`
-      : `[${event.namespace}]`;
-    parts.push(namespace);
+		// Timestamp
+		if (this.config.includeTimestamp) {
+			const timestamp = this.config.colorize
+				? `${COLORS.gray}${event.timestamp.toISOString()}${COLORS.reset}`
+				: event.timestamp.toISOString();
+			parts.push(timestamp);
+		}
 
-    // Event name
-    if (event.name) {
-      const name = this.config.colorize
-        ? `${COLORS.magenta}[${event.name}]${COLORS.reset}`
-        : `[${event.name}]`;
-      parts.push(name);
-    }
+		// Event type
+		const typeLabel = this.config.colorize
+			? `${typeColor}[${event.type.toUpperCase()}]${COLORS.reset}`
+			: `[${event.type.toUpperCase()}]`;
+		parts.push(typeLabel);
 
-    // Message
-    const message = this.config.colorize && event.type === 'error'
-      ? `${COLORS.red}${event.message}${COLORS.reset}`
-      : event.message;
-    parts.push(message);
+		// Namespace
+		const namespace = this.config.colorize
+			? `${COLORS.cyan}[${event.namespace}]${COLORS.reset}`
+			: `[${event.namespace}]`;
+		parts.push(namespace);
 
-    // Additional data (if present and not empty)
-    if (event.data && Object.keys(event.data).length > 0) {
-      const dataStr = this.formatData(event.data);
-      if (dataStr) {
-        parts.push(dataStr);
-      }
-    }
+		// Event name
+		if (event.name) {
+			const name = this.config.colorize
+				? `${COLORS.magenta}[${event.name}]${COLORS.reset}`
+				: `[${event.name}]`;
+			parts.push(name);
+		}
 
-    // Context (if present)
-    if (event.context && Object.keys(event.context).length > 0) {
-      const contextStr = this.formatContext(event.context);
-      if (contextStr) {
-        parts.push(contextStr);
-      }
-    }
+		// Message
+		const message =
+			this.config.colorize && event.type === 'error'
+				? `${COLORS.red}${event.message}${COLORS.reset}`
+				: event.message;
+		parts.push(message);
 
-    return parts.join(' ');
-  }
+		// Additional data (if present and not empty)
+		if (event.data && Object.keys(event.data).length > 0) {
+			const dataStr = this.formatData(event.data);
+			if (dataStr) {
+				parts.push(dataStr);
+			}
+		}
 
-  /**
-   * Format event data for display
-   */
-  private formatData(data: Record<string, any>): string {
-    try {
-      // Handle special cases
-      if (data.percentage !== undefined) {
-        return this.config.colorize
-          ? `${COLORS.green}(${data.percentage}%)${COLORS.reset}`
-          : `(${data.percentage}%)`;
-      }
+		// Context (if present)
+		if (event.context && Object.keys(event.context).length > 0) {
+			const contextStr = this.formatContext(event.context);
+			if (contextStr) {
+				parts.push(contextStr);
+			}
+		}
 
-      if (data.duration_ms !== undefined) {
-        return this.config.colorize
-          ? `${COLORS.yellow}(${data.duration_ms}ms)${COLORS.reset}`
-          : `(${data.duration_ms}ms)`;
-      }
+		return parts.join(' ');
+	}
 
-      if (data.error) {
-        const errorInfo = typeof data.error === 'object' 
-          ? `${data.error.name}: ${data.error.message}`
-          : String(data.error);
-        return this.config.colorize
-          ? `${COLORS.red}${errorInfo}${COLORS.reset}`
-          : errorInfo;
-      }
+	/**
+	 * Format event data for display
+	 */
+	private formatData(data: Record<string, any>): string {
+		try {
+			// Handle special cases
+			if (data.percentage !== undefined) {
+				return this.config.colorize
+					? `${COLORS.green}(${data.percentage}%)${COLORS.reset}`
+					: `(${data.percentage}%)`;
+			}
 
-      // For other data, show as compact JSON
-      const filtered = Object.fromEntries(
-        Object.entries(data).filter(([key]) => 
-          !['percentage', 'duration_ms', 'error', 'operation'].includes(key)
-        )
-      );
+			if (data.duration_ms !== undefined) {
+				return this.config.colorize
+					? `${COLORS.yellow}(${data.duration_ms}ms)${COLORS.reset}`
+					: `(${data.duration_ms}ms)`;
+			}
 
-      if (Object.keys(filtered).length === 0) {
-        return '';
-      }
+			if (data.error) {
+				const errorInfo =
+					typeof data.error === 'object'
+						? `${data.error.name}: ${data.error.message}`
+						: String(data.error);
+				return this.config.colorize ? `${COLORS.red}${errorInfo}${COLORS.reset}` : errorInfo;
+			}
 
-      const jsonStr = JSON.stringify(filtered);
-      return this.config.colorize
-        ? `${COLORS.dim}${jsonStr}${COLORS.reset}`
-        : jsonStr;
-    } catch {
-      return '';
-    }
-  }
+			// For other data, show as compact JSON
+			const filtered = Object.fromEntries(
+				Object.entries(data).filter(
+					([key]) => !['percentage', 'duration_ms', 'error', 'operation'].includes(key)
+				)
+			);
 
-  /**
-   * Format event context for display
-   */
-  private formatContext(context: Record<string, any>): string {
-    try {
-      // Show only relevant context fields
-      const relevant = Object.fromEntries(
-        Object.entries(context).filter(([key, value]) => 
-          value !== undefined && 
-          ['sessionId', 'requestId', 'userId', 'workflowId'].includes(key)
-        )
-      );
+			if (Object.keys(filtered).length === 0) {
+				return '';
+			}
 
-      if (Object.keys(relevant).length === 0) {
-        return '';
-      }
+			const jsonStr = JSON.stringify(filtered);
+			return this.config.colorize ? `${COLORS.dim}${jsonStr}${COLORS.reset}` : jsonStr;
+		} catch {
+			return '';
+		}
+	}
 
-      const contextStr = Object.entries(relevant)
-        .map(([key, value]) => `${key}=${value}`)
-        .join(' ');
+	/**
+	 * Format event context for display
+	 */
+	private formatContext(context: Record<string, any>): string {
+		try {
+			// Show only relevant context fields
+			const relevant = Object.fromEntries(
+				Object.entries(context).filter(
+					([key, value]) =>
+						value !== undefined && ['sessionId', 'requestId', 'userId', 'workflowId'].includes(key)
+				)
+			);
 
-      return this.config.colorize
-        ? `${COLORS.dim}[${contextStr}]${COLORS.reset}`
-        : `[${contextStr}]`;
-    } catch {
-      return '';
-    }
-  }
+			if (Object.keys(relevant).length === 0) {
+				return '';
+			}
 
-  /**
-   * Update console configuration
-   */
-  public updateConfig(config: Partial<ConsoleTransportConfig>): void {
-    this.config = { ...this.config, ...config };
-  }
+			const contextStr = Object.entries(relevant)
+				.map(([key, value]) => `${key}=${value}`)
+				.join(' ');
 
-  /**
-   * Get current configuration
-   */
-  public getConfig(): ConsoleTransportConfig {
-    return { ...this.config };
-  }
+			return this.config.colorize
+				? `${COLORS.dim}[${contextStr}]${COLORS.reset}`
+				: `[${contextStr}]`;
+		} catch {
+			return '';
+		}
+	}
+
+	/**
+	 * Update console configuration
+	 */
+	public updateConfig(config: Partial<ConsoleTransportConfig>): void {
+		this.config = { ...this.config, ...config };
+	}
+
+	/**
+	 * Get current configuration
+	 */
+	public getConfig(): ConsoleTransportConfig {
+		return { ...this.config };
+	}
 }

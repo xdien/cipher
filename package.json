@@ -7,13 +7,29 @@
 	},
 	"description": "Build effective agents's memory with Model Context Protocol (MCP) with composable patterns",
 	"type": "module",
+	"main": "dist/index.js",
+	"module": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs"
+		},
+		"./package.json": "./package.json"
+	},
+	"files": [
+		"dist/"
+	],
 	"scripts": {
 		"build": "tsup",
+		"dev": "tsc --watch",
 		"typecheck": "tsc --noEmit",
 		"test": "vitest run",
-		"logger:example": "tsx src/core/logger/examples/basic-usage.ts",
-		"context:example": "tsx src/core/context/examples/basic-usage.ts",
-		"mcp:aggregator": "tsx src/core/mcp/examples/aggregator-usage.ts"
+		"lint": "eslint .",
+		"lint:fix": "eslint . --fix",
+		"format": "prettier --write \"src/**/*.ts\"",
+		"format:check": "prettier --check \"src/**/*.ts\""
 	},
 	"keywords": [
 		"mcp",

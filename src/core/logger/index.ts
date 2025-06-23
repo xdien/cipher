@@ -16,18 +16,20 @@ export * from './listeners/index.js';
 export * from './transports/index.js';
 
 // Utility exports
-export { 
-  safeJsonStringify, 
-  sanitizeForLogging, 
-  truncateForLogging,
-  setGlobalContext,
-  getGlobalContext,
-  getAllGlobalContext,
-  mergeContext,
-  generateSessionId,
-  generateRequestId,
-  generateTraceId,
-  generateSpanId,
+export {
+	safeJsonStringify,
+	sanitizeForLogging,
+	truncateForLogging,
+	setGlobalLogContext,
+	getGlobalLogContext,
+	getAllGlobalLogContext,
+	clearGlobalLogContext,
+	withGlobalLogContext,
+	mergeContext,
+	generateSessionId,
+	generateRequestId,
+	generateTraceId,
+	generateSpanId,
 } from './utils/index.js';
 
 // Convenience re-exports

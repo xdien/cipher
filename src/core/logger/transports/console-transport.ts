@@ -6,88 +6,88 @@ import { Event, EventFilter, ConsoleTransportConfig } from '../types/index.js';
 import { BaseFilteredEventTransport } from './base.js';
 
 export class ConsoleTransport extends BaseFilteredEventTransport {
-  private config: Required<ConsoleTransportConfig>;
+	private config: Required<ConsoleTransportConfig>;
 
-  constructor(config: ConsoleTransportConfig = {}, filter?: EventFilter) {
-    super(filter);
-    
-    this.config = {
-      colorize: config.colorize ?? true,
-      format: config.format ?? 'json',
-      includeTimestamp: config.includeTimestamp ?? true,
-    };
-  }
+	constructor(config: ConsoleTransportConfig = {}, filter?: EventFilter) {
+		super(filter);
 
-  async sendMatchedEvent(event: Event): Promise<void> {
-    const formatted = this.formatEvent(event);
-    console.log(formatted);
-  }
+		this.config = {
+			colorize: config.colorize ?? true,
+			format: config.format ?? 'json',
+			includeTimestamp: config.includeTimestamp ?? true,
+		};
+	}
 
-  /**
-   * Format an event for console output
-   */
-  private formatEvent(event: Event): string {
-    switch (this.config.format) {
-      case 'text':
-        return this.formatAsText(event);
-      case 'pretty':
-        return this.formatAsPretty(event);
-      case 'json':
-      default:
-        return JSON.stringify(event);
-    }
-  }
+	async sendMatchedEvent(event: Event): Promise<void> {
+		const formatted = this.formatEvent(event);
+		console.log(formatted);
+	}
 
-  /**
-   * Format event as simple text
-   */
-  private formatAsText(event: Event): string {
-    const parts: string[] = [];
+	/**
+	 * Format an event for console output
+	 */
+	private formatEvent(event: Event): string {
+		switch (this.config.format) {
+			case 'text':
+				return this.formatAsText(event);
+			case 'pretty':
+				return this.formatAsPretty(event);
+			case 'json':
+			default:
+				return JSON.stringify(event);
+		}
+	}
 
-    if (this.config.includeTimestamp) {
-      parts.push(event.timestamp.toISOString());
-    }
+	/**
+	 * Format event as simple text
+	 */
+	private formatAsText(event: Event): string {
+		const parts: string[] = [];
 
-    parts.push(`[${event.type.toUpperCase()}]`);
-    parts.push(`[${event.namespace}]`);
+		if (this.config.includeTimestamp) {
+			parts.push(event.timestamp.toISOString());
+		}
 
-    if (event.name) {
-      parts.push(`[${event.name}]`);
-    }
+		parts.push(`[${event.type.toUpperCase()}]`);
+		parts.push(`[${event.namespace}]`);
 
-    parts.push(event.message);
+		if (event.name) {
+			parts.push(`[${event.name}]`);
+		}
 
-    return parts.join(' ');
-  }
+		parts.push(event.message);
 
-  /**
-   * Format event with basic pretty printing
-   */
-  private formatAsPretty(event: Event): string {
-    const data = {
-      timestamp: event.timestamp.toISOString(),
-      type: event.type,
-      namespace: event.namespace,
-      name: event.name,
-      message: event.message,
-      data: event.data,
-      context: event.context,
-    };
+		return parts.join(' ');
+	}
 
-    return JSON.stringify(data, null, 2);
-  }
+	/**
+	 * Format event with basic pretty printing
+	 */
+	private formatAsPretty(event: Event): string {
+		const data = {
+			timestamp: event.timestamp.toISOString(),
+			type: event.type,
+			namespace: event.namespace,
+			name: event.name,
+			message: event.message,
+			data: event.data,
+			context: event.context,
+		};
 
-  /**
-   * Update transport configuration
-   */
-  public updateConfig(config: Partial<ConsoleTransportConfig>): void {
-    this.config = { ...this.config, ...config };
-  }
+		return JSON.stringify(data, null, 2);
+	}
 
-  /**
-   * Get current configuration
-   */
-  public getConfig(): ConsoleTransportConfig {
-    return { ...this.config };
-  }
+	/**
+	 * Update transport configuration
+	 */
+	public updateConfig(config: Partial<ConsoleTransportConfig>): void {
+		this.config = { ...this.config, ...config };
+	}
+
+	/**
+	 * Get current configuration
+	 */
+	public getConfig(): ConsoleTransportConfig {
+		return { ...this.config };
+	}
 }

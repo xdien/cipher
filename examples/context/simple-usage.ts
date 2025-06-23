@@ -2,8 +2,8 @@
  * Basic usage example of the Cipher context system
  */
 
-import { Context, initializeContext, ContextDependent } from '../index.js';
-import { Logger } from '../../logger/core/logger.js';
+import { Context, initializeContext, ContextDependent } from '../../dist/src/core';
+import { Logger } from '../../dist/src/core';
 
 // Example of a component that depends on context
 class ExampleComponent extends ContextDependent {
