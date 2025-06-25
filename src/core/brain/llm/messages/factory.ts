@@ -1,4 +1,4 @@
-import { LLMConfig, LLMConfigSchema } from '../types.js';
+import { LLMConfig, LLMConfigSchema } from '../config.js';
 import { OpenAIMessageFormatter } from './formatters/openai.js';
 import { AnthropicMessageFormatter } from './formatters/anthropic.js';
 import { IMessageFormatter } from './formatters/types.js';

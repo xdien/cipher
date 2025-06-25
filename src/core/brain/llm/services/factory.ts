@@ -1,6 +1,6 @@
 import { MCPManager } from '../../../mcp/manager.js';
 import { ContextManager } from '../messages/manager.js';
-import { LLMConfig } from '../types.js';
+import { LLMConfig } from '../config.js';
 import { ILLMService } from './types.js';
 import OpenAI from 'openai';
 import { logger } from '../../../logger/index.js';
