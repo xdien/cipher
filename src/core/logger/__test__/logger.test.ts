@@ -20,7 +20,6 @@ beforeEach(() => {
 	spyConsoleLog = vi.mocked(console.log);
 });
 
-
 describe.concurrent('Logger Core Functionality', () => {
 	describe.concurrent('Logger Construction and Level Management', () => {
 		it('creates logger with default info level', () => {
@@ -115,26 +114,26 @@ describe.concurrent('Special Display Features', () => {
 		it('handles all tool related functionality correctly', () => {
 			// Explicitly set to non-silent mode
 			testLogger.setSilent(false);
-			
+
 			// Clear mocks first
 			vi.clearAllMocks();
 			spyConsoleLog = vi.mocked(console.log);
-			
+
 			// Test toolCall in normal mode
 			testLogger.toolCall('testTool', { foo: 'bar', baz: 123 });
 			expect(spyConsoleLog).toHaveBeenCalled();
 			let lastCall = spyConsoleLog.mock.calls[spyConsoleLog.mock.calls.length - 1];
 			expect(lastCall[0]).toContain('Tool Call');
-			
+
 			// Reset mock for next test
 			vi.clearAllMocks();
 			spyConsoleLog = vi.mocked(console.log);
-			
+
 			// Test silent mode
 			testLogger.setSilent(true);
 			testLogger.toolCall('testTool', { param: 'value' });
 			expect(spyConsoleLog).not.toHaveBeenCalled();
-			
+
 			// Test toolResult
 			vi.clearAllMocks();
 			spyConsoleLog = vi.mocked(console.log);
@@ -150,17 +149,17 @@ describe.concurrent('Special Display Features', () => {
 		it('handles all display functionality and silent mode correctly', () => {
 			// Start with non-silent mode
 			testLogger.setSilent(false);
-			
+
 			// ===== Test AI Responses =====
 			vi.clearAllMocks();
 			spyConsoleLog = vi.mocked(console.log);
-			
+
 			// Test string response
 			testLogger.displayAIResponse('This is an AI response');
 			expect(spyConsoleLog).toHaveBeenCalled();
 			let lastCall = spyConsoleLog.mock.calls[spyConsoleLog.mock.calls.length - 1];
 			expect(lastCall[0]).toContain('AI Response');
-			
+
 			// Test object response
 			vi.clearAllMocks();
 			spyConsoleLog = vi.mocked(console.log);
@@ -168,38 +167,38 @@ describe.concurrent('Special Display Features', () => {
 			expect(spyConsoleLog).toHaveBeenCalled();
 			lastCall = spyConsoleLog.mock.calls[spyConsoleLog.mock.calls.length - 1];
 			expect(lastCall[0]).toContain('AI Response');
-			
+
 			// ===== Test Box Display =====
 			vi.clearAllMocks();
 			spyConsoleLog = vi.mocked(console.log);
-			
+
 			// Test custom formatted output
 			testLogger.displayBox('Custom Title', 'Custom content here', 'blue');
 			expect(spyConsoleLog).toHaveBeenCalled();
 			lastCall = spyConsoleLog.mock.calls[spyConsoleLog.mock.calls.length - 1];
 			expect(lastCall[0]).toContain('Custom Title');
-			
+
 			// Test default color
 			vi.clearAllMocks();
 			spyConsoleLog = vi.mocked(console.log);
 			testLogger.displayBox('Default Color', 'Content with default color');
 			expect(spyConsoleLog).toHaveBeenCalled();
-			
+
 			// ===== Test Silent Mode =====
 			// Set logger to silent
 			testLogger.setSilent(true);
-			
+
 			// Clear mocks
 			vi.clearAllMocks();
 			spyConsoleLog = vi.mocked(console.log);
-			
+
 			// Test all display methods with silent mode
 			testLogger.toolCall('testTool', { param: 'value' });
 			expect(spyConsoleLog).not.toHaveBeenCalled();
-			
+
 			testLogger.displayAIResponse('response');
 			expect(spyConsoleLog).not.toHaveBeenCalled();
-			
+
 			testLogger.displayBox('title', 'content');
 			expect(spyConsoleLog).not.toHaveBeenCalled();
 		});
@@ -211,18 +210,18 @@ describe.concurrent('Child Logger Creation', () => {
 	it('tests all child logger creation functionality', () => {
 		// Create parent logger once
 		const parentLogger = new Logger({ level: 'debug', silent: false });
-		
+
 		// Test instance creation
 		const childLogger = parentLogger.createChild();
 		expect(childLogger).toBeInstanceOf(Logger);
-		
+
 		// Test inheritance of parent settings
 		expect(childLogger.getLevel()).toBe(parentLogger.getLevel());
-		
+
 		// Test custom options
 		const customChildLogger = parentLogger.createChild({ level: 'error' });
 		expect(customChildLogger.getLevel()).toBe('error');
-		
+
 		// Test file option
 		expect(() => {
 			const fileLogger = parentLogger.createChild({ file: '/tmp/child.log' });
@@ -238,22 +237,22 @@ describe.concurrent('Global Logger Instance', () => {
 		expect(logger).toBeDefined();
 		expect(logger).toBeInstanceOf(Logger);
 		expect(logger.getLevel()).toBe('info');
-		
+
 		// Test level management
 		const originalLevel = getGlobalLogLevel();
 		setGlobalLogLevel('warn');
 		expect(getGlobalLogLevel()).toBe('warn');
-		
+
 		// Verify level format
 		const level = getGlobalLogLevel();
 		expect(typeof level).toBe('string');
 		expect(['error', 'warn', 'info', 'http', 'verbose', 'debug', 'silly']).toContain(level);
-		
+
 		// Test factory function
 		const newLogger = createLogger({ level: 'error' });
 		expect(newLogger).toBeInstanceOf(Logger);
 		expect(newLogger.getLevel()).toBe('error');
-		
+
 		// Restore original level
 		setGlobalLogLevel(originalLevel);
 	});
@@ -264,11 +263,11 @@ describe.concurrent('Advanced Features', () => {
 	it('handles all advanced features correctly', () => {
 		// Create a single logger instance
 		const testLogger = new Logger();
-		
+
 		// Test winston instance access
 		const winstonLogger = testLogger.getWinstonLogger();
 		expect(winstonLogger).toBeDefined();
-		
+
 		// Test complex metadata handling
 		const complexMeta = {
 			user: { id: 123, name: 'test' },
@@ -276,7 +275,7 @@ describe.concurrent('Advanced Features', () => {
 			nested: { deep: { value: 'test' } },
 		};
 		expect(() => testLogger.info('Complex log message', complexMeta)).not.toThrow();
-		
+
 		// Test various data types
 		expect(() => {
 			testLogger.info('String message');
@@ -294,11 +293,11 @@ describe.concurrent('Environment Variable Support', () => {
 	it('supports all environment variable configurations', () => {
 		// Test log levels
 		const validLevels = ['error', 'warn', 'info', 'http', 'verbose', 'debug', 'silly'];
-		
+
 		// Cache the original env vars
 		const originalLogLevel = process.env.CIPHER_LOG_LEVEL;
 		const originalRedactSecrets = process.env.REDACT_SECRETS;
-		
+
 		try {
 			// Test all log levels in a batch
 			validLevels.forEach(level => {
@@ -306,7 +305,7 @@ describe.concurrent('Environment Variable Support', () => {
 				const testLogger = new Logger();
 				expect(testLogger.getLevel()).toBe(level);
 			});
-			
+
 			// Test REDACT_SECRETS setting
 			process.env.REDACT_SECRETS = 'false';
 			const testLogger = new Logger();
@@ -318,7 +317,7 @@ describe.concurrent('Environment Variable Support', () => {
 			} else {
 				process.env.CIPHER_LOG_LEVEL = originalLogLevel;
 			}
-			
+
 			if (originalRedactSecrets === undefined) {
 				delete process.env.REDACT_SECRETS;
 			} else {
@@ -333,18 +332,18 @@ describe.concurrent('Error Handling and Edge Cases', () => {
 	it('handles all edge cases and errors correctly', () => {
 		// Create a single logger instance for all tests
 		const testLogger = new Logger();
-		
+
 		// Test invalid level handling
 		const originalLevel = testLogger.getLevel();
 		testLogger.setLevel('totally_invalid_level');
 		expect(testLogger.getLevel()).toBe(originalLevel);
-		
+
 		// Test redirect methods
 		expect(() => {
 			testLogger.redirectToFile('/tmp/test.log');
 			testLogger.redirectToConsole();
 		}).not.toThrow();
-		
+
 		// Test empty messages
 		expect(() => {
 			testLogger.info('');
@@ -363,11 +362,11 @@ describe.concurrent('TypeScript Interface Compliance', () => {
 			file: '/tmp/test.log',
 		};
 		expect(() => new Logger(options)).not.toThrow();
-		
+
 		// Test ChalkColor type
 		const testLogger = new Logger({ silent: true }); // Use silent mode to minimize overhead
 		const validColors = ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white'];
-		
+
 		// Test all colors in batch
 		validColors.forEach(color => {
 			expect(() => testLogger.info('test', {}, color as any)).not.toThrow();

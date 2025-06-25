@@ -1,6 +1,6 @@
 /**
  * Core types and interfaces for the Model Context Protocol (MCP) module.
- * 
+ *
  * This file contains all the type definitions needed for working with MCP servers,
  * including client interfaces, server configurations, and tool/prompt/resource types.
  */
@@ -21,80 +21,80 @@ export type TransportType = 'stdio' | 'sse' | 'http';
  * Base configuration for any MCP server.
  */
 export interface BaseServerConfig {
-  /**
-   * Type of transport to use for this server.
-   */
-  type: TransportType;
-  
-  /**
-   * Connection mode determines how failures to connect are handled.
-   * - 'strict': Connection failures will throw errors and halt initialization.
-   * - 'lenient': Connection failures will be logged but won't stop other servers from connecting.
-   * @default 'lenient'
-   */
-  connectionMode?: 'strict' | 'lenient';
-  
-  /**
-   * Timeout in milliseconds for server operations.
-   * @default 60000 (1 minute)
-   */
-  timeout?: number;
+	/**
+	 * Type of transport to use for this server.
+	 */
+	type: TransportType;
+
+	/**
+	 * Connection mode determines how failures to connect are handled.
+	 * - 'strict': Connection failures will throw errors and halt initialization.
+	 * - 'lenient': Connection failures will be logged but won't stop other servers from connecting.
+	 * @default 'lenient'
+	 */
+	connectionMode?: 'strict' | 'lenient';
+
+	/**
+	 * Timeout in milliseconds for server operations.
+	 * @default 60000 (1 minute)
+	 */
+	timeout?: number;
 }
 
 /**
  * Configuration for a stdio-based MCP server.
  */
 export interface StdioServerConfig extends BaseServerConfig {
-  type: 'stdio';
-  
-  /**
-   * Command to run the server.
-   */
-  command: string;
-  
-  /**
-   * Arguments to pass to the command.
-   */
-  args?: string[];
-  
-  /**
-   * Environment variables to set for the command.
-   */
-  env?: Record<string, string>;
+	type: 'stdio';
+
+	/**
+	 * Command to run the server.
+	 */
+	command: string;
+
+	/**
+	 * Arguments to pass to the command.
+	 */
+	args?: string[];
+
+	/**
+	 * Environment variables to set for the command.
+	 */
+	env?: Record<string, string>;
 }
 
 /**
  * Configuration for an SSE-based MCP server.
  */
 export interface SseServerConfig extends BaseServerConfig {
-  type: 'sse';
-  
-  /**
-   * URL of the SSE server.
-   */
-  url: string;
-  
-  /**
-   * Headers to include with requests.
-   */
-  headers?: Record<string, string>;
+	type: 'sse';
+
+	/**
+	 * URL of the SSE server.
+	 */
+	url: string;
+
+	/**
+	 * Headers to include with requests.
+	 */
+	headers?: Record<string, string>;
 }
 
 /**
  * Configuration for an HTTP-based MCP server.
  */
 export interface HttpServerConfig extends BaseServerConfig {
-  type: 'http';
-  
-  /**
-   * URL of the HTTP server.
-   */
-  url: string;
-  
-  /**
-   * Headers to include with requests.
-   */
-  headers?: Record<string, string>;
+	type: 'http';
+
+	/**
+	 * URL of the HTTP server.
+	 */
+	url: string;
+
+	/**
+	 * Headers to include with requests.
+	 */
+	headers?: Record<string, string>;
 }
 
 /**
@@ -115,40 +115,40 @@ export type ServerConfigs = Record<string, McpServerConfig>;
  * Represents a tool parameter schema.
  */
 export interface ToolParameterSchema {
-  type: string;
-  description?: string;
-  [key: string]: any;
+	type: string;
+	description?: string;
+	[key: string]: any;
 }
 
 /**
  * Represents a tool parameter definition.
  */
 export interface ToolParameterDefinition {
-  [parameterName: string]: ToolParameterSchema;
+	[parameterName: string]: ToolParameterSchema;
 }
 
 /**
  * Represents a tool's parameter definitions and requirements.
  */
 export interface ToolParameters {
-  type: string;
-  properties: ToolParameterDefinition;
-  required?: string[];
+	type: string;
+	properties: ToolParameterDefinition;
+	required?: string[];
 }
 
 /**
  * Represents a single tool definition.
  */
 export interface Tool {
-  description: string;
-  parameters: ToolParameters;
+	description: string;
+	parameters: ToolParameters;
 }
 
 /**
  * A collection of tools indexed by their names.
  */
 export interface ToolSet {
-  [toolName: string]: Tool;
+	[toolName: string]: Tool;
 }
 
 /**
@@ -164,73 +164,73 @@ export type ToolExecutionResult = any;
  * Interface for an MCP client that communicates with a single MCP server.
  */
 export interface IMCPClient {
-  /**
-   * Connect to an MCP server using the provided configuration.
-   */
-  connect(config: McpServerConfig, serverName: string): Promise<Client>;
-  
-  /**
-   * Disconnect from the MCP server.
-   */
-  disconnect(): Promise<void>;
-  
-  /**
-   * Call a tool with the given name and arguments.
-   */
-  callTool(name: string, args: any): Promise<ToolExecutionResult>;
-  
-  /**
-   * Get all tools provided by this client.
-   */
-  getTools(): Promise<ToolSet>;
-  
-  /**
-   * List all prompts provided by this client.
-   */
-  listPrompts(): Promise<string[]>;
-  
-  /**
-   * Get a prompt by name.
-   */
-  getPrompt(name: string, args?: any): Promise<GetPromptResult>;
-  
-  /**
-   * List all resources provided by this client.
-   */
-  listResources(): Promise<string[]>;
-  
-  /**
-   * Read a resource by URI.
-   */
-  readResource(uri: string): Promise<ReadResourceResult>;
-  
-  /**
-   * Get the connection status of the client.
-   */
-  getConnectionStatus(): boolean;
-  
-  /**
-   * Get the underlying MCP client instance.
-   */
-  getClient(): Client | null;
-  
-  /**
-   * Get information about the connected server.
-   */
-  getServerInfo(): {
-    spawned: boolean;
-    pid: number | null;
-    command: string | null;
-    originalArgs: string[] | null;
-    resolvedArgs: string[] | null;
-    env: Record<string, string> | null;
-    alias: string | null;
-  };
-  
-  /**
-   * Get the client instance once connected.
-   */
-  getConnectedClient(): Promise<Client>;
+	/**
+	 * Connect to an MCP server using the provided configuration.
+	 */
+	connect(config: McpServerConfig, serverName: string): Promise<Client>;
+
+	/**
+	 * Disconnect from the MCP server.
+	 */
+	disconnect(): Promise<void>;
+
+	/**
+	 * Call a tool with the given name and arguments.
+	 */
+	callTool(name: string, args: any): Promise<ToolExecutionResult>;
+
+	/**
+	 * Get all tools provided by this client.
+	 */
+	getTools(): Promise<ToolSet>;
+
+	/**
+	 * List all prompts provided by this client.
+	 */
+	listPrompts(): Promise<string[]>;
+
+	/**
+	 * Get a prompt by name.
+	 */
+	getPrompt(name: string, args?: any): Promise<GetPromptResult>;
+
+	/**
+	 * List all resources provided by this client.
+	 */
+	listResources(): Promise<string[]>;
+
+	/**
+	 * Read a resource by URI.
+	 */
+	readResource(uri: string): Promise<ReadResourceResult>;
+
+	/**
+	 * Get the connection status of the client.
+	 */
+	getConnectionStatus(): boolean;
+
+	/**
+	 * Get the underlying MCP client instance.
+	 */
+	getClient(): Client | null;
+
+	/**
+	 * Get information about the connected server.
+	 */
+	getServerInfo(): {
+		spawned: boolean;
+		pid: number | null;
+		command: string | null;
+		originalArgs: string[] | null;
+		resolvedArgs: string[] | null;
+		env: Record<string, string> | null;
+		alias: string | null;
+	};
+
+	/**
+	 * Get the client instance once connected.
+	 */
+	getConnectedClient(): Promise<Client>;
 }
 
 // ======================================================
@@ -241,83 +241,83 @@ export interface IMCPClient {
  * Interface for the MCP Manager that orchestrates multiple MCP clients.
  */
 export interface IMCPManager {
-  /**
-   * Register a client with the manager.
-   */
-  registerClient(name: string, client: IMCPClient): void;
-  
-  /**
-   * Get all available tools from all connected clients.
-   */
-  getAllTools(): Promise<ToolSet>;
-  
-  /**
-   * Get the client that provides a specific tool.
-   */
-  getToolClient(toolName: string): IMCPClient | undefined;
-  
-  /**
-   * Execute a tool with the given name and arguments.
-   */
-  executeTool(toolName: string, args: any): Promise<ToolExecutionResult>;
-  
-  /**
-   * List all available prompts from all connected clients.
-   */
-  listAllPrompts(): Promise<string[]>;
-  
-  /**
-   * Get the client that provides a specific prompt.
-   */
-  getPromptClient(promptName: string): IMCPClient | undefined;
-  
-  /**
-   * Get a prompt by name.
-   */
-  getPrompt(name: string, args?: any): Promise<GetPromptResult>;
-  
-  /**
-   * List all available resources from all connected clients.
-   */
-  listAllResources(): Promise<string[]>;
-  
-  /**
-   * Get the client that provides a specific resource.
-   */
-  getResourceClient(resourceUri: string): IMCPClient | undefined;
-  
-  /**
-   * Read a resource by URI.
-   */
-  readResource(uri: string): Promise<ReadResourceResult>;
-  
-  /**
-   * Initialize clients from server configurations.
-   */
-  initializeFromConfig(serverConfigs: ServerConfigs): Promise<void>;
-  
-  /**
-   * Connect to a new MCP server.
-   */
-  connectServer(name: string, config: McpServerConfig): Promise<void>;
-  
-  /**
-   * Get all registered clients.
-   */
-  getClients(): Map<string, IMCPClient>;
-  
-  /**
-   * Get errors from failed connections.
-   */
-  getFailedConnections(): { [key: string]: string };
-  
-  /**
-   * Disconnect and remove a specific client.
-   */
-  removeClient(name: string): Promise<void>;
-  
-  /**
-   * Disconnect all clients and clear caches.
-   */
-  disconnectAll(): Promise<void>;
+	/**
+	 * Register a client with the manager.
+	 */
+	registerClient(name: string, client: IMCPClient): void;
+
+	/**
+	 * Get all available tools from all connected clients.
+	 */
+	getAllTools(): Promise<ToolSet>;
+
+	/**
+	 * Get the client that provides a specific tool.
+	 */
+	getToolClient(toolName: string): IMCPClient | undefined;
+
+	/**
+	 * Execute a tool with the given name and arguments.
+	 */
+	executeTool(toolName: string, args: any): Promise<ToolExecutionResult>;
+
+	/**
+	 * List all available prompts from all connected clients.
+	 */
+	listAllPrompts(): Promise<string[]>;
+
+	/**
+	 * Get the client that provides a specific prompt.
+	 */
+	getPromptClient(promptName: string): IMCPClient | undefined;
+
+	/**
+	 * Get a prompt by name.
+	 */
+	getPrompt(name: string, args?: any): Promise<GetPromptResult>;
+
+	/**
+	 * List all available resources from all connected clients.
+	 */
+	listAllResources(): Promise<string[]>;
+
+	/**
+	 * Get the client that provides a specific resource.
+	 */
+	getResourceClient(resourceUri: string): IMCPClient | undefined;
+
+	/**
+	 * Read a resource by URI.
+	 */
+	readResource(uri: string): Promise<ReadResourceResult>;
+
+	/**
+	 * Initialize clients from server configurations.
+	 */
+	initializeFromConfig(serverConfigs: ServerConfigs): Promise<void>;
+
+	/**
+	 * Connect to a new MCP server.
+	 */
+	connectServer(name: string, config: McpServerConfig): Promise<void>;
+
+	/**
+	 * Get all registered clients.
+	 */
+	getClients(): Map<string, IMCPClient>;
+
+	/**
+	 * Get errors from failed connections.
+	 */
+	getFailedConnections(): { [key: string]: string };
+
+	/**
+	 * Disconnect and remove a specific client.
+	 */
+	removeClient(name: string): Promise<void>;
+
+	/**
+	 * Disconnect all clients and clear caches.
+	 */
+	disconnectAll(): Promise<void>;
 }
