@@ -70,7 +70,7 @@ describe('SessionManager', () => {
 	describe('Initialization', () => {
 		it('should initialize successfully with default config', async () => {
 			await sessionManager.init();
-			
+
 			const sessionCount = await sessionManager.getSessionCount();
 			expect(sessionCount).toBe(0);
 		});
@@ -91,7 +91,7 @@ describe('SessionManager', () => {
 		it('should handle multiple initialization calls gracefully', async () => {
 			await sessionManager.init();
 			await sessionManager.init(); // Second call should be no-op
-			
+
 			const sessionCount = await sessionManager.getSessionCount();
 			expect(sessionCount).toBe(0);
 		});
@@ -99,7 +99,7 @@ describe('SessionManager', () => {
 		it('should auto-initialize when methods are called', async () => {
 			// Don't call init() explicitly
 			const session = await sessionManager.createSession();
-			
+
 			expect(session).toBeDefined();
 			expect(session.id).toBeDefined();
 		});
@@ -112,7 +112,7 @@ describe('SessionManager', () => {
 
 		it('should create a new session with auto-generated ID', async () => {
 			const session = await sessionManager.createSession();
-			
+
 			expect(session).toBeDefined();
 			expect(session.id).toBeDefined();
 			expect(typeof session.id).toBe('string');
@@ -122,7 +122,7 @@ describe('SessionManager', () => {
 		it('should create a new session with custom ID', async () => {
 			const customId = 'custom-session-123';
 			const session = await sessionManager.createSession(customId);
-			
+
 			expect(session).toBeDefined();
 			expect(session.id).toBe(customId);
 		});
@@ -131,20 +131,20 @@ describe('SessionManager', () => {
 			const sessionId = 'duplicate-test';
 			const session1 = await sessionManager.createSession(sessionId);
 			const session2 = await sessionManager.createSession(sessionId);
-			
+
 			expect(session1).toBe(session2);
 			expect(session1.id).toBe(sessionId);
 		});
 
 		it('should handle concurrent session creation with same ID', async () => {
 			const sessionId = 'concurrent-test';
-			
+
 			const [session1, session2, session3] = await Promise.all([
 				sessionManager.createSession(sessionId),
 				sessionManager.createSession(sessionId),
 				sessionManager.createSession(sessionId),
 			]);
-			
+
 			expect(session1).toBe(session2);
 			expect(session2).toBe(session3);
 			expect(session1.id).toBe(sessionId);
@@ -156,10 +156,10 @@ describe('SessionManager', () => {
 
 			const session1 = await smallSessionManager.createSession('session1');
 			const session2 = await smallSessionManager.createSession('session2');
-			
+
 			// Small delay to ensure different timestamps
 			await new Promise(resolve => setTimeout(resolve, 1));
-			
+
 			const session3 = await smallSessionManager.createSession('session3');
 
 			expect(session1).toBeDefined();
@@ -200,7 +200,7 @@ describe('SessionManager', () => {
 			const sessionId = 'retrieve-test';
 			const createdSession = await sessionManager.createSession(sessionId);
 			const retrievedSession = await sessionManager.getSession(sessionId);
-			
+
 			expect(retrievedSession).toBe(createdSession);
 			expect(retrievedSession?.id).toBe(sessionId);
 		});
@@ -216,10 +216,10 @@ describe('SessionManager', () => {
 
 			const sessionId = 'expired-test';
 			await shortTTLManager.createSession(sessionId);
-			
+
 			// Wait for session to expire
 			await new Promise(resolve => setTimeout(resolve, 10));
-			
+
 			const session = await shortTTLManager.getSession(sessionId);
 			expect(session).toBeNull();
 
@@ -229,10 +229,10 @@ describe('SessionManager', () => {
 		it('should update session activity on retrieval', async () => {
 			const sessionId = 'activity-test';
 			await sessionManager.createSession(sessionId);
-			
+
 			const session1 = await sessionManager.getSession(sessionId);
 			const session2 = await sessionManager.getSession(sessionId);
-			
+
 			expect(session1).toBe(session2);
 		});
 	});
@@ -245,10 +245,10 @@ describe('SessionManager', () => {
 		it('should remove existing session', async () => {
 			const sessionId = 'remove-test';
 			await sessionManager.createSession(sessionId);
-			
+
 			const removed = await sessionManager.removeSession(sessionId);
 			expect(removed).toBe(true);
-			
+
 			const session = await sessionManager.getSession(sessionId);
 			expect(session).toBeNull();
 		});
@@ -261,10 +261,10 @@ describe('SessionManager', () => {
 		it('should handle multiple removal attempts', async () => {
 			const sessionId = 'multi-remove-test';
 			await sessionManager.createSession(sessionId);
-			
+
 			const removed1 = await sessionManager.removeSession(sessionId);
 			const removed2 = await sessionManager.removeSession(sessionId);
-			
+
 			expect(removed1).toBe(true);
 			expect(removed2).toBe(false);
 		});
@@ -279,10 +279,10 @@ describe('SessionManager', () => {
 			await sessionManager.createSession('session1');
 			await sessionManager.createSession('session2');
 			await sessionManager.createSession('session3');
-			
+
 			const allSessions = await sessionManager.getAllSessions();
 			expect(allSessions).toHaveLength(3);
-			
+
 			const sessionIds = allSessions.map(session => session.id);
 			expect(sessionIds).toContain('session1');
 			expect(sessionIds).toContain('session2');
@@ -292,7 +292,7 @@ describe('SessionManager', () => {
 		it('should get active session IDs', async () => {
 			await sessionManager.createSession('session1');
 			await sessionManager.createSession('session2');
-			
+
 			const sessionIds = await sessionManager.getActiveSessionIds();
 			expect(sessionIds).toHaveLength(2);
 			expect(sessionIds).toContain('session1');
@@ -302,7 +302,7 @@ describe('SessionManager', () => {
 		it('should get session count', async () => {
 			await sessionManager.createSession('session1');
 			await sessionManager.createSession('session2');
-			
+
 			const count = await sessionManager.getSessionCount();
 			expect(count).toBe(2);
 		});
@@ -313,10 +313,10 @@ describe('SessionManager', () => {
 
 			await shortTTLManager.createSession('session1');
 			await shortTTLManager.createSession('session2');
-			
+
 			// Wait for sessions to expire
 			await new Promise(resolve => setTimeout(resolve, 20));
-			
+
 			// Getting active session IDs should trigger cleanup
 			const sessionIds = await shortTTLManager.getActiveSessionIds();
 			expect(sessionIds).toHaveLength(0);
@@ -331,13 +331,13 @@ describe('SessionManager', () => {
 		});
 
 		it('should handle concurrent session operations', async () => {
-			const operations = Array.from({ length: 10 }, (_, i) => 
+			const operations = Array.from({ length: 10 }, (_, i) =>
 				sessionManager.createSession(`concurrent-${i}`)
 			);
-			
+
 			const sessions = await Promise.all(operations);
 			expect(sessions).toHaveLength(10);
-			
+
 			const sessionCount = await sessionManager.getSessionCount();
 			expect(sessionCount).toBe(10);
 		});
@@ -346,7 +346,7 @@ describe('SessionManager', () => {
 			// Create some initial sessions
 			await sessionManager.createSession('concurrent1');
 			await sessionManager.createSession('concurrent2');
-			
+
 			const operations = [
 				sessionManager.getSession('concurrent1'),
 				sessionManager.createSession('concurrent3'),
@@ -354,9 +354,9 @@ describe('SessionManager', () => {
 				sessionManager.getActiveSessionIds(),
 				sessionManager.getSessionCount(),
 			];
-			
+
 			const results = await Promise.all(operations);
-			
+
 			expect(results[0]).toBeDefined(); // getSession result
 			expect(results[1]).toBeDefined(); // createSession result
 			expect(results[2]).toBe(true); // removeSession result
@@ -367,18 +367,21 @@ describe('SessionManager', () => {
 
 	describe('Error Handling', () => {
 		beforeEach(async () => {
-			await sessionManager.init();  
+			await sessionManager.init();
 		});
 
 		it('should handle session initialization errors', async () => {
 			const MockedConversationSession = vi.mocked(ConversationSession);
-			MockedConversationSession.mockImplementationOnce((services, sessionId) => ({
-				id: sessionId,
-				init: vi.fn().mockRejectedValue(new Error('Init failed')),
-				run: vi.fn(),
-				getContextManager: vi.fn(),
-				getLLMService: vi.fn(),
-			}));
+			MockedConversationSession.mockImplementationOnce(
+				(services, sessionId) =>
+					({
+						id: sessionId,
+						init: vi.fn().mockRejectedValue(new Error('Init failed')),
+						run: vi.fn(),
+						getContextManager: vi.fn(),
+						getLLMService: vi.fn(),
+					}) as any
+			);
 
 			await expect(sessionManager.createSession()).rejects.toThrow('Init failed');
 		});
@@ -410,12 +413,12 @@ describe('SessionManager', () => {
 			await sessionManager.init();
 			await sessionManager.createSession('test1');
 			await sessionManager.createSession('test2');
-			
+
 			let sessionCount = await sessionManager.getSessionCount();
 			expect(sessionCount).toBe(2);
-			
+
 			await sessionManager.shutdown();
-			
+
 			// After shutdown, operations should auto-initialize, but previous sessions should be gone
 			sessionCount = await sessionManager.getSessionCount();
 			expect(sessionCount).toBe(0);
@@ -428,10 +431,10 @@ describe('SessionManager', () => {
 
 		it('should handle multiple shutdown calls', async () => {
 			await sessionManager.init();
-			
+
 			await sessionManager.shutdown();
 			await sessionManager.shutdown(); // Second call should be safe
-			
+
 			expect(true).toBe(true); // Test passes if no errors thrown
 		});
 	});
@@ -464,7 +467,9 @@ describe('SessionManager', () => {
 		});
 
 		it('should handle very long session TTL', async () => {
-			const longTTLManager = new SessionManager(mockServices, { sessionTTL: Number.MAX_SAFE_INTEGER });
+			const longTTLManager = new SessionManager(mockServices, {
+				sessionTTL: Number.MAX_SAFE_INTEGER,
+			});
 			await longTTLManager.init();
 
 			const session = await longTTLManager.createSession('long-lived');

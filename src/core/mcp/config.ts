@@ -112,3 +112,5 @@ export const McpServerConfigSchema = z
 export const ServerConfigsSchema = z
 	.record(McpServerConfigSchema)
 	.describe('Named collection of MCP server configurations (server name -> configuration)');
+
+export type McpServerConfig = z.infer<typeof McpServerConfigSchema>;

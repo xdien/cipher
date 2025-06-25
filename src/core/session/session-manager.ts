@@ -10,7 +10,7 @@ export interface SessionManagerConfig {
 	sessionTTL?: number;
 }
 
-interface SessionMetadata {
+export interface SessionMetadata {
 	session: ConversationSession;
 	lastActivity: number;
 	createdAt: number;
@@ -42,11 +42,13 @@ export class SessionManager {
 			return;
 		}
 		this.initialized = true;
-		
+
 		// Start cleanup interval for expired sessions
 		this.startCleanupInterval();
-		
-		logger.debug(`SessionManager initialized with max sessions: ${this.maxSessions}, TTL: ${this.sessionTTL}ms`);
+
+		logger.debug(
+			`SessionManager initialized with max sessions: ${this.maxSessions}, TTL: ${this.sessionTTL}ms`
+		);
 	}
 
 	private async ensureInitialized(): Promise<void> {
@@ -153,10 +155,10 @@ export class SessionManager {
 
 	public async getActiveSessionIds(): Promise<string[]> {
 		await this.ensureInitialized();
-		
+
 		// Clean up expired sessions first
 		await this.cleanupExpiredSessions();
-		
+
 		return Array.from(this.sessions.keys());
 	}
 
@@ -167,7 +169,7 @@ export class SessionManager {
 
 	private isSessionExpired(sessionMetadata: SessionMetadata): boolean {
 		const now = Date.now();
-		return (now - sessionMetadata.lastActivity) > this.sessionTTL;
+		return now - sessionMetadata.lastActivity > this.sessionTTL;
 	}
 
 	private async evictOldestSession(): Promise<void> {
@@ -212,7 +214,7 @@ export class SessionManager {
 	private startCleanupInterval(): void {
 		// Run cleanup every 5 minutes
 		const cleanupIntervalMs = 5 * 60 * 1000;
-		
+
 		this.cleanupInterval = setInterval(async () => {
 			try {
 				await this.cleanupExpiredSessions();
