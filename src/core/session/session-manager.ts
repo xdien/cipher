@@ -1,0 +1,240 @@
+import { randomUUID } from 'crypto';
+import { PromptManager } from '../brain/systemPrompt/manager.js';
+import { MemAgentStateManager } from '../brain/memAgent/state-manager.js';
+import { ConversationSession } from './coversation-session.js';
+import { MCPManager } from '../mcp/manager.js';
+import { logger } from '@core/logger/index.js';
+
+export interface SessionManagerConfig {
+	maxSessions?: number;
+	sessionTTL?: number;
+}
+
+export interface SessionMetadata {
+	session: ConversationSession;
+	lastActivity: number;
+	createdAt: number;
+}
+
+export class SessionManager {
+	private sessions: Map<string, SessionMetadata> = new Map();
+	private readonly maxSessions: number;
+	private readonly sessionTTL: number;
+	private initialized = false;
+	private cleanupInterval?: NodeJS.Timeout;
+	private initializationPromise!: Promise<void>;
+	private readonly pendingCreations = new Map<string, Promise<ConversationSession>>();
+
+	constructor(
+		private services: {
+			stateManager: MemAgentStateManager;
+			promptManager: PromptManager;
+			mcpManager: MCPManager;
+		},
+		config: SessionManagerConfig = {}
+	) {
+		this.maxSessions = config.maxSessions ?? 100;
+		this.sessionTTL = config.sessionTTL ?? 3600000; // 1 hour
+	}
+
+	public async init(): Promise<void> {
+		if (this.initialized) {
+			return;
+		}
+		this.initialized = true;
+
+		// Start cleanup interval for expired sessions
+		this.startCleanupInterval();
+
+		logger.debug(
+			`SessionManager initialized with max sessions: ${this.maxSessions}, TTL: ${this.sessionTTL}ms`
+		);
+	}
+
+	private async ensureInitialized(): Promise<void> {
+		if (!this.initialized) {
+			if (!this.initializationPromise) {
+				this.initializationPromise = this.init();
+			}
+			await this.initializationPromise;
+		}
+	}
+
+	public async createSession(sessionId?: string): Promise<ConversationSession> {
+		await this.ensureInitialized();
+
+		const id = sessionId ?? randomUUID();
+
+		// Check if there's already a pending creation for this session ID
+		if (this.pendingCreations.has(id)) {
+			return await this.pendingCreations.get(id)!;
+		}
+
+		// Check if session already exists
+		if (this.sessions.has(id)) {
+			await this.updateSessionActivity(id);
+			return this.sessions.get(id)!.session;
+		}
+
+		// Create a promise for the session creation and track it to prevent concurrent operations
+		const creationPromise = this.createSessionInternal(id);
+		this.pendingCreations.set(id, creationPromise);
+
+		try {
+			const session = await creationPromise;
+			return session;
+		} finally {
+			// Always clean up the pending creation tracker
+			this.pendingCreations.delete(id);
+		}
+	}
+
+	private async createSessionInternal(sessionId: string): Promise<ConversationSession> {
+		// Check if we need to evict old sessions to make room
+		if (this.sessions.size >= this.maxSessions) {
+			await this.evictOldestSession();
+		}
+
+		// Create new conversation session
+		const session = new ConversationSession(this.services, sessionId);
+		await session.init();
+
+		// Store session with metadata
+		const now = Date.now();
+		this.sessions.set(sessionId, {
+			session,
+			lastActivity: now,
+			createdAt: now,
+		});
+
+		logger.debug(`Created new session: ${sessionId}`);
+		return session;
+	}
+
+	private async updateSessionActivity(sessionId: string): Promise<void> {
+		const sessionMetadata = this.sessions.get(sessionId);
+		if (sessionMetadata) {
+			sessionMetadata.lastActivity = Date.now();
+			logger.debug(`Updated activity for session: ${sessionId}`);
+		}
+	}
+
+	public async getSession(sessionId: string): Promise<ConversationSession | null> {
+		await this.ensureInitialized();
+
+		const sessionMetadata = this.sessions.get(sessionId);
+		if (!sessionMetadata) {
+			return null;
+		}
+
+		// Check if session has expired
+		if (this.isSessionExpired(sessionMetadata)) {
+			await this.removeSession(sessionId);
+			return null;
+		}
+
+		// Update activity and return session
+		await this.updateSessionActivity(sessionId);
+		return sessionMetadata.session;
+	}
+
+	public async removeSession(sessionId: string): Promise<boolean> {
+		await this.ensureInitialized();
+
+		const removed = this.sessions.delete(sessionId);
+		if (removed) {
+			logger.debug(`Removed session: ${sessionId}`);
+		}
+		return removed;
+	}
+
+	public async getAllSessions(): Promise<ConversationSession[]> {
+		await this.ensureInitialized();
+		return Array.from(this.sessions.values()).map(metadata => metadata.session);
+	}
+
+	public async getActiveSessionIds(): Promise<string[]> {
+		await this.ensureInitialized();
+
+		// Clean up expired sessions first
+		await this.cleanupExpiredSessions();
+
+		return Array.from(this.sessions.keys());
+	}
+
+	public async getSessionCount(): Promise<number> {
+		await this.ensureInitialized();
+		return this.sessions.size;
+	}
+
+	private isSessionExpired(sessionMetadata: SessionMetadata): boolean {
+		const now = Date.now();
+		return now - sessionMetadata.lastActivity > this.sessionTTL;
+	}
+
+	private async evictOldestSession(): Promise<void> {
+		if (this.sessions.size === 0) {
+			return;
+		}
+
+		let oldestSessionId: string | null = null;
+		let oldestActivity = Date.now();
+
+		for (const [sessionId, metadata] of this.sessions) {
+			if (metadata.lastActivity < oldestActivity) {
+				oldestActivity = metadata.lastActivity;
+				oldestSessionId = sessionId;
+			}
+		}
+
+		if (oldestSessionId) {
+			await this.removeSession(oldestSessionId);
+			logger.debug(`Evicted oldest session: ${oldestSessionId}`);
+		}
+	}
+
+	private async cleanupExpiredSessions(): Promise<void> {
+		const expiredSessionIds: string[] = [];
+
+		for (const [sessionId, metadata] of this.sessions) {
+			if (this.isSessionExpired(metadata)) {
+				expiredSessionIds.push(sessionId);
+			}
+		}
+
+		for (const sessionId of expiredSessionIds) {
+			await this.removeSession(sessionId);
+		}
+
+		if (expiredSessionIds.length > 0) {
+			logger.debug(`Cleaned up ${expiredSessionIds.length} expired sessions`);
+		}
+	}
+
+	private startCleanupInterval(): void {
+		// Run cleanup every 5 minutes
+		const cleanupIntervalMs = 5 * 60 * 1000;
+
+		this.cleanupInterval = setInterval(async () => {
+			try {
+				await this.cleanupExpiredSessions();
+			} catch (error) {
+				logger.error('Error during session cleanup:', error);
+			}
+		}, cleanupIntervalMs);
+	}
+
+	public async shutdown(): Promise<void> {
+		if (this.cleanupInterval) {
+			clearInterval(this.cleanupInterval);
+			this.cleanupInterval = undefined;
+		}
+
+		// Clear all sessions
+		this.sessions.clear();
+		this.pendingCreations.clear();
+		this.initialized = false;
+
+		logger.debug('SessionManager shutdown completed');
+	}
+}
