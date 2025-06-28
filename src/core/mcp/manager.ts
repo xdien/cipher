@@ -234,10 +234,12 @@ export class MCPManager implements IMCPManager {
 					this.promptClientMap.set(finalPromptName, name);
 				});
 
-				this.logger.debug(
-					`${LOG_PREFIXES.MANAGER} Retrieved ${prompts.length} prompts from ${name}`,
-					{ clientName: name, promptCount: prompts.length }
-				);
+				if (prompts.length > 0) {
+					this.logger.debug(
+						`${LOG_PREFIXES.MANAGER} Retrieved ${prompts.length} prompts from ${name}`,
+						{ clientName: name, promptCount: prompts.length }
+					);
+				}
 			} catch (error) {
 				const errorMessage = error instanceof Error ? error.message : String(error);
 				errors.push(`${name}: ${errorMessage}`);
@@ -338,10 +340,12 @@ export class MCPManager implements IMCPManager {
 					this.resourceClientMap.set(resourceUri, name);
 				});
 
-				this.logger.debug(
-					`${LOG_PREFIXES.MANAGER} Retrieved ${resources.length} resources from ${name}`,
-					{ clientName: name, resourceCount: resources.length }
-				);
+				if (resources.length > 0) {
+					this.logger.debug(
+						`${LOG_PREFIXES.MANAGER} Retrieved ${resources.length} resources from ${name}`,
+						{ clientName: name, resourceCount: resources.length }
+					);
+				}
 			} catch (error) {
 				const errorMessage = error instanceof Error ? error.message : String(error);
 				errors.push(`${name}: ${errorMessage}`);

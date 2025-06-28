@@ -237,16 +237,15 @@ export class MemAgent {
 		return this.mcpManager.getClients();
 	}
 
-  public getMcpFailedConnections(): Record<string, string> {
-    this.ensureStarted();
-    return this.mcpManager.getFailedConnections();
-  }
+	public getMcpFailedConnections(): Record<string, string> {
+		this.ensureStarted();
+		return this.mcpManager.getFailedConnections();
+	}
 
-  public getEffectiveConfig(sessionId?: string): Readonly<AgentConfig> {
-    this.ensureStarted();
-    return sessionId
+	public getEffectiveConfig(sessionId?: string): Readonly<AgentConfig> {
+		this.ensureStarted();
+		return sessionId
 			? this.stateManager.getRuntimeConfig(sessionId)
 			: this.stateManager.getRuntimeConfig();
 	}
-
 }

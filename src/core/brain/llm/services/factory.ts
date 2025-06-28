@@ -2,6 +2,7 @@ import { MCPManager } from '../../../mcp/manager.js';
 import { ContextManager } from '../messages/manager.js';
 import { LLMConfig } from '../config.js';
 import { ILLMService } from './types.js';
+import { env } from '../../../env.js';
 import OpenAI from 'openai';
 import { logger } from '../../../logger/index.js';
 import Anthropic from '@anthropic-ai/sdk';
@@ -29,8 +30,8 @@ function getOpenAICompatibleBaseURL(llmConfig: LLMConfig): string {
 		return llmConfig.baseURL.replace(/\/$/, '');
 	}
 	// Check for environment variable as fallback
-	if (process.env.OPENAI_BASE_URL) {
-		return process.env.OPENAI_BASE_URL.replace(/\/$/, '');
+	if (env.OPENAI_BASE_URL) {
+		return env.OPENAI_BASE_URL.replace(/\/$/, '');
 	}
 	return '';
 }

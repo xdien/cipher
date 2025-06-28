@@ -9,11 +9,14 @@ export default defineConfig([
     shims: true,
     bundle: true,
   },
-  // App entry: only ESM, no bundling needed
+  // App entry: only ESM, bundle all dependencies except commander
   {
     entry: ['src/app/index.ts'],
     format: ['esm'],
     outDir: 'dist/src/app',
     shims: true,
+    bundle: true,
+    platform: 'node',
+    external: ['events', 'fs', 'path', 'child_process', 'process', 'commander'],
   },
 ]);

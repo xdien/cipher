@@ -3,6 +3,7 @@ import chalk from 'chalk';
 import boxen from 'boxen';
 import fs from 'fs';
 import path from 'path';
+import { env } from '../env.js';
 
 // ===== 1. Foundation Layer: Winston Configuration =====
 
@@ -18,7 +19,7 @@ const logLevels = {
 
 // ===== 2. Security Layer: Data Redaction =====
 
-const SHOULD_REDACT = process.env.REDACT_SECRETS !== 'false';
+const SHOULD_REDACT = env.REDACT_SECRETS !== 'false';
 const SENSITIVE_KEYS = ['apiKey', 'password', 'secret', 'token', 'auth', 'key', 'credential'];
 const MASK_REGEX = new RegExp(
 	`(${SENSITIVE_KEYS.join('|')})(["']?\\s*[:=]\\s*)(["'])?.*?\\3`,
@@ -92,7 +93,7 @@ const fileFormat = winston.format.printf(({ level, message, timestamp }) => {
 // ===== 4. Configuration Layer =====
 
 const getDefaultLogLevel = (): string => {
-	const envLevel = process.env.CIPHER_LOG_LEVEL;
+	const envLevel = env.CIPHER_LOG_LEVEL;
 	if (envLevel && Object.keys(logLevels).includes(envLevel.toLowerCase())) {
 		return envLevel.toLowerCase();
 	}
