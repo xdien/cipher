@@ -7,6 +7,7 @@ import { PromptManager } from '../../../brain/systemPrompt/manager.js';
 export class ContextManager {
 	private promptManager: PromptManager;
 	private formatter: IMessageFormatter;
+	private messages: InternalMessage[] = [];
 
 	constructor(formatter: IMessageFormatter, promptManager: PromptManager) {
 		if (!formatter) throw new Error('formatter is required');
@@ -67,7 +68,10 @@ export class ContextManager {
 				throw new Error(`Unknown message role: ${(message as any).role}`);
 		}
 
+		// Store the message in history
+		this.messages.push(message);
 		logger.info(`Adding message to context: ${JSON.stringify(message, null, 2)}`);
+		logger.debug(`Total messages in context: ${this.messages.length}`);
 	}
 
 	/**
@@ -153,18 +157,56 @@ export class ContextManager {
 	}
 
 	/**
-	 * Get a formatted message
-	 * @param message - The message to format
-	 * @returns The formatted message
+	 * Get formatted messages including conversation history
+	 * @param message - The current message (already added to context by the service)
+	 * @returns The formatted messages array including conversation history
 	 */
 	async getFormattedMessage(message: InternalMessage): Promise<any[]> {
 		try {
-			const prompt = await this.getSystemPrompt();
-			return this.formatter.format(message, prompt);
+			// Don't add the message again - it's already been added by the service
+			// Just return all formatted messages from the existing conversation history
+			return this.getAllFormattedMessages();
 		} catch (error) {
 			logger.error('Failed to get formatted messages', { error });
 			throw new Error(
 				`Failed to format message: ${error instanceof Error ? error.message : String(error)}`
+			);
+		}
+	}
+
+	/**
+	 * Get all formatted messages from conversation history
+	 * @returns The formatted messages array
+	 */
+	async getAllFormattedMessages(): Promise<any[]> {
+		try {
+			// Get the system prompt
+			const prompt = await this.getSystemPrompt();
+			
+			// Format all messages in conversation history
+			const formattedMessages: any[] = [];
+			
+			// Add system prompt as first message if using formatters that expect it in messages array
+			if (prompt && this.formatter.constructor.name === 'OpenAIMessageFormatter') {
+				formattedMessages.push({ role: 'system', content: prompt });
+			}
+			
+			// Format each message in history
+			for (const msg of this.messages) {
+				const formatted = this.formatter.format(msg, prompt);
+				if (Array.isArray(formatted)) {
+					formattedMessages.push(...formatted);
+				} else if (formatted && formatted !== null) {
+					formattedMessages.push(formatted);
+				}
+			}
+			
+			logger.debug(`Formatted ${formattedMessages.length} messages from history of ${this.messages.length} messages`);
+			return formattedMessages;
+		} catch (error) {
+			logger.error('Failed to format all messages', { error });
+			throw new Error(
+				`Failed to format messages: ${error instanceof Error ? error.message : String(error)}`
 			);
 		}
 	}

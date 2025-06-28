@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MemAgent } from '../agent.js';
 import { AgentConfig, AgentConfigSchema } from '../config.js';
-import {LLMConfigSchema } from '../../llm/config.js';
+import { LLMConfigSchema } from '../../llm/config.js';
 import { ZodError } from 'zod';
 
 // Mock all external dependencies
@@ -82,7 +82,9 @@ describe('MemAgent', () => {
 					model: 'gpt-4',
 					apiKey: 'test-key',
 				}),
-				addMcpServer: vi.fn().mockReturnValue({ isValid: true, config: {}, errors: [], warnings: [] }),
+				addMcpServer: vi
+					.fn()
+					.mockReturnValue({ isValid: true, config: {}, errors: [], warnings: [] }),
 				removeMcpServer: vi.fn(),
 				getRuntimeConfig: vi.fn(),
 			},
@@ -387,7 +389,9 @@ describe('MemAgent', () => {
 
 		it('should fail to start with invalid configuration during service creation', async () => {
 			const { createAgentServices } = await import('../../../utils/service-initializer.js');
-			vi.mocked(createAgentServices).mockRejectedValue(new Error('Configuration validation failed'));
+			vi.mocked(createAgentServices).mockRejectedValue(
+				new Error('Configuration validation failed')
+			);
 
 			const agent = new MemAgent(validConfig);
 

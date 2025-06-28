@@ -18,7 +18,7 @@ export class AnthropicService implements ILLMService {
 		model: string,
 		mcpManager: MCPManager,
 		contextManager: ContextManager,
-		maxIterations: number = 5
+		maxIterations: number = 10
 	) {
 		this.anthropic = anthropic;
 		this.model = model;
@@ -139,11 +139,8 @@ export class AnthropicService implements ILLMService {
 		while (attempts < MAX_ATTEMPTS) {
 			attempts++;
 			try {
-				// Use the new method that implements proper flow: get system prompt, compress history, format messages
-				const formattedMessages = await this.contextManager.getFormattedMessage({
-					role: 'user',
-					content: userInput,
-				});
+				// Get all formatted messages from conversation history
+				const formattedMessages = await this.contextManager.getAllFormattedMessages();
 
 				// For Anthropic, we need to separate system messages from the messages array
 				const systemMessage = formattedMessages.find(msg => msg.role === 'system');

@@ -1,0 +1,15 @@
+# describes the mcp servers to use
+mcpServers:
+  filesystem:
+    type: stdio
+    command: npx
+    args:
+      - -y
+      - "@modelcontextprotocol/server-filesystem"
+      - .
+# # describes the llm configuration
+llm:
+  provider: openai
+  model: o4-mini
+  apiKey: $OPENAI_API_KEY
+  maxIterations: 50

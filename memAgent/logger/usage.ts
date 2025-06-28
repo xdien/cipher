@@ -3,6 +3,8 @@
  */
 
 import { logger, createLogger, ChalkColor } from '../../src/core/logger/logger.js';
+import { env } from '../../src/core/env.js';
+
 
 /**
  * Example 1: Basic logging with the singleton logger
@@ -126,8 +128,8 @@ function environmentExample(): void {
 	console.log('\n=== Environment Variables Example ===');
 	
 	console.log('Current environment settings:');
-	console.log('- CIPHER_LOG_LEVEL:', process.env.CIPHER_LOG_LEVEL || 'not set (defaults to info)');
-	console.log('- REDACT_SECRETS:', process.env.REDACT_SECRETS || 'not set (defaults to true)');
+	console.log('- CIPHER_LOG_LEVEL:', env.CIPHER_LOG_LEVEL || 'not set (defaults to info)');
+console.log('- REDACT_SECRETS:', env.REDACT_SECRETS || 'not set (defaults to true)');
 	
 	logger.info('Log level can be controlled via CIPHER_LOG_LEVEL environment variable');
 	logger.info('Secret redaction can be disabled via REDACT_SECRETS=false');
