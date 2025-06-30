@@ -26,6 +26,11 @@ export class MemAgentStateManager {
 	): McpServerValidationResult {
 		logger.debug(`Adding/updating MCP server: ${serverName}`);
 
+		// Ensure mcpServers is initialized
+		if (!this.runtimeConfig.mcpServers) {
+			this.runtimeConfig.mcpServers = {};
+		}
+
 		// Validate the server configuration
 		const existingServerNames = Object.keys(this.runtimeConfig.mcpServers);
 		const validation = validateMcpServerConfig(serverName, serverConfig, existingServerNames);
@@ -47,7 +52,7 @@ export class MemAgentStateManager {
 			});
 		}
 
-		const isUpdate = serverName in this.runtimeConfig.mcpServers;
+		const isUpdate = this.runtimeConfig.mcpServers && serverName in this.runtimeConfig.mcpServers;
 		// Use the validated config with defaults applied from validation result
 		this.runtimeConfig.mcpServers[serverName] = validation.config!;
 
@@ -59,7 +64,7 @@ export class MemAgentStateManager {
 	public removeMcpServer(serverName: string): void {
 		logger.debug(`Removing MCP server: ${serverName}`);
 
-		if (serverName in this.runtimeConfig.mcpServers) {
+		if (this.runtimeConfig.mcpServers && serverName in this.runtimeConfig.mcpServers) {
 			delete this.runtimeConfig.mcpServers[serverName];
 
 			logger.info(`MCP server '${serverName}' removed successfully`);
@@ -85,6 +90,10 @@ export class MemAgentStateManager {
 	}
 
 	public getLLMConfig(sessionId?: string): Readonly<LLMConfig> {
-		return this.getRuntimeConfig(sessionId).llm;
+		const config = this.getRuntimeConfig(sessionId);
+		return {
+			...config.llm,
+			maxIterations: config.llm.maxIterations ?? 10, // Provide default value
+		};
 	}
 }

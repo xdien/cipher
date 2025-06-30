@@ -19,7 +19,6 @@ const logLevels = {
 
 // ===== 2. Security Layer: Data Redaction =====
 
-const SHOULD_REDACT = env.REDACT_SECRETS !== 'false';
 const SENSITIVE_KEYS = ['apiKey', 'password', 'secret', 'token', 'auth', 'key', 'credential'];
 const MASK_REGEX = new RegExp(
 	`(${SENSITIVE_KEYS.join('|')})(["']?\\s*[:=]\\s*)(["'])?.*?\\3`,
@@ -27,7 +26,8 @@ const MASK_REGEX = new RegExp(
 );
 
 const redactSensitiveData = (message: string): string => {
-	if (!SHOULD_REDACT) return message;
+	const shouldRedact = env.REDACT_SECRETS !== 'false';
+	if (!shouldRedact) return message;
 
 	return message.replace(MASK_REGEX, (match, key, separator, quote) => {
 		const quoteMark = quote || '';
@@ -352,11 +352,17 @@ export class Logger {
 	// ===== Utility Methods =====
 
 	createChild(options: LoggerOptions = {}): Logger {
-		return new Logger({
+		const childOptions: LoggerOptions = {
 			level: options.level || this.getLevel(),
 			silent: options.silent !== undefined ? options.silent : this.isSilent,
-			file: options.file,
-		});
+		};
+
+		// Only include file option if it's defined
+		if (options.file !== undefined) {
+			childOptions.file = options.file;
+		}
+
+		return new Logger(childOptions);
 	}
 
 	// Get logger instance for advanced usage

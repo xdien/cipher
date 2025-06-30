@@ -123,7 +123,7 @@ describe.concurrent('Special Display Features', () => {
 			testLogger.toolCall('testTool', { foo: 'bar', baz: 123 });
 			expect(spyConsoleLog).toHaveBeenCalled();
 			let lastCall = spyConsoleLog.mock.calls[spyConsoleLog.mock.calls.length - 1];
-			expect(lastCall[0]).toContain('Tool Call');
+			expect(lastCall?.[0]).toContain('Tool Call');
 
 			// Reset mock for next test
 			vi.clearAllMocks();
@@ -141,7 +141,7 @@ describe.concurrent('Special Display Features', () => {
 			testLogger.toolResult('Simple result string');
 			expect(spyConsoleLog).toHaveBeenCalled();
 			lastCall = spyConsoleLog.mock.calls[spyConsoleLog.mock.calls.length - 1];
-			expect(lastCall[0]).toContain('Tool Result');
+			expect(lastCall?.[0]).toContain('Tool Result');
 		});
 	});
 
@@ -158,7 +158,7 @@ describe.concurrent('Special Display Features', () => {
 			testLogger.displayAIResponse('This is an AI response');
 			expect(spyConsoleLog).toHaveBeenCalled();
 			let lastCall = spyConsoleLog.mock.calls[spyConsoleLog.mock.calls.length - 1];
-			expect(lastCall[0]).toContain('AI Response');
+			expect(lastCall?.[0]).toContain('AI Response');
 
 			// Test object response
 			vi.clearAllMocks();
@@ -166,7 +166,7 @@ describe.concurrent('Special Display Features', () => {
 			testLogger.displayAIResponse({ content: 'This is an AI response' });
 			expect(spyConsoleLog).toHaveBeenCalled();
 			lastCall = spyConsoleLog.mock.calls[spyConsoleLog.mock.calls.length - 1];
-			expect(lastCall[0]).toContain('AI Response');
+			expect(lastCall?.[0]).toContain('AI Response');
 
 			// ===== Test Box Display =====
 			vi.clearAllMocks();
@@ -176,7 +176,7 @@ describe.concurrent('Special Display Features', () => {
 			testLogger.displayBox('Custom Title', 'Custom content here', 'blue');
 			expect(spyConsoleLog).toHaveBeenCalled();
 			lastCall = spyConsoleLog.mock.calls[spyConsoleLog.mock.calls.length - 1];
-			expect(lastCall[0]).toContain('Custom Title');
+			expect(lastCall?.[0]).toContain('Custom Title');
 
 			// Test default color
 			vi.clearAllMocks();

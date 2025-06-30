@@ -55,7 +55,7 @@ export interface StdioServerConfig extends BaseServerConfig {
 	/**
 	 * Arguments to pass to the command.
 	 */
-	args?: string[];
+	args: string[];
 
 	/**
 	 * Environment variables to set for the command.

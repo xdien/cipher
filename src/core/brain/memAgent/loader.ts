@@ -9,7 +9,8 @@ function expandEnvVars(config: any): any {
 		const expanded = config.replace(
 			/\$([A-Z_][A-Z0-9_]*)|\${([A-Z_][A-Z0-9_]*)}/gi,
 			(_, v1, v2) => {
-				return env[v1 || v2] || '';
+				const key = v1 || v2;
+				return env[key] || '';
 			}
 		);
 

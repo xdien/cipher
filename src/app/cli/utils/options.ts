@@ -19,11 +19,11 @@ export function validateCliOptions(opts: any): void {
 		verbose: opts.verbose,
 		mode: opts.mode,
 	});
-	
+
 	if (!result.success) {
 		throw result.error;
 	}
-	
+
 	logger.debug('CLI options validated successfully', result.data);
 }
 

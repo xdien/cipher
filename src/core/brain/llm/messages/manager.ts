@@ -182,15 +182,15 @@ export class ContextManager {
 		try {
 			// Get the system prompt
 			const prompt = await this.getSystemPrompt();
-			
+
 			// Format all messages in conversation history
 			const formattedMessages: any[] = [];
-			
+
 			// Add system prompt as first message if using formatters that expect it in messages array
 			if (prompt && this.formatter.constructor.name === 'OpenAIMessageFormatter') {
 				formattedMessages.push({ role: 'system', content: prompt });
 			}
-			
+
 			// Format each message in history
 			for (const msg of this.messages) {
 				const formatted = this.formatter.format(msg, prompt);
@@ -200,8 +200,10 @@ export class ContextManager {
 					formattedMessages.push(formatted);
 				}
 			}
-			
-			logger.debug(`Formatted ${formattedMessages.length} messages from history of ${this.messages.length} messages`);
+
+			logger.debug(
+				`Formatted ${formattedMessages.length} messages from history of ${this.messages.length} messages`
+			);
 			return formattedMessages;
 		} catch (error) {
 			logger.error('Failed to format all messages', { error });

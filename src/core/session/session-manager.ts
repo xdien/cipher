@@ -227,7 +227,7 @@ export class SessionManager {
 	public async shutdown(): Promise<void> {
 		if (this.cleanupInterval) {
 			clearInterval(this.cleanupInterval);
-			this.cleanupInterval = undefined;
+			this.cleanupInterval = undefined as any; // Type assertion to handle exact optional property types
 		}
 
 		// Clear all sessions
