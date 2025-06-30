@@ -191,8 +191,8 @@ describe('MemAgent', () => {
 				expect(error).toBeInstanceOf(ZodError);
 				const zodError = error as ZodError;
 				expect(zodError.issues).toHaveLength(1);
-				expect(zodError.issues[0].path).toEqual(['llm', 'provider']);
-				expect(zodError.issues[0].message).toContain('not supported');
+				expect(zodError.issues[0]?.path).toEqual(['llm', 'provider']);
+				expect(zodError.issues[0]?.message).toContain('not supported');
 			}
 		});
 
@@ -215,7 +215,7 @@ describe('MemAgent', () => {
 			const invalidResult = LLMConfigSchema.safeParse(invalidLLMConfig);
 			expect(invalidResult.success).toBe(false);
 			if (!invalidResult.success) {
-				expect(invalidResult.error.issues[0].message).toContain('not supported');
+				expect(invalidResult.error.issues[0]?.message).toContain('not supported');
 			}
 		});
 

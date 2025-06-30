@@ -550,7 +550,7 @@ describe('MCPManager', () => {
 			};
 
 			mockClient.getTools.mockResolvedValue(mockTools);
-			mockClient.callTool.mockImplementation((name, args) =>
+			mockClient.callTool.mockImplementation((name: string, args: any) =>
 				Promise.resolve({ result: `executed-${name}-${args.id}` })
 			);
 

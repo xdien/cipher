@@ -14,7 +14,6 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { fileURLToPath } from 'url';
 
-
 import type {
 	IMCPClient,
 	McpServerConfig,
@@ -377,21 +376,25 @@ export class MCPClient implements IMCPClient {
 			return promptNames;
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
-			
+
 			// Check if this is a "capability not supported" error (common for filesystem servers)
-			const isCapabilityError = errorMessage.includes('not implemented') || 
-									 errorMessage.includes('not supported') ||
-									 errorMessage.includes('Method not found') ||
-									 errorMessage.includes('prompts') === false; // Some servers just don't respond to prompt requests
-			
+			const isCapabilityError =
+				errorMessage.includes('not implemented') ||
+				errorMessage.includes('not supported') ||
+				errorMessage.includes('Method not found') ||
+				errorMessage.includes('prompts') === false; // Some servers just don't respond to prompt requests
+
 			if (isCapabilityError) {
-				this.logger.debug(`${LOG_PREFIXES.PROMPT} Prompts not supported by server (this is normal)`, {
-					serverName: this.serverName,
-					reason: 'Server does not implement prompt capability',
-				});
+				this.logger.debug(
+					`${LOG_PREFIXES.PROMPT} Prompts not supported by server (this is normal)`,
+					{
+						serverName: this.serverName,
+						reason: 'Server does not implement prompt capability',
+					}
+				);
 				return []; // Return empty array instead of throwing
 			}
-			
+
 			// Real error - log as error and throw
 			this.logger.error(`${LOG_PREFIXES.PROMPT} Failed to list prompts`, {
 				serverName: this.serverName,
@@ -463,21 +466,25 @@ export class MCPClient implements IMCPClient {
 			return resourceUris;
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
-			
+
 			// Check if this is a "capability not supported" error (common for filesystem servers)
-			const isCapabilityError = errorMessage.includes('not implemented') || 
-									 errorMessage.includes('not supported') ||
-									 errorMessage.includes('Method not found') ||
-									 errorMessage.includes('resources') === false; // Some servers just don't respond to resource requests
-			
+			const isCapabilityError =
+				errorMessage.includes('not implemented') ||
+				errorMessage.includes('not supported') ||
+				errorMessage.includes('Method not found') ||
+				errorMessage.includes('resources') === false; // Some servers just don't respond to resource requests
+
 			if (isCapabilityError) {
-				this.logger.debug(`${LOG_PREFIXES.RESOURCE} Resources not supported by server (this is normal)`, {
-					serverName: this.serverName,
-					reason: 'Server does not implement resource capability',
-				});
+				this.logger.debug(
+					`${LOG_PREFIXES.RESOURCE} Resources not supported by server (this is normal)`,
+					{
+						serverName: this.serverName,
+						reason: 'Server does not implement resource capability',
+					}
+				);
 				return []; // Return empty array instead of throwing
 			}
-			
+
 			// Real error - log as error and throw
 			this.logger.error(`${LOG_PREFIXES.RESOURCE} Failed to list resources`, {
 				serverName: this.serverName,
@@ -674,7 +681,7 @@ export class MCPClient implements IMCPClient {
 		const processEnv = Object.fromEntries(
 			Object.entries(process.env).filter(([_, value]) => value !== undefined)
 		) as Record<string, string>;
-		
+
 		return {
 			...processEnv,
 			...configEnv,
