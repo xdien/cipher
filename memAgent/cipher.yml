@@ -7,9 +7,16 @@ mcpServers:
       - -y
       - "@modelcontextprotocol/server-filesystem"
       - .
-# # describes the llm configuration
+
+# describes the llm configuration
 llm:
-  provider: openai
+  # OpenRouter configuration for testing
+
+  # Original OpenAI config (commented out for testing)
+  provider: openrouter
   model: o4-mini
-  apiKey: $OPENAI_API_KEY
+  apiKey: $OPENROUTER_API_KEY
   maxIterations: 50
+
+# System prompt
+systemPrompt: "You are a helpful AI assistant with memory capabilities. Please confirm you're working with OpenRouter API."

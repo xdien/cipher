@@ -16,10 +16,11 @@ vi.mock('yaml', () => ({
 
 vi.mock('../../../logger/index.js', () => ({
 	logger: {
-		debug: vi.fn(),
 		info: vi.fn(),
 		warn: vi.fn(),
 		error: vi.fn(),
+		debug: vi.fn(),
+		silly: vi.fn(),
 	},
 }));
 
