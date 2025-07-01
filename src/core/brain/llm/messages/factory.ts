@@ -13,13 +13,14 @@ function getFormatter(provider: string): IMessageFormatter {
 	let formatter: IMessageFormatter;
 	switch (normalizedProvider) {
 		case 'openai':
+		case 'openrouter': // OpenRouter uses OpenAI-compatible API format
 			formatter = new OpenAIMessageFormatter();
 			break;
 		case 'anthropic':
 			formatter = new AnthropicMessageFormatter();
 			break;
 		default:
-			throw new Error(`Unsupported provider: ${provider}. Supported providers: openai, anthropic`);
+			throw new Error(`Unsupported provider: ${provider}. Supported providers: openai, anthropic, openrouter`);
 	}
 
 	return formatter;

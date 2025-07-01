@@ -10,11 +10,9 @@ mcpServers:
 
 # describes the llm configuration
 llm:
-  # OpenRouter configuration for testing
-
-  # Original OpenAI config (commented out for testing)
+  # OpenRouter configuration - Updated to use model that supports tool calling
   provider: openrouter
-  model: o4-mini
+  model: openai/gpt-4o-mini    # Free model with tool calling support
   apiKey: $OPENROUTER_API_KEY
   maxIterations: 50
 
