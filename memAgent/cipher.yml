@@ -12,7 +12,7 @@ mcpServers:
 llm:
   # OpenRouter configuration - Updated to use model that supports tool calling
   provider: openrouter
-  model: openai/gpt-4o-mini    # Free model with tool calling support
+  model: o4-mini  
   apiKey: $OPENROUTER_API_KEY
   maxIterations: 50
 
