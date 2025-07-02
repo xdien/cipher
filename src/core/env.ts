@@ -12,6 +12,7 @@ const envSchema = z.object({
 	ANTHROPIC_API_KEY: z.string().optional(),
 	OPENROUTER_API_KEY: z.string().optional(),
 	OPENAI_BASE_URL: z.string().optional(),
+	OLLAMA_BASE_URL: z.string().optional(),
 });
 
 type EnvSchema = z.infer<typeof envSchema>;
@@ -34,6 +35,8 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 				return process.env.OPENROUTER_API_KEY;
 			case 'OPENAI_BASE_URL':
 				return process.env.OPENAI_BASE_URL;
+			case 'OLLAMA_BASE_URL':
+				return process.env.OLLAMA_BASE_URL;
 			default:
 				return process.env[prop];
 		}
@@ -50,6 +53,7 @@ export const validateEnv = () => {
 		ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
 		OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
 		OPENAI_BASE_URL: process.env.OPENAI_BASE_URL,
+		OLLAMA_BASE_URL: process.env.OLLAMA_BASE_URL,
 	};
 
 	const result = envSchema.safeParse(envToValidate);

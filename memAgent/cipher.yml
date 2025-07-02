@@ -9,12 +9,22 @@ mcpServers:
       - .
 
 # describes the llm configuration
-llm:
-  # OpenRouter configuration - Updated to use model that supports tool calling
-  provider: openrouter
-  model: o4-mini  
-  apiKey: $OPENROUTER_API_KEY
-  maxIterations: 50
+# llm:
+#   # OpenAI configuration - Updated to use model that supports tool calling
+#   provider: openai # Do the same for anthropic and openrouter
+#   model: o4-mini  
+#   apiKey: $OPENAI_API_KEY
+#   maxIterations: 50
 
-# System prompt
-systemPrompt: "You are a helpful AI assistant with memory capabilities. Please confirm you're working with OpenRouter API."
+# # System prompt
+# systemPrompt: "You are a helpful AI assistant with memory capabilities. Please confirm you're working with OpenAI API." 
+
+# Ollama configuration
+# llm:
+#   provider: ollama
+#   model: qwen3:8b      # Use the model you downloaded
+#   maxIterations: 50
+#   baseURL: $OLLAMA_BASE_URL 
+
+#  System Prompt
+# systemPrompt: "You are a helpful AI assistant with memory capabilities running on Ollama. You have access to local files and can perform various tasks using the available tools."

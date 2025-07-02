@@ -73,10 +73,11 @@ Before running cipher in any mode, ensure you have:
    # Edit .env and add your API keys
    ```
 
-2. **API Keys**: Set at least one of these in your `.env` file:
+2. **API Keys**: Set at least one of these in your `.env` file (or use Ollama for local models):
    - `OPENAI_API_KEY` for OpenAI models
    - `ANTHROPIC_API_KEY` for Anthropic Claude models
    - `OPENROUTER_API_KEY` for OpenRouter (200+ models)
+   - `OLLAMA_BASE_URL` for Ollama local models (no API key required)
 
 3. **Agent Configuration**: The agent uses `memAgent/cipher.yml` for configuration (included in the project)
 
@@ -104,9 +105,9 @@ The main configuration file is located at `memAgent/cipher.yml` and follows this
 ```yaml
 # LLM Configuration (Required)
 llm:
-  provider: openai                   # Required: 'openai', 'anthropic', or 'openrouter'
+  provider: openai                   # Required: 'openai', 'anthropic', 'openrouter', or 'ollama'
   model: gpt-4.1-mini                # Required: Model name for the provider
-  apiKey: $OPENAI_API_KEY            # Required: API key (supports env vars with $VAR syntax)
+  apiKey: $OPENAI_API_KEY            # Required: API key (supports env vars with $VAR syntax, not needed for Ollama)
   maxIterations: 50                  # Optional: Max iterations for agentic loops (default: 50)
   baseURL: https://api.openai.com/v1 # Optional: Custom API base URL (OpenAI only)
 
@@ -147,13 +148,14 @@ agentCard:
 Create a `.env` file in the project root for sensitive configuration:
 
 ```bash
-# API Keys (at least one required)
+# API Keys (at least one required, except for Ollama)
 OPENAI_API_KEY=your_openai_api_key_here
 ANTHROPIC_API_KEY=your_anthropic_api_key_here
 OPENROUTER_API_KEY=your_openrouter_api_key_here
 
 # API Configuration (optional)
 OPENAI_BASE_URL=https://api.openai.com/v1
+OLLAMA_BASE_URL=http://localhost:11434/v1  # For Ollama local server
 
 # Logger Configuration (optional)
 CIPHER_LOG_LEVEL=info             # debug, info, warn, error
@@ -188,6 +190,17 @@ llm:
   provider: openrouter
   model: openai/gpt-4o               # Any model available on OpenRouter
   apiKey: $OPENROUTER_API_KEY
+```
+
+#### Ollama
+
+```yaml
+llm:
+  provider: ollama
+  model: llama3.2:latest             # Any model available locally in Ollama
+  # apiKey: not required              # Ollama doesn't need an API key
+  baseURL: $OLLAMA_BASE_URL          # Optional: defaults to http://localhost:11434/v1
+  maxIterations: 50                  # Optional: for agentic loops
 ```
 
 **OpenRouter Model Examples:**
@@ -243,8 +256,8 @@ mcpServers:
 
 Cipher validates all configuration at startup:
 
-- **LLM Provider**: Must be 'openai', 'anthropic', or 'openrouter'
-- **API Keys**: Must be non-empty strings
+- **LLM Provider**: Must be 'openai', 'anthropic', 'openrouter', or 'ollama'
+- **API Keys**: Must be non-empty strings (not required for Ollama)
 - **URLs**: Must be valid URLs when provided
 - **Numbers**: Must be positive integers where specified
 - **MCP Server Types**: Must be 'stdio', 'sse', or 'http'
@@ -283,6 +296,7 @@ Cipher supports multiple LLM providers for maximum flexibility:
 - **OpenAI**: Direct API integration for GPT models (`gpt-4`, `gpt-3.5-turbo`, etc.)
 - **Anthropic**: Native Claude API support (`claude-3-sonnet`, `claude-3-opus`, etc.)
 - **OpenRouter**: Access to 200+ models from multiple providers through a single API
+- **Ollama**: Local LLM hosting for privacy and offline usage (`llama3.2`, `qwen`, `mistral`, etc.)
 
 ### OpenRouter Integration
 OpenRouter provides access to a vast ecosystem of AI models through one unified API:
@@ -301,6 +315,24 @@ OpenRouter provides access to a vast ecosystem of AI models through one unified 
 - **Model Diversity**: Access models from different providers without multiple integrations
 - **Fallback Options**: Switch between models seamlessly if one is unavailable
 - **Latest Models**: Access to cutting-edge models as soon as they're released
+
+### Ollama Integration
+Ollama enables you to run large language models locally on your machine:
+
+#### Supported Ollama Models
+- **Llama**: `llama3.2:latest`, `llama3.1:8b`, `llama3.1:70b`
+- **Qwen**: `qwen3:8b`, `qwen2.5:14b`, `qwen2.5:72b`
+- **Mistral**: `mistral:latest`, `mistral:7b`, `mistral-nemo:latest`
+- **CodeLlama**: `codellama:latest`, `codellama:13b`, `codellama:34b`
+- **And many more models available through Ollama**
+
+#### Benefits of Ollama
+- **Privacy**: Run models entirely offline without sending data to external services
+- **No API Costs**: Use models locally without per-token charges
+- **Custom Models**: Load and run custom fine-tuned models
+- **Offline Capability**: Work without internet connectivity
+- **Hardware Control**: Optimize for your specific hardware setup
+- **Local Development**: Perfect for development and testing environments
 
 ## Contributing
 
