@@ -41,7 +41,7 @@ export class ConversationSession {
 		// Create session-specific LLM service
 		this.llmService = createLLMService(llmConfig, this.services.mcpManager, this.contextManager);
 
-		logger.debug(`ChatSession ${this.id}: Services initialized with storage`);
+		logger.debug(`ChatSession ${this.id}: Services initialized`);
 	}
 
 	public async run(
@@ -52,7 +52,10 @@ export class ConversationSession {
 		logger.debug(
 			`Running session ${this.id} with input: ${input} and imageDataInput: ${imageDataInput} and stream: ${stream}`
 		);
+
+		// Generate response
 		const response = await this.llmService.generate(input, imageDataInput, stream);
+
 		return response;
 	}
 

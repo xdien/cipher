@@ -76,6 +76,7 @@ Before running cipher in any mode, ensure you have:
 2. **API Keys**: Set at least one of these in your `.env` file:
    - `OPENAI_API_KEY` for OpenAI models
    - `ANTHROPIC_API_KEY` for Anthropic Claude models
+   - `OPENROUTER_API_KEY` for OpenRouter (200+ models)
 
 3. **Agent Configuration**: The agent uses `memAgent/cipher.yml` for configuration (included in the project)
 
@@ -103,7 +104,7 @@ The main configuration file is located at `memAgent/cipher.yml` and follows this
 ```yaml
 # LLM Configuration (Required)
 llm:
-  provider: openai                   # Required: 'openai' or 'anthropic'
+  provider: openai                   # Required: 'openai', 'anthropic', or 'openrouter'
   model: gpt-4.1-mini                # Required: Model name for the provider
   apiKey: $OPENAI_API_KEY            # Required: API key (supports env vars with $VAR syntax)
   maxIterations: 50                  # Optional: Max iterations for agentic loops (default: 50)
@@ -149,6 +150,7 @@ Create a `.env` file in the project root for sensitive configuration:
 # API Keys (at least one required)
 OPENAI_API_KEY=your_openai_api_key_here
 ANTHROPIC_API_KEY=your_anthropic_api_key_here
+OPENROUTER_API_KEY=your_openrouter_api_key_here
 
 # API Configuration (optional)
 OPENAI_BASE_URL=https://api.openai.com/v1
@@ -178,6 +180,21 @@ llm:
   model: claude-4-sonnet-20250514    # or claude-3-7-sonnet-20250219, etc.
   apiKey: $ANTHROPIC_API_KEY
 ```
+
+#### OpenRouter
+
+```yaml
+llm:
+  provider: openrouter
+  model: openai/gpt-4o               # Any model available on OpenRouter
+  apiKey: $OPENROUTER_API_KEY
+```
+
+**OpenRouter Model Examples:**
+- `openai/gpt-4o`, `openai/gpt-4o-mini`
+- `anthropic/claude-3.5-sonnet`, `anthropic/claude-3-haiku`
+- `google/gemini-pro-1.5`, `meta-llama/llama-3.1-8b-instruct`
+- See [OpenRouter models](https://openrouter.ai/models) for full list
 
 ### MCP Server Types
 
@@ -226,7 +243,7 @@ mcpServers:
 
 Cipher validates all configuration at startup:
 
-- **LLM Provider**: Must be 'openai' or 'anthropic'
+- **LLM Provider**: Must be 'openai', 'anthropic', or 'openrouter'
 - **API Keys**: Must be non-empty strings
 - **URLs**: Must be valid URLs when provided
 - **Numbers**: Must be positive integers where specified
@@ -251,16 +268,39 @@ llm:
 
 ## Capabilities
 
-**MCP integration**: cipher handles all the complexity of MCP connections
-**Dual layers Memory**: cipher leverages two layers of memory: knowledge base && 
-refelection
+### MCP Integration
+Cipher handles all the complexity of MCP server connections and lifecycle management, providing seamless integration with MCP-compatible tools and services.
+
+### Enhanced LLM Provider Support
+Cipher now supports multiple LLM providers with seamless integration and advanced capabilities:
+
+
 
 ## LLM Providers
 
-Cipher currently supports multiple LLLM providers:
+Cipher supports multiple LLM providers for maximum flexibility:
 
-- **OpenAI**: `gpt-4.1-mini`, `gpt-4.1`, `o4-mini`, `o3`
-**Anthropic**: `claude-4-sonnet-20250514`, `claude-3-7-sonnet-20250219`
+- **OpenAI**: Direct API integration for GPT models (`gpt-4`, `gpt-3.5-turbo`, etc.)
+- **Anthropic**: Native Claude API support (`claude-3-sonnet`, `claude-3-opus`, etc.)
+- **OpenRouter**: Access to 200+ models from multiple providers through a single API
+
+### OpenRouter Integration
+OpenRouter provides access to a vast ecosystem of AI models through one unified API:
+
+#### Supported Model Providers
+- **OpenAI**: `openai/gpt-4o`, `openai/gpt-4o-mini`
+- **Anthropic**: `anthropic/claude-3.5-sonnet`, `anthropic/claude-3-haiku`
+- **Google**: `google/gemini-pro-1.5`, `google/gemini-flash`
+- **Meta**: `meta-llama/llama-3.1-8b-instruct`, `meta-llama/llama-3.1-70b-instruct`
+- **Mistral**: `mistralai/mistral-7b-instruct`, `mistralai/mixtral-8x7b-instruct`
+- **And 200+ more models**
+
+#### Benefits of OpenRouter
+- **Single API Key**: Access hundreds of models with one API key
+- **Cost Optimization**: Choose the most cost-effective model for your use case
+- **Model Diversity**: Access models from different providers without multiple integrations
+- **Fallback Options**: Switch between models seamlessly if one is unavailable
+- **Latest Models**: Access to cutting-edge models as soon as they're released
 
 ## Contributing
 

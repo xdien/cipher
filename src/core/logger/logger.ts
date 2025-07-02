@@ -26,7 +26,7 @@ const MASK_REGEX = new RegExp(
 );
 
 const redactSensitiveData = (message: string): string => {
-	const shouldRedact = env.REDACT_SECRETS !== 'false';
+	const shouldRedact = env.REDACT_SECRETS !== false;
 	if (!shouldRedact) return message;
 
 	return message.replace(MASK_REGEX, (match, key, separator, quote) => {

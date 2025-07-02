@@ -31,11 +31,11 @@ program
 		}
 
 		// Check if at least one API key is provided
-		if (!env.OPENAI_API_KEY && !env.ANTHROPIC_API_KEY) {
+		if (!env.OPENAI_API_KEY && !env.ANTHROPIC_API_KEY && !env.OPENROUTER_API_KEY) {
 			logger.error(
-				'No API key found, please set at least one of OPENAI_API_KEY or ANTHROPIC_API_KEY in .env file'
+				'No API key found, please set at least one of OPENAI_API_KEY, ANTHROPIC_API_KEY, or OPENROUTER_API_KEY in .env file'
 			);
-			logger.error('Available providers: OpenAI, Anthropic');
+			logger.error('Available providers: OpenAI, Anthropic, OpenRouter');
 			process.exit(1);
 		}
 

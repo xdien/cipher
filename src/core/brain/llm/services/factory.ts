@@ -8,9 +8,10 @@ import { logger } from '../../../logger/index.js';
 import Anthropic from '@anthropic-ai/sdk';
 import { OpenAIService } from './openai.js';
 import { AnthropicService } from './anthropic.js';
+import { OpenRouterService } from './openrouter.js';
 
 function extractApiKey(config: LLMConfig): string {
-	const provider = config.provider;
+	const provider = config.provider.toLowerCase();
 
 	// Get API key from config (already expanded)
 	let apiKey = config.apiKey || '';
@@ -29,10 +30,19 @@ function getOpenAICompatibleBaseURL(llmConfig: LLMConfig): string {
 	if (llmConfig.baseURL) {
 		return llmConfig.baseURL.replace(/\/$/, '');
 	}
-	// Check for environment variable as fallback
-	if (env.OPENAI_BASE_URL) {
+
+	// Provider-specific defaults and environment fallbacks
+	const provider = llmConfig.provider.toLowerCase();
+
+	if (provider === 'openrouter') {
+		return 'https://openrouter.ai/api/v1';
+	}
+
+	// Check for environment variable as fallback for OpenAI
+	if (provider === 'openai' && env.OPENAI_BASE_URL) {
 		return env.OPENAI_BASE_URL.replace(/\/$/, '');
 	}
+
 	return '';
 }
 
@@ -52,6 +62,25 @@ function _createLLMService(
 			// 2. When baseURL is undefined/null/empty, the spread operator won't add the baseURL property
 			const openai = new OpenAI({ apiKey, ...(baseURL ? { baseURL } : {}) });
 			return new OpenAIService(
+				openai,
+				config.model,
+				mcpManager,
+				contextManager,
+				config.maxIterations
+			);
+		}
+		case 'openrouter': {
+			const baseURL = getOpenAICompatibleBaseURL(config);
+			// OpenRouter uses OpenAI-compatible API but with specific headers
+			const openai = new OpenAI({
+				apiKey,
+				baseURL,
+				defaultHeaders: {
+					'HTTP-Referer': 'https://github.com/byterover/cipher',
+					'X-Title': 'Cipher Memory Agent',
+				},
+			});
+			return new OpenRouterService(
 				openai,
 				config.model,
 				mcpManager,

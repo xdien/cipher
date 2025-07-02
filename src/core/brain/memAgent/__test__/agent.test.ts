@@ -15,6 +15,7 @@ vi.mock('../../../logger/index.js', () => ({
 		warn: vi.fn(),
 		error: vi.fn(),
 		debug: vi.fn(),
+		silly: vi.fn(),
 	},
 }));
 
