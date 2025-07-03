@@ -1,6 +1,7 @@
 import { PromptManager } from '../brain/systemPrompt/manager.js';
 import { ContextManager, ILLMService } from '../brain/llm/index.js';
 import { MCPManager } from '../mcp/manager.js';
+import { UnifiedToolManager } from '../brain/tools/unified-tool-manager.js';
 import { logger } from '../logger/index.js';
 import { createContextManager } from '../brain/llm/messages/factory.js';
 import { createLLMService } from '../brain/llm/services/factory.js';
@@ -15,6 +16,7 @@ export class ConversationSession {
 			stateManager: MemAgentStateManager;
 			promptManager: PromptManager;
 			mcpManager: MCPManager;
+			unifiedToolManager?: UnifiedToolManager;
 		},
 		public readonly id: string
 	) {
@@ -39,7 +41,12 @@ export class ConversationSession {
 		this.contextManager = createContextManager(llmConfig, this.services.promptManager);
 
 		// Create session-specific LLM service
-		this.llmService = createLLMService(llmConfig, this.services.mcpManager, this.contextManager);
+		this.llmService = createLLMService(
+			llmConfig,
+			this.services.mcpManager,
+			this.contextManager,
+			this.services.unifiedToolManager
+		);
 
 		logger.debug(`ChatSession ${this.id}: Services initialized`);
 	}

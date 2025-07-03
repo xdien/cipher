@@ -15,6 +15,8 @@ const requiredServices: (keyof AgentServices)[] = [
 	'promptManager',
 	'stateManager',
 	'sessionManager',
+	'internalToolManager',
+	'unifiedToolManager',
 ];
 
 export class MemAgent {
@@ -22,6 +24,8 @@ export class MemAgent {
 	public readonly promptManager!: PromptManager;
 	public readonly stateManager!: MemAgentStateManager;
 	public readonly sessionManager!: SessionManager;
+	public readonly internalToolManager!: any; // Will be properly typed later
+	public readonly unifiedToolManager!: any; // Will be properly typed later
 	public readonly services!: AgentServices;
 
 	private defaultSession: ConversationSession | null = null;
@@ -61,6 +65,8 @@ export class MemAgent {
 				promptManager: services.promptManager,
 				stateManager: services.stateManager,
 				sessionManager: services.sessionManager,
+				internalToolManager: services.internalToolManager,
+				unifiedToolManager: services.unifiedToolManager,
 				services: services,
 			});
 			this.isStarted = true;

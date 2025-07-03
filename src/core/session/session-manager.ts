@@ -3,6 +3,7 @@ import { PromptManager } from '../brain/systemPrompt/manager.js';
 import { MemAgentStateManager } from '../brain/memAgent/state-manager.js';
 import { ConversationSession } from './coversation-session.js';
 import { MCPManager } from '../mcp/manager.js';
+import { UnifiedToolManager } from '../brain/tools/unified-tool-manager.js';
 import { logger } from '@core/logger/index.js';
 
 export interface SessionManagerConfig {
@@ -30,6 +31,7 @@ export class SessionManager {
 			stateManager: MemAgentStateManager;
 			promptManager: PromptManager;
 			mcpManager: MCPManager;
+			unifiedToolManager?: UnifiedToolManager;
 		},
 		config: SessionManagerConfig = {}
 	) {

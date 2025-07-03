@@ -193,7 +193,9 @@ export class ContextManager {
 
 			// Format each message in history
 			for (const msg of this.messages) {
-				const formatted = this.formatter.format(msg, prompt);
+				// Don't pass system prompt to individual message formatting
+				// The system prompt has already been added above
+				const formatted = this.formatter.format(msg, null);
 				if (Array.isArray(formatted)) {
 					formattedMessages.push(...formatted);
 				} else if (formatted && formatted !== null) {
