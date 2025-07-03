@@ -148,14 +148,16 @@ agentCard:
 Create a `.env` file in the project root for sensitive configuration:
 
 ```bash
-# API Keys (at least one required, except for Ollama)
+# API Keys (at least one required, EXCEPT for Ollama which is self-hosted)
 OPENAI_API_KEY=your_openai_api_key_here
 ANTHROPIC_API_KEY=your_anthropic_api_key_here
 OPENROUTER_API_KEY=your_openrouter_api_key_here
 
 # API Configuration (optional)
 OPENAI_BASE_URL=https://api.openai.com/v1
-OLLAMA_BASE_URL=http://localhost:11434/v1  # For Ollama local server
+
+# Ollama Configuration (for self-hosted local models - NO API KEY NEEDED)
+OLLAMA_BASE_URL=http://localhost:11434/v1  # Points to your local Ollama instance
 
 # Logger Configuration (optional)
 CIPHER_LOG_LEVEL=info             # debug, info, warn, error
@@ -203,16 +205,18 @@ llm:
   apiKey: $OPENROUTER_API_KEY
 ```
 
-#### Ollama
+#### Ollama (Self-Hosted Models)
 
 ```yaml
 llm:
   provider: ollama
-  model: llama3.2:latest             # Any model available locally in Ollama
-  # apiKey: not required              # Ollama doesn't need an API key
+  model: qwen3:32b                   # Use larger models for better performance (see model selection guide below)
+  # apiKey: NOT REQUIRED             # Ollama is self-hosted, no API key needed
   baseURL: $OLLAMA_BASE_URL          # Optional: defaults to http://localhost:11434/v1
-  maxIterations: 50                  # Optional: for agentic loops
+  maxIterations: 50                  # Optional: for agentic tool calling loops
 ```
+
+**Note**: Ollama is unique among providers as it runs locally on your machine. No API key or internet connection is required for inference - only the `OLLAMA_BASE_URL` environment variable pointing to your local Ollama instance.
 
 **OpenRouter Model Examples:**
 - `openai/gpt-4o`, `openai/gpt-4o-mini`
@@ -268,7 +272,7 @@ mcpServers:
 Cipher validates all configuration at startup:
 
 - **LLM Provider**: Must be 'openai', 'anthropic', 'openrouter', or 'ollama'
-- **API Keys**: Must be non-empty strings (not required for Ollama)
+- **API Keys**: Must be non-empty strings for cloud providers (OpenAI, Anthropic, OpenRouter). **NOT required for Ollama** since it's self-hosted
 - **URLs**: Must be valid URLs when provided
 - **Numbers**: Must be positive integers where specified
 - **MCP Server Types**: Must be 'stdio', 'sse', or 'http'
@@ -307,7 +311,7 @@ Cipher supports multiple LLM providers for maximum flexibility:
 - **OpenAI**: Direct API integration for GPT models (`gpt-4`, `gpt-3.5-turbo`, etc.)
 - **Anthropic**: Native Claude API support (`claude-3-sonnet`, `claude-3-opus`, etc.)
 - **OpenRouter**: Access to 200+ models from multiple providers through a single API
-- **Ollama**: Local LLM hosting for privacy and offline usage (`llama3.2`, `qwen`, `mistral`, etc.)
+- **Ollama**: Self-hosted local models with no API costs (`qwen3:8b`, `llama3.1:8b`, `mistral:7b`, etc.) - **No API key required**
 
 ### OpenRouter Integration
 OpenRouter provides access to a vast ecosystem of AI models through one unified API:
@@ -328,22 +332,78 @@ OpenRouter provides access to a vast ecosystem of AI models through one unified 
 - **Latest Models**: Access to cutting-edge models as soon as they're released
 
 ### Ollama Integration
-Ollama enables you to run large language models locally on your machine:
+Ollama enables you to run large language models locally on your machine for complete privacy and control:
 
-#### Supported Ollama Models
-- **Llama**: `llama3.2:latest`, `llama3.1:8b`, `llama3.1:70b`
-- **Qwen**: `qwen3:8b`, `qwen2.5:14b`, `qwen2.5:72b`
-- **Mistral**: `mistral:latest`, `mistral:7b`, `mistral-nemo:latest`
-- **CodeLlama**: `codellama:latest`, `codellama:13b`, `codellama:34b`
-- **And many more models available through Ollama**
+
+We recommend these models that work great with tool calling:
+
+**🚀 Best Performance** (if you have powerful hardware):
+**DeepSeek-R1** and **Qwen3** are currently the top performers. DeepSeek-R1 offers GPT-4 level reasoning, while Qwen3 has excellent tool support across different sizes.
+
+**🔥 High Performance** (good balance):
+**Llama 3.1** and **Llama 3.3** from Meta are solid choices with great tool calling. **Hermes3** is fantastic for conversation, and **Qwen2.5** handles multiple languages really well.
+
+**💡 For Coding**:
+**Qwen2.5-Coder** is specifically designed for code generation and debugging. **DeepSeek Coder** and **Devstral** are also excellent coding assistants.
+
+**🏃‍♂️ If you want something lightweight**:
+**Phi4-Mini** from Microsoft is surprisingly capable for its size, and **Granite** from IBM offers good efficiency.
+
+Pick any model from these families - start with smaller sizes like 8B or 14B if you're not sure about your hardware, then upgrade to 32B or 70B for better performance once you know what works.
+
+#### Setup Instructions
+1. **Install Ollama**: Download from [ollama.com](https://ollama.com)
+2. **Choose & Pull a Model** (based on your hardware):
+   ```bash
+   # For high-end hardware (32GB+ VRAM)
+   ollama pull qwen3:32b           # or llama3.1:70b
+   
+   # For mid-range hardware (8-16GB VRAM)  
+   ollama pull qwen3:8b            # or llama3.1:8b
+   
+   # For resource-constrained hardware (4GB VRAM)
+   ollama pull phi4-mini:3.8b      # or granite3.3:2b
+   ```
+3. **Set Environment**: `OLLAMA_BASE_URL=http://localhost:11434/v1`
+4. **Configure Cipher**: Use `provider: ollama` in your `cipher.yml`
+5. **Check Model Status**: `ollama list` to verify your model is available
+
+#### Configuration Examples
+
+**For High Performance (if you have good hardware):**
+```yaml
+llm:
+  provider: ollama
+  model: qwen3:32b                   # 32B model for excellent performance
+  baseURL: $OLLAMA_BASE_URL          # Points to your local Ollama instance
+  maxIterations: 50                  # For agentic tool calling loops
+```
+
+**For Maximum Performance (requires high-end hardware):**
+```yaml
+llm:
+  provider: ollama
+  model: llama3.1:70b                # 70B model for best results
+  baseURL: $OLLAMA_BASE_URL          # Points to your local Ollama instance
+  maxIterations: 50                  # For agentic tool calling loops
+```
+
+**For Balanced Performance/Resources:**
+```yaml
+llm:
+  provider: ollama
+  model: qwen3:8b                    # 8B model for good balance
+  baseURL: $OLLAMA_BASE_URL          # Points to your local Ollama instance
+  maxIterations: 50                  # For agentic tool calling loops
+```
 
 #### Benefits of Ollama
-- **Privacy**: Run models entirely offline without sending data to external services
-- **No API Costs**: Use models locally without per-token charges
-- **Custom Models**: Load and run custom fine-tuned models
-- **Offline Capability**: Work without internet connectivity
-- **Hardware Control**: Optimize for your specific hardware setup
-- **Local Development**: Perfect for development and testing environments
+- **Complete Privacy**: All processing happens locally, no data leaves your machine
+- **Zero API Costs**: No per-token charges or usage limits
+- **Offline Capability**: Work without internet connectivity once models are downloaded
+- **Hardware Control**: Optimize performance for your specific GPU/CPU setup
+- **Custom Models**: Load and run fine-tuned or custom models
+- **Development Friendly**: Perfect for prototyping and local development
 
 ## Contributing
 
