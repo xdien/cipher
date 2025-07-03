@@ -160,6 +160,17 @@ OLLAMA_BASE_URL=http://localhost:11434/v1  # For Ollama local server
 # Logger Configuration (optional)
 CIPHER_LOG_LEVEL=info             # debug, info, warn, error
 REDACT_SECRETS=true               # true/false - redact sensitive info in logs
+
+# Storage Configuration (optional)
+STORAGE_CACHE_TYPE=in-memory      # redis, in-memory
+STORAGE_CACHE_HOST=localhost      # Redis host (if using redis)
+STORAGE_CACHE_PORT=6379           # Redis port (if using redis)
+STORAGE_CACHE_PASSWORD=           # Redis password (if using redis)
+STORAGE_CACHE_DATABASE=0          # Redis database number (if using redis)
+
+STORAGE_DATABASE_TYPE=in-memory   # sqlite, in-memory
+STORAGE_DATABASE_PATH=./data      # SQLite database path (if using sqlite)
+STORAGE_DATABASE_NAME=cipher.db   # SQLite database name (if using sqlite)
 ```
 
 ### LLM Provider Configuration

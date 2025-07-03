@@ -13,6 +13,26 @@ const envSchema = z.object({
 	OPENROUTER_API_KEY: z.string().optional(),
 	OPENAI_BASE_URL: z.string().optional(),
 	OLLAMA_BASE_URL: z.string().optional(),
+	// Storage Configuration
+	STORAGE_CACHE_TYPE: z.enum(['redis', 'in-memory']).default('in-memory'),
+	STORAGE_CACHE_HOST: z.string().optional(),
+	STORAGE_CACHE_PORT: z.number().optional(),
+	STORAGE_CACHE_PASSWORD: z.string().optional(),
+	STORAGE_CACHE_DATABASE: z.number().optional(),
+	STORAGE_DATABASE_TYPE: z.enum(['sqlite', 'in-memory']).default('in-memory'),
+	STORAGE_DATABASE_PATH: z.string().optional(),
+	STORAGE_DATABASE_NAME: z.string().optional(),
+	// Vector Storage Configuration
+	VECTOR_STORE_TYPE: z.enum(['qdrant', 'in-memory']).default('in-memory'),
+	VECTOR_STORE_HOST: z.string().optional(),
+	VECTOR_STORE_PORT: z.number().optional(),
+	VECTOR_STORE_URL: z.string().optional(),
+	VECTOR_STORE_API_KEY: z.string().optional(),
+	VECTOR_STORE_COLLECTION: z.string().default('default'),
+	VECTOR_STORE_DIMENSION: z.number().default(1536),
+	VECTOR_STORE_DISTANCE: z.enum(['Cosine', 'Euclidean', 'Dot', 'Manhattan']).default('Cosine'),
+	VECTOR_STORE_ON_DISK: z.boolean().default(false),
+	VECTOR_STORE_MAX_VECTORS: z.number().default(10000),
 });
 
 type EnvSchema = z.infer<typeof envSchema>;
@@ -35,8 +55,54 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 				return process.env.OPENROUTER_API_KEY;
 			case 'OPENAI_BASE_URL':
 				return process.env.OPENAI_BASE_URL;
-			case 'OLLAMA_BASE_URL':
-				return process.env.OLLAMA_BASE_URL;
+			// Storage Configuration
+			case 'STORAGE_CACHE_TYPE':
+				return process.env.STORAGE_CACHE_TYPE || 'in-memory';
+			case 'STORAGE_CACHE_HOST':
+				return process.env.STORAGE_CACHE_HOST;
+			case 'STORAGE_CACHE_PORT':
+				return process.env.STORAGE_CACHE_PORT
+					? parseInt(process.env.STORAGE_CACHE_PORT, 10)
+					: undefined;
+			case 'STORAGE_CACHE_PASSWORD':
+				return process.env.STORAGE_CACHE_PASSWORD;
+			case 'STORAGE_CACHE_DATABASE':
+				return process.env.STORAGE_CACHE_DATABASE
+					? parseInt(process.env.STORAGE_CACHE_DATABASE, 10)
+					: undefined;
+			case 'STORAGE_DATABASE_TYPE':
+				return process.env.STORAGE_DATABASE_TYPE || 'in-memory';
+			case 'STORAGE_DATABASE_PATH':
+				return process.env.STORAGE_DATABASE_PATH;
+			case 'STORAGE_DATABASE_NAME':
+				return process.env.STORAGE_DATABASE_NAME;
+			// Vector Storage Configuration
+			case 'VECTOR_STORE_TYPE':
+				return process.env.VECTOR_STORE_TYPE || 'in-memory';
+			case 'VECTOR_STORE_HOST':
+				return process.env.VECTOR_STORE_HOST;
+			case 'VECTOR_STORE_PORT':
+				return process.env.VECTOR_STORE_PORT
+					? parseInt(process.env.VECTOR_STORE_PORT, 10)
+					: undefined;
+			case 'VECTOR_STORE_URL':
+				return process.env.VECTOR_STORE_URL;
+			case 'VECTOR_STORE_API_KEY':
+				return process.env.VECTOR_STORE_API_KEY;
+			case 'VECTOR_STORE_COLLECTION':
+				return process.env.VECTOR_STORE_COLLECTION || 'default';
+			case 'VECTOR_STORE_DIMENSION':
+				return process.env.VECTOR_STORE_DIMENSION
+					? parseInt(process.env.VECTOR_STORE_DIMENSION, 10)
+					: 1536;
+			case 'VECTOR_STORE_DISTANCE':
+				return process.env.VECTOR_STORE_DISTANCE || 'Cosine';
+			case 'VECTOR_STORE_ON_DISK':
+				return process.env.VECTOR_STORE_ON_DISK === 'true';
+			case 'VECTOR_STORE_MAX_VECTORS':
+				return process.env.VECTOR_STORE_MAX_VECTORS
+					? parseInt(process.env.VECTOR_STORE_MAX_VECTORS, 10)
+					: 10000;
 			default:
 				return process.env[prop];
 		}
@@ -53,7 +119,36 @@ export const validateEnv = () => {
 		ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
 		OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
 		OPENAI_BASE_URL: process.env.OPENAI_BASE_URL,
-		OLLAMA_BASE_URL: process.env.OLLAMA_BASE_URL,
+		// Storage Configuration
+		STORAGE_CACHE_TYPE: process.env.STORAGE_CACHE_TYPE || 'in-memory',
+		STORAGE_CACHE_HOST: process.env.STORAGE_CACHE_HOST,
+		STORAGE_CACHE_PORT: process.env.STORAGE_CACHE_PORT
+			? parseInt(process.env.STORAGE_CACHE_PORT, 10)
+			: undefined,
+		STORAGE_CACHE_PASSWORD: process.env.STORAGE_CACHE_PASSWORD,
+		STORAGE_CACHE_DATABASE: process.env.STORAGE_CACHE_DATABASE
+			? parseInt(process.env.STORAGE_CACHE_DATABASE, 10)
+			: undefined,
+		STORAGE_DATABASE_TYPE: process.env.STORAGE_DATABASE_TYPE || 'in-memory',
+		STORAGE_DATABASE_PATH: process.env.STORAGE_DATABASE_PATH,
+		STORAGE_DATABASE_NAME: process.env.STORAGE_DATABASE_NAME,
+		// Vector Storage Configuration
+		VECTOR_STORE_TYPE: process.env.VECTOR_STORE_TYPE || 'in-memory',
+		VECTOR_STORE_HOST: process.env.VECTOR_STORE_HOST,
+		VECTOR_STORE_PORT: process.env.VECTOR_STORE_PORT
+			? parseInt(process.env.VECTOR_STORE_PORT, 10)
+			: undefined,
+		VECTOR_STORE_URL: process.env.VECTOR_STORE_URL,
+		VECTOR_STORE_API_KEY: process.env.VECTOR_STORE_API_KEY,
+		VECTOR_STORE_COLLECTION: process.env.VECTOR_STORE_COLLECTION || 'default',
+		VECTOR_STORE_DIMENSION: process.env.VECTOR_STORE_DIMENSION
+			? parseInt(process.env.VECTOR_STORE_DIMENSION, 10)
+			: 1536,
+		VECTOR_STORE_DISTANCE: process.env.VECTOR_STORE_DISTANCE || 'Cosine',
+		VECTOR_STORE_ON_DISK: process.env.VECTOR_STORE_ON_DISK === 'true',
+		VECTOR_STORE_MAX_VECTORS: process.env.VECTOR_STORE_MAX_VECTORS
+			? parseInt(process.env.VECTOR_STORE_MAX_VECTORS, 10)
+			: 10000,
 	};
 
 	const result = envSchema.safeParse(envToValidate);

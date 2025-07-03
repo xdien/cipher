@@ -9,12 +9,12 @@ mcpServers:
       - .
 
 # describes the llm configuration
-# llm:
-#   # OpenAI configuration - Updated to use model that supports tool calling
-#   provider: openai # Do the same for anthropic and openrouter
-#   model: o4-mini  
-#   apiKey: $OPENAI_API_KEY
-#   maxIterations: 50
+llm:
+  # OpenRouter configuration - Updated to use model that supports tool calling
+  provider: openrouter
+  model: o4-mini  
+  apiKey: $OPENROUTER_API_KEY
+  maxIterations: 50
 
 # # System prompt
 # systemPrompt: "You are a helpful AI assistant with memory capabilities. Please confirm you're working with OpenAI API." 

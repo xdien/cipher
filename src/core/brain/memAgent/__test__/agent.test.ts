@@ -97,6 +97,25 @@ describe('MemAgent', () => {
 				getSession: vi.fn().mockResolvedValue(null),
 				init: vi.fn().mockResolvedValue(undefined),
 			},
+			internalToolManager: {
+				initialize: vi.fn().mockResolvedValue(undefined),
+				getAllTools: vi.fn().mockReturnValue({}),
+				executeTool: vi.fn().mockResolvedValue({ success: true }),
+				isInternalTool: vi.fn().mockReturnValue(true),
+				getManagerStats: vi.fn().mockReturnValue({ totalTools: 3, totalExecutions: 0 }),
+			},
+			unifiedToolManager: {
+				getAllTools: vi.fn().mockResolvedValue({}),
+				executeTool: vi.fn().mockResolvedValue({ success: true }),
+				getToolsForProvider: vi.fn().mockResolvedValue([]),
+				isToolAvailable: vi.fn().mockResolvedValue(true),
+				getToolSource: vi.fn().mockResolvedValue('internal'),
+				getStats: vi.fn().mockReturnValue({
+					internalTools: { totalTools: 3 },
+					mcpTools: { clientCount: 0 },
+					config: { enableInternalTools: true, enableMcpTools: true },
+				}),
+			},
 		};
 
 		// Mock the service initializer
@@ -424,6 +443,8 @@ describe('MemAgent', () => {
 				promptManager: undefined,
 				stateManager: mockServices.stateManager,
 				sessionManager: mockServices.sessionManager,
+				internalToolManager: mockServices.internalToolManager,
+				unifiedToolManager: mockServices.unifiedToolManager,
 			};
 
 			const { createAgentServices } = await import('../../../utils/service-initializer.js');
@@ -442,6 +463,8 @@ describe('MemAgent', () => {
 			expect(agent.promptManager).toBeDefined();
 			expect(agent.stateManager).toBeDefined();
 			expect(agent.sessionManager).toBeDefined();
+			expect(agent.internalToolManager).toBeDefined();
+			expect(agent.unifiedToolManager).toBeDefined();
 			expect(agent.services).toBeDefined();
 		});
 	});

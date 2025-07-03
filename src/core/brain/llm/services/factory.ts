@@ -1,4 +1,5 @@
 import { MCPManager } from '../../../mcp/manager.js';
+import { UnifiedToolManager } from '../../tools/unified-tool-manager.js';
 import { ContextManager } from '../messages/manager.js';
 import { LLMConfig } from '../config.js';
 import { ILLMService } from './types.js';
@@ -60,7 +61,8 @@ function getOpenAICompatibleBaseURL(llmConfig: LLMConfig): string {
 function _createLLMService(
 	config: LLMConfig,
 	mcpManager: MCPManager,
-	contextManager: ContextManager
+	contextManager: ContextManager,
+	unifiedToolManager?: UnifiedToolManager
 ): ILLMService {
 	// Extract and validate API key
 	const apiKey = extractApiKey(config);
@@ -77,7 +79,8 @@ function _createLLMService(
 				config.model,
 				mcpManager,
 				contextManager,
-				config.maxIterations
+				config.maxIterations,
+				unifiedToolManager
 			);
 		}
 		case 'openrouter': {
@@ -96,7 +99,8 @@ function _createLLMService(
 				config.model,
 				mcpManager,
 				contextManager,
-				config.maxIterations
+				config.maxIterations,
+				unifiedToolManager
 			);
 		}
 		case 'anthropic': {
@@ -106,7 +110,8 @@ function _createLLMService(
 				config.model,
 				mcpManager,
 				contextManager,
-				config.maxIterations
+				config.maxIterations,
+				unifiedToolManager
 			);
 		}
 		case 'ollama': {
@@ -132,7 +137,8 @@ function _createLLMService(
 export function createLLMService(
 	config: LLMConfig,
 	mcpManager: MCPManager,
-	contextManager: ContextManager
+	contextManager: ContextManager,
+	unifiedToolManager?: UnifiedToolManager
 ): ILLMService {
-	return _createLLMService(config, mcpManager, contextManager);
+	return _createLLMService(config, mcpManager, contextManager, unifiedToolManager);
 }

@@ -1,0 +1,414 @@
+/**
+ * Vector Storage Manager Implementation
+ *
+ * Orchestrates the vector storage system with backend management.
+ * Provides lazy loading, graceful fallbacks, and connection management.
+ *
+ * @module vector_storage/manager
+ */
+
+import type { VectorStore, VectorStoreConfig } from './types.js';
+import { VectorStoreSchema } from './config.js';
+import { VectorStoreError, VectorStoreConnectionError } from './backend/types.js';
+import { Logger, createLogger } from '../logger/index.js';
+import {
+	LOG_PREFIXES,
+	ERROR_MESSAGES,
+	TIMEOUTS,
+	BACKEND_TYPES,
+	DEFAULTS,
+	METRICS_EVENTS,
+} from './constants.js';
+
+/**
+ * Health check result for vector store backend
+ */
+export interface HealthCheckResult {
+	backend: boolean;
+	overall: boolean;
+	details?: {
+		backend?: { status: string; latency?: number; error?: string };
+	};
+}
+
+/**
+ * Vector storage system information
+ */
+export interface VectorStoreInfo {
+	connected: boolean;
+	backend: {
+		type: string;
+		connected: boolean;
+		fallback: boolean;
+		collectionName: string;
+		dimension: number;
+	};
+	connectionAttempts: number;
+	lastError: string | undefined;
+}
+
+/**
+ * Vector Storage Manager
+ *
+ * Manages the lifecycle of vector storage backend with lazy loading and fallback support.
+ * Follows the factory pattern with graceful degradation to in-memory storage.
+ *
+ * @example
+ * ```typescript
+ * const manager = new VectorStoreManager(config);
+ * const store = await manager.connect();
+ *
+ * // Use vector store
+ * await store.insert([vector], ['id1'], [{ title: 'Document' }]);
+ * const results = await store.search(queryVector, 5);
+ *
+ * // Cleanup
+ * await manager.disconnect();
+ * ```
+ */
+export class VectorStoreManager {
+	// Core state
+	private store: VectorStore | undefined;
+	private connected = false;
+	private readonly config: VectorStoreConfig;
+	private readonly logger: Logger;
+
+	// Connection tracking
+	private connectionAttempts = 0;
+	private lastConnectionError?: Error;
+
+	// Backend metadata
+	private backendMetadata = {
+		type: 'unknown',
+		isFallback: false,
+		connectionTime: 0,
+	};
+
+	// Lazy loading module references (static to share across instances)
+	private static qdrantModule?: any;
+	private static inMemoryModule?: any;
+
+	/**
+	 * Creates a new VectorStoreManager instance
+	 *
+	 * @param config - Vector storage configuration
+	 * @throws {Error} If configuration is invalid
+	 */
+	constructor(config: VectorStoreConfig) {
+		// Validate configuration using Zod schema
+		const validationResult = VectorStoreSchema.safeParse(config);
+		if (!validationResult.success) {
+			throw new Error(
+				`${ERROR_MESSAGES.INVALID_CONFIG}: ${validationResult.error.errors
+					.map(e => `${e.path.join('.')}: ${e.message}`)
+					.join(', ')}`
+			);
+		}
+
+		this.config = validationResult.data;
+		this.logger = createLogger({
+			level: process.env.LOG_LEVEL || 'info',
+		});
+
+		this.logger.info(`${LOG_PREFIXES.MANAGER} Initialized with configuration`, {
+			type: this.config.type,
+			collection: this.config.collectionName,
+			dimension: this.config.dimension,
+		});
+	}
+
+	/**
+	 * Get the current vector storage configuration
+	 *
+	 * @returns The vector storage configuration
+	 */
+	public getConfig(): Readonly<VectorStoreConfig> {
+		return this.config;
+	}
+
+	/**
+	 * Get information about the vector storage system
+	 *
+	 * @returns Vector storage system information including connection status and backend type
+	 */
+	public getInfo(): VectorStoreInfo {
+		return {
+			connected: this.connected,
+			backend: {
+				type: this.backendMetadata.type,
+				connected: this.store?.isConnected() ?? false,
+				fallback: this.backendMetadata.isFallback,
+				collectionName: this.config.collectionName,
+				dimension: this.config.dimension,
+			},
+			connectionAttempts: this.connectionAttempts,
+			lastError: this.lastConnectionError?.message,
+		};
+	}
+
+	/**
+	 * Get the current vector store if connected
+	 *
+	 * @returns The vector store or null if not connected
+	 */
+	public getStore(): VectorStore | null {
+		if (!this.connected || !this.store) {
+			return null;
+		}
+
+		return this.store;
+	}
+
+	/**
+	 * Check if the vector storage manager is connected
+	 *
+	 * @returns true if backend is connected
+	 */
+	public isConnected(): boolean {
+		return this.connected && this.store?.isConnected() === true;
+	}
+
+	/**
+	 * Connect to vector storage backend
+	 *
+	 * @returns The connected vector store
+	 * @throws {VectorStoreConnectionError} If backend fails to connect
+	 */
+	public async connect(): Promise<VectorStore> {
+		// Check if already connected
+		if (this.connected && this.store) {
+			this.logger.debug(`${LOG_PREFIXES.MANAGER} Already connected`, {
+				type: this.backendMetadata.type,
+			});
+
+			return this.store;
+		}
+
+		this.connectionAttempts++;
+		this.logger.info(
+			`${LOG_PREFIXES.MANAGER} Starting connection attempt ${this.connectionAttempts}`
+		);
+
+		try {
+			// Create and connect backend
+			const startTime = Date.now();
+			try {
+				this.store = await this.createBackend();
+				await this.store.connect();
+				this.backendMetadata.connectionTime = Date.now() - startTime;
+
+				this.logger.info(`${LOG_PREFIXES.MANAGER} Connected successfully`, {
+					type: this.backendMetadata.type,
+					isFallback: this.backendMetadata.isFallback,
+					connectionTime: `${this.backendMetadata.connectionTime}ms`,
+				});
+			} catch (backendError) {
+				// If the configured backend fails, try fallback to in-memory
+				this.logger.warn(`${LOG_PREFIXES.MANAGER} Backend connection failed, attempting fallback`, {
+					error: backendError instanceof Error ? backendError.message : String(backendError),
+					originalType: this.config.type,
+				});
+
+				if (this.config.type !== BACKEND_TYPES.IN_MEMORY) {
+					const { InMemoryBackend } = await import('./backend/in-memory.js');
+					this.store = new InMemoryBackend({
+						type: 'in-memory',
+						collectionName: this.config.collectionName,
+						dimension: this.config.dimension,
+						maxVectors: 10000,
+					});
+					await this.store.connect();
+					this.backendMetadata.type = BACKEND_TYPES.IN_MEMORY;
+					this.backendMetadata.isFallback = true;
+					this.backendMetadata.connectionTime = Date.now() - startTime;
+
+					this.logger.info(`${LOG_PREFIXES.MANAGER} Connected to fallback backend`, {
+						type: this.backendMetadata.type,
+						originalType: this.config.type,
+					});
+				} else {
+					throw backendError; // Re-throw if already using in-memory
+				}
+			}
+
+			this.connected = true;
+
+			this.logger.info(`${LOG_PREFIXES.MANAGER} Vector storage system connected`, {
+				backend: this.backendMetadata.type,
+				totalConnectionTime: `${this.backendMetadata.connectionTime}ms`,
+			});
+
+			return this.store!;
+		} catch (error) {
+			// Store error for reporting
+			this.lastConnectionError = error as Error;
+
+			// Disconnect any successfully connected backend
+			if (this.store?.isConnected()) {
+				await this.store
+					.disconnect()
+					.catch(err =>
+						this.logger.error(`${LOG_PREFIXES.MANAGER} Error during cleanup disconnect`, {
+							error: err,
+						})
+					);
+			}
+
+			// Reset state
+			this.store = undefined;
+			this.connected = false;
+
+			throw error;
+		}
+	}
+
+	/**
+	 * Disconnect from vector storage backend
+	 */
+	public async disconnect(): Promise<void> {
+		if (!this.connected) {
+			this.logger.debug(`${LOG_PREFIXES.MANAGER} Already disconnected`);
+			return;
+		}
+
+		this.logger.info(`${LOG_PREFIXES.MANAGER} Disconnecting vector storage backend`);
+
+		try {
+			if (this.store?.isConnected()) {
+				await Promise.race([
+					this.store.disconnect(),
+					new Promise((_, reject) =>
+						setTimeout(() => reject(new Error('Disconnect timeout')), TIMEOUTS.SHUTDOWN)
+					),
+				]);
+
+				this.logger.info(`${LOG_PREFIXES.MANAGER} Disconnected successfully`);
+			}
+		} catch (error) {
+			this.logger.error(`${LOG_PREFIXES.MANAGER} Disconnect error`, { error });
+			throw error;
+		} finally {
+			// Always clean up state
+			this.store = undefined;
+			this.connected = false;
+
+			// Reset metadata
+			this.backendMetadata = {
+				type: 'unknown',
+				isFallback: false,
+				connectionTime: 0,
+			};
+
+			this.logger.info(`${LOG_PREFIXES.MANAGER} Vector storage system disconnected`);
+		}
+	}
+
+	/**
+	 * Perform health check on the backend
+	 *
+	 * @returns Health check results
+	 */
+	public async healthCheck(): Promise<HealthCheckResult> {
+		if (!this.connected || !this.store) {
+			return {
+				backend: false,
+				overall: false,
+				details: {
+					backend: { status: 'not_connected' },
+				},
+			};
+		}
+
+		this.logger.debug(`${LOG_PREFIXES.MANAGER} Performing health check`);
+
+		try {
+			const startTime = Date.now();
+
+			// Test basic operations
+			const isConnected = this.store.isConnected();
+			const latency = Date.now() - startTime;
+
+			const result = {
+				backend: isConnected,
+				overall: isConnected,
+				details: {
+					backend: {
+						status: isConnected ? 'healthy' : 'unhealthy',
+						latency,
+					},
+				},
+			};
+
+			this.logger.info(`${LOG_PREFIXES.MANAGER} Health check completed`, {
+				overall: result.overall,
+				latency: `${latency}ms`,
+			});
+
+			return result;
+		} catch (error) {
+			this.logger.error(`${LOG_PREFIXES.MANAGER} Health check failed`, { error });
+
+			return {
+				backend: false,
+				overall: false,
+				details: {
+					backend: {
+						status: 'error',
+						error: error instanceof Error ? error.message : String(error),
+					},
+				},
+			};
+		}
+	}
+
+	// Private helper methods
+
+	/**
+	 * Create vector store backend based on configuration
+	 */
+	private async createBackend(): Promise<VectorStore> {
+		const config = this.config;
+
+		this.logger.debug(`${LOG_PREFIXES.MANAGER} Creating backend`, { type: config.type });
+
+		switch (config.type) {
+			case BACKEND_TYPES.QDRANT: {
+				try {
+					// Lazy load Qdrant module
+					if (!VectorStoreManager.qdrantModule) {
+						this.logger.debug(`${LOG_PREFIXES.MANAGER} Lazy loading Qdrant module`);
+						const { QdrantBackend } = await import('./backend/qdrant.js');
+						VectorStoreManager.qdrantModule = QdrantBackend;
+					}
+
+					const QdrantBackend = VectorStoreManager.qdrantModule;
+					this.backendMetadata.type = BACKEND_TYPES.QDRANT;
+					this.backendMetadata.isFallback = false;
+
+					return new QdrantBackend(config);
+				} catch (error) {
+					this.logger.debug(`${LOG_PREFIXES.MANAGER} Failed to create Qdrant backend`, {
+						error: error instanceof Error ? error.message : String(error),
+					});
+					throw error; // Let connection handler deal with fallback
+				}
+			}
+
+			case BACKEND_TYPES.IN_MEMORY:
+			default: {
+				// Use in-memory backend
+				if (!VectorStoreManager.inMemoryModule) {
+					this.logger.debug(`${LOG_PREFIXES.MANAGER} Lazy loading in-memory module`);
+					const { InMemoryBackend } = await import('./backend/in-memory.js');
+					VectorStoreManager.inMemoryModule = InMemoryBackend;
+				}
+
+				const InMemoryBackend = VectorStoreManager.inMemoryModule;
+				this.backendMetadata.type = BACKEND_TYPES.IN_MEMORY;
+				this.backendMetadata.isFallback = false;
+
+				return new InMemoryBackend(config);
+			}
+		}
+	}
+}
