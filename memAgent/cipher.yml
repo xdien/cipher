@@ -8,20 +8,23 @@ mcpServers:
       - "@modelcontextprotocol/server-filesystem"
       - .
 
-# describes the llm configuration
-# OpenRouter configuration (commented out)
-# llm:
-#   provider: openrouter
-#   model: o4-mini  
-#   apiKey: $OPENROUTER_API_KEY
-#   maxIterations: 50
-
-# Ollama configuration - Using larger model for better performance
+describes the llm configuration
 llm:
-  provider: ollama
-  model: qwen3:32b                   # 32B model for excellent performance with tool calling
+  # OpenRouter configuration - Updated to use model that supports tool calling
+  provider: openrouter
+  model: o4-mini  
+  apiKey: $OPENROUTER_API_KEY
   maxIterations: 50
-  baseURL: $OLLAMA_BASE_URL 
+
+# System prompt
+systemPrompt: "You are a helpful AI assistant with memory capabilities. Please confirm you're working with OpenAI API." 
+
+# Ollama configuration
+# llm:
+#   provider: ollama
+#   model: qwen3:8b      # Use the model you downloaded
+#   maxIterations: 50
+#   baseURL: $OLLAMA_BASE_URL 
 
 # System Prompt
-systemPrompt: "You are a helpful AI assistant with memory capabilities running on Ollama. You have access to local files and can perform various tasks using the available tools. You are powered by a large language model that excels at reasoning and tool usage."
+# systemPrompt: "You are a helpful AI assistant with memory capabilities running on Ollama. You have access to local files and can perform various tasks using the available tools."
