@@ -245,13 +245,11 @@ export class VectorStoreManager {
 
 			// Disconnect any successfully connected backend
 			if (this.store?.isConnected()) {
-				await this.store
-					.disconnect()
-					.catch(err =>
-						this.logger.error(`${LOG_PREFIXES.MANAGER} Error during cleanup disconnect`, {
-							error: err,
-						})
-					);
+				await this.store.disconnect().catch(err =>
+					this.logger.error(`${LOG_PREFIXES.MANAGER} Error during cleanup disconnect`, {
+						error: err,
+					})
+				);
 			}
 
 			// Reset state

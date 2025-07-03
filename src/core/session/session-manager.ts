@@ -180,7 +180,7 @@ export class SessionManager {
 		}
 
 		let oldestSessionId: string | null = null;
-		let oldestActivity = Date.now();
+		let oldestActivity = Number.MAX_SAFE_INTEGER; // Initialize to maximum value to find minimum
 
 		for (const [sessionId, metadata] of this.sessions) {
 			if (metadata.lastActivity < oldestActivity) {
