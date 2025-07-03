@@ -16,7 +16,6 @@ import {
 	InternalToolManagerConfig,
 	InternalToolContext,
 	ToolExecutionStats,
-	ToolRegistrationResult,
 	INTERNAL_TOOL_PREFIX,
 	createInternalToolName,
 	isInternalToolName,
@@ -50,6 +49,11 @@ export class InternalToolManager implements IInternalToolManager {
 	private initialized = false;
 	private stats = new Map<string, StatsEntry>();
 	private readonly maxExecutionHistorySize = 100;
+	private services?: {
+		embeddingManager?: any;
+		vectorStoreManager?: any;
+		llmService?: any;
+	};
 
 	constructor(config: InternalToolManagerConfig = {}) {
 		this.config = { ...DEFAULT_CONFIG, ...config };
@@ -94,7 +98,7 @@ export class InternalToolManager implements IInternalToolManager {
 	/**
 	 * Register a new internal tool
 	 */
-	public registerTool(tool: InternalTool): ToolRegistrationResult {
+	public registerTool(tool: InternalTool): { success: boolean; message: string; conflictedWith?: string } {
 		this.ensureInitialized();
 
 		const result = this.registry.registerTool(tool);
@@ -178,7 +182,9 @@ export class InternalToolManager implements IInternalToolManager {
 			toolName: normalizedName,
 			startTime,
 			sessionId: context?.sessionId,
+			userId: context?.userId,
 			metadata: context?.metadata,
+			services: this.services,
 		};
 
 		logger.info(`InternalToolManager: Executing tool '${normalizedName}'`, {
@@ -260,6 +266,33 @@ export class InternalToolManager implements IInternalToolManager {
 	}
 
 	/**
+	 * Get all tool statistics
+	 */
+	public getStatistics(): Record<string, ToolExecutionStats> {
+		const allStats: Record<string, ToolExecutionStats> = {};
+		
+		for (const [toolName, entry] of this.stats.entries()) {
+			allStats[toolName] = { ...entry.stats };
+		}
+		
+		return allStats;
+	}
+
+	/**
+	 * Get available tools list
+	 */
+	public async getAvailableTools(): Promise<Array<{ name: string; description: string; category: string }>> {
+		this.ensureInitialized();
+		
+		const tools = this.registry.getAllTools();
+		return Object.values(tools).map(tool => ({
+			name: tool.name,
+			description: tool.description,
+			category: tool.category,
+		}));
+	}
+
+	/**
 	 * Clear all execution statistics
 	 */
 	public clearStats(): void {
@@ -305,7 +338,7 @@ export class InternalToolManager implements IInternalToolManager {
 			}, this.config.timeout);
 
 			tool
-				.handler(args)
+				.handler(args, context)
 				.then(result => {
 					clearTimeout(timeoutId);
 					resolve(result);
@@ -324,13 +357,13 @@ export class InternalToolManager implements IInternalToolManager {
 		let entry = this.stats.get(toolName);
 
 		if (!entry) {
-			entry = this.createStatsEntry();
+			entry = this.createStatsEntry(toolName);
 			this.stats.set(toolName, entry);
 		}
 
 		// Update statistics
 		entry.stats.totalExecutions++;
-		entry.stats.lastExecuted = Date.now();
+		entry.stats.lastExecution = new Date().toISOString();
 
 		if (success) {
 			entry.stats.successfulExecutions++;
@@ -357,16 +390,17 @@ export class InternalToolManager implements IInternalToolManager {
 	private initializeToolStats(toolName: string): void {
 		const normalizedName = createInternalToolName(toolName);
 		if (!this.stats.has(normalizedName)) {
-			this.stats.set(normalizedName, this.createStatsEntry());
+			this.stats.set(normalizedName, this.createStatsEntry(normalizedName));
 		}
 	}
 
 	/**
 	 * Create a new stats entry
 	 */
-	private createStatsEntry(): StatsEntry {
+	private createStatsEntry(toolName: string): StatsEntry {
 		return {
 			stats: {
+				toolName,
 				totalExecutions: 0,
 				successfulExecutions: 0,
 				failedExecutions: 0,
@@ -411,5 +445,21 @@ export class InternalToolManager implements IInternalToolManager {
 	 */
 	public isEnabled(): boolean {
 		return this.config.enabled;
+	}
+
+	/**
+	 * Set agent services for tools that need access to them
+	 */
+	public setServices(services: {
+		embeddingManager?: any;
+		vectorStoreManager?: any;
+		llmService?: any;
+	}): void {
+		this.services = services;
+		logger.debug('InternalToolManager: Services configured', {
+			hasEmbeddingManager: !!services.embeddingManager,
+			hasVectorStoreManager: !!services.vectorStoreManager,
+			hasLlmService: !!services.llmService,
+		});
 	}
 }
