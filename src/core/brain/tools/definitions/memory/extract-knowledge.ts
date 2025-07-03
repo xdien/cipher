@@ -62,16 +62,44 @@ export const extractKnowledgeTool: InternalTool = {
 	handler: async (args: { knowledge: string[] }) => {
 		try {
 			logger.info('ExtractFact: Processing fact extraction request', {
-				factCount: args.knowledge.length,
+				factCount: Array.isArray(args.knowledge) ? args.knowledge.length : 1,
+				inputType: typeof args.knowledge,
 			});
 
-			// Validate input
-			if (!args.knowledge || args.knowledge.length === 0) {
+			// Validate input and handle both string and array inputs
+			let knowledgeArray: string[];
+			
+			if (!args.knowledge) {
+				throw new Error('No facts provided for extraction');
+			}
+			
+			// Handle case where LLM passes knowledge as a JSON string instead of array
+			if (typeof args.knowledge === 'string') {
+				try {
+					// Try to parse as JSON array first
+					const parsed = JSON.parse(args.knowledge);
+					if (Array.isArray(parsed)) {
+						knowledgeArray = parsed;
+					} else {
+						// Treat as single string fact
+						knowledgeArray = [args.knowledge];
+					}
+				} catch {
+					// Not valid JSON, treat as single string fact
+					knowledgeArray = [args.knowledge];
+				}
+			} else if (Array.isArray(args.knowledge)) {
+				knowledgeArray = args.knowledge;
+			} else {
+				throw new Error('Knowledge must be a string or array of strings');
+			}
+			
+			if (knowledgeArray.length === 0) {
 				throw new Error('No facts provided for extraction');
 			}
 
 			// Filter out empty or invalid facts
-			const validFacts = args.knowledge
+			const validFacts = knowledgeArray
 				.filter(fact => fact && typeof fact === 'string' && fact.trim().length > 0)
 				.map(fact => fact.trim());
 
@@ -107,7 +135,7 @@ export const extractKnowledgeTool: InternalTool = {
 			const result = {
 				success: true,
 				extracted: processedFacts.length,
-				skipped: args.knowledge.length - validFacts.length,
+				skipped: knowledgeArray.length - validFacts.length,
 				timestamp: new Date().toISOString(),
 				facts: processedFacts.map(f => ({
 					id: f.metadata.id,
@@ -130,14 +158,15 @@ export const extractKnowledgeTool: InternalTool = {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			logger.error('ExtractFact: Failed to extract facts', {
 				error: errorMessage,
-				factCount: args.knowledge?.length || 0,
+				factCount: Array.isArray(args.knowledge) ? args.knowledge.length : 1,
+				inputType: typeof args.knowledge,
 			});
 
 			return {
 				success: false,
 				error: errorMessage,
 				extracted: 0,
-				skipped: args.knowledge?.length || 0,
+				skipped: Array.isArray(args.knowledge) ? args.knowledge.length : 1,
 				timestamp: new Date().toISOString(),
 			};
 		}

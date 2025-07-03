@@ -14,6 +14,7 @@ import { VectorStoreManager } from '../vector_storage/index.js';
 import { createLLMService } from '../brain/llm/services/factory.js';
 import { createContextManager } from '../brain/llm/messages/factory.js';
 import { ILLMService } from '../brain/llm/index.js';
+import { createVectorStoreFromEnv } from '../vector_storage/factory.js';
 
 export type AgentServices = {
 	mcpManager: MCPManager;
@@ -24,7 +25,7 @@ export type AgentServices = {
 	unifiedToolManager: UnifiedToolManager;
 	embeddingManager: EmbeddingManager;
 	vectorStoreManager: VectorStoreManager;
-	llmService?: ILLMService; // Optional for Phase 3 features
+	llmService?: ILLMService;
 };
 
 export async function createAgentServices(agentConfig: AgentConfig): Promise<AgentServices> {
@@ -69,19 +70,14 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 
 	// 3. Initialize vector storage manager with configuration
 	logger.debug('Initializing vector storage manager...');
-	const vectorStoreManager = new VectorStoreManager({
-		type: 'in-memory', // Default to in-memory for Phase 2, can be configured later
-		collectionName: 'agent_memories',
-		dimension: 1536, // Default OpenAI embedding dimension
-		maxVectors: 10000,
-	});
+	const { manager: vectorStoreManager, store: _vectorStore } = await createVectorStoreFromEnv();
 
 	try {
-		await vectorStoreManager.connect();
 		logger.info('Vector storage manager initialized successfully', {
 			backend: vectorStoreManager.getInfo().backend.type,
 			collection: vectorStoreManager.getInfo().backend.collectionName,
 			dimension: vectorStoreManager.getInfo().backend.dimension,
+			fallback: vectorStoreManager.getInfo().backend.fallback || false,
 		});
 	} catch (error) {
 		logger.warn('Failed to initialize vector storage manager', {
@@ -99,10 +95,10 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 	const stateManager = new MemAgentStateManager(config);
 	logger.debug('Agent state manager initialized');
 
-	// 6. Initialize LLM service for Phase 3 features (optional)
+	// 6. Initialize LLM service
 	let llmService: ILLMService | undefined = undefined;
 	try {
-		logger.debug('Initializing LLM service for Phase 3 features...');
+		logger.debug('Initializing LLM service...');
 		const llmConfig = stateManager.getLLMConfig();
 		const contextManager = createContextManager(llmConfig, promptManager);
 		
@@ -112,12 +108,12 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 			contextManager
 		);
 		
-		logger.info('LLM service initialized successfully for Phase 3 features', {
+		logger.info('LLM service initialized successfully', {
 			provider: llmConfig.provider,
 			model: llmConfig.model,
 		});
 	} catch (error) {
-		logger.warn('Failed to initialize LLM service for Phase 3 features', {
+		logger.warn('Failed to initialize LLM service', {
 			error: error instanceof Error ? error.message : String(error),
 		});
 	}
@@ -159,7 +155,7 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 	internalToolManager.setServices({
 		embeddingManager,
 		vectorStoreManager,
-		llmService, // Phase 3: Add LLM service for intelligent reasoning
+		llmService,
 	});
 
 	// 9. Initialize unified tool manager
@@ -197,6 +193,6 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 		unifiedToolManager,
 		embeddingManager,
 		vectorStoreManager,
-		llmService, // Phase 3: Include LLM service
+		llmService,
 	};
 }

@@ -147,7 +147,7 @@ const DEFAULT_OPTIONS = {
 	maxSimilarResults: 5,
 	enableBatchProcessing: true,
 	useLLMDecisions: true, // Enable LLM decisions by default
-	confidenceThreshold: 0.6, // Minimum confidence threshold
+	confidenceThreshold: 0.4, // Lowered to allow fallback operations to proceed
 	enableDeleteOperations: true, // Enable DELETE operations
 } as const;
 
@@ -416,16 +416,21 @@ export const memoryOperationTool: InternalTool = {
 						// Search for similar memories
 						const searchResults = await vectorStore.search(
 							embedding, 
-							options.maxSimilarResults,
-							{ threshold: options.similarityThreshold }
+							options.maxSimilarResults
 						);
 						
-						similarMemories = searchResults;
+						// Apply similarity threshold filtering
+						similarMemories = searchResults.filter(result => 
+							(result.score || 0) >= options.similarityThreshold
+						);
+						
 						totalSimilarMemories += similarMemories.length;
 						
 						logger.debug('MemoryOperation: Found similar memories', {
 							factIndex: i,
-							similarCount: similarMemories.length,
+							totalResults: searchResults.length,
+							filteredResults: similarMemories.length,
+							threshold: options.similarityThreshold,
 						});
 						
 						// Use LLM decision making if available and enabled
@@ -485,14 +490,14 @@ export const memoryOperationTool: InternalTool = {
 							error: error instanceof Error ? error.message : String(error),
 						});
 						
-						// Fallback to ADD operation
+						// Fallback to ADD operation with higher confidence
 						memoryAction = {
 							id: generateMemoryId(i),
 							text: fact,
 							event: 'ADD',
 							tags,
-							confidence: 0.5,
-							reasoning: 'Fallback to ADD due to analysis error',
+							confidence: 0.6, // Increased from 0.5 to exceed threshold
+							reasoning: `Fallback to ADD due to analysis error (${error instanceof Error ? error.message : String(error)})`,
 							...(codePattern && { code_pattern: codePattern }),
 						};
 						fallbackDecisionsUsed++;
@@ -508,7 +513,7 @@ export const memoryOperationTool: InternalTool = {
 						text: fact,
 						event: isNew ? 'ADD' : 'NONE',
 						tags,
-						confidence: 0.6,
+						confidence: isNew ? 0.7 : 0.5, // Higher confidence for new memories
 						reasoning: isNew ? 'No similar memories found in basic analysis' : 'Similar memory detected in basic analysis',
 						...(codePattern && { code_pattern: codePattern }),
 					};
@@ -564,6 +569,23 @@ export const memoryOperationTool: InternalTool = {
 				averageConfidence: result.statistics.averageConfidence.toFixed(2),
 				processingTime: `${processingTime}ms`,
 			});
+
+			// Persist memory actions to vector store if available
+			if (vectorStore && embedder) {
+				try {
+					await persistMemoryActions(memoryActions, vectorStore, embedder);
+					logger.info('MemoryOperation: Successfully persisted memories to vector store', {
+						persistedCount: memoryActions.filter(a => a.event === 'ADD' || a.event === 'UPDATE').length,
+					});
+				} catch (error) {
+					logger.warn('MemoryOperation: Failed to persist memories to vector store', {
+						error: error instanceof Error ? error.message : String(error),
+					});
+					// Don't fail the entire operation if persistence fails
+				}
+			} else {
+				logger.debug('MemoryOperation: Vector store or embedder not available, skipping persistence');
+			}
 
 			return result;
 
@@ -1049,16 +1071,79 @@ async function determineMemoryOperation(
  * This is a fallback when embeddings are not available
  */
 function calculateTextSimilarity(text1: string, text2: string): number {
-	// Simple token-based similarity calculation
-	const tokens1 = text1.toLowerCase().split(/\s+/);
-	const tokens2 = text2.toLowerCase().split(/\s+/);
-	
-	const set1 = new Set(tokens1);
-	const set2 = new Set(tokens2);
-	
-	const intersection = new Set([...set1].filter(x => set2.has(x)));
-	const union = new Set([...set1, ...set2]);
-	
-	// Jaccard similarity
+	const words1 = new Set(text1.toLowerCase().split(/\s+/));
+	const words2 = new Set(text2.toLowerCase().split(/\s+/));
+
+	const intersection = new Set([...words1].filter(word => words2.has(word)));
+	const union = new Set([...words1, ...words2]);
+
 	return intersection.size / union.size;
+}
+
+/**
+ * Persist memory actions to vector store
+ */
+async function persistMemoryActions(
+	memoryActions: MemoryAction[],
+	vectorStore: any,
+	embedder: any
+): Promise<void> {
+	const actionsToProcess = memoryActions.filter(action => 
+		action.event === 'ADD' || action.event === 'UPDATE'
+	);
+
+	if (actionsToProcess.length === 0) {
+		logger.debug('MemoryOperation: No actions require persistence');
+		return;
+	}
+
+	logger.info('MemoryOperation: Persisting memory actions', {
+		totalActions: actionsToProcess.length,
+		addActions: actionsToProcess.filter(a => a.event === 'ADD').length,
+		updateActions: actionsToProcess.filter(a => a.event === 'UPDATE').length,
+	});
+
+	// Process each action
+	for (const action of actionsToProcess) {
+		try {
+			// Generate embedding for the memory text
+			const embedding = await embedder.embed(action.text);
+
+			// Prepare payload with metadata
+			const payload = {
+				id: action.id,
+				text: action.text,
+				tags: action.tags,
+				confidence: action.confidence,
+				reasoning: action.reasoning,
+				event: action.event,
+				timestamp: new Date().toISOString(),
+				...(action.code_pattern && { code_pattern: action.code_pattern }),
+				...(action.old_memory && { old_memory: action.old_memory }),
+			};
+
+			if (action.event === 'ADD') {
+				// Insert new memory
+				await vectorStore.insert([embedding], [action.id], [payload]);
+				logger.debug('MemoryOperation: Added memory to vector store', {
+					id: action.id,
+					textLength: action.text.length,
+				});
+			} else if (action.event === 'UPDATE') {
+				// Update existing memory
+				await vectorStore.update(action.id, embedding, payload);
+				logger.debug('MemoryOperation: Updated memory in vector store', {
+					id: action.id,
+					textLength: action.text.length,
+				});
+			}
+		} catch (error) {
+			logger.error('MemoryOperation: Failed to persist memory action', {
+				actionId: action.id,
+				event: action.event,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			// Continue with other actions even if one fails
+		}
+	}
 }

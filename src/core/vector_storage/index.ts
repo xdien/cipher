@@ -63,6 +63,7 @@ export {
 	createVectorStore,
 	createDefaultVectorStore,
 	createVectorStoreFromEnv,
+	getVectorStoreConfigFromEnv,
 	isVectorStoreFactory,
 	type VectorStoreFactory,
 } from './factory.js';

@@ -7,8 +7,7 @@
 
 // Export all memory tools
 export { extractKnowledgeTool } from './extract-knowledge.js';
-// TODO: Re-enable when tests are updated to handle multiple tools
-// export { memoryOperationTool } from './memory_operation.js';
+export { memoryOperationTool } from './memory_operation.js';
 
 // Export types for better developer experience
 import type { InternalTool } from '../../types.js';
@@ -22,21 +21,18 @@ export const memoryTools: InternalTool[] = [
 
 // Load tools dynamically to avoid potential circular dependencies
 import('./extract-knowledge.js').then(module => memoryTools.push(module.extractKnowledgeTool));
-// TODO: Re-enable when tests are updated to handle multiple tools
-// import('./memory_operation.js').then(module => memoryTools.push(module.memoryOperationTool));
+import('./memory_operation.js').then(module => memoryTools.push(module.memoryOperationTool));
 
 /**
  * Get all memory tools as a map
  */
 export async function getMemoryTools(): Promise<Record<string, InternalTool>> {
 	const { extractKnowledgeTool } = await import('./extract-knowledge.js');
-	// TODO: Re-enable when tests are updated to handle multiple tools
-	// const { memoryOperationTool } = await import('./memory_operation.js');
+	const { memoryOperationTool } = await import('./memory_operation.js');
 
 	return {
 		[extractKnowledgeTool.name]: extractKnowledgeTool,
-		// TODO: Re-enable when tests are updated to handle multiple tools
-		// [memoryOperationTool.name]: memoryOperationTool,
+		[memoryOperationTool.name]: memoryOperationTool,
 	};
 }
 

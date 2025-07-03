@@ -148,6 +148,7 @@ export async function createDefaultVectorStore(
  * - VECTOR_STORE_DIMENSION: Vector dimension
  * - VECTOR_STORE_DISTANCE: Distance metric for Qdrant
  * - VECTOR_STORE_ON_DISK: Store vectors on disk (if using Qdrant)
+ * - VECTOR_STORE_MAX_VECTORS: Maximum vectors for in-memory storage
  *
  * @returns Promise resolving to manager and connected vector store
  *
@@ -164,33 +165,52 @@ export async function createDefaultVectorStore(
 export async function createVectorStoreFromEnv(): Promise<VectorStoreFactory> {
 	const logger = createLogger({ level: env.CIPHER_LOG_LEVEL });
 
-	// Get configuration from environment
-	const storeType = process.env.VECTOR_STORE_TYPE || 'in-memory';
-	const collectionName = process.env.VECTOR_STORE_COLLECTION || 'default';
-	const dimensionStr = process.env.VECTOR_STORE_DIMENSION || '1536';
-	const dimension = Number.isNaN(parseInt(dimensionStr, 10)) ? 1536 : parseInt(dimensionStr, 10);
+	// Get configuration from environment variables
+	const config = getVectorStoreConfigFromEnv();
 
 	logger.info(`${LOG_PREFIXES.FACTORY} Creating vector storage from environment`, {
-		type: storeType,
-		collection: collectionName,
-		dimension,
+		type: config.type,
+		collection: config.collectionName,
+		dimension: config.dimension,
 	});
+
+	return createVectorStore(config);
+}
+
+/**
+ * Get vector storage configuration from environment variables
+ *
+ * Returns the configuration object that would be used by createVectorStoreFromEnv
+ * without actually creating the vector store. Useful for debugging and validation.
+ *
+ * @returns Vector storage configuration based on environment variables
+ *
+ * @example
+ * ```typescript
+ * const config = getVectorStoreConfigFromEnv();
+ * console.log('Vector store configuration:', config);
+ * 
+ * // Then use the config to create the store
+ * const { manager, store } = await createVectorStore(config);
+ * ```
+ */
+export function getVectorStoreConfigFromEnv(): VectorStoreConfig {
+	// Get configuration from centralized env object with fallbacks for invalid values
+	const storeType = env.VECTOR_STORE_TYPE;
+	const collectionName = env.VECTOR_STORE_COLLECTION;
+	const dimension = Number.isNaN(env.VECTOR_STORE_DIMENSION) ? 1536 : env.VECTOR_STORE_DIMENSION;
+	const maxVectors = Number.isNaN(env.VECTOR_STORE_MAX_VECTORS) ? 10000 : env.VECTOR_STORE_MAX_VECTORS;
 
 	// Build configuration based on type
 	let config: VectorStoreConfig;
 
 	if (storeType === 'qdrant') {
-		const host = process.env.VECTOR_STORE_HOST;
-		const url = process.env.VECTOR_STORE_URL;
-		const portStr = process.env.VECTOR_STORE_PORT;
-		const port = portStr
-			? Number.isNaN(parseInt(portStr, 10))
-				? undefined
-				: parseInt(portStr, 10)
-			: undefined;
-		const apiKey = process.env.VECTOR_STORE_API_KEY;
-		const distance = process.env.VECTOR_STORE_DISTANCE as any;
-		const onDisk = process.env.VECTOR_STORE_ON_DISK === 'true';
+		const host = env.VECTOR_STORE_HOST;
+		const url = env.VECTOR_STORE_URL;
+		const port = Number.isNaN(env.VECTOR_STORE_PORT) ? undefined : env.VECTOR_STORE_PORT;
+		const apiKey = env.VECTOR_STORE_API_KEY;
+		const distance = env.VECTOR_STORE_DISTANCE;
+		const onDisk = env.VECTOR_STORE_ON_DISK;
 
 		config = {
 			type: 'qdrant',
@@ -204,25 +224,17 @@ export async function createVectorStoreFromEnv(): Promise<VectorStoreFactory> {
 			onDisk,
 		};
 
-		// Validate required fields
+		// Validate required fields and fallback if necessary
 		if (!url && !host) {
-			logger.warn(`${LOG_PREFIXES.FACTORY} Qdrant requires URL or host, falling back to in-memory`);
 			config = {
 				type: 'in-memory',
 				collectionName,
 				dimension,
-				maxVectors: 10000,
+				maxVectors,
 			};
 		}
 	} else {
 		// Use in-memory
-		const maxVectorsStr = process.env.VECTOR_STORE_MAX_VECTORS;
-		const maxVectors = maxVectorsStr
-			? Number.isNaN(parseInt(maxVectorsStr, 10))
-				? 10000
-				: parseInt(maxVectorsStr, 10)
-			: 10000;
-
 		config = {
 			type: 'in-memory',
 			collectionName,
@@ -231,7 +243,7 @@ export async function createVectorStoreFromEnv(): Promise<VectorStoreFactory> {
 		};
 	}
 
-	return createVectorStore(config);
+	return config;
 }
 
 /**
