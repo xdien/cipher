@@ -397,13 +397,6 @@ llm:
   maxIterations: 50                  # For agentic tool calling loops
 ```
 
-#### Benefits of Ollama
-- **Complete Privacy**: All processing happens locally, no data leaves your machine
-- **Zero API Costs**: No per-token charges or usage limits
-- **Offline Capability**: Work without internet connectivity once models are downloaded
-- **Hardware Control**: Optimize performance for your specific GPU/CPU setup
-- **Custom Models**: Load and run fine-tuned or custom models
-- **Development Friendly**: Perfect for prototyping and local development
 
 ## Contributing
 
