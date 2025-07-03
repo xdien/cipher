@@ -20,7 +20,9 @@ function getFormatter(provider: string): IMessageFormatter {
 			formatter = new AnthropicMessageFormatter();
 			break;
 		default:
-			throw new Error(`Unsupported provider: ${provider}. Supported providers: openai, anthropic, openrouter`);
+			throw new Error(
+				`Unsupported provider: ${provider}. Supported providers: openai, anthropic, openrouter`
+			);
 	}
 
 	return formatter;

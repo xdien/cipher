@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ConversationSession } from '../coversation-session.js';
 import type { LLMConfig } from '../../brain/llm/config.js';
 
@@ -107,7 +107,8 @@ describe('ConversationSession', () => {
 			expect(mockCreateLLMService).toHaveBeenCalledWith(
 				mockLLMConfig,
 				mockMcpManager,
-				mockContextManager
+				mockContextManager,
+				undefined // unifiedToolManager is undefined in these tests
 			);
 		});
 
@@ -258,7 +259,8 @@ describe('ConversationSession', () => {
 			expect(mockCreateLLMService).toHaveBeenCalledWith(
 				sessionSpecificConfig,
 				mockMcpManager,
-				mockContextManager
+				mockContextManager,
+				undefined // unifiedToolManager is undefined in these tests
 			);
 		});
 
@@ -277,7 +279,8 @@ describe('ConversationSession', () => {
 			expect(mockCreateLLMService).toHaveBeenCalledWith(
 				anthropicConfig,
 				mockMcpManager,
-				mockContextManager
+				mockContextManager,
+				undefined // unifiedToolManager is undefined in these tests
 			);
 		});
 	});

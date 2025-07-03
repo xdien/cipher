@@ -1,5 +1,6 @@
 import { ToolSet } from '../../../mcp/types.js';
 import { MCPManager } from '../../../mcp/manager.js';
+import { UnifiedToolManager, CombinedToolSet } from '../../tools/unified-tool-manager.js';
 import { ContextManager } from '../messages/manager.js';
 import { ImageData } from '../messages/types.js';
 import { ILLMService, LLMServiceConfig } from './types.js';
@@ -7,30 +8,40 @@ import OpenAI from 'openai';
 import { logger } from '../../../logger/index.js';
 
 export class OpenRouterService implements ILLMService {
-	private openai: OpenAI;
+	private client: OpenAI;
 	private model: string;
 	private mcpManager: MCPManager;
+	private unifiedToolManager: UnifiedToolManager | undefined;
 	private contextManager: ContextManager;
 	private maxIterations: number;
 
 	constructor(
-		openai: OpenAI,
+		client: OpenAI,
 		model: string,
 		mcpManager: MCPManager,
 		contextManager: ContextManager,
-		maxIterations: number = 5
+		maxIterations: number = 5,
+		unifiedToolManager?: UnifiedToolManager
 	) {
-		this.openai = openai;
+		this.client = client;
 		this.model = model;
 		this.mcpManager = mcpManager;
+		this.unifiedToolManager = unifiedToolManager;
 		this.contextManager = contextManager;
 		this.maxIterations = maxIterations;
 	}
 
 	async generate(userInput: string, imageData?: ImageData): Promise<string> {
 		await this.contextManager.addUserMessage(userInput, imageData);
-		const rawTools = await this.mcpManager.getAllTools();
-		const formattedTools = this.formatToolsForOpenRouter(rawTools);
+
+		// Use unified tool manager if available, otherwise fall back to MCP manager
+		let formattedTools: any[];
+		if (this.unifiedToolManager) {
+			formattedTools = await this.unifiedToolManager.getToolsForProvider('openrouter');
+		} else {
+			const rawTools = await this.mcpManager.getAllTools();
+			formattedTools = this.formatToolsForOpenRouter(rawTools);
+		}
 
 		logger.silly(`Formatted tools for OpenRouter: ${JSON.stringify(formattedTools, null, 2)}`);
 
@@ -71,7 +82,12 @@ export class OpenRouterService implements ILLMService {
 
 					// Execute tool
 					try {
-						const result = await this.mcpManager.executeTool(toolName, args);
+						let result: any;
+						if (this.unifiedToolManager) {
+							result = await this.unifiedToolManager.executeTool(toolName, args);
+						} else {
+							result = await this.mcpManager.executeTool(toolName, args);
+						}
 
 						// Add tool result to message manager
 						await this.contextManager.addToolResult(toolCall.id, toolName, result);
@@ -102,7 +118,10 @@ export class OpenRouterService implements ILLMService {
 		}
 	}
 
-	getAllTools(): Promise<ToolSet> {
+	async getAllTools(): Promise<ToolSet | CombinedToolSet> {
+		if (this.unifiedToolManager) {
+			return await this.unifiedToolManager.getAllTools();
+		}
 		return this.mcpManager.getAllTools();
 	}
 
@@ -134,7 +153,7 @@ export class OpenRouterService implements ILLMService {
 				});
 
 				// Call OpenRouter API via OpenAI SDK (OpenRouter is OpenAI-compatible)
-				const response = await this.openai.chat.completions.create({
+				const response = await this.client.chat.completions.create({
 					model: this.model,
 					messages: formattedMessages,
 					tools: attempts === 1 ? tools : [], // Only offer tools on first attempt
