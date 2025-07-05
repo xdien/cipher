@@ -169,6 +169,7 @@ export class MemAgent {
 			}
 			logger.debug(`MemAgent.run: using session ${session.id}`);
 			const response = await session.run(userInput, imageDataInput, stream);
+
 			if (response && response.trim() !== '') {
 				return response;
 			}

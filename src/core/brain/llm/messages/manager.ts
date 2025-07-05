@@ -250,4 +250,11 @@ export class ContextManager {
 			}
 		}
 	}
+
+	/**
+	 * Get the raw messages array (for inspection, debugging, or deduplication)
+	 */
+	public getRawMessages(): InternalMessage[] {
+		return this.messages;
+	}
 }

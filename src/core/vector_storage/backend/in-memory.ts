@@ -28,7 +28,7 @@ import { LOG_PREFIXES, DEFAULTS, ERROR_MESSAGES } from '../constants.js';
  * In-memory vector entry
  */
 interface VectorEntry {
-	id: string;
+	id: number;
 	vector: number[];
 	payload: Record<string, any>;
 }
@@ -61,7 +61,7 @@ export class InMemoryBackend implements VectorStore {
 	private connected = false;
 
 	// In-memory storage
-	private vectors: Map<string, VectorEntry> = new Map();
+	private vectors: Map<number, VectorEntry> = new Map();
 
 	constructor(config: InMemoryBackendConfig) {
 		this.config = config;
@@ -188,7 +188,7 @@ export class InMemoryBackend implements VectorStore {
 
 	// VectorStore implementation
 
-	async insert(vectors: number[][], ids: string[], payloads: Record<string, any>[]): Promise<void> {
+	async insert(vectors: number[][], ids: number[], payloads: Record<string, any>[]): Promise<void> {
 		if (!this.connected) {
 			throw new VectorStoreError(ERROR_MESSAGES.NOT_CONNECTED, 'insert');
 		}
@@ -212,9 +212,9 @@ export class InMemoryBackend implements VectorStore {
 			const id = ids[i];
 			const payload = payloads[i];
 
-			if (!vector || !id || !payload) {
+			if (!vector || typeof id !== 'number' || !Number.isInteger(id) || !payload) {
 				throw new VectorStoreError(
-					`Invalid input at index ${i}: vector, id, and payload are required`,
+					`Invalid input at index ${i}: vector, integer id, and payload are required`,
 					'insert'
 				);
 			}
@@ -262,7 +262,7 @@ export class InMemoryBackend implements VectorStore {
 
 		// Format results
 		const formattedResults = topResults.map(({ entry, score }) => ({
-			id: entry.id,
+			id: String(entry.id),
 			vector: [...entry.vector],
 			payload: this.deepClone(entry.payload),
 			score,
@@ -273,7 +273,7 @@ export class InMemoryBackend implements VectorStore {
 		return formattedResults;
 	}
 
-	async get(vectorId: string): Promise<VectorStoreResult | null> {
+	async get(vectorId: number): Promise<VectorStoreResult | null> {
 		if (!this.connected) {
 			throw new VectorStoreError(ERROR_MESSAGES.NOT_CONNECTED, 'get');
 		}
@@ -284,14 +284,14 @@ export class InMemoryBackend implements VectorStore {
 		}
 
 		return {
-			id: entry.id,
+			id: String(entry.id),
 			vector: [...entry.vector], // Clone vector
 			payload: this.deepClone(entry.payload), // Deep clone payload
 			score: 1.0, // Perfect match for direct retrieval
 		};
 	}
 
-	async update(vectorId: string, vector: number[], payload: Record<string, any>): Promise<void> {
+	async update(vectorId: number, vector: number[], payload: Record<string, any>): Promise<void> {
 		if (!this.connected) {
 			throw new VectorStoreError(ERROR_MESSAGES.NOT_CONNECTED, 'update');
 		}
@@ -311,7 +311,7 @@ export class InMemoryBackend implements VectorStore {
 		this.logger.info(`${LOG_PREFIXES.BACKEND} Updated vector ${vectorId}`);
 	}
 
-	async delete(vectorId: string): Promise<void> {
+	async delete(vectorId: number): Promise<void> {
 		if (!this.connected) {
 			throw new VectorStoreError(ERROR_MESSAGES.NOT_CONNECTED, 'delete');
 		}
@@ -351,7 +351,7 @@ export class InMemoryBackend implements VectorStore {
 				count++;
 				if (results.length < limit) {
 					results.push({
-						id: entry.id,
+						id: String(entry.id),
 						vector: [...entry.vector],
 						payload: this.deepClone(entry.payload),
 						score: 1.0, // Default score for list operations

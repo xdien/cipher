@@ -42,7 +42,7 @@ export interface VectorStore {
 	 * Insert vectors with their metadata
 	 *
 	 * @param vectors - Array of embedding vectors
-	 * @param ids - Array of unique identifiers for each vector
+	 * @param ids - Array of unique integer identifiers for each vector
 	 * @param payloads - Array of metadata objects for each vector
 	 * @throws {VectorDimensionError} If vector dimensions don't match configuration
 	 * @throws {VectorStoreError} If insertion fails
@@ -51,12 +51,12 @@ export interface VectorStore {
 	 * ```typescript
 	 * await store.insert(
 	 *   [embedding1, embedding2],
-	 *   ['doc1', 'doc2'],
+	 *   [1, 2],
 	 *   [{ title: 'Doc 1' }, { title: 'Doc 2' }]
 	 * );
 	 * ```
 	 */
-	insert(vectors: number[][], ids: string[], payloads: Record<string, any>[]): Promise<void>;
+	insert(vectors: number[][], ids: number[], payloads: Record<string, any>[]): Promise<void>;
 
 	/**
 	 * Search for similar vectors
@@ -80,48 +80,48 @@ export interface VectorStore {
 	/**
 	 * Retrieve a specific vector by ID
 	 *
-	 * @param vectorId - The unique identifier of the vector
+	 * @param vectorId - The unique integer identifier of the vector
 	 * @returns The vector result or null if not found
 	 *
 	 * @example
 	 * ```typescript
-	 * const vector = await store.get('doc-123');
+	 * const vector = await store.get(123);
 	 * if (vector) {
 	 *   console.log(vector.payload);
 	 * }
 	 * ```
 	 */
-	get(vectorId: string): Promise<VectorStoreResult | null>;
+	get(vectorId: number): Promise<VectorStoreResult | null>;
 
 	/**
 	 * Update a vector and its metadata
 	 *
-	 * @param vectorId - The unique identifier of the vector
+	 * @param vectorId - The unique integer identifier of the vector
 	 * @param vector - The new embedding vector
 	 * @param payload - The new metadata
 	 * @throws {VectorDimensionError} If vector dimension doesn't match configuration
 	 *
 	 * @example
 	 * ```typescript
-	 * await store.update('doc-123', newEmbedding, {
+	 * await store.update(123, newEmbedding, {
 	 *   title: 'Updated Title',
 	 *   modified_at: Date.now()
 	 * });
 	 * ```
 	 */
-	update(vectorId: string, vector: number[], payload: Record<string, any>): Promise<void>;
+	update(vectorId: number, vector: number[], payload: Record<string, any>): Promise<void>;
 
 	/**
 	 * Delete a vector
 	 *
-	 * @param vectorId - The unique identifier of the vector to delete
+	 * @param vectorId - The unique integer identifier of the vector to delete
 	 *
 	 * @example
 	 * ```typescript
-	 * await store.delete('doc-123');
+	 * await store.delete(123);
 	 * ```
 	 */
-	delete(vectorId: string): Promise<void>;
+	delete(vectorId: number): Promise<void>;
 
 	// Collection management
 

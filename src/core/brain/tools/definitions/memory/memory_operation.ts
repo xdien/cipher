@@ -111,7 +111,7 @@ export interface MemoryOperationArgs {
  * Interface for memory action result following UPDATE_FACT_TOOL_MEMORY pattern
  */
 export interface MemoryAction {
-	id: string;
+	id: number;
 	text: string;
 	event: 'ADD' | 'UPDATE' | 'DELETE' | 'NONE';
 	tags: string[];
@@ -161,25 +161,105 @@ const DEFAULT_OPTIONS = {
  * Prompts for LLM decision making
  */
 const MEMORY_OPERATION_PROMPTS = {
-	SYSTEM_PROMPT: `You are an intelligent memory management system. Your task is to analyze extracted knowledge facts and determine the best memory operations (ADD, UPDATE, DELETE, NONE) based on similarity with existing memories and contextual understanding.
+	SYSTEM_PROMPT: `You are an intelligent memory management system for a programming-focused AI agent. Your task is to analyze extracted knowledge facts and determine the best memory operations (ADD, UPDATE, DELETE, NONE) based on similarity with existing memories and contextual understanding.
+
+IMPORTANT: Only process facts that contain significant programming knowledge, concepts, technical details, code patterns, or implementation information. Skip personal information, trivial conversations, or non-technical content.
 
 Consider these factors:
-1. Content similarity and semantic overlap
-2. Information recency and relevance
-3. Knowledge quality and completeness
-4. Conversation context and user needs
-5. Technical accuracy and implementation details
+1. Technical relevance and programming value
+2. Content similarity and semantic overlap  
+3. Information recency and relevance
+4. Knowledge quality and completeness
+5. Conversation context and technical needs
+6. Implementation details and code patterns
 
 Rules:
-- ADD: For new, unique knowledge that doesn't duplicate existing memories
-- UPDATE: For enhanced or corrected versions of existing knowledge
-- DELETE: For outdated, incorrect, or redundant information that should be removed
-- NONE: For duplicates or information already well-represented
+- ADD: For new, unique programming knowledge that doesn't duplicate existing memories
+- UPDATE: For enhanced or corrected versions of existing technical knowledge
+- DELETE: For outdated, incorrect, or contradictory technical information that should be removed
+- NONE: For duplicates, information already well-represented, or non-significant content
 
-Always preserve code blocks, commands, and technical patterns exactly as provided.`,
+Always preserve code blocks, commands, technical patterns, and implementation details exactly as provided. Focus on extracting meaningful programming concepts, algorithms, design patterns, best practices, and technical solutions.`,
 
-	DECISION_PROMPT: `Analyze this knowledge fact and determine the appropriate memory operation:
+	DECISION_PROMPT: `Analyze the following knowledge fact and determine the appropriate memory operation. Follow these steps:
 
+1. Compare the fact to the provided similar memories (using semantic similarity, not just keywords).
+2. If the fact is new and not present in any similar memory (similarity below threshold), choose ADD.
+3. If the fact is more complete or correct than a similar memory, choose UPDATE and specify the targetMemoryId.
+4. If the fact is redundant or already present, choose NONE.
+5. If the fact contradicts an existing memory, choose DELETE and specify the targetMemoryId.
+6. Always provide a confidence score (0.0 to 1.0) and clear reasoning.
+
+**Examples:**
+
+Example 1 (ADD):
+KNOWLEDGE FACT:
+"The 'merge_sort' function in Python recursively splits the array and merges sorted halves."
+SIMILAR EXISTING MEMORIES:
+No similar memories found.
+CONVERSATION CONTEXT:
+No specific context provided.
+
+JSON RESPONSE:
+{
+  "operation": "ADD",
+  "confidence": 0.95,
+  "reasoning": "This is a new technical fact about merge sort not present in the memory base.",
+  "targetMemoryId": null
+}
+
+Example 2 (UPDATE):
+KNOWLEDGE FACT:
+"The 'bubble_sort' function in Python sorts the array in-place and includes an optimization to stop early if no swaps are made."
+SIMILAR EXISTING MEMORIES:
+1. ID: 12345 (similarity: 0.91)
+   Content: The 'bubble_sort' function in Python sorts the array in-place.
+CONVERSATION CONTEXT:
+No specific context provided.
+
+JSON RESPONSE:
+{
+  "operation": "UPDATE",
+  "confidence": 0.9,
+  "reasoning": "The new fact adds an optimization detail not present in the existing memory.",
+  "targetMemoryId": 12345
+}
+
+Example 3 (NONE):
+KNOWLEDGE FACT:
+"The 'quick_sort' function sorts an array in-place using a pivot."
+SIMILAR EXISTING MEMORIES:
+1. ID: 67890 (similarity: 0.95)
+   Content: The 'quick_sort' function sorts an array in-place using a pivot.
+CONVERSATION CONTEXT:
+No specific context provided.
+
+JSON RESPONSE:
+{
+  "operation": "NONE",
+  "confidence": 0.98,
+  "reasoning": "The fact is already present in the memory base.",
+  "targetMemoryId": 67890
+}
+
+Example 4 (DELETE):
+KNOWLEDGE FACT:
+"The 'selection_sort' function in Python is NOT a stable sorting algorithm."
+SIMILAR EXISTING MEMORIES:
+1. ID: 54321 (similarity: 0.92)
+   Content: The 'selection_sort' function in Python is a stable sorting algorithm.
+CONVERSATION CONTEXT:
+No specific context provided.
+
+JSON RESPONSE:
+{
+  "operation": "DELETE",
+  "confidence": 0.93,
+  "reasoning": "The new fact contradicts the existing memory, which incorrectly states that selection sort is stable.",
+  "targetMemoryId": 54321
+}
+
+---
 KNOWLEDGE FACT:
 {fact}
 
@@ -189,21 +269,14 @@ SIMILAR EXISTING MEMORIES:
 CONVERSATION CONTEXT:
 {context}
 
-For this knowledge fact, determine:
-1. The most appropriate operation (ADD, UPDATE, DELETE, NONE)
-2. Your confidence level (0.0 to 1.0)
-3. Clear reasoning for your decision
-
-Focus on preserving valuable technical knowledge while removing outdated or redundant information.
-
-Respond with a JSON object containing:
+For this knowledge fact, respond ONLY with a single JSON object in the following format (do not include any explanation or text outside the JSON):
 {
   "operation": "ADD|UPDATE|DELETE|NONE",
-  "confidence": 0.8,
+  "confidence": 0.0-1.0,
   "reasoning": "Clear explanation of the decision",
-  "targetMemoryId": "id-if-updating-or-deleting"
-}`,
-} as const;
+  "targetMemoryId": "id-if-updating-or-deleting-or-none"
+}`
+};
 
 /**
  * Memory operation tool for intelligent memory management
@@ -674,8 +747,8 @@ async function llmDetermineMemoryOperation(
 			similarMemoriesCount: similarMemories.length,
 		});
 
-		// Get LLM response
-		const response = await llmService.generate(prompt);
+		// Get LLM response using directGenerate to bypass conversation context
+		const response = await llmService.directGenerate(prompt);
 
 		// Parse LLM response
 		const decision = parseLLMDecision(response);
@@ -778,26 +851,46 @@ function formatSimilarMemoriesForLLM(similarMemories: any[]): string {
  */
 function parseLLMDecision(response: string): any {
 	try {
-		// Try to extract JSON from response
+		// Try to extract the first JSON object from the response
 		const jsonMatch = response.match(/\{[\s\S]*\}/);
-		if (!jsonMatch) {
-			throw new Error('No JSON found in response');
+		if (jsonMatch) {
+			try {
+				const decision = JSON.parse(jsonMatch[0]);
+				if (decision && decision.operation && decision.confidence) {
+					return decision;
+				}
+			} catch (e) {
+				// Continue to fallback extraction below
+			}
 		}
 
-		const decision = JSON.parse(jsonMatch[0]);
-
-		// Validate required fields
-		if (!decision.operation || !decision.confidence) {
-			throw new Error('Missing required fields in decision');
+		// Fallback: try to find any substring that parses as JSON
+		for (let start = 0; start < response.length; start++) {
+			for (let end = response.length; end > start + 1; end--) {
+				const substr = response.slice(start, end);
+				if (substr[0] !== '{' || substr[substr.length - 1] !== '}') continue;
+				try {
+					const obj = JSON.parse(substr);
+					if (obj && obj.operation && obj.confidence) {
+						return obj;
+					}
+				} catch (e) {
+					// Not valid JSON, continue
+				}
+			}
 		}
 
-		return decision;
+		// If all attempts fail, log the raw response and throw
+		logger.error('MemoryOperation: Failed to parse LLM decision', {
+			response: response.substring(0, 500),
+			error: 'No valid JSON decision found',
+		});
+		throw new Error('Failed to parse LLM decision: No valid JSON decision found');
 	} catch (error) {
 		logger.error('MemoryOperation: Failed to parse LLM decision', {
-			response: response.substring(0, 200),
+			response: response.substring(0, 500),
 			error: error instanceof Error ? error.message : String(error),
 		});
-
 		throw new Error(
 			`Failed to parse LLM decision: ${error instanceof Error ? error.message : String(error)}`
 		);
@@ -1069,12 +1162,11 @@ function extractTechnicalTags(fact: string): string[] {
 }
 
 /**
- * Generate unique memory ID
+ * Generate unique memory ID (integer)
  */
-function generateMemoryId(index: number): string {
-	const timestamp = Date.now();
-	const random = Math.random().toString(36).substring(2, 8);
-	return `memory_${timestamp}_${index}_${random}`;
+function generateMemoryId(index: number): number {
+	// Use timestamp + index for uniqueness
+	return Date.now() + index;
 }
 
 /**
@@ -1110,7 +1202,7 @@ async function determineMemoryOperation(
 	// High similarity (>0.9) - consider as duplicate, return NONE
 	if (similarity > 0.9) {
 		return {
-			id: mostSimilar.id || factId,
+			id: factId,
 			text: fact,
 			event: 'NONE',
 			tags,
@@ -1123,7 +1215,7 @@ async function determineMemoryOperation(
 	// Medium-high similarity (0.7-0.9) - consider updating existing memory
 	if (similarity > threshold && similarity <= 0.9) {
 		return {
-			id: mostSimilar.id || factId,
+			id: factId,
 			text: fact,
 			event: 'UPDATE',
 			tags,
@@ -1227,3 +1319,6 @@ async function persistMemoryActions(
 		}
 	}
 }
+
+export { parseLLMDecision, MEMORY_OPERATION_PROMPTS };
+export { extractTechnicalTags };

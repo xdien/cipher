@@ -52,4 +52,4 @@ test-temp/
 .roo/
 .windsurf/
 CONTRIBUTING.md
-poem.txt
+*.py

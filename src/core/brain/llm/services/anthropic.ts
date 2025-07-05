@@ -130,6 +130,60 @@ export class AnthropicService implements ILLMService {
 		}
 	}
 
+	/**
+	 * Direct generate method that bypasses conversation context
+	 * Used for internal tool operations that shouldn't pollute conversation history
+	 * @param userInput - The input to generate a response for
+	 * @param systemPrompt - Optional system prompt to use
+	 * @returns Promise<string> - The generated response
+	 */
+	async directGenerate(userInput: string, systemPrompt?: string): Promise<string> {
+		try {
+			logger.debug('AnthropicService: Direct generate call (bypassing conversation context)', {
+				inputLength: userInput.length,
+				hasSystemPrompt: !!systemPrompt
+			});
+
+			// Create a minimal message array for direct API call
+			const messages = [
+				{
+					role: 'user' as const,
+					content: userInput
+				}
+			];
+
+			// Make direct API call without adding to conversation context
+			const response = await this.anthropic.messages.create({
+				model: this.model,
+				messages: messages,
+				...(systemPrompt && { system: systemPrompt }),
+				max_tokens: 4096,
+				// No tools for direct calls - this is for simple text generation
+			});
+
+			// Extract text content from response
+			let textContent = '';
+			for (const content of response.content) {
+				if (content.type === 'text') {
+					textContent += content.text;
+				}
+			}
+
+			logger.debug('AnthropicService: Direct generate completed', {
+				responseLength: textContent.length
+			});
+
+			return textContent;
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			logger.error('AnthropicService: Direct generate failed', { 
+				error: errorMessage,
+				inputLength: userInput.length
+			});
+			throw new Error(`Direct generate failed: ${errorMessage}`);
+		}
+	}
+
 	async getAllTools(): Promise<ToolSet | CombinedToolSet> {
 		if (this.unifiedToolManager) {
 			return await this.unifiedToolManager.getAllTools();

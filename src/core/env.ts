@@ -40,6 +40,8 @@ const envSchema = z.object({
 	VECTOR_STORE_DISTANCE: z.enum(['Cosine', 'Euclidean', 'Dot', 'Manhattan']).default('Cosine'),
 	VECTOR_STORE_ON_DISK: z.boolean().default(false),
 	VECTOR_STORE_MAX_VECTORS: z.number().default(10000),
+	// Memory Search Configuration
+	SEARCH_MEMORY_TYPE: z.enum(['knowledge', 'reflection', 'both']).default('both'),
 });
 
 type EnvSchema = z.infer<typeof envSchema>;
@@ -123,6 +125,9 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 				return process.env.VECTOR_STORE_MAX_VECTORS
 					? parseInt(process.env.VECTOR_STORE_MAX_VECTORS, 10)
 					: 10000;
+			// Memory Search Configuration
+			case 'SEARCH_MEMORY_TYPE':
+				return process.env.SEARCH_MEMORY_TYPE || 'both';
 			default:
 				return process.env[prop];
 		}
@@ -186,6 +191,8 @@ export const validateEnv = () => {
 		VECTOR_STORE_MAX_VECTORS: process.env.VECTOR_STORE_MAX_VECTORS
 			? parseInt(process.env.VECTOR_STORE_MAX_VECTORS, 10)
 			: 10000,
+		// Memory Search Configuration
+		SEARCH_MEMORY_TYPE: process.env.SEARCH_MEMORY_TYPE || 'both',
 	};
 
 	const result = envSchema.safeParse(envToValidate);

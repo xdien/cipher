@@ -627,4 +627,56 @@ describe('QdrantBackend', () => {
 			expect(euclideanBackend.getDimension()).toBe(3);
 		});
 	});
+
+	describe('Direct QdrantBackend update operation (manual test)', () => {
+		let backend: QdrantBackend;
+		const validConfig = {
+			type: 'qdrant' as const,
+			host: 'localhost',
+			port: 6333,
+			collectionName: 'test_collection',
+			dimension: 3,
+			distance: 'Cosine' as const,
+		};
+
+		beforeEach(async () => {
+			backend = new QdrantBackend(validConfig);
+			await backend.connect();
+		});
+
+		afterEach(async () => {
+			if (backend.isConnected()) {
+				await backend.disconnect();
+			}
+		});
+
+		it('should insert, update, and retrieve a vector', async () => {
+			try {
+				const id = 'manual_test_vec';
+				const initialVector = [1, 2, 3];
+				const updatedVector = [7, 8, 9];
+				const initialPayload = { title: 'Initial' };
+				const updatedPayload = { title: 'Updated' };
+
+				// Insert
+				await backend.insert([initialVector], [id], [initialPayload]);
+				console.log('Inserted vector:', id, initialVector, initialPayload);
+
+				// Update
+				await backend.update(id, updatedVector, updatedPayload);
+				console.log('Updated vector:', id, updatedVector, updatedPayload);
+
+				// Retrieve
+				const result = await backend.get(id);
+				console.log('Retrieved vector after update:', result);
+
+				if (!result) throw new Error('Vector not found after update');
+				expect(result.vector).toEqual(updatedVector);
+				expect(result.payload).toEqual(updatedPayload);
+			} catch (err) {
+				console.error('Direct update test failed:', err);
+				throw err;
+			}
+		});
+	});
 });
