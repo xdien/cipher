@@ -98,7 +98,11 @@ export class InternalToolManager implements IInternalToolManager {
 	/**
 	 * Register a new internal tool
 	 */
-	public registerTool(tool: InternalTool): { success: boolean; message: string; conflictedWith?: string } {
+	public registerTool(tool: InternalTool): {
+		success: boolean;
+		message: string;
+		conflictedWith?: string;
+	} {
 		this.ensureInitialized();
 
 		const result = this.registry.registerTool(tool);
@@ -179,12 +183,12 @@ export class InternalToolManager implements IInternalToolManager {
 
 		// Create execution context
 		const execContext: InternalToolContext = {
-			toolName: normalizedName,
+			toolName,
 			startTime,
 			sessionId: context?.sessionId,
-			userId: context?.userId,
+			userId: context?.userId || '',
 			metadata: context?.metadata,
-			services: this.services,
+			services: this.services || {},
 		};
 
 		logger.info(`InternalToolManager: Executing tool '${normalizedName}'`, {
@@ -270,20 +274,22 @@ export class InternalToolManager implements IInternalToolManager {
 	 */
 	public getStatistics(): Record<string, ToolExecutionStats> {
 		const allStats: Record<string, ToolExecutionStats> = {};
-		
+
 		for (const [toolName, entry] of this.stats.entries()) {
 			allStats[toolName] = { ...entry.stats };
 		}
-		
+
 		return allStats;
 	}
 
 	/**
 	 * Get available tools list
 	 */
-	public async getAvailableTools(): Promise<Array<{ name: string; description: string; category: string }>> {
+	public async getAvailableTools(): Promise<
+		Array<{ name: string; description: string; category: string }>
+	> {
 		this.ensureInitialized();
-		
+
 		const tools = this.registry.getAllTools();
 		return Object.values(tools).map(tool => ({
 			name: tool.name,

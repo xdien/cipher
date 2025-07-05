@@ -131,7 +131,9 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 export const validateEnv = () => {
 	// Critical validation: OPENAI_API_KEY is always required for embedding functionality
 	if (!process.env.OPENAI_API_KEY) {
-		console.error('OPENAI_API_KEY is required for embedding functionality, even when using other LLM providers (Anthropic, OpenRouter, etc.)');
+		console.error(
+			'OPENAI_API_KEY is required for embedding functionality, even when using other LLM providers (Anthropic, OpenRouter, etc.)'
+		);
 		return false;
 	}
 

@@ -9,25 +9,20 @@
  */
 
 import { logger } from '../../logger/index.js';
-import { 
+import {
 	parseEmbeddingConfigFromEnv,
 	validateEmbeddingConfig,
 	type OpenAIEmbeddingConfig as ZodOpenAIEmbeddingConfig,
-	type EmbeddingConfig as ZodEmbeddingConfig
+	type EmbeddingConfig as ZodEmbeddingConfig,
 } from './config.js';
-import { 
+import {
 	type Embedder,
 	type OpenAIEmbeddingConfig as InterfaceOpenAIEmbeddingConfig,
 	EmbeddingError,
 	EmbeddingValidationError,
-	OpenAIEmbedder
+	OpenAIEmbedder,
 } from './backend/index.js';
-import { 
-	PROVIDER_TYPES, 
-	ERROR_MESSAGES, 
-	LOG_PREFIXES,
-	DEFAULTS
-} from './constants.js';
+import { PROVIDER_TYPES, ERROR_MESSAGES, LOG_PREFIXES, DEFAULTS } from './constants.js';
 
 // Use Zod-inferred types for validation, but convert to interface types for backend
 export type BackendConfig = ZodOpenAIEmbeddingConfig;
@@ -101,10 +96,7 @@ class OpenAIEmbeddingFactory implements EmbeddingFactory {
 			// Test the connection
 			const isHealthy = await embedder.isHealthy();
 			if (!isHealthy) {
-				throw new EmbeddingError(
-					ERROR_MESSAGES.CONNECTION_FAILED('OpenAI'),
-					'openai'
-				);
+				throw new EmbeddingError(ERROR_MESSAGES.CONNECTION_FAILED('OpenAI'), 'openai');
 			}
 
 			logger.info(`${LOG_PREFIXES.FACTORY} Successfully created OpenAI embedder`, {
@@ -134,8 +126,7 @@ class OpenAIEmbeddingFactory implements EmbeddingFactory {
 	validateConfig(config: unknown): boolean {
 		try {
 			const validationResult = validateEmbeddingConfig(config);
-			return validationResult.success && 
-				   validationResult.data?.type === PROVIDER_TYPES.OPENAI;
+			return validationResult.success && validationResult.data?.type === PROVIDER_TYPES.OPENAI;
 		} catch {
 			return false;
 		}
@@ -178,18 +169,17 @@ export async function createEmbedder(config: BackendConfig): Promise<Embedder> {
 	// Validate configuration
 	const validationResult = validateEmbeddingConfig(config);
 	if (!validationResult.success) {
-		const errorMessage = validationResult.errors?.issues
-			.map(issue => `${issue.path.join('.')}: ${issue.message}`)
-			.join(', ') || 'Invalid configuration';
+		const errorMessage =
+			validationResult.errors?.issues
+				.map(issue => `${issue.path.join('.')}: ${issue.message}`)
+				.join(', ') || 'Invalid configuration';
 
 		logger.error(`${LOG_PREFIXES.FACTORY} Configuration validation failed`, {
 			type: config.type,
 			errors: errorMessage,
 		});
 
-		throw new EmbeddingValidationError(
-			`Configuration validation failed: ${errorMessage}`
-		);
+		throw new EmbeddingValidationError(`Configuration validation failed: ${errorMessage}`);
 	}
 
 	// Get factory for provider type
@@ -200,9 +190,7 @@ export async function createEmbedder(config: BackendConfig): Promise<Embedder> {
 			supportedTypes: Array.from(EMBEDDING_FACTORIES.keys()),
 		});
 
-		throw new EmbeddingValidationError(
-			ERROR_MESSAGES.PROVIDER_NOT_SUPPORTED(config.type)
-		);
+		throw new EmbeddingValidationError(ERROR_MESSAGES.PROVIDER_NOT_SUPPORTED(config.type));
 	}
 
 	// Create embedder instance
@@ -294,9 +282,7 @@ export async function createDefaultEmbedder(): Promise<Embedder> {
 
 	const apiKey = process.env.OPENAI_API_KEY;
 	if (!apiKey) {
-		throw new EmbeddingValidationError(
-			ERROR_MESSAGES.API_KEY_REQUIRED('OpenAI')
-		);
+		throw new EmbeddingValidationError(ERROR_MESSAGES.API_KEY_REQUIRED('OpenAI'));
 	}
 
 	const openaiConfig: ZodOpenAIEmbeddingConfig = {
@@ -345,13 +331,10 @@ export function getEmbeddingFactory(providerType: string): EmbeddingFactory | un
  * @param providerType - Provider type
  * @param factory - Factory instance
  */
-export function registerEmbeddingFactory(
-	providerType: string, 
-	factory: EmbeddingFactory
-): void {
+export function registerEmbeddingFactory(providerType: string, factory: EmbeddingFactory): void {
 	logger.debug(`${LOG_PREFIXES.FACTORY} Registering embedding factory`, {
 		providerType,
 	});
 
 	EMBEDDING_FACTORIES.set(providerType, factory);
-} 
+}

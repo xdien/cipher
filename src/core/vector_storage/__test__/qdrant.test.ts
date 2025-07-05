@@ -170,18 +170,17 @@ describe('QdrantBackend', () => {
 			];
 			const ids = ['vec1', 'vec2'];
 			const payloads = [{ title: 'First' }, { title: 'Second' }];
-
 			await backend.insert(vectors, ids, payloads);
 
 			expect(mockQdrantClient.upsert).toHaveBeenCalledWith('test_collection', {
 				points: [
 					{
-						id: 'vec1',
+						id: 1,
 						vector: [1, 2, 3],
 						payload: { title: 'First' },
 					},
 					{
-						id: 'vec2',
+						id: 2,
 						vector: [4, 5, 6],
 						payload: { title: 'Second' },
 					},

@@ -60,7 +60,11 @@ export class InternalToolRegistry {
 	/**
 	 * Register a new internal tool
 	 */
-	public registerTool(tool: InternalTool): { success: boolean; message: string; conflictedWith?: string } {
+	public registerTool(tool: InternalTool): {
+		success: boolean;
+		message: string;
+		conflictedWith?: string;
+	} {
 		try {
 			// Validate tool structure
 			const validation = this.validateTool(tool);

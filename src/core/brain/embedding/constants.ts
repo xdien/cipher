@@ -102,8 +102,7 @@ export const VALIDATION_LIMITS = {
  * Error messages
  */
 export const ERROR_MESSAGES = {
-	PROVIDER_NOT_SUPPORTED: (provider: string) =>
-		`Embedding provider '${provider}' is not supported`,
+	PROVIDER_NOT_SUPPORTED: (provider: string) => `Embedding provider '${provider}' is not supported`,
 
 	MODEL_NOT_SUPPORTED: (model: string, provider: string) =>
 		`Model '${model}' is not supported by provider '${provider}'`,
@@ -175,4 +174,4 @@ export const HTTP_STATUS = {
  */
 export const CONTENT_TYPES = {
 	JSON: 'application/json',
-} as const; 
+} as const;

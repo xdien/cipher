@@ -11,19 +11,21 @@ import { InternalTool, InternalToolContext } from '../../types.js';
 import { logger } from '../../../../logger/index.js';
 
 /**
- * MEMORY OPERATIONAL TOOL 
+ * MEMORY OPERATIONAL TOOL
  */
 export const MEMORY_OPERATION_TOOL = {
 	type: 'function',
 	function: {
 		name: 'memory_operation',
-		description: 'Process extracted knowledge and determine memory operations (ADD, UPDATE, DELETE, NONE) using LLM-powered intelligent reasoning and similarity analysis with existing memories.',
+		description:
+			'Process extracted knowledge and determine memory operations (ADD, UPDATE, DELETE, NONE) using LLM-powered intelligent reasoning and similarity analysis with existing memories.',
 		parameters: {
 			type: 'object',
 			properties: {
 				memory: {
 					type: 'array',
-					description: 'Updated memory entries with operations applied. Always preserve complete code blocks, command syntax, and implementation details within triple backticks.',
+					description:
+						'Updated memory entries with operations applied. Always preserve complete code blocks, command syntax, and implementation details within triple backticks.',
 					items: {
 						type: 'object',
 						properties: {
@@ -33,7 +35,8 @@ export const MEMORY_OPERATION_TOOL = {
 							},
 							text: {
 								type: 'string',
-								description: 'Text of the memory entry including complete implementation code, command syntax, or technical details when present. Always preserve the complete pattern within triple backticks.',
+								description:
+									'Text of the memory entry including complete implementation code, command syntax, or technical details when present. Always preserve the complete pattern within triple backticks.',
 							},
 							event: {
 								type: 'string',
@@ -43,15 +46,18 @@ export const MEMORY_OPERATION_TOOL = {
 							tags: {
 								type: 'array',
 								items: { type: 'string' },
-								description: 'Keywords derived from the text (lowercase, singular nouns). Include technology-specific tags (e.g., \'react\', \'python\', \'docker\').',
+								description:
+									"Keywords derived from the text (lowercase, singular nouns). Include technology-specific tags (e.g., 'react', 'python', 'docker').",
 							},
 							old_memory: {
 								type: 'string',
-								description: 'Previous text, included only for UPDATE events. Ensure code patterns are properly preserved in the updated text.',
+								description:
+									'Previous text, included only for UPDATE events. Ensure code patterns are properly preserved in the updated text.',
 							},
 							code_pattern: {
 								type: 'string',
-								description: 'Optional. The extracted code pattern or command syntax if present, exactly as it appeared in the original content.'
+								description:
+									'Optional. The extracted code pattern or command syntax if present, exactly as it appeared in the original content.',
 							},
 							confidence: {
 								type: 'number',
@@ -60,7 +66,7 @@ export const MEMORY_OPERATION_TOOL = {
 							reasoning: {
 								type: 'string',
 								description: 'Explanation for why this operation was chosen.',
-							}
+							},
 						},
 						required: ['id', 'text', 'event', 'tags'],
 						additionalProperties: false,
@@ -196,7 +202,7 @@ Respond with a JSON object containing:
   "confidence": 0.8,
   "reasoning": "Clear explanation of the decision",
   "targetMemoryId": "id-if-updating-or-deleting"
-}`
+}`,
 } as const;
 
 /**
@@ -314,15 +320,18 @@ export const memoryOperationTool: InternalTool = {
 		},
 		required: ['extractedFacts'],
 	},
-	handler: async (args: MemoryOperationArgs, context?: InternalToolContext): Promise<MemoryOperationResult> => {
+	handler: async (
+		args: MemoryOperationArgs,
+		context?: InternalToolContext
+	): Promise<MemoryOperationResult> => {
 		const startTime = Date.now();
-		
+
 		try {
 			logger.info('MemoryOperation: Processing memory operation request', {
 				factCount: args.extractedFacts?.length || 0,
 				existingMemoryCount: args.existingMemories?.length || 0,
 				hasContext: !!args.context,
-				hasOptions: !!args.options
+				hasOptions: !!args.options,
 			});
 
 			// Phase 1: Basic parameter validation
@@ -333,7 +342,7 @@ export const memoryOperationTool: InternalTool = {
 
 			// Merge with default options
 			const options = { ...DEFAULT_OPTIONS, ...args.options };
-			
+
 			logger.debug('MemoryOperation: Using configuration options', {
 				similarityThreshold: options.similarityThreshold,
 				maxSimilarResults: options.maxSimilarResults,
@@ -363,7 +372,7 @@ export const memoryOperationTool: InternalTool = {
 			const embeddingManager = context?.services?.embeddingManager;
 			const vectorStoreManager = context?.services?.vectorStoreManager;
 			const llmService = context?.services?.llmService; // LLM service access
-			
+
 			let embedder: any = null;
 			let vectorStore: any = null;
 
@@ -372,11 +381,13 @@ export const memoryOperationTool: InternalTool = {
 				try {
 					embedder = embeddingManager.getEmbedder('default');
 					vectorStore = vectorStoreManager.getStore();
-					
+
 					if (embedder && vectorStore) {
 						logger.debug('MemoryOperation: Using embedding and vector storage services');
 					} else {
-						logger.warn('MemoryOperation: Services available but not initialized, using basic analysis');
+						logger.warn(
+							'MemoryOperation: Services available but not initialized, using basic analysis'
+						);
 					}
 				} catch (error) {
 					logger.debug('MemoryOperation: Failed to access embedding/vector services', {
@@ -384,60 +395,61 @@ export const memoryOperationTool: InternalTool = {
 					});
 				}
 			} else {
-				logger.debug('MemoryOperation: No embedding/vector services available in context, using basic analysis');
+				logger.debug(
+					'MemoryOperation: No embedding/vector services available in context, using basic analysis'
+				);
 			}
 
 			// Check LLM service availability
 			if (options.useLLMDecisions && llmService) {
 				logger.debug('MemoryOperation: LLM service available for decision making');
 			} else if (options.useLLMDecisions) {
-				logger.warn('MemoryOperation: LLM decisions requested but service not available, falling back to similarity-based decisions');
+				logger.warn(
+					'MemoryOperation: LLM decisions requested but service not available, falling back to similarity-based decisions'
+				);
 			}
 
 			// Process each fact individually or in batch
 			for (let i = 0; i < validFacts.length; i++) {
 				const fact = validFacts[i];
-				const codePattern = extractCodePattern(fact);
-				const tags = extractTechnicalTags(fact);
-				
+				const codePattern = extractCodePattern(fact || '');
+				const tags = extractTechnicalTags(fact || '');
+
 				let memoryAction: MemoryAction;
 				let similarMemories: any[] = [];
-				
+
 				if (embedder && vectorStore) {
 					try {
 						// Generate embedding for the fact
 						logger.debug('MemoryOperation: Generating embedding for fact', {
 							factIndex: i,
-							factLength: fact.length,
+							factLength: (fact || '').length,
 						});
-						
-						const embedding = await embedder.embed(fact);
-						
+
+						const embedding = await embedder.embed(fact || '');
+
 						// Search for similar memories
-						const searchResults = await vectorStore.search(
-							embedding, 
-							options.maxSimilarResults
-						);
-						
+						const searchResults = await vectorStore.search(embedding, options.maxSimilarResults);
+
 						// Apply similarity threshold filtering
-						similarMemories = searchResults.filter(result => 
-							(result.score || 0) >= options.similarityThreshold
+						similarMemories = searchResults.filter(
+							(result: any) => (result.score || 0) >= options.similarityThreshold
 						);
-						
+
 						totalSimilarMemories += similarMemories.length;
-						
+
 						logger.debug('MemoryOperation: Found similar memories', {
 							factIndex: i,
 							totalResults: searchResults.length,
 							filteredResults: similarMemories.length,
 							threshold: options.similarityThreshold,
 						});
-						
+
 						// Use LLM decision making if available and enabled
 						if (options.useLLMDecisions && llmService) {
 							try {
 								memoryAction = await llmDetermineMemoryOperation(
-									fact,
+									fact || '',
 									similarMemories,
 									args.context,
 									options,
@@ -447,22 +459,24 @@ export const memoryOperationTool: InternalTool = {
 									tags
 								);
 								llmDecisionsUsed++;
-								
+
 								logger.debug('MemoryOperation: Used LLM decision making', {
 									factIndex: i,
 									operation: memoryAction.event,
 									confidence: memoryAction.confidence,
 								});
-								
 							} catch (error) {
-								logger.warn('MemoryOperation: LLM decision failed, falling back to similarity analysis', {
-									factIndex: i,
-									error: error instanceof Error ? error.message : String(error),
-								});
-								
+								logger.warn(
+									'MemoryOperation: LLM decision failed, falling back to similarity analysis',
+									{
+										factIndex: i,
+										error: error instanceof Error ? error.message : String(error),
+									}
+								);
+
 								// Fallback to similarity-based decision
 								memoryAction = await determineMemoryOperation(
-									fact,
+									fact || '',
 									similarMemories,
 									options.similarityThreshold,
 									i,
@@ -474,7 +488,7 @@ export const memoryOperationTool: InternalTool = {
 						} else {
 							// Use similarity-based decision making
 							memoryAction = await determineMemoryOperation(
-								fact,
+								fact || '',
 								similarMemories,
 								options.similarityThreshold,
 								i,
@@ -483,17 +497,16 @@ export const memoryOperationTool: InternalTool = {
 							);
 							fallbackDecisionsUsed++;
 						}
-						
 					} catch (error) {
 						logger.warn('MemoryOperation: Error during similarity analysis, falling back to ADD', {
 							factIndex: i,
 							error: error instanceof Error ? error.message : String(error),
 						});
-						
+
 						// Fallback to ADD operation with higher confidence
 						memoryAction = {
 							id: generateMemoryId(i),
-							text: fact,
+							text: fact || '',
 							event: 'ADD',
 							tags,
 							confidence: 0.6, // Increased from 0.5 to exceed threshold
@@ -504,35 +517,40 @@ export const memoryOperationTool: InternalTool = {
 					}
 				} else {
 					// No embedding/vector storage available - basic analysis
-					const isNew = !args.existingMemories?.some(mem => 
-						calculateTextSimilarity(fact, mem.text) > options.similarityThreshold
+					const isNew = !args.existingMemories?.some(
+						mem => calculateTextSimilarity(fact || '', mem.text) > options.similarityThreshold
 					);
-					
+
 					memoryAction = {
 						id: generateMemoryId(i),
-						text: fact,
+						text: fact || '',
 						event: isNew ? 'ADD' : 'NONE',
 						tags,
 						confidence: isNew ? 0.7 : 0.5, // Higher confidence for new memories
-						reasoning: isNew ? 'No similar memories found in basic analysis' : 'Similar memory detected in basic analysis',
+						reasoning: isNew
+							? 'No similar memories found in basic analysis'
+							: 'Similar memory detected in basic analysis',
 						...(codePattern && { code_pattern: codePattern }),
 					};
 					fallbackDecisionsUsed++;
 				}
-				
+
 				// Apply confidence threshold
-				if (memoryAction.confidence < options.confidenceThreshold && memoryAction.event !== 'NONE') {
+				if (
+					memoryAction.confidence < options.confidenceThreshold &&
+					memoryAction.event !== 'NONE'
+				) {
 					logger.debug('MemoryOperation: Operation confidence below threshold, changing to NONE', {
 						factIndex: i,
 						operation: memoryAction.event,
 						confidence: memoryAction.confidence,
 						threshold: options.confidenceThreshold,
 					});
-					
+
 					memoryAction.event = 'NONE';
 					memoryAction.reasoning += ` (Low confidence: ${memoryAction.confidence.toFixed(2)})`;
 				}
-				
+
 				memoryActions.push(memoryAction);
 				confidenceSum += memoryAction.confidence;
 			}
@@ -575,7 +593,8 @@ export const memoryOperationTool: InternalTool = {
 				try {
 					await persistMemoryActions(memoryActions, vectorStore, embedder);
 					logger.info('MemoryOperation: Successfully persisted memories to vector store', {
-						persistedCount: memoryActions.filter(a => a.event === 'ADD' || a.event === 'UPDATE').length,
+						persistedCount: memoryActions.filter(a => a.event === 'ADD' || a.event === 'UPDATE')
+							.length,
 					});
 				} catch (error) {
 					logger.warn('MemoryOperation: Failed to persist memories to vector store', {
@@ -584,15 +603,16 @@ export const memoryOperationTool: InternalTool = {
 					// Don't fail the entire operation if persistence fails
 				}
 			} else {
-				logger.debug('MemoryOperation: Vector store or embedder not available, skipping persistence');
+				logger.debug(
+					'MemoryOperation: Vector store or embedder not available, skipping persistence'
+				);
 			}
 
 			return result;
-
 		} catch (error) {
 			const processingTime = Date.now() - startTime;
 			const errorMessage = error instanceof Error ? error.message : String(error);
-			
+
 			logger.error('MemoryOperation: Failed to process memory operations', {
 				error: errorMessage,
 				factCount: args.extractedFacts?.length || 0,
@@ -637,72 +657,69 @@ async function llmDetermineMemoryOperation(
 	tags: string[] = []
 ): Promise<MemoryAction> {
 	const factId = generateMemoryId(index);
-	
+
 	try {
 		// Prepare context for LLM
 		const contextStr = formatContextForLLM(context);
 		const similarMemoriesStr = formatSimilarMemoriesForLLM(similarMemories);
-		
+
 		// Create decision prompt
-		const prompt = MEMORY_OPERATION_PROMPTS.DECISION_PROMPT
-			.replace('{fact}', fact)
+		const prompt = MEMORY_OPERATION_PROMPTS.DECISION_PROMPT.replace('{fact}', fact)
 			.replace('{similarMemories}', similarMemoriesStr)
 			.replace('{context}', contextStr);
-		
+
 		logger.debug('MemoryOperation: Requesting LLM decision', {
 			factIndex: index,
-			factLength: fact.length,
+			factLength: (fact || '').length,
 			similarMemoriesCount: similarMemories.length,
 		});
-		
+
 		// Get LLM response
 		const response = await llmService.generate(prompt);
-		
+
 		// Parse LLM response
 		const decision = parseLLMDecision(response);
-		
+
 		// Validate and apply decision
 		if (!decision || !isValidOperation(decision.operation)) {
 			throw new Error(`Invalid LLM decision: ${JSON.stringify(decision)}`);
 		}
-		
+
 		// Create memory action based on LLM decision
 		const memoryAction: MemoryAction = {
 			id: decision.targetMemoryId || factId,
-			text: fact,
+			text: fact || '',
 			event: decision.operation as 'ADD' | 'UPDATE' | 'DELETE' | 'NONE',
 			tags,
 			confidence: Math.max(0, Math.min(1, decision.confidence || 0.7)),
 			reasoning: decision.reasoning || 'LLM decision',
 			...(codePattern && { code_pattern: codePattern }),
 		};
-		
+
 		// Add old_memory for UPDATE operations
 		if (memoryAction.event === 'UPDATE' && decision.targetMemoryId) {
-			const targetMemory = similarMemories.find(mem => 
-				mem.id === decision.targetMemoryId || 
-				mem.payload?.id === decision.targetMemoryId
+			const targetMemory = similarMemories.find(
+				mem => mem.id === decision.targetMemoryId || mem.payload?.id === decision.targetMemoryId
 			);
 			if (targetMemory) {
 				memoryAction.old_memory = targetMemory.payload?.data || targetMemory.text || '';
 			}
 		}
-		
+
 		logger.debug('MemoryOperation: LLM decision applied', {
 			factIndex: index,
 			operation: memoryAction.event,
 			confidence: memoryAction.confidence,
 			reasoning: memoryAction.reasoning.substring(0, 100),
 		});
-		
+
 		return memoryAction;
-		
 	} catch (error) {
 		logger.warn('MemoryOperation: LLM decision failed', {
 			factIndex: index,
 			error: error instanceof Error ? error.message : String(error),
 		});
-		
+
 		// Re-throw to trigger fallback
 		throw error;
 	}
@@ -715,24 +732,24 @@ function formatContextForLLM(context?: MemoryOperationArgs['context']): string {
 	if (!context) {
 		return 'No specific context provided.';
 	}
-	
+
 	const parts: string[] = [];
-	
+
 	if (context.conversationTopic) {
 		parts.push(`Topic: ${context.conversationTopic}`);
 	}
-	
+
 	if (context.recentMessages && context.recentMessages.length > 0) {
 		parts.push(`Recent messages: ${context.recentMessages.slice(-3).join(', ')}`);
 	}
-	
+
 	if (context.sessionMetadata) {
 		const metadata = Object.entries(context.sessionMetadata)
 			.map(([key, value]) => `${key}: ${value}`)
 			.join(', ');
 		parts.push(`Session info: ${metadata}`);
 	}
-	
+
 	return parts.length > 0 ? parts.join('\n') : 'General context.';
 }
 
@@ -743,14 +760,14 @@ function formatSimilarMemoriesForLLM(similarMemories: any[]): string {
 	if (!similarMemories || similarMemories.length === 0) {
 		return 'No similar memories found.';
 	}
-	
+
 	return similarMemories
 		.slice(0, 3) // Limit to top 3 for prompt efficiency
 		.map((memory, index) => {
 			const score = memory.score ? ` (similarity: ${memory.score.toFixed(2)})` : '';
 			const text = memory.payload?.data || memory.text || 'No content';
 			const id = memory.id || memory.payload?.id || `memory-${index}`;
-			
+
 			return `${index + 1}. ID: ${id}${score}\n   Content: ${text.substring(0, 200)}${text.length > 200 ? '...' : ''}`;
 		})
 		.join('\n\n');
@@ -766,23 +783,24 @@ function parseLLMDecision(response: string): any {
 		if (!jsonMatch) {
 			throw new Error('No JSON found in response');
 		}
-		
+
 		const decision = JSON.parse(jsonMatch[0]);
-		
+
 		// Validate required fields
 		if (!decision.operation || !decision.confidence) {
 			throw new Error('Missing required fields in decision');
 		}
-		
+
 		return decision;
-		
 	} catch (error) {
 		logger.error('MemoryOperation: Failed to parse LLM decision', {
 			response: response.substring(0, 200),
 			error: error instanceof Error ? error.message : String(error),
 		});
-		
-		throw new Error(`Failed to parse LLM decision: ${error instanceof Error ? error.message : String(error)}`);
+
+		throw new Error(
+			`Failed to parse LLM decision: ${error instanceof Error ? error.message : String(error)}`
+		);
 	}
 }
 
@@ -868,11 +886,17 @@ function validateMemoryOperationArgs(args: MemoryOperationArgs): ValidationResul
 					errors.push('options.maxSimilarResults must be between 1 and 20');
 				}
 			}
-			if (args.options.enableBatchProcessing !== undefined && typeof args.options.enableBatchProcessing !== 'boolean') {
+			if (
+				args.options.enableBatchProcessing !== undefined &&
+				typeof args.options.enableBatchProcessing !== 'boolean'
+			) {
 				errors.push('options.enableBatchProcessing must be a boolean');
 			}
 			// Additional validation
-			if (args.options.useLLMDecisions !== undefined && typeof args.options.useLLMDecisions !== 'boolean') {
+			if (
+				args.options.useLLMDecisions !== undefined &&
+				typeof args.options.useLLMDecisions !== 'boolean'
+			) {
 				errors.push('options.useLLMDecisions must be a boolean');
 			}
 			if (args.options.confidenceThreshold !== undefined) {
@@ -882,7 +906,10 @@ function validateMemoryOperationArgs(args: MemoryOperationArgs): ValidationResul
 					errors.push('options.confidenceThreshold must be between 0.0 and 1.0');
 				}
 			}
-			if (args.options.enableDeleteOperations !== undefined && typeof args.options.enableDeleteOperations !== 'boolean') {
+			if (
+				args.options.enableDeleteOperations !== undefined &&
+				typeof args.options.enableDeleteOperations !== 'boolean'
+			) {
 				errors.push('options.enableDeleteOperations must be a boolean');
 			}
 		}
@@ -916,7 +943,7 @@ function extractCodePattern(fact: string): string | undefined {
 		/(npm|yarn|pnpm)\s+[^\n]+/,
 		/(git)\s+[^\n]+/,
 		/(docker)\s+[^\n]+/,
-		/(curl|wget)\s+[^\n]+/
+		/(curl|wget)\s+[^\n]+/,
 	];
 
 	for (const pattern of commandPatterns) {
@@ -936,7 +963,18 @@ function extractTechnicalTags(fact: string): string[] {
 	const tags: string[] = [];
 
 	// Programming languages
-	const languages = ['javascript', 'typescript', 'python', 'java', 'rust', 'go', 'php', 'ruby', 'swift', 'kotlin'];
+	const languages = [
+		'javascript',
+		'typescript',
+		'python',
+		'java',
+		'rust',
+		'go',
+		'php',
+		'ruby',
+		'swift',
+		'kotlin',
+	];
 	languages.forEach(lang => {
 		if (fact.toLowerCase().includes(lang)) {
 			tags.push(lang);
@@ -944,7 +982,17 @@ function extractTechnicalTags(fact: string): string[] {
 	});
 
 	// Frameworks and libraries
-	const frameworks = ['react', 'vue', 'angular', 'svelte', 'nextjs', 'express', 'fastify', 'django', 'flask'];
+	const frameworks = [
+		'react',
+		'vue',
+		'angular',
+		'svelte',
+		'nextjs',
+		'express',
+		'fastify',
+		'django',
+		'flask',
+	];
 	frameworks.forEach(framework => {
 		if (fact.toLowerCase().includes(framework)) {
 			tags.push(framework);
@@ -952,7 +1000,17 @@ function extractTechnicalTags(fact: string): string[] {
 	});
 
 	// Tools and technologies
-	const tools = ['docker', 'kubernetes', 'git', 'npm', 'yarn', 'webpack', 'vite', 'eslint', 'prettier'];
+	const tools = [
+		'docker',
+		'kubernetes',
+		'git',
+		'npm',
+		'yarn',
+		'webpack',
+		'vite',
+		'eslint',
+		'prettier',
+	];
 	tools.forEach(tool => {
 		if (fact.toLowerCase().includes(tool)) {
 			tags.push(tool);
@@ -963,19 +1021,41 @@ function extractTechnicalTags(fact: string): string[] {
 	if (fact.includes('```')) {
 		tags.push('code-block');
 	}
-	if (fact.includes('function') || fact.includes('class') || fact.includes('const') || fact.includes('let') || fact.includes('var')) {
+	if (
+		fact.includes('function') ||
+		fact.includes('class') ||
+		fact.includes('const') ||
+		fact.includes('let') ||
+		fact.includes('var')
+	) {
 		tags.push('programming');
 	}
-	if (fact.includes('/') || fact.includes('\\') || fact.includes('.js') || fact.includes('.ts') || fact.includes('.py')) {
+	if (
+		fact.includes('/') ||
+		fact.includes('\\') ||
+		fact.includes('.js') ||
+		fact.includes('.ts') ||
+		fact.includes('.py')
+	) {
 		tags.push('file-path');
 	}
-	if (fact.includes('error') || fact.includes('exception') || fact.includes('failed') || fact.includes('bug')) {
+	if (
+		fact.includes('error') ||
+		fact.includes('exception') ||
+		fact.includes('failed') ||
+		fact.includes('bug')
+	) {
 		tags.push('error-handling');
 	}
 	if (fact.includes('config') || fact.includes('setting') || fact.includes('option')) {
 		tags.push('configuration');
 	}
-	if (fact.includes('api') || fact.includes('endpoint') || fact.includes('request') || fact.includes('response')) {
+	if (
+		fact.includes('api') ||
+		fact.includes('endpoint') ||
+		fact.includes('request') ||
+		fact.includes('response')
+	) {
 		tags.push('api');
 	}
 
@@ -1009,7 +1089,7 @@ async function determineMemoryOperation(
 	tags: string[] = []
 ): Promise<MemoryAction> {
 	const factId = generateMemoryId(index);
-	
+
 	// If no similar memories found, ADD the new fact
 	if (similarMemories.length === 0) {
 		return {
@@ -1088,8 +1168,8 @@ async function persistMemoryActions(
 	vectorStore: any,
 	embedder: any
 ): Promise<void> {
-	const actionsToProcess = memoryActions.filter(action => 
-		action.event === 'ADD' || action.event === 'UPDATE'
+	const actionsToProcess = memoryActions.filter(
+		action => action.event === 'ADD' || action.event === 'UPDATE'
 	);
 
 	if (actionsToProcess.length === 0) {
@@ -1107,12 +1187,12 @@ async function persistMemoryActions(
 	for (const action of actionsToProcess) {
 		try {
 			// Generate embedding for the memory text
-			const embedding = await embedder.embed(action.text);
+			const embedding = await embedder.embed(action.text || '');
 
 			// Prepare payload with metadata
 			const payload = {
 				id: action.id,
-				text: action.text,
+				text: action.text || '',
 				tags: action.tags,
 				confidence: action.confidence,
 				reasoning: action.reasoning,
@@ -1127,14 +1207,14 @@ async function persistMemoryActions(
 				await vectorStore.insert([embedding], [action.id], [payload]);
 				logger.debug('MemoryOperation: Added memory to vector store', {
 					id: action.id,
-					textLength: action.text.length,
+					textLength: (action.text || '').length,
 				});
 			} else if (action.event === 'UPDATE') {
 				// Update existing memory
 				await vectorStore.update(action.id, embedding, payload);
 				logger.debug('MemoryOperation: Updated memory in vector store', {
 					id: action.id,
-					textLength: action.text.length,
+					textLength: (action.text || '').length,
 				});
 			}
 		} catch (error) {

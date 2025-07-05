@@ -36,13 +36,13 @@ export function getEmbeddingConfigFromEnv(): OpenAIEmbeddingConfig | null {
 	}
 
 	const config: OpenAIEmbeddingConfig = {
-		type: PROVIDER_TYPES.OPENAI,
-		apiKey: env.OPENAI_API_KEY,
+		type: 'openai',
+		apiKey: env.OPENAI_API_KEY!,
 		model: (env.EMBEDDING_MODEL as any) || DEFAULTS.OPENAI_MODEL,
 		baseUrl: env.OPENAI_BASE_URL || DEFAULTS.OPENAI_BASE_URL,
 		timeout: env.EMBEDDING_TIMEOUT || DEFAULTS.TIMEOUT,
 		maxRetries: env.EMBEDDING_MAX_RETRIES || DEFAULTS.MAX_RETRIES,
-		organization: env.OPENAI_ORG_ID,
+		organization: env.OPENAI_ORG_ID || '',
 	};
 
 	return config;
@@ -122,7 +122,9 @@ export function validateEmbeddingEnv(): {
 		// Check if other LLM providers are configured
 		const hasOtherProviders = env.ANTHROPIC_API_KEY || env.OPENROUTER_API_KEY;
 		if (hasOtherProviders) {
-			issues.push('OPENAI_API_KEY is required for embedding functionality, even when using Anthropic or OpenRouter for LLM services');
+			issues.push(
+				'OPENAI_API_KEY is required for embedding functionality, even when using Anthropic or OpenRouter for LLM services'
+			);
 		} else {
 			issues.push('OPENAI_API_KEY is required for embedding functionality');
 		}
@@ -188,8 +190,8 @@ export function analyzeProviderConfiguration(): {
 	let llmProvider: 'openai' | 'anthropic' | 'openrouter' | 'none' | 'multiple';
 	const configuredProviders = [
 		hasOpenAI && 'openai',
-		hasAnthropic && 'anthropic', 
-		hasOpenRouter && 'openrouter'
+		hasAnthropic && 'anthropic',
+		hasOpenRouter && 'openrouter',
 	].filter(Boolean);
 
 	if (configuredProviders.length === 0) {
@@ -199,7 +201,9 @@ export function analyzeProviderConfiguration(): {
 		llmProvider = configuredProviders[0] as 'openai' | 'anthropic' | 'openrouter';
 	} else {
 		llmProvider = 'multiple';
-		recommendations.push('Multiple LLM provider API keys detected. The system will use the configured provider in your LLM service setup.');
+		recommendations.push(
+			'Multiple LLM provider API keys detected. The system will use the configured provider in your LLM service setup.'
+		);
 	}
 
 	// Embedding provider analysis
@@ -209,15 +213,21 @@ export function analyzeProviderConfiguration(): {
 	// Generate specific warnings and recommendations
 	if (!hasOpenAI && (hasAnthropic || hasOpenRouter)) {
 		warnings.push('Embedding functionality will not work without OPENAI_API_KEY');
-		recommendations.push('Add OPENAI_API_KEY to enable embedding features, even when using Anthropic or OpenRouter for LLM');
+		recommendations.push(
+			'Add OPENAI_API_KEY to enable embedding features, even when using Anthropic or OpenRouter for LLM'
+		);
 	}
 
 	if (usingMixedProviders) {
-		recommendations.push('You are using a mixed provider setup (non-OpenAI for LLM + OpenAI for embeddings). This is a valid configuration.');
+		recommendations.push(
+			'You are using a mixed provider setup (non-OpenAI for LLM + OpenAI for embeddings). This is a valid configuration.'
+		);
 	}
 
 	if (hasOpenAI && !hasAnthropic && !hasOpenRouter) {
-		recommendations.push('Using OpenAI for both LLM and embeddings - this is the simplest configuration.');
+		recommendations.push(
+			'Using OpenAI for both LLM and embeddings - this is the simplest configuration.'
+		);
 	}
 
 	return {
@@ -227,4 +237,4 @@ export function analyzeProviderConfiguration(): {
 		warnings,
 		recommendations,
 	};
-} 
+}

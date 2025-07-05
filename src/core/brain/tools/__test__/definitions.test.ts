@@ -6,9 +6,7 @@ import {
 	getToolsByCategory,
 	TOOL_CATEGORIES,
 } from '../definitions/index.js';
-import {
-	extractKnowledgeTool,
-} from '../definitions/memory/index.js';
+import { extractKnowledgeTool } from '../definitions/memory/index.js';
 import { InternalToolManager } from '../manager.js';
 import { InternalToolRegistry } from '../registry.js';
 

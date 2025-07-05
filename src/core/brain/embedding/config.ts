@@ -9,12 +9,12 @@
  */
 
 import { z } from 'zod';
-import { 
-	DEFAULTS, 
-	OPENAI_MODELS, 
-	PROVIDER_TYPES, 
+import {
+	DEFAULTS,
+	OPENAI_MODELS,
+	PROVIDER_TYPES,
 	VALIDATION_LIMITS,
-	ENV_VARS 
+	ENV_VARS,
 } from './constants.js';
 
 /**
@@ -25,24 +25,13 @@ import {
  */
 const BaseEmbeddingSchema = z.object({
 	/** API key for the provider (required for all providers) */
-	apiKey: z
-		.string()
-		.min(1)
-		.describe('API key for the embedding provider'),
+	apiKey: z.string().min(1).describe('API key for the embedding provider'),
 
 	/** Model name to use for embeddings */
-	model: z
-		.string()
-		.min(1)
-		.optional()
-		.describe('Model name for embeddings'),
+	model: z.string().min(1).optional().describe('Model name for embeddings'),
 
 	/** Base URL for the provider API */
-	baseUrl: z
-		.string()
-		.url()
-		.optional()
-		.describe('Base URL for the provider API'),
+	baseUrl: z.string().url().optional().describe('Base URL for the provider API'),
 
 	/** Request timeout in milliseconds */
 	timeout: z
@@ -63,10 +52,7 @@ const BaseEmbeddingSchema = z.object({
 		.describe('Maximum retry attempts'),
 
 	/** Provider-specific options */
-	options: z
-		.record(z.any())
-		.optional()
-		.describe('Provider-specific configuration options'),
+	options: z.record(z.any()).optional().describe('Provider-specific configuration options'),
 });
 
 /**
@@ -98,10 +84,7 @@ const OpenAIEmbeddingSchema = BaseEmbeddingSchema.extend({
 		.describe('OpenAI embedding model'),
 
 	/** OpenAI organization ID */
-	organization: z
-		.string()
-		.optional()
-		.describe('OpenAI organization ID'),
+	organization: z.string().optional().describe('OpenAI organization ID'),
 
 	/** Custom dimensions for embedding-3 models */
 	dimensions: z
@@ -113,11 +96,7 @@ const OpenAIEmbeddingSchema = BaseEmbeddingSchema.extend({
 		.describe('Custom embedding dimensions (embedding-3 models only)'),
 
 	/** Base URL override */
-	baseUrl: z
-		.string()
-		.url()
-		.default(DEFAULTS.OPENAI_BASE_URL)
-		.describe('OpenAI API base URL'),
+	baseUrl: z.string().url().default(DEFAULTS.OPENAI_BASE_URL).describe('OpenAI API base URL'),
 }).strict();
 
 export type OpenAIEmbeddingConfig = z.infer<typeof OpenAIEmbeddingSchema>;
@@ -145,7 +124,7 @@ const BackendConfigSchema = z
 		if (data.type === PROVIDER_TYPES.OPENAI) {
 			// Check if dimensions are specified for models that support it
 			if (data.dimensions) {
-				const supportsCustomDimensions = 
+				const supportsCustomDimensions =
 					data.model === OPENAI_MODELS.TEXT_EMBEDDING_3_SMALL ||
 					data.model === OPENAI_MODELS.TEXT_EMBEDDING_3_LARGE;
 
@@ -206,28 +185,18 @@ export const EmbeddingEnvConfigSchema = z.object({
 		.describe('Embedding provider type'),
 
 	/** API key from environment variables */
-	apiKey: z
-		.string()
-		.optional()
-		.describe('API key from environment variables'),
+	apiKey: z.string().optional().describe('API key from environment variables'),
 
 	/** Model from environment */
-	model: z
-		.string()
-		.optional()
-		.describe('Model name from environment'),
+	model: z.string().optional().describe('Model name from environment'),
 
 	/** Base URL from environment */
-	baseUrl: z
-		.string()
-		.url()
-		.optional()
-		.describe('Base URL from environment'),
+	baseUrl: z.string().url().optional().describe('Base URL from environment'),
 
 	/** Timeout from environment */
 	timeout: z
 		.string()
-		.transform((val) => parseInt(val, 10))
+		.transform(val => parseInt(val, 10))
 		.pipe(z.number().int().positive())
 		.optional()
 		.describe('Timeout from environment (string converted to number)'),
@@ -235,7 +204,7 @@ export const EmbeddingEnvConfigSchema = z.object({
 	/** Max retries from environment */
 	maxRetries: z
 		.string()
-		.transform((val) => parseInt(val, 10))
+		.transform(val => parseInt(val, 10))
 		.pipe(z.number().int().min(0).max(10))
 		.optional()
 		.describe('Max retries from environment (string converted to number)'),
@@ -290,11 +259,11 @@ export function parseEmbeddingConfigFromEnv(
 		}
 
 		if (env[ENV_VARS.EMBEDDING_TIMEOUT]) {
-			rawConfig.timeout = parseInt(env[ENV_VARS.EMBEDDING_TIMEOUT], 10);
+			rawConfig.timeout = parseInt(env[ENV_VARS.EMBEDDING_TIMEOUT] ?? '30000', 10);
 		}
 
 		if (env[ENV_VARS.EMBEDDING_MAX_RETRIES]) {
-			rawConfig.maxRetries = parseInt(env[ENV_VARS.EMBEDDING_MAX_RETRIES], 10);
+			rawConfig.maxRetries = parseInt(env[ENV_VARS.EMBEDDING_MAX_RETRIES] ?? '3', 10);
 		}
 
 		return parseEmbeddingConfig(rawConfig);
@@ -324,4 +293,4 @@ export function validateEmbeddingConfig(config: unknown): {
 		}
 		throw error;
 	}
-} 
+}

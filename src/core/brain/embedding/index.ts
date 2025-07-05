@@ -95,12 +95,12 @@ export {
 } from './config.js';
 
 // Export constants for external use
-export { 
-	PROVIDER_TYPES, 
-	OPENAI_MODELS, 
-	MODEL_DIMENSIONS, 
+export {
+	PROVIDER_TYPES,
+	OPENAI_MODELS,
+	MODEL_DIMENSIONS,
 	DEFAULTS,
-	VALIDATION_LIMITS 
+	VALIDATION_LIMITS,
 } from './constants.js';
 
 // Export utilities
@@ -110,4 +110,4 @@ export {
 	getEmbeddingConfigSummary,
 	validateEmbeddingEnv,
 	analyzeProviderConfiguration,
-} from './utils.js'; 
+} from './utils.js';

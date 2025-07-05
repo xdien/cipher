@@ -10,23 +10,23 @@
 
 import OpenAI from 'openai';
 import { logger } from '../../../logger/index.js';
-import { 
-	Embedder, 
-	OpenAIEmbeddingConfig, 
+import {
+	Embedder,
+	OpenAIEmbeddingConfig,
 	EmbeddingConnectionError,
 	EmbeddingRateLimitError,
 	EmbeddingQuotaError,
 	EmbeddingValidationError,
 	EmbeddingError,
-	EmbeddingDimensionError
+	EmbeddingDimensionError,
 } from './types.js';
-import { 
-	MODEL_DIMENSIONS, 
-	VALIDATION_LIMITS, 
-	ERROR_MESSAGES, 
-	LOG_PREFIXES, 
+import {
+	MODEL_DIMENSIONS,
+	VALIDATION_LIMITS,
+	ERROR_MESSAGES,
+	LOG_PREFIXES,
 	RETRY_CONFIG,
-	HTTP_STATUS 
+	HTTP_STATUS,
 } from '../constants.js';
 
 /**
@@ -55,7 +55,8 @@ export class OpenAIEmbedder implements Embedder {
 		});
 
 		// Set dimension based on model and config
-		this.dimension = config.dimensions || MODEL_DIMENSIONS[this.model];
+		this.dimension =
+			config.dimensions || MODEL_DIMENSIONS[this.model as keyof typeof MODEL_DIMENSIONS] || 1536;
 
 		logger.debug(`${LOG_PREFIXES.OPENAI} Initialized OpenAI embedder`, {
 			model: this.model,
@@ -77,25 +78,24 @@ export class OpenAIEmbedder implements Embedder {
 		const startTime = Date.now();
 
 		try {
-			const response = await this.createEmbeddingWithRetry({
+			const params: { model: string; input: string; dimensions?: number } = {
 				model: this.model,
 				input: text,
-				dimensions: this.config.dimensions,
-			});
-
+			};
+			if (this.config.dimensions !== undefined) {
+				params.dimensions = this.config.dimensions;
+			}
+			const response = await this.createEmbeddingWithRetry(params);
+			if (
+				!response.data ||
+				!Array.isArray(response.data) ||
+				!response.data[0] ||
+				!response.data[0].embedding
+			) {
+				throw new EmbeddingError('OpenAI API did not return a valid embedding', 'openai');
+			}
 			const embedding = response.data[0].embedding;
-			const processingTime = Date.now() - startTime;
-
-			// Validate embedding dimension
 			this.validateEmbeddingDimension(embedding);
-
-			logger.debug(`${LOG_PREFIXES.OPENAI} Successfully created embedding`, {
-				model: this.model,
-				dimension: embedding.length,
-				processingTime,
-				usage: response.usage,
-			});
-
 			return embedding;
 		} catch (error) {
 			const processingTime = Date.now() - startTime;
@@ -122,37 +122,16 @@ export class OpenAIEmbedder implements Embedder {
 		const startTime = Date.now();
 
 		try {
-			const response = await this.createEmbeddingWithRetry({
+			const batchParams: { model: string; input: string[]; dimensions?: number } = {
 				model: this.model,
 				input: texts,
-				dimensions: this.config.dimensions,
-			});
-
-			const embeddings = response.data.map((item) => item.embedding);
-			const processingTime = Date.now() - startTime;
-
-			// Validate all embedding dimensions
-			embeddings.forEach((embedding, index) => {
-				try {
-					this.validateEmbeddingDimension(embedding);
-				} catch (error) {
-					logger.error(`${LOG_PREFIXES.BATCH} Invalid embedding dimension at index ${index}`, {
-						index,
-						dimension: embedding.length,
-						expected: this.dimension,
-					});
-					throw error;
-				}
-			});
-
-			logger.debug(`${LOG_PREFIXES.BATCH} Successfully created batch embeddings`, {
-				model: this.model,
-				count: embeddings.length,
-				dimension: embeddings[0]?.length,
-				processingTime,
-				usage: response.usage,
-			});
-
+			};
+			if (this.config.dimensions !== undefined) {
+				batchParams.dimensions = this.config.dimensions;
+			}
+			const response = await this.createEmbeddingWithRetry(batchParams);
+			const embeddings = response.data.map(item => item.embedding);
+			embeddings.forEach(this.validateEmbeddingDimension.bind(this));
 			return embeddings;
 		} catch (error) {
 			const processingTime = Date.now() - startTime;
@@ -222,10 +201,7 @@ export class OpenAIEmbedder implements Embedder {
 					await new Promise(resolve => setTimeout(resolve, delay));
 
 					// Calculate next delay with exponential backoff and jitter
-					delay = Math.min(
-						delay * RETRY_CONFIG.BACKOFF_MULTIPLIER,
-						RETRY_CONFIG.MAX_DELAY
-					);
+					delay = Math.min(delay * RETRY_CONFIG.BACKOFF_MULTIPLIER, RETRY_CONFIG.MAX_DELAY);
 
 					// Add jitter to avoid thundering herd
 					const jitter = delay * RETRY_CONFIG.JITTER_FACTOR * Math.random();
@@ -233,7 +209,7 @@ export class OpenAIEmbedder implements Embedder {
 				}
 
 				const response = await this.openai.embeddings.create(params);
-				
+
 				if (attempt > 0) {
 					logger.info(`${LOG_PREFIXES.OPENAI} Embedding request succeeded after retry`, {
 						attempt,
@@ -274,7 +250,7 @@ export class OpenAIEmbedder implements Embedder {
 		// Handle OpenAI API errors
 		if (error && typeof error === 'object' && 'status' in error) {
 			const status = (error as any).status;
-			
+
 			// Retry on server errors and rate limits
 			return [
 				HTTP_STATUS.TOO_MANY_REQUESTS,
@@ -326,18 +302,10 @@ export class OpenAIEmbedder implements Embedder {
 				}
 
 				case HTTP_STATUS.FORBIDDEN:
-					return new EmbeddingQuotaError(
-						ERROR_MESSAGES.QUOTA_EXCEEDED,
-						'openai',
-						apiError
-					);
+					return new EmbeddingQuotaError(ERROR_MESSAGES.QUOTA_EXCEEDED, 'openai', apiError);
 
 				case HTTP_STATUS.BAD_REQUEST:
-					return new EmbeddingValidationError(
-						message,
-						'openai',
-						apiError
-					);
+					return new EmbeddingValidationError(message, 'openai', apiError);
 
 				default:
 					return new EmbeddingConnectionError(
@@ -350,17 +318,10 @@ export class OpenAIEmbedder implements Embedder {
 
 		// Handle network and other errors
 		if (error instanceof Error) {
-			return new EmbeddingConnectionError(
-				error.message,
-				'openai',
-				error
-			);
+			return new EmbeddingConnectionError(error.message, 'openai', error);
 		}
 
-		return new EmbeddingError(
-			String(error),
-			'openai'
-		);
+		return new EmbeddingError(String(error), 'openai');
 	}
 
 	/**
@@ -424,4 +385,4 @@ export class OpenAIEmbedder implements Embedder {
 			);
 		}
 	}
-} 
+}

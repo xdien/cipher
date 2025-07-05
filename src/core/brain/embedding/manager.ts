@@ -9,11 +9,11 @@
  */
 
 import { logger } from '../../logger/index.js';
-import { 
-	type Embedder, 
+import {
+	type Embedder,
 	type BackendConfig,
 	EmbeddingError,
-	EmbeddingConnectionError
+	EmbeddingConnectionError,
 } from './backend/index.js';
 import { createEmbedder, createEmbedderFromEnv } from './factory.js';
 import { LOG_PREFIXES, ERROR_MESSAGES } from './constants.js';
@@ -27,7 +27,7 @@ export interface HealthCheckResult {
 	/** Provider type */
 	provider: string;
 	/** Model being used */
-	model?: string;
+	model: string;
 	/** Embedding dimension */
 	dimension?: number;
 	/** Response time in milliseconds */
@@ -47,7 +47,7 @@ export interface EmbedderInfo {
 	/** Provider type */
 	provider: string;
 	/** Model being used */
-	model?: string;
+	model: string;
 	/** Embedding dimension */
 	dimension: number;
 	/** Configuration used */
@@ -96,7 +96,7 @@ export class EmbeddingManager {
 		failedOperations: 0,
 		averageProcessingTime: 0,
 	};
-	private healthCheckInterval?: NodeJS.Timeout;
+	private healthCheckInterval: NodeJS.Timeout | undefined;
 
 	constructor() {
 		logger.debug(`${LOG_PREFIXES.MANAGER} Embedding manager initialized`);
@@ -110,7 +110,7 @@ export class EmbeddingManager {
 	 * @returns Promise resolving to embedder instance and info
 	 */
 	async createEmbedder(
-		config: BackendConfig, 
+		config: BackendConfig,
 		id?: string
 	): Promise<{ embedder: Embedder; info: EmbedderInfo }> {
 		const embedderId = id || this.generateId();
@@ -121,12 +121,13 @@ export class EmbeddingManager {
 		});
 
 		try {
-			const embedder = await createEmbedder(config);
-			
+			const configWithApiKey = { ...config, apiKey: config.apiKey || '' };
+			const embedder = await createEmbedder(configWithApiKey as any);
+
 			const info: EmbedderInfo = {
 				id: embedderId,
 				provider: config.type,
-				model: config.model,
+				model: config.model || 'unknown',
 				dimension: embedder.getDimension(),
 				config,
 				createdAt: new Date(),
@@ -177,7 +178,7 @@ export class EmbeddingManager {
 		const info: EmbedderInfo = {
 			id: embedderId,
 			provider: config.type,
-			model: config.model,
+			model: config.model || 'unknown',
 			dimension: embedder.getDimension(),
 			config,
 			createdAt: new Date(),
@@ -293,7 +294,7 @@ export class EmbeddingManager {
 			const result: HealthCheckResult = {
 				healthy,
 				provider: info.provider,
-				model: info.model,
+				model: info.model || 'unknown',
 				dimension: info.dimension,
 				responseTime,
 				timestamp: new Date(),
@@ -317,7 +318,7 @@ export class EmbeddingManager {
 			const result: HealthCheckResult = {
 				healthy: false,
 				provider: info.provider,
-				model: info.model,
+				model: info.model || 'unknown',
 				dimension: info.dimension,
 				responseTime,
 				error: error instanceof Error ? error.message : String(error),
@@ -349,7 +350,7 @@ export class EmbeddingManager {
 		logger.debug(`${LOG_PREFIXES.HEALTH} Performing health check on all embedders`);
 
 		const results = new Map<string, HealthCheckResult>();
-		const healthCheckPromises = Array.from(this.embedders.keys()).map(async (id) => {
+		const healthCheckPromises = Array.from(this.embedders.keys()).map(async id => {
 			const result = await this.checkHealth(id);
 			if (result) {
 				results.set(id, result);
@@ -410,10 +411,10 @@ export class EmbeddingManager {
 	 */
 	getStats(): EmbeddingStats {
 		// Calculate average processing time
-		const avgTime = this.stats.totalProcessingTime > 0 && 
-						this.stats.successfulOperations > 0
-			? this.stats.totalProcessingTime / this.stats.successfulOperations
-			: 0;
+		const avgTime =
+			this.stats.totalProcessingTime > 0 && this.stats.successfulOperations > 0
+				? this.stats.totalProcessingTime / this.stats.successfulOperations
+				: 0;
 
 		return {
 			...this.stats,
@@ -473,19 +474,17 @@ export class EmbeddingManager {
 		this.stopHealthChecks();
 
 		// Disconnect all embedders
-		const disconnectPromises = Array.from(this.embedders.entries()).map(
-			async ([id, embedder]) => {
-				try {
-					await embedder.disconnect();
-					logger.debug(`${LOG_PREFIXES.MANAGER} Disconnected embedder`, { id });
-				} catch (error) {
-					logger.warn(`${LOG_PREFIXES.MANAGER} Error disconnecting embedder`, {
-						id,
-						error: error instanceof Error ? error.message : String(error),
-					});
-				}
+		const disconnectPromises = Array.from(this.embedders.entries()).map(async ([id, embedder]) => {
+			try {
+				await embedder.disconnect();
+				logger.debug(`${LOG_PREFIXES.MANAGER} Disconnected embedder`, { id });
+			} catch (error) {
+				logger.warn(`${LOG_PREFIXES.MANAGER} Error disconnecting embedder`, {
+					id,
+					error: error instanceof Error ? error.message : String(error),
+				});
 			}
-		);
+		});
 
 		await Promise.all(disconnectPromises);
 
@@ -502,4 +501,4 @@ export class EmbeddingManager {
 	private generateId(): string {
 		return `embedder_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 	}
-} 
+}

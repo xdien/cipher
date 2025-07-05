@@ -88,6 +88,9 @@ export class VectorStoreManager {
 	private static qdrantModule?: any;
 	private static inMemoryModule?: any;
 
+	// In VectorStoreManager, track if in-memory is used as fallback or primary
+	private usedFallback = false;
+
 	/**
 	 * Creates a new VectorStoreManager instance
 	 *
@@ -137,7 +140,7 @@ export class VectorStoreManager {
 			backend: {
 				type: this.backendMetadata.type,
 				connected: this.store?.isConnected() ?? false,
-				fallback: this.backendMetadata.isFallback,
+				fallback: this.usedFallback,
 				collectionName: this.config.collectionName,
 				dimension: this.config.dimension,
 			},
@@ -175,6 +178,7 @@ export class VectorStoreManager {
 	 * @throws {VectorStoreConnectionError} If backend fails to connect
 	 */
 	public async connect(): Promise<VectorStore> {
+		this.usedFallback = false; // Always reset at the start of each connection attempt
 		// Check if already connected
 		if (this.connected && this.store) {
 			this.logger.debug(`${LOG_PREFIXES.MANAGER} Already connected`, {
@@ -196,6 +200,7 @@ export class VectorStoreManager {
 				this.store = await this.createBackend();
 				await this.store.connect();
 				this.backendMetadata.connectionTime = Date.now() - startTime;
+				this.usedFallback = false; // Not a fallback if primary backend succeeded
 
 				this.logger.info(`${LOG_PREFIXES.MANAGER} Connected successfully`, {
 					type: this.backendMetadata.type,
@@ -221,12 +226,15 @@ export class VectorStoreManager {
 					this.backendMetadata.type = BACKEND_TYPES.IN_MEMORY;
 					this.backendMetadata.isFallback = true;
 					this.backendMetadata.connectionTime = Date.now() - startTime;
+					this.usedFallback = true; // Mark as fallback
 
 					this.logger.info(`${LOG_PREFIXES.MANAGER} Connected to fallback backend`, {
 						type: this.backendMetadata.type,
 						originalType: this.config.type,
 					});
 				} else {
+					// In-memory is primary, not a fallback
+					this.usedFallback = false;
 					throw backendError; // Re-throw if already using in-memory
 				}
 			}
@@ -255,6 +263,7 @@ export class VectorStoreManager {
 			// Reset state
 			this.store = undefined;
 			this.connected = false;
+			this.usedFallback = false;
 
 			throw error;
 		}
@@ -289,6 +298,7 @@ export class VectorStoreManager {
 			// Always clean up state
 			this.store = undefined;
 			this.connected = false;
+			this.usedFallback = false;
 
 			// Reset metadata
 			this.backendMetadata = {

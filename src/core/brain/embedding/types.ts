@@ -89,4 +89,4 @@ export type {
  */
 export type {
 	EmbeddingEnvConfig, // Environment-based configuration
-} from './config.js'; 
+} from './config.js';

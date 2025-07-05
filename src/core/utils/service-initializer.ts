@@ -49,7 +49,7 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 	// 2. Initialize embedding manager with environment configuration
 	logger.debug('Initializing embedding manager...');
 	const embeddingManager = new EmbeddingManager();
-	
+
 	try {
 		// Try to create embedder from environment variables
 		const embeddingResult = await embeddingManager.createEmbedderFromEnv('default');
@@ -60,7 +60,9 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 				dimension: embeddingResult.info.dimension,
 			});
 		} else {
-			logger.warn('No embedding configuration found in environment - memory operations will be limited');
+			logger.warn(
+				'No embedding configuration found in environment - memory operations will be limited'
+			);
 		}
 	} catch (error) {
 		logger.warn('Failed to initialize embedding manager', {
@@ -101,13 +103,9 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 		logger.debug('Initializing LLM service...');
 		const llmConfig = stateManager.getLLMConfig();
 		const contextManager = createContextManager(llmConfig, promptManager);
-		
-		llmService = createLLMService(
-			llmConfig,
-			mcpManager,
-			contextManager
-		);
-		
+
+		llmService = createLLMService(llmConfig, mcpManager, contextManager);
+
 		logger.info('LLM service initialized successfully', {
 			provider: llmConfig.provider,
 			model: llmConfig.model,
@@ -193,6 +191,10 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 		unifiedToolManager,
 		embeddingManager,
 		vectorStoreManager,
-		llmService,
+		llmService: llmService || {
+			generate: async () => '',
+			getAllTools: async () => ({}),
+			getConfig: () => ({ provider: 'unknown', model: 'unknown' }),
+		},
 	};
 }

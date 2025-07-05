@@ -145,7 +145,7 @@ export class EmbeddingError extends Error {
 	constructor(
 		message: string,
 		public readonly provider?: string,
-		public readonly cause?: Error
+		public override readonly cause?: Error
 	) {
 		super(message);
 		this.name = 'EmbeddingError';
@@ -210,4 +210,4 @@ export class EmbeddingValidationError extends EmbeddingError {
 		super(message, provider, cause);
 		this.name = 'EmbeddingValidationError';
 	}
-} 
+}

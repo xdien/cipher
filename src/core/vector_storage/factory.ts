@@ -194,7 +194,7 @@ export async function createVectorStoreFromEnv(): Promise<VectorStoreFactory> {
  * ```typescript
  * const config = getVectorStoreConfigFromEnv();
  * console.log('Vector store configuration:', config);
- * 
+ *
  * // Then use the config to create the store
  * const { manager, store } = await createVectorStore(config);
  * ```
@@ -204,7 +204,9 @@ export function getVectorStoreConfigFromEnv(): VectorStoreConfig {
 	const storeType = env.VECTOR_STORE_TYPE;
 	const collectionName = env.VECTOR_STORE_COLLECTION;
 	const dimension = Number.isNaN(env.VECTOR_STORE_DIMENSION) ? 1536 : env.VECTOR_STORE_DIMENSION;
-	const maxVectors = Number.isNaN(env.VECTOR_STORE_MAX_VECTORS) ? 10000 : env.VECTOR_STORE_MAX_VECTORS;
+	const maxVectors = Number.isNaN(env.VECTOR_STORE_MAX_VECTORS)
+		? 10000
+		: env.VECTOR_STORE_MAX_VECTORS;
 
 	// Build configuration based on type
 	let config: VectorStoreConfig;
@@ -277,13 +279,17 @@ export function getQdrantConfigFromEnv(): QdrantBackendConfig | null {
 	const qdrantHost = process.env.VECTOR_STORE_HOST;
 	const qdrantPort = process.env.VECTOR_STORE_PORT;
 
+	// Always resolve collectionName to a string
+	const collectionName =
+		process.env.VECTOR_STORE_COLLECTION_NAME || process.env.VECTOR_STORE_COLLECTION || 'default';
+
 	// Check if we have cloud configuration
 	if (qdrantUrl) {
 		return {
 			type: 'qdrant',
 			url: qdrantUrl,
 			apiKey: qdrantApiKey, // API key is required for cloud
-			collectionName: process.env.VECTOR_STORE_COLLECTION_NAME,
+			collectionName,
 			dimension: parseInt(process.env.VECTOR_STORE_DIMENSION || '1536', 10),
 			distance: (process.env.VECTOR_STORE_DISTANCE as any) || 'Cosine',
 		};
@@ -296,7 +302,7 @@ export function getQdrantConfigFromEnv(): QdrantBackendConfig | null {
 			host: qdrantHost || 'localhost',
 			port: qdrantPort ? parseInt(qdrantPort, 10) : 6333,
 			apiKey: qdrantApiKey, // Optional for local
-			collectionName: process.env.VECTOR_STORE_COLLECTION_NAME,
+			collectionName,
 			dimension: parseInt(process.env.VECTOR_STORE_DIMENSION || '1536', 10),
 			distance: (process.env.VECTOR_STORE_DISTANCE as any) || 'Cosine',
 		};

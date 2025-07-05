@@ -28,4 +28,4 @@ export {
 } from './types.js';
 
 // Export backend implementations
-export { OpenAIEmbedder } from './openai.js'; 
+export { OpenAIEmbedder } from './openai.js';

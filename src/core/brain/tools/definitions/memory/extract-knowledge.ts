@@ -68,11 +68,11 @@ export const extractKnowledgeTool: InternalTool = {
 
 			// Validate input and handle both string and array inputs
 			let knowledgeArray: string[];
-			
+
 			if (!args.knowledge) {
 				throw new Error('No facts provided for extraction');
 			}
-			
+
 			// Handle case where LLM passes knowledge as a JSON string instead of array
 			if (typeof args.knowledge === 'string') {
 				try {
@@ -93,7 +93,7 @@ export const extractKnowledgeTool: InternalTool = {
 			} else {
 				throw new Error('Knowledge must be a string or array of strings');
 			}
-			
+
 			if (knowledgeArray.length === 0) {
 				throw new Error('No facts provided for extraction');
 			}
