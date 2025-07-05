@@ -198,26 +198,16 @@ export class QdrantBackend implements VectorStore {
 
 		try {
 			const points = vectors.map((vector, idx) => {
-				const id = ids[idx];
 				const payload = payloads[idx];
-
-				if (!id || !payload) {
-					throw new VectorStoreError(
-						`Invalid input at index ${idx}: id and payload are required`,
-						'insert'
-					);
-				}
-
+				if (!payload) throw new VectorStoreError(`Payload missing at index ${idx}`, 'insert');
 				return {
-					id: id,
-					vector: vector,
-					payload: payload,
+					id: idx + 1,
+					vector,
+					payload,
 				};
 			});
 
-			await this.client.upsert(this.collectionName, {
-				points,
-			});
+			await this.client.upsert(this.collectionName, { points });
 
 			this.logger.info(`${LOG_PREFIXES.INDEX} Successfully inserted ${vectors.length} vectors`);
 		} catch (error) {

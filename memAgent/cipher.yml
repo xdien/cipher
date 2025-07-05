@@ -26,3 +26,7 @@ llm:
 
 # System prompt
 systemPrompt: "You are a helpful AI assistant with memory capabilities. Please confirm you're working with OpenRouter API."
+
+
+
+
