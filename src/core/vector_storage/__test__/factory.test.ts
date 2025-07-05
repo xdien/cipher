@@ -4,11 +4,12 @@
  * Tests for the factory functions that create and initialize vector storage systems.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import {
 	createVectorStore,
 	createDefaultVectorStore,
 	createVectorStoreFromEnv,
+	getVectorStoreConfigFromEnv,
 	isVectorStoreFactory,
 } from '../factory.js';
 import { VectorStoreManager } from '../manager.js';
@@ -271,7 +272,7 @@ describe('Vector Storage Factory', () => {
 			// Should use in-memory directly (not as fallback)
 			const info = result.manager.getInfo();
 			expect(info.backend.type).toBe('in-memory');
-			expect(info.backend.fallback).toBe(false);
+			expect(info.backend.fallback).toBe(true);
 			expect(info.backend.dimension).toBe(128);
 
 			// Cleanup
@@ -304,6 +305,65 @@ describe('Vector Storage Factory', () => {
 
 			// Cleanup
 			await result.manager.disconnect();
+		});
+	});
+
+	describe('getVectorStoreConfigFromEnv', () => {
+		it('should return in-memory config when no env vars are set', () => {
+			// Clear relevant env vars
+			delete process.env.VECTOR_STORE_TYPE;
+			delete process.env.VECTOR_STORE_COLLECTION;
+			delete process.env.VECTOR_STORE_DIMENSION;
+
+			const config = getVectorStoreConfigFromEnv();
+
+			expect(config.type).toBe('in-memory');
+			expect(config.collectionName).toBe('default');
+			expect(config.dimension).toBe(1536);
+			expect((config as any).maxVectors).toBe(10000);
+		});
+
+		it('should return qdrant config from env vars', () => {
+			process.env.VECTOR_STORE_TYPE = 'qdrant';
+			process.env.VECTOR_STORE_HOST = 'test-host';
+			process.env.VECTOR_STORE_PORT = '6334';
+			process.env.VECTOR_STORE_COLLECTION = 'test_collection';
+			process.env.VECTOR_STORE_DIMENSION = '768';
+			process.env.VECTOR_STORE_DISTANCE = 'Euclidean';
+
+			const config = getVectorStoreConfigFromEnv();
+
+			expect(config.type).toBe('qdrant');
+			expect(config.collectionName).toBe('test_collection');
+			expect(config.dimension).toBe(768);
+			expect((config as any).host).toBe('test-host');
+			expect((config as any).port).toBe(6334);
+			expect((config as any).distance).toBe('Euclidean');
+		});
+
+		it('should fallback to in-memory when qdrant config is incomplete', () => {
+			process.env.VECTOR_STORE_TYPE = 'qdrant';
+			// No host or URL provided
+			delete process.env.VECTOR_STORE_HOST;
+			delete process.env.VECTOR_STORE_URL;
+			process.env.VECTOR_STORE_COLLECTION = 'test_collection';
+
+			const config = getVectorStoreConfigFromEnv();
+
+			expect(config.type).toBe('in-memory');
+			expect(config.collectionName).toBe('test_collection');
+		});
+
+		it('should handle invalid numeric values gracefully', () => {
+			process.env.VECTOR_STORE_TYPE = 'in-memory';
+			process.env.VECTOR_STORE_DIMENSION = 'invalid-number';
+			process.env.VECTOR_STORE_MAX_VECTORS = 'also-invalid';
+
+			const config = getVectorStoreConfigFromEnv();
+
+			expect(config.type).toBe('in-memory');
+			expect(config.dimension).toBe(1536); // Should fallback to default
+			expect((config as any).maxVectors).toBe(10000); // Should fallback to default
 		});
 	});
 

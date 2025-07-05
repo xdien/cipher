@@ -79,9 +79,10 @@ describe('UnifiedToolManager', () => {
 		it('should load internal tools when enabled', async () => {
 			const tools = await unifiedManager.getAllTools();
 
-			// Should have 1 memory tool
-			expect(Object.keys(tools)).toHaveLength(1);
+			// Should have 2 memory tools
+			expect(Object.keys(tools)).toHaveLength(2);
 			expect(tools['cipher_extract_knowledge']).toBeDefined();
+			expect(tools['cipher_memory_operation']).toBeDefined();
 
 			// All tools should be marked as internal
 			for (const tool of Object.values(tools)) {
@@ -159,7 +160,7 @@ describe('UnifiedToolManager', () => {
 			const formattedTools = await unifiedManager.getToolsForProvider('openai');
 
 			expect(Array.isArray(formattedTools)).toBe(true);
-			expect(formattedTools.length).toBe(1);
+			expect(formattedTools.length).toBe(2);
 
 			// Check OpenAI format
 			const tool = formattedTools[0];
@@ -174,7 +175,7 @@ describe('UnifiedToolManager', () => {
 			const formattedTools = await unifiedManager.getToolsForProvider('anthropic');
 
 			expect(Array.isArray(formattedTools)).toBe(true);
-			expect(formattedTools.length).toBe(1);
+			expect(formattedTools.length).toBe(2);
 
 			// Check Anthropic format
 			const tool = formattedTools[0];
@@ -187,7 +188,7 @@ describe('UnifiedToolManager', () => {
 			const formattedTools = await unifiedManager.getToolsForProvider('openrouter');
 
 			expect(Array.isArray(formattedTools)).toBe(true);
-			expect(formattedTools.length).toBe(1);
+			expect(formattedTools.length).toBe(2);
 
 			// OpenRouter uses OpenAI format
 			const tool = formattedTools[0];
@@ -211,8 +212,8 @@ describe('UnifiedToolManager', () => {
 			expect(stats.config).toBeDefined();
 
 			// Internal tools stats should be available
-			expect(stats.internalTools.totalTools).toBe(1);
-			expect(stats.internalTools.toolsByCategory.memory).toBe(1);
+			expect(stats.internalTools.totalTools).toBe(2);
+			expect(stats.internalTools.toolsByCategory.memory).toBe(2);
 		});
 
 		it('should handle disabled tool managers in stats', () => {

@@ -7,6 +7,9 @@
  */
 
 import { Tool, ToolParameters, ToolExecutionResult } from '../../mcp/types.js';
+import type { EmbeddingManager } from '../embedding/index.js';
+import type { VectorStoreManager } from '../../vector_storage/index.js';
+import type { ILLMService } from '../llm/index.js';
 
 /**
  * Categories for organizing internal tools
@@ -16,7 +19,10 @@ export type InternalToolCategory = 'memory' | 'session' | 'system';
 /**
  * Internal tool handler function signature
  */
-export type InternalToolHandler = (args: any) => Promise<ToolExecutionResult>;
+export type InternalToolHandler<T = any, R = any> = (
+	args: T,
+	context?: InternalToolContext
+) => Promise<R>;
 
 /**
  * Internal tool definition extending the base Tool interface
@@ -46,6 +52,20 @@ export interface InternalTool extends Tool {
 	 * Optional version for tool evolution
 	 */
 	version?: string;
+
+	/**
+	 * Human-readable description
+	 */
+	description: string;
+
+	/**
+	 * JSON schema for parameters
+	 */
+	parameters: {
+		type: 'object';
+		properties: Record<string, any>;
+		required?: string[];
+	};
 }
 
 /**
@@ -88,9 +108,23 @@ export interface InternalToolManagerConfig {
  * Tool registration result
  */
 export interface ToolRegistrationResult {
-	success: boolean;
-	message: string;
-	conflictedWith?: string;
+	/**
+	 * Total tools attempted to register
+	 */
+	total: number;
+
+	/**
+	 * Successfully registered tools
+	 */
+	registered: string[];
+
+	/**
+	 * Failed tool registrations
+	 */
+	failed: Array<{
+		name: string;
+		error: string;
+	}>;
 }
 
 /**
@@ -116,6 +150,31 @@ export interface InternalToolContext {
 	 * Any additional metadata
 	 */
 	metadata: Record<string, any> | undefined;
+
+	/**
+	 * Optional agent services for advanced tool operations
+	 */
+	services?: {
+		/**
+		 * Embedding manager for text embeddings
+		 */
+		embeddingManager?: EmbeddingManager;
+
+		/**
+		 * Vector storage manager for similarity search
+		 */
+		vectorStoreManager?: VectorStoreManager;
+
+		/**
+		 * LLM service for intelligent reasoning (Phase 3)
+		 */
+		llmService?: ILLMService;
+	};
+
+	/**
+	 * User ID for personalized behavior
+	 */
+	userId?: string;
 }
 
 /**
@@ -123,17 +182,22 @@ export interface InternalToolContext {
  */
 export interface ToolExecutionStats {
 	/**
-	 * Total number of executions
+	 * Tool name
+	 */
+	toolName: string;
+
+	/**
+	 * Total executions
 	 */
 	totalExecutions: number;
 
 	/**
-	 * Number of successful executions
+	 * Successful executions
 	 */
 	successfulExecutions: number;
 
 	/**
-	 * Number of failed executions
+	 * Failed executions
 	 */
 	failedExecutions: number;
 
@@ -145,7 +209,12 @@ export interface ToolExecutionStats {
 	/**
 	 * Last execution timestamp
 	 */
-	lastExecuted?: number;
+	lastExecution?: string;
+
+	/**
+	 * Last error message
+	 */
+	lastError?: string;
 }
 
 /**
@@ -160,7 +229,7 @@ export interface IInternalToolManager {
 	/**
 	 * Register a new internal tool
 	 */
-	registerTool(tool: InternalTool): ToolRegistrationResult;
+	registerTool(tool: InternalTool): { success: boolean; message: string; conflictedWith?: string };
 
 	/**
 	 * Unregister an internal tool

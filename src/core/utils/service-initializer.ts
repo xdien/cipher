@@ -9,6 +9,12 @@ import { logger } from '../logger/index.js';
 import { AgentConfig } from '../brain/memAgent/config.js';
 import { ServerConfigsSchema } from '../mcp/config.js';
 import { ServerConfigs } from '../mcp/types.js';
+import { EmbeddingManager } from '../brain/embedding/index.js';
+import { VectorStoreManager } from '../vector_storage/index.js';
+import { createLLMService } from '../brain/llm/services/factory.js';
+import { createContextManager } from '../brain/llm/messages/factory.js';
+import { ILLMService } from '../brain/llm/index.js';
+import { createVectorStoreFromEnv } from '../vector_storage/factory.js';
 
 export type AgentServices = {
 	mcpManager: MCPManager;
@@ -17,6 +23,9 @@ export type AgentServices = {
 	sessionManager: SessionManager;
 	internalToolManager: InternalToolManager;
 	unifiedToolManager: UnifiedToolManager;
+	embeddingManager: EmbeddingManager;
+	vectorStoreManager: VectorStoreManager;
+	llmService?: ILLMService;
 };
 
 export async function createAgentServices(agentConfig: AgentConfig): Promise<AgentServices> {
@@ -37,15 +46,75 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 		logger.debug(`Client manager initialized with ${mcpServerCount} MCP server(s)`);
 	}
 
-	// 5. Initialize prompt manager
+	// 2. Initialize embedding manager with environment configuration
+	logger.debug('Initializing embedding manager...');
+	const embeddingManager = new EmbeddingManager();
+
+	try {
+		// Try to create embedder from environment variables
+		const embeddingResult = await embeddingManager.createEmbedderFromEnv('default');
+		if (embeddingResult) {
+			logger.info('Embedding manager initialized successfully', {
+				provider: embeddingResult.info.provider,
+				model: embeddingResult.info.model,
+				dimension: embeddingResult.info.dimension,
+			});
+		} else {
+			logger.warn(
+				'No embedding configuration found in environment - memory operations will be limited'
+			);
+		}
+	} catch (error) {
+		logger.warn('Failed to initialize embedding manager', {
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
+
+	// 3. Initialize vector storage manager with configuration
+	logger.debug('Initializing vector storage manager...');
+	const { manager: vectorStoreManager, store: _vectorStore } = await createVectorStoreFromEnv();
+
+	try {
+		logger.info('Vector storage manager initialized successfully', {
+			backend: vectorStoreManager.getInfo().backend.type,
+			collection: vectorStoreManager.getInfo().backend.collectionName,
+			dimension: vectorStoreManager.getInfo().backend.dimension,
+			fallback: vectorStoreManager.getInfo().backend.fallback || false,
+		});
+	} catch (error) {
+		logger.warn('Failed to initialize vector storage manager', {
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
+
+	// 4. Initialize prompt manager
 	const promptManager = new PromptManager();
 	if (config.systemPrompt) {
 		promptManager.load(config.systemPrompt);
 	}
 
-	// 6. Initialize state manager for runtime state tracking
+	// 5. Initialize state manager for runtime state tracking
 	const stateManager = new MemAgentStateManager(config);
 	logger.debug('Agent state manager initialized');
+
+	// 6. Initialize LLM service
+	let llmService: ILLMService | undefined = undefined;
+	try {
+		logger.debug('Initializing LLM service...');
+		const llmConfig = stateManager.getLLMConfig();
+		const contextManager = createContextManager(llmConfig, promptManager);
+
+		llmService = createLLMService(llmConfig, mcpManager, contextManager);
+
+		logger.info('LLM service initialized successfully', {
+			provider: llmConfig.provider,
+			model: llmConfig.model,
+		});
+	} catch (error) {
+		logger.warn('Failed to initialize LLM service', {
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
 
 	// 7. Prepare session manager configuration
 	const sessionConfig: { maxSessions?: number; sessionTTL?: number } = {};
@@ -80,6 +149,13 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 		});
 	}
 
+	// Configure the internal tool manager with services for advanced tools
+	internalToolManager.setServices({
+		embeddingManager,
+		vectorStoreManager,
+		llmService,
+	});
+
 	// 9. Initialize unified tool manager
 	const unifiedToolManager = new UnifiedToolManager(mcpManager, internalToolManager, {
 		enableInternalTools: true,
@@ -113,5 +189,12 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 		sessionManager,
 		internalToolManager,
 		unifiedToolManager,
+		embeddingManager,
+		vectorStoreManager,
+		llmService: llmService || {
+			generate: async () => '',
+			getAllTools: async () => ({}),
+			getConfig: () => ({ provider: 'unknown', model: 'unknown' }),
+		},
 	};
 }

@@ -6,9 +6,7 @@ import {
 	getToolsByCategory,
 	TOOL_CATEGORIES,
 } from '../definitions/index.js';
-import {
-	extractKnowledgeTool,
-} from '../definitions/memory/index.js';
+import { extractKnowledgeTool } from '../definitions/memory/index.js';
 import { InternalToolManager } from '../manager.js';
 import { InternalToolRegistry } from '../registry.js';
 
@@ -79,17 +77,19 @@ describe('Tool Definitions', () => {
 		it('should load all tool definitions', async () => {
 			const tools = await getAllToolDefinitions();
 
-			expect(Object.keys(tools)).toHaveLength(1); // 1 memory tool
+			expect(Object.keys(tools)).toHaveLength(2); // 2 memory tools
 			expect(tools['extract_knowledge']).toBeDefined();
+			expect(tools['memory_operation']).toBeDefined();
 		});
 
 		it('should register all tools successfully', async () => {
 			const result = await registerAllTools(manager);
 
-			expect(result.total).toBe(1);
-			expect(result.registered.length).toBe(1);
+			expect(result.total).toBe(2);
+			expect(result.registered.length).toBe(2);
 			expect(result.failed.length).toBe(0);
 			expect(result.registered).toContain('extract_knowledge');
+			expect(result.registered).toContain('memory_operation');
 		});
 
 		it('should handle registration failures gracefully', async () => {
@@ -103,9 +103,9 @@ describe('Tool Definitions', () => {
 
 			const result = await registerAllTools(failingManager);
 
-			expect(result.total).toBe(1);
+			expect(result.total).toBe(2);
 			expect(result.registered.length).toBe(0);
-			expect(result.failed.length).toBe(1);
+			expect(result.failed.length).toBe(2);
 			expect(result.failed?.[0]?.error).toBe('Simulated failure');
 		});
 	});
@@ -114,7 +114,7 @@ describe('Tool Definitions', () => {
 		it('should have correct category structure', () => {
 			expect(TOOL_CATEGORIES.memory).toBeDefined();
 
-			expect(TOOL_CATEGORIES.memory.tools).toHaveLength(1);
+			expect(TOOL_CATEGORIES.memory.tools).toHaveLength(2);
 		});
 
 		it('should get tool info by name', () => {
@@ -130,8 +130,9 @@ describe('Tool Definitions', () => {
 
 		it('should get tools by category', () => {
 			const memoryTools = getToolsByCategory('memory');
-			expect(memoryTools).toHaveLength(1);
+			expect(memoryTools).toHaveLength(2);
 			expect(memoryTools).toContain('cipher_extract_knowledge');
+			expect(memoryTools).toContain('cipher_memory_operation');
 		});
 	});
 

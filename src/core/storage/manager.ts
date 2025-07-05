@@ -321,23 +321,19 @@ export class StorageManager {
 
 			// Disconnect any successfully connected backends
 			if (this.cache?.isConnected()) {
-				await this.cache
-					.disconnect()
-					.catch(err =>
-						this.logger.error(`${LOG_PREFIXES.CACHE} Error during cleanup disconnect`, {
-							error: err,
-						})
-					);
+				await this.cache.disconnect().catch(err =>
+					this.logger.error(`${LOG_PREFIXES.CACHE} Error during cleanup disconnect`, {
+						error: err,
+					})
+				);
 			}
 
 			if (this.database?.isConnected()) {
-				await this.database
-					.disconnect()
-					.catch(err =>
-						this.logger.error(`${LOG_PREFIXES.DATABASE} Error during cleanup disconnect`, {
-							error: err,
-						})
-					);
+				await this.database.disconnect().catch(err =>
+					this.logger.error(`${LOG_PREFIXES.DATABASE} Error during cleanup disconnect`, {
+						error: err,
+					})
+				);
 			}
 
 			// Reset state
