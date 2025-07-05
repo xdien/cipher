@@ -78,8 +78,7 @@ export const searchMemoryTool: InternalTool = {
         default: true
       }
     },
-    required: ['query'],
-    additionalProperties: false
+    required: ['query']
   },
   handler: async (args: any, context?: InternalToolContext): Promise<MemorySearchResult> => {
     const startTime = Date.now();

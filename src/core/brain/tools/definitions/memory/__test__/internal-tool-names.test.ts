@@ -16,10 +16,51 @@ import { extractAndOperateMemoryTool } from '../extract_and_operate_memory.js';
   console.log('isInternalTool("cipher_extract_and_operate_memory"):', internalToolManager.isInternalTool('cipher_extract_and_operate_memory'));
 
   // Set up UnifiedToolManager with only internal tools
-  const unifiedToolManager = new UnifiedToolManager({
-    getAllTools: () => ({}), // No MCP tools
-    executeTool: async () => { throw new Error('Not implemented'); }
-  }, internalToolManager, { enableInternalTools: true, enableMcpTools: false });
+  const mockMCPManager = {
+    getAllTools: async () => ({}), // No MCP tools
+    executeTool: async () => { throw new Error('Not implemented'); },
+    clients: new Map(),
+    failedConnections: new Map(),
+    logger: console,
+    toolCache: new Map(),
+    initialized: true,
+    isConnected: () => false,
+    connect: async () => {},
+    disconnect: async () => {},
+    getAvailableTools: async () => ({}),
+    executeToolCall: async () => { throw new Error('Not implemented'); },
+    getToolSchema: () => null,
+    listTools: async () => [],
+    getConnectionStatus: () => ({ connected: [], failed: [] }),
+    reloadConnections: async () => {},
+    validateConnection: async () => true,
+    getToolInfo: () => null,
+    handleToolError: () => {},
+    clearCache: () => {},
+    getStats: () => ({ totalCalls: 0, successfulCalls: 0, failedCalls: 0 }),
+    subscribe: () => {},
+    unsubscribe: () => {},
+    emit: () => {},
+    on: () => {},
+    off: () => {},
+    once: () => {},
+    removeListener: () => {},
+    removeAllListeners: () => {},
+    setMaxListeners: () => {},
+    getMaxListeners: () => 10,
+    listeners: () => [],
+    listenerCount: () => 0,
+    eventNames: () => [],
+    prependListener: () => {},
+    prependOnceListener: () => {},
+    rawListeners: () => []
+  } as any;
+  
+  const unifiedToolManager = new UnifiedToolManager(
+    mockMCPManager, 
+    internalToolManager, 
+    { enableInternalTools: true, enableMcpTools: false }
+  );
 
   // Check tool names in UnifiedToolManager
   const allTools = await unifiedToolManager.getAllTools();

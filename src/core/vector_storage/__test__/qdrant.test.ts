@@ -168,7 +168,7 @@ describe('QdrantBackend', () => {
 				[1, 2, 3],
 				[4, 5, 6],
 			];
-			const ids = ['vec1', 'vec2'];
+			const ids = [1, 2];
 			const payloads = [{ title: 'First' }, { title: 'Second' }];
 			await backend.insert(vectors, ids, payloads);
 
@@ -192,23 +192,23 @@ describe('QdrantBackend', () => {
 			mockQdrantClient.retrieve.mockResolvedValue({
 				result: [
 					{
-						id: 'vec1',
+						id: 1,
 						vector: [1, 2, 3],
 						payload: { title: 'Test' },
 					},
 				],
 			});
 
-			const result = await backend.get('vec1');
+			const result = await backend.get(1);
 
 			expect(result).toBeTruthy();
-			expect(result!.id).toBe('vec1');
+			expect(result!.id).toBe(1);
 			expect(result!.vector).toEqual([1, 2, 3]);
 			expect(result!.payload).toEqual({ title: 'Test' });
 			expect(result!.score).toBe(1.0);
 
 			expect(mockQdrantClient.retrieve).toHaveBeenCalledWith('test_collection', {
-				ids: ['vec1'],
+				ids: [1],
 				with_vector: true,
 				with_payload: true,
 			});
@@ -219,19 +219,19 @@ describe('QdrantBackend', () => {
 				result: [],
 			});
 
-			const result = await backend.get('nonexistent');
+			const result = await backend.get(999);
 			expect(result).toBeNull();
 		});
 
 		it('should update vectors', async () => {
 			mockQdrantClient.upsert.mockResolvedValue({ status: 'ok' });
 
-			await backend.update('vec1', [7, 8, 9], { title: 'Updated' });
+			await backend.update(1, [7, 8, 9], { title: 'Updated' });
 
 			expect(mockQdrantClient.upsert).toHaveBeenCalledWith('test_collection', {
 				points: [
 					{
-						id: 'vec1',
+						id: 1,
 						vector: [7, 8, 9],
 						payload: { title: 'Updated' },
 					},
@@ -242,10 +242,10 @@ describe('QdrantBackend', () => {
 		it('should delete vectors', async () => {
 			mockQdrantClient.delete.mockResolvedValue({ status: 'ok' });
 
-			await backend.delete('vec1');
+			await backend.delete(1);
 
 			expect(mockQdrantClient.delete).toHaveBeenCalledWith('test_collection', {
-				points: ['vec1'],
+				points: [1],
 			});
 		});
 
@@ -259,7 +259,7 @@ describe('QdrantBackend', () => {
 
 		it('should validate vector dimensions', async () => {
 			const wrongDimVector = [[1, 2]]; // Should be 3 dimensions
-			const ids = ['test'];
+			const ids = [1];
 			const payloads = [{}];
 
 			await expect(backend.insert(wrongDimVector, ids, payloads)).rejects.toThrow(
@@ -272,7 +272,7 @@ describe('QdrantBackend', () => {
 				[1, 2, 3],
 				[4, 5, 6],
 			];
-			const ids = ['vec1']; // Mismatched length
+			const ids = [1]; // Mismatched length
 			const payloads = [{ title: 'First' }, { title: 'Second' }];
 
 			await expect(backend.insert(vectors, ids, payloads)).rejects.toThrow(VectorStoreError);
@@ -281,8 +281,8 @@ describe('QdrantBackend', () => {
 		it('should throw error when not connected', async () => {
 			await backend.disconnect();
 
-			await expect(backend.get('test')).rejects.toThrow(VectorStoreError);
-			await expect(backend.insert([[1, 2, 3]], ['test'], [{}])).rejects.toThrow(VectorStoreError);
+			await expect(backend.get(1)).rejects.toThrow(VectorStoreError);
+			await expect(backend.insert([[1, 2, 3]], [1], [{}])).rejects.toThrow(VectorStoreError);
 			await expect(backend.search([1, 2, 3])).rejects.toThrow(VectorStoreError);
 		});
 	});
@@ -309,14 +309,14 @@ describe('QdrantBackend', () => {
 			mockQdrantClient.search.mockResolvedValue({
 				result: [
 					{
-						id: 'vec1',
+						id: 1,
 						version: 1,
 						score: 0.95,
 						payload: { title: 'First' },
 						vector: [1, 2, 3],
 					},
 					{
-						id: 'vec2',
+						id: 2,
 						version: 1,
 						score: 0.85,
 						payload: { title: 'Second' },
@@ -329,10 +329,10 @@ describe('QdrantBackend', () => {
 			const results = await backend.search(query, 2);
 
 			expect(results).toHaveLength(2);
-			expect(results[0]?.id).toBe('vec1');
+			expect(results[0]?.id).toBe(1);
 			expect(results[0]?.score).toBe(0.95);
 			expect(results[0]?.payload).toEqual({ title: 'First' });
-			expect(results[1]?.id).toBe('vec2');
+			expect(results[1]?.id).toBe(2);
 			expect(results[1]?.score).toBe(0.85);
 
 			expect(mockQdrantClient.search).toHaveBeenCalledWith('test_collection', {
@@ -347,7 +347,7 @@ describe('QdrantBackend', () => {
 			mockQdrantClient.search.mockResolvedValue({
 				result: [
 					{
-						id: 'vec1',
+						id: 1,
 						version: 1,
 						score: 0.95,
 						payload: { category: 'A', title: 'First' },
@@ -453,13 +453,13 @@ describe('QdrantBackend', () => {
 				result: {
 					points: [
 						{
-							id: 'vec1',
+							id: 1,
 							version: 1,
 							payload: { title: 'First' },
 							vector: [1, 2, 3],
 						},
 						{
-							id: 'vec2',
+							id: 2,
 							version: 1,
 							payload: { title: 'Second' },
 							vector: [4, 5, 6],
@@ -473,8 +473,8 @@ describe('QdrantBackend', () => {
 
 			expect(results).toHaveLength(2);
 			expect(total).toBe(2);
-			expect(results[0]?.id).toBe('vec1');
-			expect(results[1]?.id).toBe('vec2');
+			expect(results[0]?.id).toBe(1);
+			expect(results[1]?.id).toBe(2);
 
 			expect(mockQdrantClient.scroll).toHaveBeenCalledWith('test_collection', {
 				with_vector: true,
@@ -488,7 +488,7 @@ describe('QdrantBackend', () => {
 				result: {
 					points: [
 						{
-							id: 'vec1',
+							id: 1,
 							version: 1,
 							payload: { category: 'A', title: 'First' },
 							vector: [1, 2, 3],
@@ -525,7 +525,7 @@ describe('QdrantBackend', () => {
 				result: {
 					points: [
 						{
-							id: 'vec1',
+							id: 1,
 							version: 1,
 							payload: { title: 'First' },
 							vector: [1, 2, 3],
@@ -570,7 +570,7 @@ describe('QdrantBackend', () => {
 		it('should handle Qdrant API errors gracefully', async () => {
 			mockQdrantClient.upsert.mockRejectedValue(new Error('Qdrant API error'));
 
-			await expect(backend.insert([[1, 2, 3]], ['test'], [{}])).rejects.toThrow(VectorStoreError);
+			await expect(backend.insert([[1, 2, 3]], [1], [{}])).rejects.toThrow(VectorStoreError);
 		});
 
 		it('should handle search errors', async () => {
@@ -582,7 +582,7 @@ describe('QdrantBackend', () => {
 		it('should handle retrieve errors', async () => {
 			mockQdrantClient.retrieve.mockRejectedValue(new Error('Retrieve failed'));
 
-			await expect(backend.get('test')).rejects.toThrow(VectorStoreError);
+			await expect(backend.get(1)).rejects.toThrow(VectorStoreError);
 		});
 	});
 
@@ -652,7 +652,7 @@ describe('QdrantBackend', () => {
 
 		it('should insert, update, and retrieve a vector', async () => {
 			try {
-				const id = 'manual_test_vec';
+				const id = 123;
 				const initialVector = [1, 2, 3];
 				const updatedVector = [7, 8, 9];
 				const initialPayload = { title: 'Initial' };

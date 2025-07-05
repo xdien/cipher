@@ -322,6 +322,11 @@ export const extractAndOperateMemoryTool: InternalTool = {
       for (let i = 0; i < significantFacts.length; i++) {
         const fact = significantFacts[i];
         
+        if (!fact) {
+          logger.warn(`ExtractAndOperateMemory: Skipping undefined fact at index ${i}`);
+          continue;
+        }
+        
         logger.info(`ExtractAndOperateMemory: Processing fact ${i + 1}/${significantFacts.length}`, {
           factPreview: fact.substring(0, 80) + (fact.length > 80 ? '...' : ''),
           factLength: fact.length
@@ -334,7 +339,7 @@ export const extractAndOperateMemoryTool: InternalTool = {
         
         logger.debug(`ExtractAndOperateMemory: Similarity search completed for fact ${i + 1}`, {
           similarMemoriesFound: similar.length,
-          topSimilarity: similar.length > 0 ? similar[0].score?.toFixed(3) : 'N/A',
+          topSimilarity: similar.length > 0 ? similar[0]?.score?.toFixed(3) : 'N/A',
           similarities: similar.slice(0, 3).map(s => ({
             id: s.id,
             score: s.score?.toFixed(3),
@@ -451,6 +456,14 @@ export const extractAndOperateMemoryTool: InternalTool = {
       let persistedCount = 0;
       for (const action of memoryActions) {
         if (['ADD', 'UPDATE', 'DELETE'].includes(action.event)) {
+          if (!action.text) {
+            logger.warn(`ExtractAndOperateMemory: Skipping action with undefined text`, {
+              memoryId: action.id,
+              event: action.event
+            });
+            continue;
+          }
+          
           const embedding = await embedder.embed(action.text);
           const payload = {
             id: action.id,

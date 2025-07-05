@@ -11,6 +11,10 @@
 import { extractAndOperateMemoryTool } from './extract_and_operate_memory.js';
 import { searchMemoryTool } from './search_memory.js';
 
+// Export individual tools
+export { extractAndOperateMemoryTool } from './extract_and_operate_memory.js';
+export { searchMemoryTool } from './search_memory.js';
+
 // Export types for better developer experience
 import type { InternalTool } from '../../types.js';
 

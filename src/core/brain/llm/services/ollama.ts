@@ -118,6 +118,59 @@ export class OllamaService implements ILLMService {
 		}
 	}
 
+	/**
+	 * Direct generate method that bypasses conversation context
+	 * Used for internal tool operations that shouldn't pollute conversation history
+	 * @param userInput - The input to generate a response for
+	 * @param systemPrompt - Optional system prompt to use
+	 * @returns Promise<string> - The generated response
+	 */
+	async directGenerate(userInput: string, systemPrompt?: string): Promise<string> {
+		try {
+			logger.debug('OllamaService: Direct generate call (bypassing conversation context)', {
+				inputLength: userInput.length,
+				hasSystemPrompt: !!systemPrompt
+			});
+
+			// Create a minimal message array for direct API call
+			const messages: any[] = [];
+			
+			if (systemPrompt) {
+				messages.push({
+					role: 'system',
+					content: systemPrompt
+				});
+			}
+
+			messages.push({
+				role: 'user',
+				content: userInput
+			});
+
+			// Make direct API call without adding to conversation context
+			const response = await this.openai.chat.completions.create({
+				model: this.model,
+				messages: messages,
+				// No tools for direct calls - this is for simple text generation
+			});
+
+			const responseText = response.choices[0]?.message?.content || '';
+			
+			logger.debug('OllamaService: Direct generate completed', {
+				responseLength: responseText.length
+			});
+
+			return responseText;
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			logger.error('OllamaService: Direct generate failed', { 
+				error: errorMessage,
+				inputLength: userInput.length
+			});
+			throw new Error(`Direct generate failed: ${errorMessage}`);
+		}
+	}
+
 	async getAllTools(): Promise<ToolSet | CombinedToolSet> {
 		if (this.unifiedToolManager) {
 			return await this.unifiedToolManager.getAllTools();

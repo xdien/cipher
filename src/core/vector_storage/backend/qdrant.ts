@@ -198,8 +198,18 @@ export class QdrantBackend implements VectorStore {
 
 		// Validate dimensions and IDs
 		for (let i = 0; i < vectors.length; i++) {
-			this.validateDimension(vectors[i], 'insert');
-			this.validateId(ids[i]);
+			const vector = vectors[i];
+			const id = ids[i];
+			
+			if (!vector) {
+				throw new VectorStoreError(`Vector missing at index ${i}`, 'insert');
+			}
+			if (id === undefined || id === null) {
+				throw new VectorStoreError(`ID missing at index ${i}`, 'insert');
+			}
+			
+			this.validateDimension(vector, 'insert');
+			this.validateId(id);
 		}
 
 		this.logger.debug(`${LOG_PREFIXES.INDEX} Inserting ${vectors.length} vectors`);
@@ -207,9 +217,14 @@ export class QdrantBackend implements VectorStore {
 		try {
 			const points = vectors.map((vector, idx) => {
 				const payload = payloads[idx];
+				const id = ids[idx];
+				
 				if (!payload) throw new VectorStoreError(`Payload missing at index ${idx}`, 'insert');
+				if (!vector) throw new VectorStoreError(`Vector missing at index ${idx}`, 'insert');
+				if (id === undefined || id === null) throw new VectorStoreError(`ID missing at index ${idx}`, 'insert');
+				
 				return {
-					id: ids[idx], // Always use integer IDs
+					id: id, // Always use integer IDs
 					vector,
 					payload,
 				};
@@ -297,12 +312,12 @@ export class QdrantBackend implements VectorStore {
 				return null;
 			}
 
-			return {
-				id: String(vectorId), // VectorStoreResult expects string, but Qdrant uses integer internally
-				vector: (firstResult.vector as number[]) || [],
-				payload: firstResult.payload || {},
-				score: 1.0,
-			};
+					return {
+			id: vectorId, // Qdrant uses integer IDs
+			vector: (firstResult.vector as number[]) || [],
+			payload: firstResult.payload || {},
+			score: 1.0,
+		};
 		} catch (error) {
 			this.logger.error(`${LOG_PREFIXES.BACKEND} Get failed`, { error });
 			throw new VectorStoreError('Failed to retrieve vector', 'get', error as Error);

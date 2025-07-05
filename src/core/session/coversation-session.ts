@@ -149,12 +149,18 @@ export class ConversationSession {
 		for (let i = recentMessages.length - 1; i >= 0; i--) {
 			const message = recentMessages[i];
 			
+			if (!message) {
+				continue;
+			}
+			
 			// Skip if we haven't reached the current user message yet
 			if (!foundUserMessage) {
 				if (message.role === 'user' && 
 					Array.isArray(message.content) && 
 					message.content.length > 0 && 
+					message.content[0] && 
 					message.content[0].type === 'text' && 
+					'text' in message.content[0] &&
 					message.content[0].text === userInput) {
 					foundUserMessage = true;
 				}
@@ -175,6 +181,10 @@ export class ConversationSession {
 		const toolResults: string[] = [];
 		
 		for (const message of currentInteractionMessages) {
+			if (!message) {
+				continue;
+			}
+			
 			if (message.role === 'assistant' && message.toolCalls && message.toolCalls.length > 0) {
 				// Extract tool calls
 				for (const toolCall of message.toolCalls) {

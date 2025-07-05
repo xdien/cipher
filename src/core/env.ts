@@ -64,6 +64,8 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 				return process.env.OPENROUTER_API_KEY;
 			case 'OPENAI_BASE_URL':
 				return process.env.OPENAI_BASE_URL;
+			case 'OLLAMA_BASE_URL':
+				return process.env.OLLAMA_BASE_URL;
 			case 'OPENAI_ORG_ID':
 				return process.env.OPENAI_ORG_ID;
 			// Embedding Configuration
@@ -152,6 +154,7 @@ export const validateEnv = () => {
 		ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
 		OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
 		OPENAI_BASE_URL: process.env.OPENAI_BASE_URL,
+		OLLAMA_BASE_URL: process.env.OLLAMA_BASE_URL,
 		OPENAI_ORG_ID: process.env.OPENAI_ORG_ID,
 		// Embedding Configuration
 		EMBEDDING_MODEL: process.env.EMBEDDING_MODEL,
