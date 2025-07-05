@@ -8,11 +8,18 @@ const envSchema = z.object({
 	NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 	CIPHER_LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
 	REDACT_SECRETS: z.boolean().default(true),
+	// LLM Provider API Keys
+	// Note: OPENAI_API_KEY is effectively required for embedding functionality
 	OPENAI_API_KEY: z.string().optional(),
 	ANTHROPIC_API_KEY: z.string().optional(),
 	OPENROUTER_API_KEY: z.string().optional(),
 	OPENAI_BASE_URL: z.string().optional(),
 	OLLAMA_BASE_URL: z.string().optional(),
+	OPENAI_ORG_ID: z.string().optional(),
+	// Embedding Configuration
+	EMBEDDING_MODEL: z.string().optional(),
+	EMBEDDING_TIMEOUT: z.number().optional(),
+	EMBEDDING_MAX_RETRIES: z.number().optional(),
 	// Storage Configuration
 	STORAGE_CACHE_TYPE: z.enum(['redis', 'in-memory']).default('in-memory'),
 	STORAGE_CACHE_HOST: z.string().optional(),
@@ -55,6 +62,19 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 				return process.env.OPENROUTER_API_KEY;
 			case 'OPENAI_BASE_URL':
 				return process.env.OPENAI_BASE_URL;
+			case 'OPENAI_ORG_ID':
+				return process.env.OPENAI_ORG_ID;
+			// Embedding Configuration
+			case 'EMBEDDING_MODEL':
+				return process.env.EMBEDDING_MODEL;
+			case 'EMBEDDING_TIMEOUT':
+				return process.env.EMBEDDING_TIMEOUT
+					? parseInt(process.env.EMBEDDING_TIMEOUT, 10)
+					: undefined;
+			case 'EMBEDDING_MAX_RETRIES':
+				return process.env.EMBEDDING_MAX_RETRIES
+					? parseInt(process.env.EMBEDDING_MAX_RETRIES, 10)
+					: undefined;
 			// Storage Configuration
 			case 'STORAGE_CACHE_TYPE':
 				return process.env.STORAGE_CACHE_TYPE || 'in-memory';
@@ -110,6 +130,14 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 });
 
 export const validateEnv = () => {
+	// Critical validation: OPENAI_API_KEY is always required for embedding functionality
+	if (!process.env.OPENAI_API_KEY) {
+		console.error(
+			'OPENAI_API_KEY is required for embedding functionality, even when using other LLM providers (Anthropic, OpenRouter, etc.)'
+		);
+		return false;
+	}
+
 	// Get current env values for validation
 	const envToValidate = {
 		NODE_ENV: process.env.NODE_ENV,
@@ -119,6 +147,15 @@ export const validateEnv = () => {
 		ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
 		OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
 		OPENAI_BASE_URL: process.env.OPENAI_BASE_URL,
+		OPENAI_ORG_ID: process.env.OPENAI_ORG_ID,
+		// Embedding Configuration
+		EMBEDDING_MODEL: process.env.EMBEDDING_MODEL,
+		EMBEDDING_TIMEOUT: process.env.EMBEDDING_TIMEOUT
+			? parseInt(process.env.EMBEDDING_TIMEOUT, 10)
+			: undefined,
+		EMBEDDING_MAX_RETRIES: process.env.EMBEDDING_MAX_RETRIES
+			? parseInt(process.env.EMBEDDING_MAX_RETRIES, 10)
+			: undefined,
 		// Storage Configuration
 		STORAGE_CACHE_TYPE: process.env.STORAGE_CACHE_TYPE || 'in-memory',
 		STORAGE_CACHE_HOST: process.env.STORAGE_CACHE_HOST,

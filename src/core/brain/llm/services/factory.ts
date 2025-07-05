@@ -126,7 +126,8 @@ function _createLLMService(
 				config.model,
 				mcpManager,
 				contextManager,
-				config.maxIterations
+				config.maxIterations,
+				unifiedToolManager
 			);
 		}
 		default:

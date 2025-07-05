@@ -1,5 +1,6 @@
 import { ToolSet } from '../../../mcp/types.js';
 import { MCPManager } from '../../../mcp/manager.js';
+import { UnifiedToolManager, CombinedToolSet } from '../../tools/unified-tool-manager.js';
 import { ContextManager } from '../messages/manager.js';
 import { ImageData } from '../messages/types.js';
 import { ILLMService, LLMServiceConfig } from './types.js';
@@ -10,6 +11,7 @@ export class OllamaService implements ILLMService {
 	private openai: OpenAI;
 	private model: string;
 	private mcpManager: MCPManager;
+	private unifiedToolManager: UnifiedToolManager | undefined;
 	private contextManager: ContextManager;
 	private maxIterations: number;
 
@@ -18,19 +20,28 @@ export class OllamaService implements ILLMService {
 		model: string,
 		mcpManager: MCPManager,
 		contextManager: ContextManager,
-		maxIterations: number = 5
+		maxIterations: number = 5,
+		unifiedToolManager?: UnifiedToolManager
 	) {
 		this.openai = openai;
 		this.model = model;
 		this.mcpManager = mcpManager;
+		this.unifiedToolManager = unifiedToolManager;
 		this.contextManager = contextManager;
 		this.maxIterations = maxIterations;
 	}
 
 	async generate(userInput: string, imageData?: ImageData): Promise<string> {
 		await this.contextManager.addUserMessage(userInput, imageData);
-		const rawTools = await this.mcpManager.getAllTools();
-		const formattedTools = this.formatToolsForOllama(rawTools);
+
+		// Use unified tool manager if available, otherwise fall back to MCP manager
+		let formattedTools: any[];
+		if (this.unifiedToolManager) {
+			formattedTools = await this.unifiedToolManager.getToolsForProvider('openai');
+		} else {
+			const rawTools = await this.mcpManager.getAllTools();
+			formattedTools = this.formatToolsForOllama(rawTools);
+		}
 
 		logger.silly(`Formatted tools for Ollama: ${JSON.stringify(formattedTools, null, 2)}`);
 
@@ -71,7 +82,12 @@ export class OllamaService implements ILLMService {
 
 					// Execute tool
 					try {
-						const result = await this.mcpManager.executeTool(toolName, args);
+						let result: any;
+						if (this.unifiedToolManager) {
+							result = await this.unifiedToolManager.executeTool(toolName, args);
+						} else {
+							result = await this.mcpManager.executeTool(toolName, args);
+						}
 
 						// Add tool result to message manager
 						await this.contextManager.addToolResult(toolCall.id, toolName, result);
@@ -102,7 +118,10 @@ export class OllamaService implements ILLMService {
 		}
 	}
 
-	getAllTools(): Promise<ToolSet> {
+	async getAllTools(): Promise<ToolSet | CombinedToolSet> {
+		if (this.unifiedToolManager) {
+			return await this.unifiedToolManager.getAllTools();
+		}
 		return this.mcpManager.getAllTools();
 	}
 

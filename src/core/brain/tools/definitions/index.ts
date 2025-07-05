@@ -10,6 +10,7 @@ export * from './memory/index.js';
 
 // Export individual tools for direct access
 export { extractKnowledgeTool } from './memory/extract-knowledge.js';
+export { memoryOperationTool } from './memory/memory_operation.js';
 
 // Import types and utilities
 import type { InternalToolSet } from '../types.js';
@@ -104,7 +105,7 @@ export async function registerAllTools(toolManager: any): Promise<{
 export const TOOL_CATEGORIES = {
 	memory: {
 		description: 'Tools for managing facts, memories, and knowledge storage',
-		tools: ['extract_knowledge'] as string[],
+		tools: ['extract_knowledge', 'memory_operation'] as string[],
 		useCase:
 			'Use these tools to capture, search, and store important information for future reference',
 	},
