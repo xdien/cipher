@@ -13,8 +13,9 @@ import { LOG_PREFIXES, DEFAULTS, ERROR_MESSAGES } from '../constants.js';
 
 // Read index and distance config from environment variables (with fallback)
 const MILVUS_INDEX_TYPE = process.env.MILVUS_INDEX_TYPE || 'IVF_FLAT';
-const VECTOR_STORE_DISTANCE = process.env.VECTOR_STORE_DISTANCE || 'L2';
-
+const VECTOR_STORE_DISTANCE = process.env.VECTOR_STORE_DISTANCE || 'Cosine';
+const VECTOR_STORE_CONFIG_EFCONSTRUCTION = process.env.VECTOR_STORE_CONFIG_EFCONSTRUCTION || 10;
+const VECTOR_STORE_CONFIG_M = process.env.VECTOR_STORE_CONFIG_M || 4;
 /**
  * MilvusBackend Class
  *
@@ -56,7 +57,7 @@ export class MilvusBackend implements VectorStore {
 			field_name: 'vector',
 			index_type: MILVUS_INDEX_TYPE,
 			metric_type: VECTOR_STORE_DISTANCE,
-			params: { efConstruction: 10, M: 4 },
+			params: { efConstruction: VECTOR_STORE_CONFIG_EFCONSTRUCTION, M: VECTOR_STORE_CONFIG_M },
 		},
 	};
 
