@@ -144,7 +144,7 @@ export class UnifiedToolManager {
 	 */
 	async executeTool(toolName: string, args: any): Promise<ToolExecutionResult> {
 		try {
-			logger.info(`UnifiedToolManager: Executing tool '${toolName}'`, {
+			logger.debug(`UnifiedToolManager: Executing tool '${toolName}'`, {
 				toolName,
 				hasArgs: !!args,
 			});

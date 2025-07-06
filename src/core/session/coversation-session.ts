@@ -206,29 +206,12 @@ export class ConversationSession {
 		// Generate response
 		const response = await this.llmService.generate(input, imageDataInput, stream);
 
-		// Prepare merged metadata and context
-		const mergedMeta = this.getSessionMetadata(options?.memoryMetadata);
-		const defaultContext = {
-			sessionId: this.id,
-			conversationTopic: 'Interactive CLI session',
-			recentMessages: this.extractComprehensiveInteractionData(input, response),
-		};
-		const mergedContext = {
-			...defaultContext,
-			...(options?.contextOverrides &&
-			typeof options.contextOverrides === 'object' &&
-			!Array.isArray(options.contextOverrides)
-				? options.contextOverrides
-				: {}),
-		};
-		if (this.beforeMemoryExtraction) {
-			this.beforeMemoryExtraction(mergedMeta, mergedContext);
-		}
-
-		// PROGRAMMATIC ENFORCEMENT: Automatically call extract_and_operate_memory after every interaction
-		await this.enforceMemoryExtraction(input, response, options);
-
-		return response;
+		// PROGRAMMATIC ENFORCEMENT: Memory extraction runs in background (non-blocking)
+		this.enforceMemoryExtraction(input, response).catch(error => {
+			logger.error('ConversationSession: Background memory extraction failed', { error });
+		});
+		
+		return response; // CLI displays response IMMEDIATELY, memory extraction logs appear after
 	}
 
 	/**
@@ -251,13 +234,11 @@ export class ConversationSession {
 			typeof this.services.unifiedToolManager
 		);
 		try {
-			logger.info('ConversationSession: Enforcing memory extraction for interaction');
+			logger.debug('ConversationSession: Enforcing memory extraction for interaction');
 
 			// Check if the unifiedToolManager is available
 			if (!this.services.unifiedToolManager) {
-				logger.warn(
-					'ConversationSession: UnifiedToolManager not available, skipping memory extraction'
-				);
+				logger.debug('ConversationSession: UnifiedToolManager not available, skipping memory extraction');
 				return;
 			}
 
@@ -315,7 +296,7 @@ export class ConversationSession {
 				}
 			);
 
-			logger.info('ConversationSession: Memory extraction completed', {
+			logger.debug('ConversationSession: Memory extraction completed', {
 				success: memoryResult.success,
 				extractedFacts: memoryResult.extraction?.extracted || 0,
 				totalMemoryActions: memoryResult.memory?.length || 0,

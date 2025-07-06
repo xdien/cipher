@@ -268,7 +268,7 @@ export class InMemoryBackend implements VectorStore {
 			score,
 		}));
 
-		this.logger.info(`${LOG_PREFIXES.SEARCH} Found ${formattedResults.length} results`);
+		this.logger.debug(`${LOG_PREFIXES.SEARCH} Found ${formattedResults.length} results`);
 
 		return formattedResults;
 	}

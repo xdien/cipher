@@ -445,7 +445,7 @@ export const extractAndOperateMemoryTool: InternalTool = {
 			});
 
 			if (significantFacts.length === 0) {
-				logger.info('ExtractAndOperateMemory: No significant facts found after filtering', {
+				logger.debug('ExtractAndOperateMemory: No significant facts found after filtering', {
 					totalFacts: knowledgeArray.length,
 					validFacts: validFacts.length,
 					filteredOut: validFacts.length,
@@ -477,155 +477,6 @@ export const extractAndOperateMemoryTool: InternalTool = {
 					},
 				})),
 			};
-
-			logger.info('ExtractAndOperateMemory: Facts extracted and filtered from interaction', {
-				totalFacts: knowledgeArray.length,
-				validFacts: validFacts.length,
-				significantFacts: significantFacts.length,
-				skippedFacts: knowledgeArray.length - significantFacts.length,
-				factPreviews: significantFacts.map(
-					fact => fact.substring(0, 60) + (fact.length > 60 ? '...' : '')
-				),
-			});
-
-			// Step 2: For each fact, perform semantic comparison and decide on memory operation
-			// Access embedding and vector store managers from context.services
-			if (!context?.services) {
-				throw new Error('InternalToolContext.services is required');
-			}
-			const embeddingManager = context.services.embeddingManager;
-			const vectorStoreManager = context.services.vectorStoreManager;
-			const llmService = context.services.llmService;
-			if (!embeddingManager || !vectorStoreManager) {
-				throw new Error('EmbeddingManager and VectorStoreManager are required in context.services');
-			}
-			const embedder = embeddingManager.getEmbedder('default');
-			const vectorStore = vectorStoreManager.getStore();
-			if (!embedder || !vectorStore) {
-				throw new Error('Embedder and VectorStore must be initialized and available');
-			}
-			if (!embedder.embed || typeof embedder.embed !== 'function') {
-				throw new Error('Embedder is not properly initialized or missing embed() method');
-			}
-			const options = {
-				similarityThreshold: args.options?.similarityThreshold ?? 0.8,
-				maxSimilarResults: args.options?.maxSimilarResults ?? 5,
-				useLLMDecisions: args.options?.useLLMDecisions ?? false,
-			};
-			const memoryActions = [];
-			const memorySummaries = [];
-			for (let i = 0; i < significantFacts.length; i++) {
-				const fact = significantFacts[i];
-
-				if (!fact) {
-					logger.warn(`ExtractAndOperateMemory: Skipping undefined fact at index ${i}`);
-					continue;
-				}
-
-				logger.info(
-					`ExtractAndOperateMemory: Processing fact ${i + 1}/${significantFacts.length}`,
-					{
-						factPreview: fact.substring(0, 80) + (fact.length > 80 ? '...' : ''),
-						factLength: fact.length,
-					}
-				);
-
-				// Embed the fact
-				const embedding = await embedder.embed(fact);
-				// Perform top-N similarity search
-				const similar = await vectorStore.search(embedding, options.maxSimilarResults);
-
-				logger.debug(`ExtractAndOperateMemory: Similarity search completed for fact ${i + 1}`, {
-					similarMemoriesFound: similar.length,
-					topSimilarity: similar.length > 0 ? similar[0]?.score?.toFixed(3) : 'N/A',
-					similarities: similar.slice(0, 3).map(s => ({
-						id: s.id,
-						score: s.score?.toFixed(3),
-						preview: (s.payload?.text || '').substring(0, 50) + '...',
-					})),
-				});
-				// LLM-based decision making if enabled and available
-				let action = 'ADD';
-				let targetId = null;
-				let reason = '';
-				let confidence = 0;
-				let usedLLM = false;
-				if (options.useLLMDecisions && llmService) {
-					try {
-						// Format similar memories for prompt
-						const similarMemoriesStr = similar
-							.map(
-								(mem, idx) =>
-									`  ${idx + 1}. ID: ${mem.id} (similarity: ${mem.score?.toFixed(2) ?? 'N/A'})\n     Content: ${(mem.payload?.text || '').substring(0, 200)}`
-							)
-							.join('\n');
-						// Use the DECISION_PROMPT from memory_operation
-						const DECISION_PROMPT = MEMORY_OPERATION_PROMPTS.DECISION_PROMPT;
-						// For now, pass empty string for context
-						const llmInput = DECISION_PROMPT.replace('{fact}', fact)
-							.replace('{similarMemories}', similarMemoriesStr || 'No similar memories found.')
-							.replace('{context}', '');
-						// Use directGenerate to bypass conversation context and avoid polluting it with internal prompts
-						const llmResponse = await llmService.directGenerate(llmInput);
-						const decision = parseLLMDecision(llmResponse);
-						if (decision && ['ADD', 'UPDATE', 'DELETE', 'NONE'].includes(decision.operation)) {
-							action = decision.operation;
-							confidence = decision.confidence ?? 0;
-							reason = decision.reasoning || '';
-							targetId = decision.targetMemoryId || null;
-							usedLLM = true;
-
-							logger.info(`ExtractAndOperateMemory: LLM decision for fact ${i + 1}`, {
-								factPreview: fact.substring(0, 80) + (fact.length > 80 ? '...' : ''),
-								decision: action,
-								confidence: confidence.toFixed(2),
-								reasoning: reason,
-								targetMemoryId: targetId,
-								decisionMethod: 'LLM',
-							});
-						} else {
-							throw new Error('LLM decision missing required fields');
-						}
-					} catch (err) {
-						logger.warn('LLM decision failed, falling back to heuristic', {
-							factPreview: fact.substring(0, 80),
-							error: err instanceof Error ? err.message : String(err),
-						});
-						usedLLM = false;
-					}
-				}
-				// Fallback heuristic if LLM not used or failed
-				if (!usedLLM) {
-					const mostSimilar = similar.length > 0 ? similar[0] : null;
-					confidence = mostSimilar?.score ?? 0;
-					if (!mostSimilar || confidence < options.similarityThreshold) {
-						action = 'ADD';
-						reason = 'No highly similar memory found; adding as new.';
-					} else {
-						if (fact === mostSimilar.payload?.text) {
-							action = 'NONE';
-							reason = 'Fact is redundant; already present.';
-							targetId = mostSimilar.id;
-						} else if (fact.length > (mostSimilar.payload?.text?.length ?? 0)) {
-							action = 'UPDATE';
-							targetId = mostSimilar.id;
-							reason = 'Fact is more complete/correct; updating existing memory.';
-						} else if (
-							fact.includes('not') &&
-							mostSimilar.payload?.text &&
-							!mostSimilar.payload.text.includes('not')
-						) {
-							action = 'DELETE';
-							targetId = mostSimilar.id;
-							reason = 'Fact contradicts existing memory; deleting old memory.';
-						} else {
-							action = 'NONE';
-							reason = 'Fact is similar but not more complete; ignoring.';
-							targetId = mostSimilar.id;
-						}
-					}
-
-					// Log heuristic decision
 					logger.info(`ExtractAndOperateMemory: Heuristic decision for fact ${i + 1}`, {
 						factPreview: fact.substring(0, 80) + (fact.length > 80 ? '...' : ''),
 						decision: action,
@@ -761,4 +612,263 @@ export const extractAndOperateMemoryTool: InternalTool = {
 			};
 		}
 	},
+};
+			logger.debug('ExtractAndOperateMemory: Facts extracted and filtered from interaction', {
+				totalFacts: knowledgeArray.length,
+				validFacts: validFacts.length,
+				significantFacts: significantFacts.length,
+				skippedFacts: knowledgeArray.length - significantFacts.length,
+				factPreviews: significantFacts.map(fact => fact.substring(0, 60) + (fact.length > 60 ? '...' : ''))
+			});
+
+			// Step 2: For each fact, perform semantic comparison and decide on memory operation
+			// Access embedding and vector store managers from context.services
+			if (!context?.services) {
+				throw new Error('InternalToolContext.services is required');
+			}
+			const embeddingManager = context.services.embeddingManager;
+			const vectorStoreManager = context.services.vectorStoreManager;
+			const llmService = context.services.llmService;
+			if (!embeddingManager || !vectorStoreManager) {
+				throw new Error('EmbeddingManager and VectorStoreManager are required in context.services');
+			}
+			const embedder = embeddingManager.getEmbedder('default');
+			const vectorStore = vectorStoreManager.getStore();
+			if (!embedder || !vectorStore) {
+				throw new Error('Embedder and VectorStore must be initialized and available');
+			}
+			if (!embedder.embed || typeof embedder.embed !== 'function') {
+				throw new Error('Embedder is not properly initialized or missing embed() method');
+			}
+			const options = {
+				similarityThreshold: args.options?.similarityThreshold ?? 0.8,
+				maxSimilarResults: args.options?.maxSimilarResults ?? 5,
+				useLLMDecisions: args.options?.useLLMDecisions ?? false
+			};
+			const memoryActions = [];
+			const memorySummaries = [];
+			for (let i = 0; i < significantFacts.length; i++) {
+				const fact = significantFacts[i];
+				
+				if (!fact) {
+					logger.warn(`ExtractAndOperateMemory: Skipping undefined fact at index ${i}`);
+					continue;
+				}
+				
+				logger.debug(`ExtractAndOperateMemory: Processing fact ${i + 1}/${significantFacts.length}`, {
+					factPreview: fact.substring(0, 80) + (fact.length > 80 ? '...' : ''),
+					factLength: fact.length
+				});
+
+				// Embed the fact
+				const embedding = await embedder.embed(fact);
+				// Perform top-N similarity search
+				const similar = await vectorStore.search(embedding, options.maxSimilarResults);
+				
+				logger.debug(`ExtractAndOperateMemory: Similarity search completed for fact ${i + 1}`, {
+					similarMemoriesFound: similar.length,
+					topSimilarity: similar.length > 0 ? similar[0]?.score?.toFixed(3) : 'N/A',
+					similarities: similar.slice(0, 3).map(s => ({
+						id: s.id,
+						score: s.score?.toFixed(3),
+						preview: (s.payload?.text || '').substring(0, 50) + '...'
+					}))
+				});
+				// LLM-based decision making if enabled and available
+				let action = 'ADD';
+				let targetId = null;
+				let reason = '';
+				let confidence = 0;
+				let usedLLM = false;
+				if (options.useLLMDecisions && llmService) {
+					try {
+						// Format similar memories for prompt
+						const similarMemoriesStr = similar
+							.map((mem, idx) => `  ${idx + 1}. ID: ${mem.id} (similarity: ${mem.score?.toFixed(2) ?? 'N/A'})\n     Content: ${(mem.payload?.text || '').substring(0, 200)}`)
+							.join('\n');
+						// Use the DECISION_PROMPT from memory_operation
+						const DECISION_PROMPT = MEMORY_OPERATION_PROMPTS.DECISION_PROMPT;
+						// For now, pass empty string for context
+						const llmInput = DECISION_PROMPT
+							.replace('{fact}', fact)
+							.replace('{similarMemories}', similarMemoriesStr || 'No similar memories found.')
+							.replace('{context}', '');
+						// Use directGenerate to bypass conversation context and avoid polluting it with internal prompts
+						const llmResponse = await llmService.directGenerate(llmInput);
+						const decision = parseLLMDecision(llmResponse);
+						if (decision && ['ADD', 'UPDATE', 'DELETE', 'NONE'].includes(decision.operation)) {
+							action = decision.operation;
+							confidence = decision.confidence ?? 0;
+							reason = decision.reasoning || '';
+							targetId = decision.targetMemoryId || null;
+							usedLLM = true;
+							
+							logger.debug(`ExtractAndOperateMemory: LLM decision for fact ${i + 1}`, { 
+								factPreview: fact.substring(0, 80) + (fact.length > 80 ? '...' : ''),
+								decision: action,
+								confidence: confidence.toFixed(2),
+								reasoning: reason,
+								targetMemoryId: targetId,
+								decisionMethod: 'LLM'
+							});
+						} else {
+							throw new Error('LLM decision missing required fields');
+						}
+					} catch (err) {
+						logger.warn('LLM decision failed, falling back to heuristic', { factPreview: fact.substring(0, 80), error: err instanceof Error ? err.message : String(err) });
+						usedLLM = false;
+					}
+				}
+				// Fallback heuristic if LLM not used or failed
+				if (!usedLLM) {
+					const mostSimilar = similar.length > 0 ? similar[0] : null;
+					confidence = mostSimilar?.score ?? 0;
+					if (!mostSimilar || confidence < options.similarityThreshold) {
+						action = 'ADD';
+						reason = 'No highly similar memory found; adding as new.';
+					} else {
+						if (fact === mostSimilar.payload?.text) {
+							action = 'NONE';
+							reason = 'Fact is redundant; already present.';
+							targetId = mostSimilar.id;
+						} else if ((fact.length > (mostSimilar.payload?.text?.length ?? 0))) {
+							action = 'UPDATE';
+							targetId = mostSimilar.id;
+							reason = 'Fact is more complete/correct; updating existing memory.';
+						} else if (fact.includes('not') && mostSimilar.payload?.text && !mostSimilar.payload.text.includes('not')) {
+							action = 'DELETE';
+							targetId = mostSimilar.id;
+							reason = 'Fact contradicts existing memory; deleting old memory.';
+						} else {
+							action = 'NONE';
+							reason = 'Fact is similar but not more complete; ignoring.';
+							targetId = mostSimilar.id;
+						}
+					}
+
+					// Log heuristic decision  
+					logger.debug(`ExtractAndOperateMemory: Heuristic decision for fact ${i + 1}`, {
+						factPreview: fact.substring(0, 80) + (fact.length > 80 ? '...' : ''),
+						decision: action,
+						confidence: confidence.toFixed(3),
+						reasoning: reason,
+						targetMemoryId: targetId,
+						decisionMethod: 'Heuristic',
+						topSimilarityScore: mostSimilar?.score?.toFixed(3) || 'N/A',
+						similarityThreshold: options.similarityThreshold.toFixed(2)
+					});
+				}
+				memoryActions.push({
+					id: action === 'ADD' ? Date.now() + i : Number(targetId),
+					text: fact,
+					event: action,
+					tags: extractTechnicalTags(fact),
+					confidence,
+					reasoning: reason
+				});
+				memorySummaries.push({
+					factPreview: fact.substring(0, 80),
+					action,
+					confidence,
+					reason,
+					targetId
+				});
+			}
+			// Step 3: Persist only ADD/UPDATE/DELETE actions
+			logger.debug('ExtractAndOperateMemory: Starting memory persistence operations', {
+				totalActions: memoryActions.length,
+				persistableActions: memoryActions.filter(a => ['ADD', 'UPDATE', 'DELETE'].includes(a.event)).length,
+				skippableActions: memoryActions.filter(a => a.event === 'NONE').length
+			});
+
+			let persistedCount = 0;
+			for (const action of memoryActions) {
+				if (['ADD', 'UPDATE', 'DELETE'].includes(action.event)) {
+					if (!action.text) {
+						logger.warn(`ExtractAndOperateMemory: Skipping action with undefined text`, {
+							memoryId: action.id,
+							event: action.event
+						});
+						continue;
+					}
+					
+					const embedding = await embedder.embed(action.text);
+					const payload = {
+						id: action.id,
+						text: action.text,
+						tags: action.tags,
+						confidence: action.confidence,
+						reasoning: action.reasoning,
+						event: action.event,
+						timestamp: new Date().toISOString()
+					};
+					
+					try {
+						if (action.event === 'ADD') {
+							await vectorStore.insert([embedding], [action.id], [payload]);
+							logger.debug(`ExtractAndOperateMemory: ${action.event} operation completed`, {
+								memoryId: action.id,
+								textPreview: action.text.substring(0, 60) + (action.text.length > 60 ? '...' : ''),
+								tags: action.tags,
+								confidence: action.confidence.toFixed(3)
+							});
+						} else if (action.event === 'UPDATE') {
+							await vectorStore.update(action.id, embedding, payload);
+							logger.debug(`ExtractAndOperateMemory: ${action.event} operation completed`, {
+								memoryId: action.id,
+								textPreview: action.text.substring(0, 60) + (action.text.length > 60 ? '...' : ''),
+								tags: action.tags,
+								confidence: action.confidence.toFixed(3)
+							});
+						} else if (action.event === 'DELETE') {
+							await vectorStore.delete(action.id);
+							logger.debug(`ExtractAndOperateMemory: ${action.event} operation completed`, {
+								memoryId: action.id,
+								reasoning: action.reasoning
+							});
+						}
+						persistedCount++;
+					} catch (error) {
+						logger.error(`ExtractAndOperateMemory: ${action.event} operation failed`, {
+							memoryId: action.id,
+							textPreview: action.text.substring(0, 60) + (action.text.length > 60 ? '...' : ''),
+							error: error instanceof Error ? error.message : String(error)
+						});
+					}
+				}
+			}
+
+			logger.debug('ExtractAndOperateMemory: Memory persistence completed', {
+				totalProcessed: memoryActions.length,
+				successfullyPersisted: persistedCount,
+				actionsSummary: {
+					ADD: memoryActions.filter(a => a.event === 'ADD').length,
+					UPDATE: memoryActions.filter(a => a.event === 'UPDATE').length,
+					DELETE: memoryActions.filter(a => a.event === 'DELETE').length,
+					NONE: memoryActions.filter(a => a.event === 'NONE').length
+				}
+			});
+			// Return extraction stats and memory operation summary
+			return {
+				success: true,
+				extraction: extractionStats,
+				memory: memoryActions,
+				summary: memorySummaries,
+				timestamp: new Date().toISOString()
+			};
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			logger.error('ExtractAndOperateMemory: Failed to extract and operate', {
+				error: errorMessage
+			});
+			return {
+				success: false,
+				error: errorMessage,
+				extraction: null,
+				memory: [],
+				summary: null,
+				timestamp: new Date().toISOString()
+			};
+		}
+	}
 };
