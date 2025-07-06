@@ -68,6 +68,7 @@
 		"@anthropic-ai/sdk": "^0.39.0",
 		"@modelcontextprotocol/sdk": "^1.13.0",
 		"@qdrant/js-client-rest": "^1.14.1",
+		"@zilliz/milvus2-sdk-node": "^2.5.11",
 		"boxen": "^8.0.1",
 		"chalk": "^5.4.1",
 		"dotenv": "^16.6.0",
@@ -79,5 +80,6 @@
 		"winston": "^3.17.0",
 		"yaml": "^2.3.1",
 		"zod": "^3.25.67"
-	}
+	},
+	"packageManager": "pnpm@10.12.4+sha512.5ea8b0deed94ed68691c9bad4c955492705c5eeb8a87ef86bc62c74a26b037b08ff9570f108b2e4dbd1dd1a9186fea925e527f141c648e85af45631074680184"
 }

@@ -17,6 +17,7 @@ export const LOG_PREFIXES = {
 	SEARCH: '[VectorStore:Search]',
 	INDEX: '[VectorStore:Index]',
 	QDRANT: '[VectorStore:Qdrant]',
+	MILVUS: '[VectorStore:Milvus]',
 	MEMORY: '[VectorStore:Memory]',
 } as const;
 

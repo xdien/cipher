@@ -18,6 +18,7 @@ export type {
 	VectorStoreConfig,
 	InMemoryBackendConfig,
 	QdrantBackendConfig,
+	MilvusBackendConfig,
 } from '../config.js';
 
 /**
