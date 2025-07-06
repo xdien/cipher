@@ -204,11 +204,12 @@ export class MilvusBackend implements VectorStore {
 		try {
 			const res = await this.client.query({
 				collection_name: this.collectionName,
-				filter: `id == "${vectorId}"`,
 				output_fields: ['id', 'vector', 'payload'],
+				filter: `id == "${vectorId}"`,
 			});
 			if (!res.data.length || !res.data[0]) return null;
 			const doc = res.data[0];
+			if (!doc) return null;
 			return {
 				id: doc.id,
 				vector: doc.vector,
@@ -278,12 +279,12 @@ export class MilvusBackend implements VectorStore {
 				...(expr ? { filter: expr } : {}),
 			};
 			const res = await this.client.query(queryParams);
-			const results = res.data.map((doc: any) => ({
+			const results = (res.data || []).map((doc: any) => doc && {
 				id: doc.id,
 				vector: doc.vector,
 				payload: doc.payload,
 				score: 1.0,
-			}));
+			}).filter(Boolean);
 			return [results, results.length];
 		} catch (error) {
 			this.logger.error(`List failed`, { error });
