@@ -20,6 +20,11 @@ const VECTOR_STORE_CONFIG_EFCONSTRUCTION = process.env.VECTOR_STORE_CONFIG_EFCON
 const VECTOR_STORE_CONFIG_M = process.env.VECTOR_STORE_CONFIG_M || 4;
 const VECTOR_STORE_CLUSTER_ENDPOINT = process.env.VECTOR_STORE_URL || '';
 const VECTOR_STORE_TOKEN = process.env.VECTOR_STORE_API_KEY || '';
+const VECTOR_STORE_COLLECTION_NAME =
+	process.env.VECTOR_STORE_COLLECTION_NAME || 'cipher_collection';
+const VECTOR_STORE_USERNAME = process.env.VECTOR_STORE_USERNAME || '';
+const VECTOR_STORE_PASSWORD = process.env.VECTOR_STORE_PASSWORD || '';
+
 /**
  * MilvusBackend Class
  *
@@ -72,13 +77,17 @@ export class MilvusBackend implements VectorStore {
 		this.logger = createLogger({
 			level: process.env.LOG_LEVEL || 'info',
 		});
-        console.log("VECTOR_STORE_CLUSTER_ENDPOINT: ", VECTOR_STORE_CLUSTER_ENDPOINT);
-        console.log("VECTOR_STORE_TOKEN: ", VECTOR_STORE_TOKEN);
+		console.log('VECTOR_STORE_CLUSTER_ENDPOINT: ', VECTOR_STORE_CLUSTER_ENDPOINT);
+		console.log('VECTOR_STORE_TOKEN: ', VECTOR_STORE_TOKEN);
+		console.log('VECTOR_STORE_USERNAME: ', VECTOR_STORE_USERNAME);
+		console.log('VECTOR_STORE_PASSWORD: ', VECTOR_STORE_PASSWORD);
 		this.client = new MilvusClient({
 			address: VECTOR_STORE_CLUSTER_ENDPOINT,
 			token: VECTOR_STORE_TOKEN,
+			username: VECTOR_STORE_USERNAME,
+			password: VECTOR_STORE_PASSWORD,
 		});
-        console.log("Milvus client: ", this.client);
+		console.log('Milvus client: ', this.client);
 		this.logger.info(`${LOG_PREFIXES.MILVUS} Milvus Initialized`, {
 			collection: this.collectionName,
 			dimension: this.dimension,
@@ -125,14 +134,21 @@ export class MilvusBackend implements VectorStore {
 			this.logger.info(`Milvus connected`);
 		} catch (error) {
 			this.logger.error(`Milvus connection failed`, { error });
-			throw new VectorStoreConnectionError(ERROR_MESSAGES.CONNECTION_FAILED, 'milvus', error as Error);
+			throw new VectorStoreConnectionError(
+				ERROR_MESSAGES.CONNECTION_FAILED,
+				'milvus',
+				error as Error
+			);
 		}
 	}
 
 	async insert(vectors: number[][], ids: string[], payloads: Record<string, any>[]): Promise<void> {
-		if (!this.connected) return Promise.reject(new VectorStoreError(ERROR_MESSAGES.NOT_CONNECTED, 'insert'));
+		if (!this.connected)
+			return Promise.reject(new VectorStoreError(ERROR_MESSAGES.NOT_CONNECTED, 'insert'));
 		if (vectors.length !== ids.length || vectors.length !== payloads.length) {
-			return Promise.reject(new VectorStoreError('Vectors, IDs, and payloads must have the same length', 'insert'));
+			return Promise.reject(
+				new VectorStoreError('Vectors, IDs, and payloads must have the same length', 'insert')
+			);
 		}
 		for (const vector of vectors) this.validateDimension(vector, 'insert');
 		const data = vectors.map((vector, idx) => ({
@@ -152,20 +168,25 @@ export class MilvusBackend implements VectorStore {
 		}
 	}
 
-	async search(query: number[], limit: number = 10, filters?: SearchFilters): Promise<VectorStoreResult[]> {
+	async search(
+		query: number[],
+		limit: number = 10,
+		filters?: SearchFilters
+	): Promise<VectorStoreResult[]> {
 		if (!this.connected) throw new VectorStoreError(ERROR_MESSAGES.NOT_CONNECTED, 'search');
 		this.validateDimension(query, 'search');
 		try {
 			const expr = filtersToExpr(filters);
-			const res = await this.client.search({
+			const searchParams: any = {
 				collection_name: this.collectionName,
 				data: [query],
 				anns_field: 'vector',
 				params: { nprobe: 10 },
 				limit,
 				output_fields: ['id', 'payload'],
-				filter: expr,
-			});
+				...(expr ? { filter: expr } : {}),
+			};
+			const res = await this.client.search(searchParams);
 			return res.results.map((hit: any) => ({
 				id: hit.id,
 				score: hit.score,
@@ -178,14 +199,15 @@ export class MilvusBackend implements VectorStore {
 	}
 
 	async get(vectorId: string): Promise<VectorStoreResult | null> {
-		if (!this.connected) return Promise.reject(new VectorStoreError(ERROR_MESSAGES.NOT_CONNECTED, 'get'));
+		if (!this.connected)
+			return Promise.reject(new VectorStoreError(ERROR_MESSAGES.NOT_CONNECTED, 'get'));
 		try {
 			const res = await this.client.query({
 				collection_name: this.collectionName,
 				filter: `id == "${vectorId}"`,
 				output_fields: ['id', 'vector', 'payload'],
 			});
-			if (!res.data.length) return null;
+			if (!res.data.length || !res.data[0]) return null;
 			const doc = res.data[0];
 			return {
 				id: doc.id,
@@ -200,7 +222,8 @@ export class MilvusBackend implements VectorStore {
 	}
 
 	async update(vectorId: string, vector: number[], payload: Record<string, any>): Promise<void> {
-		if (!this.connected) return Promise.reject(new VectorStoreError(ERROR_MESSAGES.NOT_CONNECTED, 'update'));
+		if (!this.connected)
+			return Promise.reject(new VectorStoreError(ERROR_MESSAGES.NOT_CONNECTED, 'update'));
 		this.validateDimension(vector, 'update');
 		try {
 			await this.client.upsert({
@@ -215,7 +238,8 @@ export class MilvusBackend implements VectorStore {
 	}
 
 	async delete(vectorId: string): Promise<void> {
-		if (!this.connected) return Promise.reject(new VectorStoreError(ERROR_MESSAGES.NOT_CONNECTED, 'delete'));
+		if (!this.connected)
+			return Promise.reject(new VectorStoreError(ERROR_MESSAGES.NOT_CONNECTED, 'delete'));
 		try {
 			await this.client.deleteEntities({
 				collection_name: this.collectionName,
@@ -229,7 +253,8 @@ export class MilvusBackend implements VectorStore {
 	}
 
 	async deleteCollection(): Promise<void> {
-		if (!this.connected) throw new VectorStoreError(ERROR_MESSAGES.NOT_CONNECTED, 'deleteCollection');
+		if (!this.connected)
+			throw new VectorStoreError(ERROR_MESSAGES.NOT_CONNECTED, 'deleteCollection');
 		try {
 			await this.client.dropCollection({ collection_name: this.collectionName });
 			this.logger.info(`Deleted collection ${this.collectionName}`);
@@ -239,16 +264,20 @@ export class MilvusBackend implements VectorStore {
 		}
 	}
 
-	async list(filters?: SearchFilters, limit: number = 10000): Promise<[VectorStoreResult[], number]> {
+	async list(
+		filters?: SearchFilters,
+		limit: number = 10000
+	): Promise<[VectorStoreResult[], number]> {
 		if (!this.connected) throw new VectorStoreError(ERROR_MESSAGES.NOT_CONNECTED, 'list');
 		try {
 			const expr = filtersToExpr(filters);
-			const res = await this.client.query({
+			const queryParams: any = {
 				collection_name: this.collectionName,
 				output_fields: ['id', 'vector', 'payload'],
-				filter: expr,
 				limit,
-			});
+				...(expr ? { filter: expr } : {}),
+			};
+			const res = await this.client.query(queryParams);
 			const results = res.data.map((doc: any) => ({
 				id: doc.id,
 				vector: doc.vector,
@@ -284,7 +313,8 @@ export class MilvusBackend implements VectorStore {
 	}
 
 	async listCollections(): Promise<string[]> {
-		if (!this.connected) return Promise.reject(new VectorStoreError(ERROR_MESSAGES.NOT_CONNECTED, 'listCollections'));
+		if (!this.connected)
+			return Promise.reject(new VectorStoreError(ERROR_MESSAGES.NOT_CONNECTED, 'listCollections'));
 		const collections = await this.client.showCollections();
 		return collections.data.map((c: any) => c.name);
 	}
@@ -307,8 +337,8 @@ function filtersToExpr(filters?: SearchFilters): string | undefined {
 				// Support comparison operators
 				const ops: Record<string, string> = { gte: '>=', lte: '<=', gt: '>', lt: '<' };
 				return Object.entries(ops)
-					.filter(([op]) => op in value)
-					.map(([op, symbol]) => `${key} ${symbol} ${value[op]}`)
+					.filter(([op]) => op in (value as Record<string, unknown>))
+					.map(([op, symbol]) => `${key} ${symbol} ${(value as Record<string, unknown>)[op]}`)
 					.join(' && ');
 			}
 			return '';

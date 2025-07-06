@@ -162,13 +162,7 @@ const MilvusBackendSchema = BaseVectorStoreSchema.extend({
 	host: z.string().optional().describe('Milvus host'),
 
 	/** Milvus REST API port (default: 19530) */
-	port: z
-		.number()
-		.int()
-		.positive()
-		.default(19530)
-		.optional()
-		.describe('Milvus port'),
+	port: z.number().int().positive().default(19530).optional().describe('Milvus port'),
 }).strict();
 
 export type MilvusBackendConfig = z.infer<typeof MilvusBackendSchema>;
