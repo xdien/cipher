@@ -10,12 +10,16 @@ import {
 } from './types.js';
 import { Logger, createLogger } from '../../logger/index.js';
 import { LOG_PREFIXES, DEFAULTS, ERROR_MESSAGES } from '../constants.js';
+import dotenv from 'dotenv';
+dotenv.config();
 
 // Read index and distance config from environment variables (with fallback)
 const MILVUS_INDEX_TYPE = process.env.MILVUS_INDEX_TYPE || 'IVF_FLAT';
 const VECTOR_STORE_DISTANCE = process.env.VECTOR_STORE_DISTANCE || 'Cosine';
 const VECTOR_STORE_CONFIG_EFCONSTRUCTION = process.env.VECTOR_STORE_CONFIG_EFCONSTRUCTION || 10;
 const VECTOR_STORE_CONFIG_M = process.env.VECTOR_STORE_CONFIG_M || 4;
+const VECTOR_STORE_CLUSTER_ENDPOINT = process.env.VECTOR_STORE_URL || '';
+const VECTOR_STORE_TOKEN = process.env.VECTOR_STORE_API_KEY || '';
 /**
  * MilvusBackend Class
  *
@@ -68,10 +72,13 @@ export class MilvusBackend implements VectorStore {
 		this.logger = createLogger({
 			level: process.env.LOG_LEVEL || 'info',
 		});
+        console.log("VECTOR_STORE_CLUSTER_ENDPOINT: ", VECTOR_STORE_CLUSTER_ENDPOINT);
+        console.log("VECTOR_STORE_TOKEN: ", VECTOR_STORE_TOKEN);
 		this.client = new MilvusClient({
-			address: config.url || `http://${config.host || 'localhost'}:${config.port || 19530}`,
-			// username, password, token: not supported in QdrantBackendConfig by default
+			address: VECTOR_STORE_CLUSTER_ENDPOINT,
+			token: VECTOR_STORE_TOKEN,
 		});
+        console.log("Milvus client: ", this.client);
 		this.logger.info(`${LOG_PREFIXES.MILVUS} Milvus Initialized`, {
 			collection: this.collectionName,
 			dimension: this.dimension,
