@@ -206,7 +206,9 @@ export class InternalToolRegistry {
 	 * Check if a tool name is an internal tool
 	 */
 	public isInternalTool(toolName: string): boolean {
-		return isInternalToolName(toolName) && this.hasTool(toolName);
+		// Check both prefixed and non-prefixed versions
+		const normalizedName = createInternalToolName(toolName);
+		return this.hasTool(normalizedName) || this.hasTool(toolName);
 	}
 
 	/**

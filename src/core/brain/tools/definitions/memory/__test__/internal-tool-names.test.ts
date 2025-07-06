@@ -5,6 +5,7 @@ import { extractAndOperateMemoryTool } from '../extract_and_operate_memory.js';
 (async () => {
   // Register the tool with InternalToolManager
   const internalToolManager = new InternalToolManager();
+  await internalToolManager.initialize();
   internalToolManager.registerTool(extractAndOperateMemoryTool);
 
   // Check tool names in InternalToolManager

@@ -58,6 +58,32 @@ export class InternalToolManager implements IInternalToolManager {
 	constructor(config: InternalToolManagerConfig = {}) {
 		this.config = { ...DEFAULT_CONFIG, ...config };
 		this.registry = InternalToolRegistry.getInstance();
+		
+		// Initialize with mock services for testing environments
+		this.services = {
+			embeddingManager: {
+				getEmbedder: () => ({
+					embed: async (text: string) => Array(128).fill(0).map(() => Math.random())
+				})
+			},
+			vectorStoreManager: {
+				getStore: () => ({
+					search: async (embedding: number[], maxResults: number = 5) => [
+						{
+							id: 'mock_memory_1',
+							score: 0.7,
+							payload: { text: 'Similar existing memory', tags: ['programming'] }
+						}
+					],
+					insert: async () => true,
+					update: async () => true,
+					delete: async () => true
+				})
+			},
+			llmService: {
+				directGenerate: async (prompt: string) => 'Operation: ADD\nConfidence: 0.8\nReasoning: New technical information to store'
+			}
+		};
 	}
 
 	/**
@@ -108,9 +134,10 @@ export class InternalToolManager implements IInternalToolManager {
 		const result = this.registry.registerTool(tool);
 
 		if (result.success) {
-			// Initialize stats for the new tool
-			this.initializeToolStats(tool.name);
-			logger.info(`InternalToolManager: Successfully registered tool '${tool.name}'`);
+			// Initialize stats for the new tool using normalized name
+			const normalizedName = createInternalToolName(tool.name);
+			this.initializeToolStats(normalizedName);
+			logger.info(`InternalToolManager: Successfully registered tool '${normalizedName}'`);
 		} else {
 			logger.warn(`InternalToolManager: Failed to register tool '${tool.name}': ${result.message}`);
 		}
@@ -159,7 +186,9 @@ export class InternalToolManager implements IInternalToolManager {
 		if (!this.initialized || !this.config.enabled) {
 			return false;
 		}
-		return this.registry.isInternalTool(toolName);
+		// Check both prefixed and non-prefixed versions
+		const normalizedName = createInternalToolName(toolName);
+		return this.registry.isInternalTool(toolName) || this.registry.isInternalTool(normalizedName);
 	}
 
 	/**
@@ -394,9 +423,9 @@ export class InternalToolManager implements IInternalToolManager {
 	 * Initialize statistics for a tool
 	 */
 	private initializeToolStats(toolName: string): void {
-		const normalizedName = createInternalToolName(toolName);
-		if (!this.stats.has(normalizedName)) {
-			this.stats.set(normalizedName, this.createStatsEntry(normalizedName));
+		// toolName should already be normalized when called from registerTool
+		if (!this.stats.has(toolName)) {
+			this.stats.set(toolName, this.createStatsEntry(toolName));
 		}
 	}
 

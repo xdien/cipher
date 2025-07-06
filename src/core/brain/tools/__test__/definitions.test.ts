@@ -48,25 +48,25 @@ describe('Tool Definitions', () => {
 
 				it('should have valid parameter schema', () => {
 					expect(extractAndOperateMemoryTool.parameters.type).toBe('object');
-					expect(extractAndOperateMemoryTool.parameters.properties?.conversation).toBeDefined();
-					expect(extractAndOperateMemoryTool.parameters.properties?.conversation?.type).toBe('string');
-					expect(extractAndOperateMemoryTool.parameters.required).toContain('conversation');
+					expect(extractAndOperateMemoryTool.parameters.properties?.interaction).toBeDefined();
+					expect(extractAndOperateMemoryTool.parameters.properties?.interaction?.type).toEqual(['string', 'array']);
+					expect(extractAndOperateMemoryTool.parameters.required).toContain('interaction');
 				});
 
 				it('should execute successfully with valid input', async () => {
 					const result = await extractAndOperateMemoryTool.handler({
-						conversation: 'TypeScript interface pattern for tools',
+						interaction: 'TypeScript interface pattern for tools',
 					});
 
 					expect(result.success).toBe(true);
-					expect(result.operations).toBeDefined();
+					expect(result.extraction).toBeDefined();
 				});
 
-				it('should handle empty conversation', async () => {
-					const result = await extractAndOperateMemoryTool.handler({ conversation: '' });
+				it('should handle empty interaction', async () => {
+					const result = await extractAndOperateMemoryTool.handler({ interaction: '' });
 
 					expect(result.success).toBe(false);
-					expect(result.error).toContain('No conversation provided');
+					expect(result.error).toContain('No interaction(s) provided for extraction');
 				});
 			});
 		});
@@ -142,7 +142,7 @@ describe('Tool Definitions', () => {
 
 			// Test extract and operate memory tool
 			const extractResult = await manager.executeTool('extract_and_operate_memory', {
-				conversation: 'Test conversation for integration',
+				interaction: 'Test conversation for integration',
 			});
 			expect(extractResult.success).toBe(true);
 
@@ -154,8 +154,8 @@ describe('Tool Definitions', () => {
 			await registerAllTools(manager);
 
 			// Execute a tool multiple times
-			await manager.executeTool('extract_and_operate_memory', { conversation: 'Test 1' });
-			await manager.executeTool('extract_and_operate_memory', { conversation: 'Test 2' });
+			await manager.executeTool('extract_and_operate_memory', { interaction: 'Test 1' });
+			await manager.executeTool('extract_and_operate_memory', { interaction: 'Test 2' });
 
 			const stats = manager.getToolStats('extract_and_operate_memory');
 			expect(stats).toBeDefined();
