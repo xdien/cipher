@@ -54,9 +54,37 @@ describe('Tool Definitions', () => {
 				});
 
 				it('should execute successfully with valid input', async () => {
+					// Create mock services for the tool
+					const mockEmbeddingManager = {
+						getEmbedder: vi.fn().mockReturnValue({
+							embed: vi.fn().mockResolvedValue([0.1, 0.2, 0.3])
+						})
+					};
+
+					const mockVectorStoreManager = {
+						getStore: vi.fn().mockReturnValue({
+							search: vi.fn().mockResolvedValue([]),
+							insert: vi.fn().mockResolvedValue(undefined),
+							update: vi.fn().mockResolvedValue(undefined),
+							delete: vi.fn().mockResolvedValue(undefined)
+						})
+					};
+
+					const mockLlmService = {
+						directGenerate: vi.fn().mockResolvedValue('ADD')
+					};
+
+					const mockContext = {
+						services: {
+							embeddingManager: mockEmbeddingManager,
+							vectorStoreManager: mockVectorStoreManager,
+							llmService: mockLlmService
+						}
+					};
+
 					const result = await extractAndOperateMemoryTool.handler({
 						interaction: 'TypeScript interface pattern for tools',
-					});
+					}, mockContext);
 
 					expect(result.success).toBe(true);
 					expect(result.extraction).toBeDefined();

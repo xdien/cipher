@@ -262,7 +262,7 @@ export class InMemoryBackend implements VectorStore {
 
 		// Format results
 		const formattedResults = topResults.map(({ entry, score }) => ({
-			id: String(entry.id),
+			id: entry.id,
 			vector: [...entry.vector],
 			payload: this.deepClone(entry.payload),
 			score,
@@ -284,7 +284,7 @@ export class InMemoryBackend implements VectorStore {
 		}
 
 		return {
-			id: String(entry.id),
+			id: entry.id,
 			vector: [...entry.vector], // Clone vector
 			payload: this.deepClone(entry.payload), // Deep clone payload
 			score: 1.0, // Perfect match for direct retrieval
@@ -351,7 +351,7 @@ export class InMemoryBackend implements VectorStore {
 				count++;
 				if (results.length < limit) {
 					results.push({
-						id: String(entry.id),
+						id: entry.id,
 						vector: [...entry.vector],
 						payload: this.deepClone(entry.payload),
 						score: 1.0, // Default score for list operations

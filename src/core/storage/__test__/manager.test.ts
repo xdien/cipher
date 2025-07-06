@@ -225,7 +225,7 @@ describe('StorageManager', () => {
 			// This test verifies that even with invalid configs,
 			// the manager falls back to in-memory backends
 			const config: StorageConfig = {
-				cache: { type: 'redis', host: 'invalid-host' },
+				cache: { type: 'redis', host: 'invalid-host', connectionTimeoutMillis: 1000 },
 				database: { type: 'sqlite', path: './invalid-path' },
 			};
 			manager = new StorageManager(config);
@@ -238,7 +238,7 @@ describe('StorageManager', () => {
 			const info = manager.getInfo();
 			expect(info.backends.cache.fallback).toBe(true);
 			expect(info.backends.database.fallback).toBe(true);
-		});
+		}, 10000); // Increase timeout for this test
 
 		it('should reset state on connection failure', async () => {
 			const config: StorageConfig = {

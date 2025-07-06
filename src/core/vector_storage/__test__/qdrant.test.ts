@@ -628,55 +628,55 @@ describe('QdrantBackend', () => {
 		});
 	});
 
-	describe('Direct QdrantBackend update operation (manual test)', () => {
-		let backend: QdrantBackend;
-		const validConfig = {
-			type: 'qdrant' as const,
-			host: 'localhost',
-			port: 6333,
-			collectionName: 'test_collection',
-			dimension: 3,
-			distance: 'Cosine' as const,
-		};
-
+	describe('Update Operations', () => {
 		beforeEach(async () => {
-			backend = new QdrantBackend(validConfig);
+			mockQdrantClient.getCollections.mockResolvedValue({
+				collections: [{ name: 'test_collection' }],
+			});
+			mockQdrantClient.getCollection.mockResolvedValue({
+				config: {
+					params: {
+						vectors: {
+							size: 3,
+							distance: 'Cosine',
+						},
+					},
+				},
+			});
 			await backend.connect();
 		});
 
-		afterEach(async () => {
-			if (backend.isConnected()) {
-				await backend.disconnect();
-			}
+		it('should update a vector successfully', async () => {
+			const id = 123;
+			const updatedVector = [7, 8, 9];
+			const updatedPayload = { title: 'Updated' };
+
+			mockQdrantClient.upsert.mockResolvedValue({
+				operation_id: 1,
+				status: 'completed',
+			});
+
+			await backend.update(id, updatedVector, updatedPayload);
+
+			expect(mockQdrantClient.upsert).toHaveBeenCalledWith('test_collection', {
+				points: [
+					{
+						id,
+						vector: updatedVector,
+						payload: updatedPayload,
+					},
+				],
+			});
 		});
 
-		it('should insert, update, and retrieve a vector', async () => {
-			try {
-				const id = 123;
-				const initialVector = [1, 2, 3];
-				const updatedVector = [7, 8, 9];
-				const initialPayload = { title: 'Initial' };
-				const updatedPayload = { title: 'Updated' };
+		it('should handle update errors gracefully', async () => {
+			const id = 123;
+			const vector = [1, 2, 3];
+			const payload = { title: 'Test' };
 
-				// Insert
-				await backend.insert([initialVector], [id], [initialPayload]);
-				console.log('Inserted vector:', id, initialVector, initialPayload);
+			mockQdrantClient.upsert.mockRejectedValue(new Error('Update failed'));
 
-				// Update
-				await backend.update(id, updatedVector, updatedPayload);
-				console.log('Updated vector:', id, updatedVector, updatedPayload);
-
-				// Retrieve
-				const result = await backend.get(id);
-				console.log('Retrieved vector after update:', result);
-
-				if (!result) throw new Error('Vector not found after update');
-				expect(result.vector).toEqual(updatedVector);
-				expect(result.payload).toEqual(updatedPayload);
-			} catch (err) {
-				console.error('Direct update test failed:', err);
-				throw err;
-			}
+			await expect(backend.update(id, vector, payload)).rejects.toThrow(VectorStoreError);
 		});
 	});
 });

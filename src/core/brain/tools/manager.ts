@@ -70,14 +70,23 @@ export class InternalToolManager implements IInternalToolManager {
 				getStore: () => ({
 					search: async (embedding: number[], maxResults: number = 5) => [
 						{
-							id: 'mock_memory_1',
+							id: 1,
 							score: 0.7,
 							payload: { text: 'Similar existing memory', tags: ['programming'] }
 						}
 					],
-					insert: async () => true,
-					update: async () => true,
-					delete: async () => true
+					insert: async (embeddings: number[][], ids: number[], payloads: any[]) => {
+						// Mock successful insert
+						return;
+					},
+					update: async (id: number, embedding: number[], payload: any) => {
+						// Mock successful update
+						return;
+					},
+					delete: async (id: number) => {
+						// Mock successful delete
+						return;
+					}
 				})
 			},
 			llmService: {
