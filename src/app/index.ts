@@ -30,12 +30,17 @@ program
 			process.exit(1);
 		}
 
-		// Check if at least one API key is provided
-		if (!env.OPENAI_API_KEY && !env.ANTHROPIC_API_KEY && !env.OPENROUTER_API_KEY) {
+		// Check if at least one API key is provided or Ollama is configured
+		if (
+			!env.OPENAI_API_KEY &&
+			!env.ANTHROPIC_API_KEY &&
+			!env.OPENROUTER_API_KEY &&
+			!env.OLLAMA_BASE_URL
+		) {
 			logger.error(
-				'No API key found, please set at least one of OPENAI_API_KEY, ANTHROPIC_API_KEY, or OPENROUTER_API_KEY in .env file'
+				'No API key or Ollama configuration found, please set at least one of OPENAI_API_KEY, ANTHROPIC_API_KEY, OPENROUTER_API_KEY, or OLLAMA_BASE_URL in .env file'
 			);
-			logger.error('Available providers: OpenAI, Anthropic, OpenRouter');
+			logger.error('Available providers: OpenAI, Anthropic, OpenRouter, Ollama');
 			process.exit(1);
 		}
 

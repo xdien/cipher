@@ -61,7 +61,7 @@ describe('InMemoryBackend', () => {
 
 		it('should clear data on disconnect', async () => {
 			await backend.connect();
-			await backend.insert([[1, 2, 3]], ['test'], [{ data: 'test' }]);
+			await backend.insert([[1, 2, 3]], [123], [{ data: 'test' }]);
 			await backend.disconnect();
 			await backend.connect();
 			const results = await backend.list();
@@ -88,32 +88,32 @@ describe('InMemoryBackend', () => {
 				[1, 2, 3],
 				[4, 5, 6],
 			];
-			const ids = ['vec1', 'vec2'];
+			const ids = [1, 2];
 			const payloads = [{ title: 'First' }, { title: 'Second' }];
 
 			await backend.insert(vectors, ids, payloads);
 
-			const result1 = await backend.get('vec1');
+			const result1 = await backend.get(1);
 			expect(result1).toBeTruthy();
-			expect(result1!.id).toBe('vec1');
+			expect(result1!.id).toBe(1);
 			expect(result1!.vector).toEqual([1, 2, 3]);
 			expect(result1!.payload).toEqual({ title: 'First' });
 
-			const result2 = await backend.get('vec2');
+			const result2 = await backend.get(2);
 			expect(result2).toBeTruthy();
-			expect(result2!.id).toBe('vec2');
+			expect(result2!.id).toBe(2);
 			expect(result2!.vector).toEqual([4, 5, 6]);
 			expect(result2!.payload).toEqual({ title: 'Second' });
 		});
 
 		it('should return null for non-existent vectors', async () => {
-			const result = await backend.get('nonexistent');
+			const result = await backend.get(999);
 			expect(result).toBeNull();
 		});
 
 		it('should validate vector dimensions', async () => {
 			const wrongDimVector = [[1, 2]]; // Should be 3 dimensions
-			const ids = ['test'];
+			const ids = [1];
 			const payloads = [{}];
 
 			await expect(backend.insert(wrongDimVector, ids, payloads)).rejects.toThrow(
@@ -126,31 +126,31 @@ describe('InMemoryBackend', () => {
 				[1, 2, 3],
 				[4, 5, 6],
 			];
-			const ids = ['vec1']; // Mismatched length
+			const ids = [1]; // Mismatched length
 			const payloads = [{ title: 'First' }, { title: 'Second' }];
 
 			await expect(backend.insert(vectors, ids, payloads)).rejects.toThrow(VectorStoreError);
 		});
 
 		it('should update vectors', async () => {
-			await backend.insert([[1, 2, 3]], ['vec1'], [{ title: 'Original' }]);
+			await backend.insert([[1, 2, 3]], [1], [{ title: 'Original' }]);
 
-			await backend.update('vec1', [7, 8, 9], { title: 'Updated' });
+			await backend.update(1, [7, 8, 9], { title: 'Updated' });
 
-			const result = await backend.get('vec1');
+			const result = await backend.get(1);
 			expect(result!.vector).toEqual([7, 8, 9]);
 			expect(result!.payload).toEqual({ title: 'Updated' });
 		});
 
 		it('should delete vectors', async () => {
-			await backend.insert([[1, 2, 3]], ['vec1'], [{ title: 'Test' }]);
+			await backend.insert([[1, 2, 3]], [1], [{ title: 'Test' }]);
 
-			const beforeDelete = await backend.get('vec1');
+			const beforeDelete = await backend.get(1);
 			expect(beforeDelete).toBeTruthy();
 
-			await backend.delete('vec1');
+			await backend.delete(1);
 
-			const afterDelete = await backend.get('vec1');
+			const afterDelete = await backend.get(1);
 			expect(afterDelete).toBeNull();
 		});
 
@@ -160,7 +160,7 @@ describe('InMemoryBackend', () => {
 					[1, 2, 3],
 					[4, 5, 6],
 				],
-				['vec1', 'vec2'],
+				[1, 2],
 				[{ title: 'First' }, { title: 'Second' }]
 			);
 
@@ -176,8 +176,8 @@ describe('InMemoryBackend', () => {
 		it('should throw error when not connected', async () => {
 			await backend.disconnect();
 
-			await expect(backend.get('test')).rejects.toThrow(VectorStoreError);
-			await expect(backend.insert([[1, 2, 3]], ['test'], [{}])).rejects.toThrow(VectorStoreError);
+			await expect(backend.get(1)).rejects.toThrow(VectorStoreError);
+			await expect(backend.insert([[1, 2, 3]], [1], [{}])).rejects.toThrow(VectorStoreError);
 			await expect(backend.search([1, 2, 3])).rejects.toThrow(VectorStoreError);
 		});
 	});
@@ -194,7 +194,7 @@ describe('InMemoryBackend', () => {
 				[0, 0.9, 0.1], // Similar to B
 				[0, 0, 1], // Vector C
 			];
-			const ids = ['a', 'a_sim', 'b', 'b_sim', 'c'];
+			const ids = [1, 2, 3, 4, 5];
 			const payloads = [
 				{ category: 'A' },
 				{ category: 'A' },
@@ -207,13 +207,13 @@ describe('InMemoryBackend', () => {
 		});
 
 		it('should return most similar vectors', async () => {
-			const query = [1, 0, 0]; // Should be most similar to 'a'
+			const query = [1, 0, 0]; // Should be most similar to ID 1
 			const results = await backend.search(query, 2);
 
 			expect(results).toHaveLength(2);
-			expect(results[0]?.id).toBe('a');
+			expect(results[0]?.id).toBe(1);
 			expect(results[0]?.score).toBeCloseTo(1.0, 5); // Perfect match
-			expect(results[1]?.id).toBe('a_sim');
+			expect(results[1]?.id).toBe(2);
 			expect(results[1]?.score).toBeGreaterThan(0.9);
 		});
 
@@ -222,7 +222,7 @@ describe('InMemoryBackend', () => {
 			const results = await backend.search(query, 1);
 
 			expect(results).toHaveLength(1);
-			expect(results[0]?.id).toBe('a');
+			expect(results[0]?.id).toBe(1);
 		});
 
 		it('should filter by metadata', async () => {
@@ -231,8 +231,8 @@ describe('InMemoryBackend', () => {
 
 			expect(results).toHaveLength(2);
 			expect(results.every(r => r.payload.category === 'B')).toBe(true);
-			expect(results[0]?.id).toBe('b');
-			expect(results[1]?.id).toBe('b_sim');
+			expect(results[0]?.id).toBe(3);
+			expect(results[1]?.id).toBe(4);
 		});
 
 		it('should handle empty filter results', async () => {
@@ -270,7 +270,7 @@ describe('InMemoryBackend', () => {
 				[1, 1, 0],
 				[1, 0, 1],
 			];
-			const ids = ['v1', 'v2', 'v3', 'v4', 'v5'];
+			const ids = [10, 20, 30, 40, 50];
 			const payloads = [
 				{ type: 'A', value: 1 },
 				{ type: 'B', value: 2 },
@@ -287,7 +287,7 @@ describe('InMemoryBackend', () => {
 
 			expect(results).toHaveLength(5);
 			expect(total).toBe(5);
-			expect(results.map(r => r.id).sort()).toEqual(['v1', 'v2', 'v3', 'v4', 'v5']);
+			expect(results.map(r => r.id).sort()).toEqual([10, 20, 30, 40, 50]);
 		});
 
 		it('should filter by metadata', async () => {
@@ -333,12 +333,12 @@ describe('InMemoryBackend', () => {
 						[1, 2, 3],
 						[4, 5, 6],
 					],
-					['v1', 'v2'],
+					[1, 2],
 					[{}, {}]
 				);
 
 				// Try to insert beyond limit
-				await expect(smallBackend.insert([[7, 8, 9]], ['v3'], [{}])).rejects.toThrow(
+				await expect(smallBackend.insert([[7, 8, 9]], [3], [{}])).rejects.toThrow(
 					VectorStoreError
 				);
 			} finally {
@@ -354,25 +354,25 @@ describe('InMemoryBackend', () => {
 
 		it('should clone payloads to prevent reference issues', async () => {
 			const payload = { nested: { value: 42 } };
-			await backend.insert([[1, 2, 3]], ['test'], [payload]);
+			await backend.insert([[1, 2, 3]], [100], [payload]);
 
 			// Modify original
 			payload.nested.value = 100;
 
 			// Retrieved payload should be unchanged
-			const result = await backend.get('test');
+			const result = await backend.get(100);
 			expect(result!.payload.nested.value).toBe(42);
 		});
 
 		it('should clone vectors to prevent modification', async () => {
 			const vector = [1, 2, 3];
-			await backend.insert([vector], ['test'], [{}]);
+			await backend.insert([vector], [200], [{}]);
 
 			// Modify original
 			vector[0] = 999;
 
 			// Retrieved vector should be unchanged
-			const result = await backend.get('test');
+			const result = await backend.get(200);
 			expect(result!.vector).toEqual([1, 2, 3]);
 		});
 	});

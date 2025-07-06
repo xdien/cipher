@@ -6,7 +6,7 @@ import {
 	getToolsByCategory,
 	TOOL_CATEGORIES,
 } from '../definitions/index.js';
-import { extractKnowledgeTool } from '../definitions/memory/index.js';
+import { extractAndOperateMemoryTool } from '../definitions/memory/index.js';
 import { InternalToolManager } from '../manager.js';
 import { InternalToolRegistry } from '../registry.js';
 
@@ -37,37 +37,64 @@ describe('Tool Definitions', () => {
 
 	describe('Individual Tool Definitions', () => {
 		describe('Memory Tools', () => {
-			describe('Extract Fact Tool', () => {
+			describe('Extract and Operate Memory Tool', () => {
 				it('should have correct basic properties', () => {
-					expect(extractKnowledgeTool.name).toBe('extract_knowledge');
-					expect(extractKnowledgeTool.category).toBe('memory');
-					expect(extractKnowledgeTool.internal).toBe(true);
-					expect(extractKnowledgeTool.description).toContain('Extract detailed facts');
-					expect(typeof extractKnowledgeTool.handler).toBe('function');
+					expect(extractAndOperateMemoryTool.name).toBe('extract_and_operate_memory');
+					expect(extractAndOperateMemoryTool.category).toBe('memory');
+					expect(extractAndOperateMemoryTool.internal).toBe(true);
+					expect(extractAndOperateMemoryTool.description).toContain('Extract knowledge facts');
+					expect(typeof extractAndOperateMemoryTool.handler).toBe('function');
 				});
 
 				it('should have valid parameter schema', () => {
-					expect(extractKnowledgeTool.parameters.type).toBe('object');
-					expect(extractKnowledgeTool.parameters.properties?.knowledge).toBeDefined();
-					expect(extractKnowledgeTool.parameters.properties?.knowledge?.type).toBe('array');
-					expect(extractKnowledgeTool.parameters.required).toContain('knowledge');
+					expect(extractAndOperateMemoryTool.parameters.type).toBe('object');
+					expect(extractAndOperateMemoryTool.parameters.properties?.interaction).toBeDefined();
+					expect(extractAndOperateMemoryTool.parameters.properties?.interaction?.type).toEqual(['string', 'array']);
+					expect(extractAndOperateMemoryTool.parameters.required).toContain('interaction');
 				});
 
 				it('should execute successfully with valid input', async () => {
-					const result = await extractKnowledgeTool.handler({
-						knowledge: ['TypeScript interface pattern for tools'],
-					});
+					// Create mock services for the tool
+					const mockEmbeddingManager = {
+						getEmbedder: vi.fn().mockReturnValue({
+							embed: vi.fn().mockResolvedValue([0.1, 0.2, 0.3])
+						})
+					};
+
+					const mockVectorStoreManager = {
+						getStore: vi.fn().mockReturnValue({
+							search: vi.fn().mockResolvedValue([]),
+							insert: vi.fn().mockResolvedValue(undefined),
+							update: vi.fn().mockResolvedValue(undefined),
+							delete: vi.fn().mockResolvedValue(undefined)
+						})
+					};
+
+					const mockLlmService = {
+						directGenerate: vi.fn().mockResolvedValue('ADD')
+					};
+
+					const mockContext = {
+						services: {
+							embeddingManager: mockEmbeddingManager,
+							vectorStoreManager: mockVectorStoreManager,
+							llmService: mockLlmService
+						}
+					};
+
+					const result = await extractAndOperateMemoryTool.handler({
+						interaction: 'TypeScript interface pattern for tools',
+					}, mockContext);
 
 					expect(result.success).toBe(true);
-					expect(result.extracted).toBe(1);
-					expect(result.facts).toHaveLength(1);
+					expect(result.extraction).toBeDefined();
 				});
 
-				it('should handle empty facts array', async () => {
-					const result = await extractKnowledgeTool.handler({ knowledge: [] });
+				it('should handle empty interaction', async () => {
+					const result = await extractAndOperateMemoryTool.handler({ interaction: '' });
 
 					expect(result.success).toBe(false);
-					expect(result.error).toContain('No facts provided');
+					expect(result.error).toContain('No interaction(s) provided for extraction');
 				});
 			});
 		});
@@ -78,8 +105,8 @@ describe('Tool Definitions', () => {
 			const tools = await getAllToolDefinitions();
 
 			expect(Object.keys(tools)).toHaveLength(2); // 2 memory tools
-			expect(tools['extract_knowledge']).toBeDefined();
-			expect(tools['memory_operation']).toBeDefined();
+			expect(tools['extract_and_operate_memory']).toBeDefined();
+			expect(tools['memory_search']).toBeDefined();
 		});
 
 		it('should register all tools successfully', async () => {
@@ -88,8 +115,8 @@ describe('Tool Definitions', () => {
 			expect(result.total).toBe(2);
 			expect(result.registered.length).toBe(2);
 			expect(result.failed.length).toBe(0);
-			expect(result.registered).toContain('extract_knowledge');
-			expect(result.registered).toContain('memory_operation');
+			expect(result.registered).toContain('extract_and_operate_memory');
+			expect(result.registered).toContain('memory_search');
 		});
 
 		it('should handle registration failures gracefully', async () => {
@@ -118,7 +145,7 @@ describe('Tool Definitions', () => {
 		});
 
 		it('should get tool info by name', () => {
-			const extractInfo = getToolInfo('cipher_extract_knowledge');
+			const extractInfo = getToolInfo('cipher_extract_and_operate_memory');
 			expect(extractInfo).toBeDefined();
 			expect(extractInfo?.category).toBe('memory');
 		});
@@ -131,8 +158,8 @@ describe('Tool Definitions', () => {
 		it('should get tools by category', () => {
 			const memoryTools = getToolsByCategory('memory');
 			expect(memoryTools).toHaveLength(2);
-			expect(memoryTools).toContain('cipher_extract_knowledge');
-			expect(memoryTools).toContain('cipher_memory_operation');
+			expect(memoryTools).toContain('cipher_extract_and_operate_memory');
+			expect(memoryTools).toContain('cipher_memory_search');
 		});
 	});
 
@@ -141,9 +168,9 @@ describe('Tool Definitions', () => {
 			// Register all tools
 			await registerAllTools(manager);
 
-			// Test extract fact tool
-			const extractResult = await manager.executeTool('extract_knowledge', {
-				knowledge: ['Test fact for integration'],
+			// Test extract and operate memory tool
+			const extractResult = await manager.executeTool('extract_and_operate_memory', {
+				interaction: 'Test conversation for integration',
 			});
 			expect(extractResult.success).toBe(true);
 
@@ -155,10 +182,10 @@ describe('Tool Definitions', () => {
 			await registerAllTools(manager);
 
 			// Execute a tool multiple times
-			await manager.executeTool('extract_knowledge', { knowledge: ['Test 1'] });
-			await manager.executeTool('extract_knowledge', { knowledge: ['Test 2'] });
+			await manager.executeTool('extract_and_operate_memory', { interaction: 'Test 1' });
+			await manager.executeTool('extract_and_operate_memory', { interaction: 'Test 2' });
 
-			const stats = manager.getToolStats('extract_knowledge');
+			const stats = manager.getToolStats('extract_and_operate_memory');
 			expect(stats).toBeDefined();
 			expect(stats?.totalExecutions).toBe(2);
 			expect(stats?.successfulExecutions).toBe(2);

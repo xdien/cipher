@@ -105,7 +105,7 @@ export async function registerAllTools(toolManager: any): Promise<{
 export const TOOL_CATEGORIES = {
 	memory: {
 		description: 'Tools for managing facts, memories, and knowledge storage',
-		tools: ['extract_knowledge', 'memory_operation'] as string[],
+		tools: ['extract_and_operate_memory', 'memory_search'] as string[],
 		useCase:
 			'Use these tools to capture, search, and store important information for future reference',
 	},

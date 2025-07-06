@@ -73,10 +73,11 @@ Before running cipher in any mode, ensure you have:
    # Edit .env and add your API keys
    ```
 
-2. **API Keys**: Set at least one of these in your `.env` file:
+2. **API Keys**: Set at least one of these in your `.env` file (or use Ollama for local models):
    - `OPENAI_API_KEY` for OpenAI models
    - `ANTHROPIC_API_KEY` for Anthropic Claude models
    - `OPENROUTER_API_KEY` for OpenRouter (200+ models)
+   - `OLLAMA_BASE_URL` for Ollama local models (no API key required)
 
 3. **Agent Configuration**: The agent uses `memAgent/cipher.yml` for configuration (included in the project)
 
@@ -104,9 +105,9 @@ The main configuration file is located at `memAgent/cipher.yml` and follows this
 ```yaml
 # LLM Configuration (Required)
 llm:
-  provider: openai                   # Required: 'openai', 'anthropic', or 'openrouter'
+  provider: openai                   # Required: 'openai', 'anthropic', 'openrouter', or 'ollama'
   model: gpt-4.1-mini                # Required: Model name for the provider
-  apiKey: $OPENAI_API_KEY            # Required: API key (supports env vars with $VAR syntax)
+  apiKey: $OPENAI_API_KEY            # Required: API key (supports env vars with $VAR syntax, not needed for Ollama)
   maxIterations: 50                  # Optional: Max iterations for agentic loops (default: 50)
   baseURL: https://api.openai.com/v1 # Optional: Custom API base URL (OpenAI only)
 
@@ -147,13 +148,16 @@ agentCard:
 Create a `.env` file in the project root for sensitive configuration:
 
 ```bash
-# API Keys (at least one required)
+# API Keys (at least one required, EXCEPT for Ollama which is self-hosted)
 OPENAI_API_KEY=your_openai_api_key_here
 ANTHROPIC_API_KEY=your_anthropic_api_key_here
 OPENROUTER_API_KEY=your_openrouter_api_key_here
 
 # API Configuration (optional)
 OPENAI_BASE_URL=https://api.openai.com/v1
+
+# Ollama Configuration (for self-hosted local models - NO API KEY NEEDED)
+OLLAMA_BASE_URL=http://localhost:11434/v1  # Points to your local Ollama instance
 
 # Logger Configuration (optional)
 CIPHER_LOG_LEVEL=info             # debug, info, warn, error
@@ -200,6 +204,19 @@ llm:
   model: openai/gpt-4o               # Any model available on OpenRouter
   apiKey: $OPENROUTER_API_KEY
 ```
+
+#### Ollama (Self-Hosted Models)
+
+```yaml
+llm:
+  provider: ollama
+  model: qwen3:32b                   # Use larger models for better performance (see model selection guide below)
+  # apiKey: NOT REQUIRED             # Ollama is self-hosted, no API key needed
+  baseURL: $OLLAMA_BASE_URL          # Optional: defaults to http://localhost:11434/v1
+  maxIterations: 50                  # Optional: for agentic tool calling loops
+```
+
+**Note**: Ollama is unique among providers as it runs locally on your machine. No API key or internet connection is required for inference - only the `OLLAMA_BASE_URL` environment variable pointing to your local Ollama instance.
 
 **OpenRouter Model Examples:**
 - `openai/gpt-4o`, `openai/gpt-4o-mini`
@@ -254,8 +271,8 @@ mcpServers:
 
 Cipher validates all configuration at startup:
 
-- **LLM Provider**: Must be 'openai', 'anthropic', or 'openrouter'
-- **API Keys**: Must be non-empty strings
+- **LLM Provider**: Must be 'openai', 'anthropic', 'openrouter', or 'ollama'
+- **API Keys**: Must be non-empty strings for cloud providers (OpenAI, Anthropic, OpenRouter). **NOT required for Ollama** since it's self-hosted
 - **URLs**: Must be valid URLs when provided
 - **Numbers**: Must be positive integers where specified
 - **MCP Server Types**: Must be 'stdio', 'sse', or 'http'
@@ -294,6 +311,7 @@ Cipher supports multiple LLM providers for maximum flexibility:
 - **OpenAI**: Direct API integration for GPT models (`gpt-4`, `gpt-3.5-turbo`, etc.)
 - **Anthropic**: Native Claude API support (`claude-3-sonnet`, `claude-3-opus`, etc.)
 - **OpenRouter**: Access to 200+ models from multiple providers through a single API
+- **Ollama**: Self-hosted local models with no API costs (`qwen3:8b`, `llama3.1:8b`, `mistral:7b`, etc.) - **No API key required**
 
 ### OpenRouter Integration
 OpenRouter provides access to a vast ecosystem of AI models through one unified API:
@@ -312,6 +330,73 @@ OpenRouter provides access to a vast ecosystem of AI models through one unified 
 - **Model Diversity**: Access models from different providers without multiple integrations
 - **Fallback Options**: Switch between models seamlessly if one is unavailable
 - **Latest Models**: Access to cutting-edge models as soon as they're released
+
+### Ollama Integration
+Ollama enables you to run large language models locally on your machine for complete privacy and control:
+
+
+We recommend these models that work great with tool calling:
+
+**🚀 Best Performance** (if you have powerful hardware):
+**DeepSeek-R1** and **Qwen3** are currently the top performers. DeepSeek-R1 offers GPT-4 level reasoning, while Qwen3 has excellent tool support across different sizes.
+
+**🔥 High Performance** (good balance):
+**Llama 3.1** and **Llama 3.3** from Meta are solid choices with great tool calling. **Hermes3** is fantastic for conversation, and **Qwen2.5** handles multiple languages really well.
+
+**💡 For Coding**:
+**Qwen2.5-Coder** is specifically designed for code generation and debugging. **DeepSeek Coder** and **Devstral** are also excellent coding assistants.
+
+**🏃‍♂️ If you want something lightweight**:
+**Phi4-Mini** from Microsoft is surprisingly capable for its size, and **Granite** from IBM offers good efficiency.
+
+Pick any model from these families - start with smaller sizes like 8B or 14B if you're not sure about your hardware, then upgrade to 32B or 70B for better performance once you know what works.
+
+#### Setup Instructions
+1. **Install Ollama**: Download from [ollama.com](https://ollama.com)
+2. **Choose & Pull a Model** (based on your hardware):
+   ```bash
+   # For high-end hardware (32GB+ VRAM)
+   ollama pull qwen3:32b           # or llama3.1:70b
+   
+   # For mid-range hardware (8-16GB VRAM)  
+   ollama pull qwen3:8b            # or llama3.1:8b
+   
+   # For resource-constrained hardware (4GB VRAM)
+   ollama pull phi4-mini:3.8b      # or granite3.3:2b
+   ```
+3. **Set Environment**: `OLLAMA_BASE_URL=http://localhost:11434/v1`
+4. **Configure Cipher**: Use `provider: ollama` in your `cipher.yml`
+5. **Check Model Status**: `ollama list` to verify your model is available
+
+#### Configuration Examples
+
+**For High Performance (if you have good hardware):**
+```yaml
+llm:
+  provider: ollama
+  model: qwen3:32b                   # 32B model for excellent performance
+  baseURL: $OLLAMA_BASE_URL          # Points to your local Ollama instance
+  maxIterations: 50                  # For agentic tool calling loops
+```
+
+**For Maximum Performance (requires high-end hardware):**
+```yaml
+llm:
+  provider: ollama
+  model: llama3.1:70b                # 70B model for best results
+  baseURL: $OLLAMA_BASE_URL          # Points to your local Ollama instance
+  maxIterations: 50                  # For agentic tool calling loops
+```
+
+**For Balanced Performance/Resources:**
+```yaml
+llm:
+  provider: ollama
+  model: qwen3:8b                    # 8B model for good balance
+  baseURL: $OLLAMA_BASE_URL          # Points to your local Ollama instance
+  maxIterations: 50                  # For agentic tool calling loops
+```
+
 
 ## Contributing
 

@@ -54,7 +54,7 @@ export interface SearchFilters {
  * @example
  * ```typescript
  * const result: VectorStoreResult = {
- *   id: 'doc-123',
+ *   id: 'doc-123', // or number for Qdrant
  *   score: 0.95,
  *   payload: {
  *     title: 'Important Document',
@@ -65,8 +65,8 @@ export interface SearchFilters {
  * ```
  */
 export interface VectorStoreResult {
-	/** Unique identifier for the vector */
-	id: string;
+	/** Unique identifier for the vector - string for in-memory, number for Qdrant */
+	id: string | number;
 
 	/** Similarity score (higher is more similar, range depends on metric) */
 	score?: number;

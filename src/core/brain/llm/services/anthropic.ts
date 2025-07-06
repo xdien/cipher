@@ -130,6 +130,95 @@ export class AnthropicService implements ILLMService {
 		}
 	}
 
+	/**
+	 * Direct generate method that bypasses conversation context
+	 * Used for internal tool operations that shouldn't pollute conversation history
+	 * @param userInput - The input to generate a response for
+	 * @param systemPrompt - Optional system prompt to use
+	 * @returns Promise<string> - The generated response
+	 */
+	async directGenerate(userInput: string, systemPrompt?: string): Promise<string> {
+		let attempts = 0;
+		const MAX_ATTEMPTS = 3;
+
+		logger.debug('AnthropicService: Direct generate call (bypassing conversation context)', {
+			inputLength: userInput.length,
+			hasSystemPrompt: !!systemPrompt
+		});
+
+		while (attempts < MAX_ATTEMPTS) {
+			attempts++;
+			try {
+				// Create a minimal message array for direct API call
+				const messages = [
+					{
+						role: 'user' as const,
+						content: userInput
+					}
+				];
+
+				// Make direct API call without adding to conversation context
+				const response = await this.anthropic.messages.create({
+					model: this.model,
+					messages: messages,
+					...(systemPrompt && { system: systemPrompt }),
+					max_tokens: 4096,
+					// No tools for direct calls - this is for simple text generation
+				});
+
+				// Extract text content from response
+				let textContent = '';
+				for (const content of response.content) {
+					if (content.type === 'text') {
+						textContent += content.text;
+					}
+				}
+
+				logger.debug('AnthropicService: Direct generate completed', {
+					responseLength: textContent.length
+				});
+
+				return textContent;
+			} catch (error) {
+				const apiError = error as any;
+				const errorStatus = apiError.status || apiError.error?.status;
+				const errorType = apiError.error?.type || 'unknown_error';
+				const errorMessage = apiError.message || apiError.error?.message || 'Unknown error';
+				
+				logger.error(
+					`Error in Anthropic direct generate call (Attempt ${attempts}/${MAX_ATTEMPTS}): ${errorMessage}`,
+					{ 
+						status: errorStatus,
+						type: errorType,
+						attempt: attempts,
+						maxAttempts: MAX_ATTEMPTS,
+						inputLength: userInput.length
+					}
+				);
+
+				// Check if this is a retryable error
+				const isRetryable = this.isRetryableError(errorStatus, errorType);
+				
+				if (attempts >= MAX_ATTEMPTS || !isRetryable) {
+					if (!isRetryable) {
+						logger.error(`Non-retryable error in direct generate: ${errorType} (${errorStatus})`);
+					} else {
+						logger.error(`Failed direct generate after ${MAX_ATTEMPTS} attempts.`);
+					}
+					throw new Error(`Direct generate failed: ${errorMessage}`);
+				}
+
+				// Calculate delay with exponential backoff and jitter
+				const delay = this.calculateRetryDelay(attempts, errorStatus, errorType);
+				logger.info(`Retrying direct generate in ${delay}ms... (Attempt ${attempts + 1}/${MAX_ATTEMPTS})`);
+				
+				await new Promise(resolve => setTimeout(resolve, delay));
+			}
+		}
+
+		throw new Error('Direct generate failed after maximum retry attempts');
+	}
+
 	async getAllTools(): Promise<ToolSet | CombinedToolSet> {
 		if (this.unifiedToolManager) {
 			return await this.unifiedToolManager.getAllTools();
@@ -183,29 +272,86 @@ export class AnthropicService implements ILLMService {
 				return { response };
 			} catch (error) {
 				const apiError = error as any;
+				const errorStatus = apiError.status || apiError.error?.status;
+				const errorType = apiError.error?.type || 'unknown_error';
+				const errorMessage = apiError.message || apiError.error?.message || 'Unknown error';
+				
 				logger.error(
-					`Error in Anthropic API call (Attempt ${attempts}/${MAX_ATTEMPTS}): ${apiError.message || JSON.stringify(apiError, null, 2)}`
+					`Error in Anthropic API call (Attempt ${attempts}/${MAX_ATTEMPTS}): ${errorMessage}`,
+					{ 
+						status: errorStatus,
+						type: errorType,
+						attempt: attempts,
+						maxAttempts: MAX_ATTEMPTS
+					}
 				);
 
-				if (
-					apiError.error?.type === 'invalid_request_error' &&
-					apiError.error?.message?.includes('maximum context length')
-				) {
+				// Handle specific error types
+				if (errorType === 'invalid_request_error' && errorMessage.includes('maximum context length')) {
 					logger.warn(
 						`Context length exceeded. ContextManager compression might not be sufficient. Error details: ${JSON.stringify(apiError.error)}`
 					);
 				}
 
-				if (attempts >= MAX_ATTEMPTS) {
-					logger.error(`Failed to get response from Anthropic after ${MAX_ATTEMPTS} attempts.`);
+				// Check if this is a retryable error
+				const isRetryable = this.isRetryableError(errorStatus, errorType);
+				
+				if (attempts >= MAX_ATTEMPTS || !isRetryable) {
+					if (!isRetryable) {
+						logger.error(`Non-retryable error encountered: ${errorType} (${errorStatus})`);
+					} else {
+						logger.error(`Failed to get response from Anthropic after ${MAX_ATTEMPTS} attempts.`);
+					}
 					throw error;
 				}
 
-				await new Promise(resolve => setTimeout(resolve, 500 * attempts));
+				// Calculate delay with exponential backoff and jitter
+				const delay = this.calculateRetryDelay(attempts, errorStatus, errorType);
+				logger.info(`Retrying in ${delay}ms... (Attempt ${attempts + 1}/${MAX_ATTEMPTS})`);
+				
+				await new Promise(resolve => setTimeout(resolve, delay));
 			}
 		}
 
 		throw new Error('Failed to get response after maximum retry attempts');
+	}
+
+	/**
+	 * Determines if an error is retryable based on status code and error type
+	 */
+	private isRetryableError(status: number, errorType: string): boolean {
+		// Non-retryable errors
+		if (status === 400 || status === 401 || status === 403 || status === 404) {
+			return false;
+		}
+		
+		if (errorType === 'invalid_request_error' || errorType === 'authentication_error') {
+			return false;
+		}
+
+		// Retryable errors: 429, 500, 502, 503, 504, 529, network errors, etc.
+		return status >= 429 || status >= 500 || errorType === 'overloaded_error' || !status;
+	}
+
+	/**
+	 * Calculates retry delay with exponential backoff and jitter
+	 */
+	private calculateRetryDelay(attempt: number, status: number, errorType: string): number {
+		let baseDelay = 1000; // Base delay of 1 second
+		
+		// Special handling for overloaded errors (529)
+		if (status === 529 || errorType === 'overloaded_error') {
+			baseDelay = 3000; // Start with 3 seconds for overloaded errors
+		}
+		
+		// Exponential backoff: 2^attempt * baseDelay
+		const exponentialDelay = Math.pow(2, attempt - 1) * baseDelay;
+		
+		// Add jitter (random factor between 0.5 and 1.5)
+		const jitter = 0.5 + Math.random();
+		const finalDelay = Math.min(exponentialDelay * jitter, 30000); // Cap at 30 seconds
+		
+		return Math.round(finalDelay);
 	}
 
 	private formatToolsForAnthropic(tools: ToolSet): any[] {

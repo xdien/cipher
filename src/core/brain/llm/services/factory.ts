@@ -10,9 +10,15 @@ import Anthropic from '@anthropic-ai/sdk';
 import { OpenAIService } from './openai.js';
 import { AnthropicService } from './anthropic.js';
 import { OpenRouterService } from './openrouter.js';
+import { OllamaService } from './ollama.js';
 
 function extractApiKey(config: LLMConfig): string {
 	const provider = config.provider.toLowerCase();
+
+	// Ollama doesn't require an API key since it's a local service
+	if (provider === 'ollama') {
+		return 'not-required';
+	}
 
 	// Get API key from config (already expanded)
 	let apiKey = config.apiKey || '';
@@ -37,6 +43,11 @@ function getOpenAICompatibleBaseURL(llmConfig: LLMConfig): string {
 
 	if (provider === 'openrouter') {
 		return 'https://openrouter.ai/api/v1';
+	}
+
+	if (provider === 'ollama') {
+		// Use environment variable if set, otherwise default to localhost:11434
+		return env.OLLAMA_BASE_URL || 'http://localhost:11434/v1';
 	}
 
 	// Check for environment variable as fallback for OpenAI
@@ -96,6 +107,22 @@ function _createLLMService(
 			const anthropic = new Anthropic({ apiKey });
 			return new AnthropicService(
 				anthropic,
+				config.model,
+				mcpManager,
+				contextManager,
+				config.maxIterations,
+				unifiedToolManager
+			);
+		}
+		case 'ollama': {
+			const baseURL = getOpenAICompatibleBaseURL(config);
+			// Ollama uses OpenAI-compatible API but runs locally
+			const openai = new OpenAI({
+				apiKey: 'not-required', // Ollama doesn't require an API key
+				baseURL,
+			});
+			return new OllamaService(
+				openai,
 				config.model,
 				mcpManager,
 				contextManager,

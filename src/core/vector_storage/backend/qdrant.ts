@@ -177,9 +177,16 @@ export class QdrantBackend implements VectorStore {
 		}
 	}
 
+	// Qdrant only supports integer IDs for points in this deployment
+	private validateId(id: number): void {
+		if (!Number.isInteger(id) || isNaN(id)) {
+			throw new VectorStoreError('Qdrant point IDs must be valid integers', 'id');
+		}
+	}
+
 	// VectorStore implementation
 
-	async insert(vectors: number[][], ids: string[], payloads: Record<string, any>[]): Promise<void> {
+	async insert(vectors: number[][], ids: number[], payloads: Record<string, any>[]): Promise<void> {
 		if (!this.connected) {
 			throw new VectorStoreError(ERROR_MESSAGES.NOT_CONNECTED, 'insert');
 		}
@@ -189,9 +196,20 @@ export class QdrantBackend implements VectorStore {
 			throw new VectorStoreError('Vectors, IDs, and payloads must have the same length', 'insert');
 		}
 
-		// Validate dimensions
-		for (const vector of vectors) {
+		// Validate dimensions and IDs
+		for (let i = 0; i < vectors.length; i++) {
+			const vector = vectors[i];
+			const id = ids[i];
+			
+			if (!vector) {
+				throw new VectorStoreError(`Vector missing at index ${i}`, 'insert');
+			}
+			if (id === undefined || id === null) {
+				throw new VectorStoreError(`ID missing at index ${i}`, 'insert');
+			}
+			
 			this.validateDimension(vector, 'insert');
+			this.validateId(id);
 		}
 
 		this.logger.debug(`${LOG_PREFIXES.INDEX} Inserting ${vectors.length} vectors`);
@@ -199,9 +217,14 @@ export class QdrantBackend implements VectorStore {
 		try {
 			const points = vectors.map((vector, idx) => {
 				const payload = payloads[idx];
+				const id = ids[idx];
+				
 				if (!payload) throw new VectorStoreError(`Payload missing at index ${idx}`, 'insert');
+				if (!vector) throw new VectorStoreError(`Vector missing at index ${idx}`, 'insert');
+				if (id === undefined || id === null) throw new VectorStoreError(`ID missing at index ${idx}`, 'insert');
+				
 				return {
-					id: idx + 1,
+					id: id, // Always use integer IDs
 					vector,
 					payload,
 				};
@@ -263,11 +286,12 @@ export class QdrantBackend implements VectorStore {
 		}
 	}
 
-	async get(vectorId: string): Promise<VectorStoreResult | null> {
+	async get(vectorId: number): Promise<VectorStoreResult | null> {
 		if (!this.connected) {
 			throw new VectorStoreError(ERROR_MESSAGES.NOT_CONNECTED, 'get');
 		}
 
+		this.validateId(vectorId);
 		this.logger.debug(`${LOG_PREFIXES.BACKEND} Getting vector ${vectorId}`);
 
 		try {
@@ -288,25 +312,25 @@ export class QdrantBackend implements VectorStore {
 				return null;
 			}
 
-			return {
-				id: vectorId,
-				vector: (firstResult.vector as number[]) || [],
-				payload: firstResult.payload || {},
-				score: 1.0,
-			};
+					return {
+			id: vectorId, // Qdrant uses integer IDs
+			vector: (firstResult.vector as number[]) || [],
+			payload: firstResult.payload || {},
+			score: 1.0,
+		};
 		} catch (error) {
 			this.logger.error(`${LOG_PREFIXES.BACKEND} Get failed`, { error });
 			throw new VectorStoreError('Failed to retrieve vector', 'get', error as Error);
 		}
 	}
 
-	async update(vectorId: string, vector: number[], payload: Record<string, any>): Promise<void> {
+	async update(vectorId: number, vector: number[], payload: Record<string, any>): Promise<void> {
 		if (!this.connected) {
 			throw new VectorStoreError(ERROR_MESSAGES.NOT_CONNECTED, 'update');
 		}
 
 		this.validateDimension(vector, 'update');
-
+		this.validateId(vectorId);
 		this.logger.debug(`${LOG_PREFIXES.BACKEND} Updating vector ${vectorId}`);
 
 		try {
@@ -327,11 +351,12 @@ export class QdrantBackend implements VectorStore {
 		}
 	}
 
-	async delete(vectorId: string): Promise<void> {
+	async delete(vectorId: number): Promise<void> {
 		if (!this.connected) {
 			throw new VectorStoreError(ERROR_MESSAGES.NOT_CONNECTED, 'delete');
 		}
 
+		this.validateId(vectorId);
 		this.logger.debug(`${LOG_PREFIXES.BACKEND} Deleting vector ${vectorId}`);
 
 		try {

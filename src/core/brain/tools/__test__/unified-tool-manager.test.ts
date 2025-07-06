@@ -81,8 +81,8 @@ describe('UnifiedToolManager', () => {
 
 			// Should have 2 memory tools
 			expect(Object.keys(tools)).toHaveLength(2);
-			expect(tools['cipher_extract_knowledge']).toBeDefined();
-			expect(tools['cipher_memory_operation']).toBeDefined();
+			expect(tools['cipher_extract_and_operate_memory']).toBeDefined();
+			expect(tools['cipher_memory_search']).toBeDefined();
 
 			// All tools should be marked as internal
 			for (const tool of Object.values(tools)) {
@@ -122,23 +122,23 @@ describe('UnifiedToolManager', () => {
 
 	describe('Tool Execution', () => {
 		it('should execute internal tools correctly', async () => {
-			const result = await unifiedManager.executeTool('cipher_extract_knowledge', {
-				knowledge: ['Test fact for unified manager'],
+			const result = await unifiedManager.executeTool('cipher_extract_and_operate_memory', {
+				interaction: ['The API endpoint requires authentication using JWT tokens. The function validates user permissions and handles error responses. Database queries use async operations for better performance.'],
 			});
 
 			expect(result.success).toBe(true);
-			expect(result.extracted).toBe(1);
+			expect(result.extraction.extracted).toBe(1);
 		});
 
 		it('should route tools to correct manager', async () => {
 			// Test internal tool routing
-			const internalResult = await unifiedManager.executeTool('cipher_extract_knowledge', {
-				knowledge: ['Test knowledge extraction'],
+			const internalResult = await unifiedManager.executeTool('cipher_extract_and_operate_memory', {
+				interaction: ['The microservice architecture uses Docker containers for deployment. Redis cache improves API performance and reduces database load.'],
 			});
 			expect(internalResult.success).toBe(true);
 
 			// Test that internal tools are identified correctly
-			const isInternal = await unifiedManager.getToolSource('cipher_extract_knowledge');
+			const isInternal = await unifiedManager.getToolSource('cipher_extract_and_operate_memory');
 			expect(isInternal).toBe('internal');
 		});
 
@@ -147,7 +147,7 @@ describe('UnifiedToolManager', () => {
 		});
 
 		it('should check tool availability correctly', async () => {
-			const isAvailable = await unifiedManager.isToolAvailable('cipher_extract_knowledge');
+			const isAvailable = await unifiedManager.isToolAvailable('cipher_extract_and_operate_memory');
 			expect(isAvailable).toBe(true);
 
 			const notAvailable = await unifiedManager.isToolAvailable('nonexistent_tool');
@@ -256,7 +256,7 @@ describe('UnifiedToolManager', () => {
 
 	describe('Tool Source Detection', () => {
 		it('should correctly identify internal tool sources', async () => {
-			const source = await unifiedManager.getToolSource('cipher_extract_knowledge');
+			const source = await unifiedManager.getToolSource('cipher_extract_and_operate_memory');
 			expect(source).toBe('internal');
 		});
 
@@ -292,8 +292,8 @@ describe('UnifiedToolManager', () => {
 			expect(openaiTools.length).toBeGreaterThan(0);
 
 			// 3. Execute a tool
-			const extractResult = await unifiedManager.executeTool('cipher_extract_knowledge', {
-				knowledge: ['Integration test fact'],
+			const extractResult = await unifiedManager.executeTool('cipher_extract_and_operate_memory', {
+				interaction: ['The REST API implements OAuth authentication for secure access. JSON Web Tokens validate user sessions and handle authorization.'],
 			});
 			expect(extractResult.success).toBe(true);
 

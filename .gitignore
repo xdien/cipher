@@ -52,3 +52,4 @@ test-temp/
 .roo/
 .windsurf/
 CONTRIBUTING.md
+*.py

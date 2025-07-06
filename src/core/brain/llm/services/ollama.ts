@@ -7,8 +7,8 @@ import { ILLMService, LLMServiceConfig } from './types.js';
 import OpenAI from 'openai';
 import { logger } from '../../../logger/index.js';
 
-export class OpenRouterService implements ILLMService {
-	private client: OpenAI;
+export class OllamaService implements ILLMService {
+	private openai: OpenAI;
 	private model: string;
 	private mcpManager: MCPManager;
 	private unifiedToolManager: UnifiedToolManager | undefined;
@@ -16,14 +16,14 @@ export class OpenRouterService implements ILLMService {
 	private maxIterations: number;
 
 	constructor(
-		client: OpenAI,
+		openai: OpenAI,
 		model: string,
 		mcpManager: MCPManager,
 		contextManager: ContextManager,
 		maxIterations: number = 5,
 		unifiedToolManager?: UnifiedToolManager
 	) {
-		this.client = client;
+		this.openai = openai;
 		this.model = model;
 		this.mcpManager = mcpManager;
 		this.unifiedToolManager = unifiedToolManager;
@@ -37,13 +37,13 @@ export class OpenRouterService implements ILLMService {
 		// Use unified tool manager if available, otherwise fall back to MCP manager
 		let formattedTools: any[];
 		if (this.unifiedToolManager) {
-			formattedTools = await this.unifiedToolManager.getToolsForProvider('openrouter');
+			formattedTools = await this.unifiedToolManager.getToolsForProvider('openai');
 		} else {
 			const rawTools = await this.mcpManager.getAllTools();
-			formattedTools = this.formatToolsForOpenRouter(rawTools);
+			formattedTools = this.formatToolsForOllama(rawTools);
 		}
 
-		logger.silly(`Formatted tools for OpenRouter: ${JSON.stringify(formattedTools, null, 2)}`);
+		logger.silly(`Formatted tools for Ollama: ${JSON.stringify(formattedTools, null, 2)}`);
 
 		let iterationCount = 0;
 		try {
@@ -66,7 +66,7 @@ export class OpenRouterService implements ILLMService {
 
 				// Handle tool calls
 				for (const toolCall of message.tool_calls) {
-					logger.debug(`OpenRouter tool call initiated: ${JSON.stringify(toolCall, null, 2)}`);
+					logger.debug(`Ollama tool call initiated: ${JSON.stringify(toolCall, null, 2)}`);
 					const toolName = toolCall.function.name;
 					let args: any = {};
 
@@ -112,7 +112,7 @@ export class OpenRouterService implements ILLMService {
 		} catch (error) {
 			// Handle API errors
 			const errorMessage = error instanceof Error ? error.message : String(error);
-			logger.error(`Error in OpenRouter service API call: ${errorMessage}`, { error });
+			logger.error(`Error in Ollama service API call: ${errorMessage}`, { error });
 			await this.contextManager.addAssistantMessage(`Error processing request: ${errorMessage}`);
 			return `Error processing request: ${errorMessage}`;
 		}
@@ -127,7 +127,7 @@ export class OpenRouterService implements ILLMService {
 	 */
 	async directGenerate(userInput: string, systemPrompt?: string): Promise<string> {
 		try {
-			logger.debug('OpenRouterService: Direct generate call (bypassing conversation context)', {
+			logger.debug('OllamaService: Direct generate call (bypassing conversation context)', {
 				inputLength: userInput.length,
 				hasSystemPrompt: !!systemPrompt
 			});
@@ -148,7 +148,7 @@ export class OpenRouterService implements ILLMService {
 			});
 
 			// Make direct API call without adding to conversation context
-			const response = await this.client.chat.completions.create({
+			const response = await this.openai.chat.completions.create({
 				model: this.model,
 				messages: messages,
 				// No tools for direct calls - this is for simple text generation
@@ -156,14 +156,14 @@ export class OpenRouterService implements ILLMService {
 
 			const responseText = response.choices[0]?.message?.content || '';
 			
-			logger.debug('OpenRouterService: Direct generate completed', {
+			logger.debug('OllamaService: Direct generate completed', {
 				responseLength: responseText.length
 			});
 
 			return responseText;
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
-			logger.error('OpenRouterService: Direct generate failed', { 
+			logger.error('OllamaService: Direct generate failed', { 
 				error: errorMessage,
 				inputLength: userInput.length
 			});
@@ -180,7 +180,7 @@ export class OpenRouterService implements ILLMService {
 
 	getConfig(): LLMServiceConfig {
 		return {
-			provider: 'openrouter',
+			provider: 'ollama',
 			model: this.model,
 		};
 	}
@@ -194,7 +194,7 @@ export class OpenRouterService implements ILLMService {
 		const MAX_ATTEMPTS = 3;
 
 		// Add a log of the number of tools in response
-		logger.debug(`Tools in OpenRouter response: ${tools.length}`);
+		logger.debug(`Tools in Ollama response: ${tools.length}`);
 
 		while (attempts < MAX_ATTEMPTS) {
 			attempts++;
@@ -205,38 +205,46 @@ export class OpenRouterService implements ILLMService {
 					content: userInput,
 				});
 
-				// Call OpenRouter API via OpenAI SDK (OpenRouter is OpenAI-compatible)
-				const response = await this.client.chat.completions.create({
+				// Call Ollama API via OpenAI SDK (Ollama is OpenAI-compatible)
+				const response = await this.openai.chat.completions.create({
 					model: this.model,
 					messages: formattedMessages,
 					tools: attempts === 1 ? tools : [], // Only offer tools on first attempt
 					tool_choice: attempts === 1 ? 'auto' : 'none', // Disable tool choice on retry
 				});
 
-				logger.silly('OPENROUTER CHAT COMPLETION RESPONSE: ', JSON.stringify(response, null, 2));
+				logger.silly('OLLAMA CHAT COMPLETION RESPONSE: ', JSON.stringify(response, null, 2));
 
 				// Get the response message
 				const message = response.choices[0]?.message;
 				if (!message) {
-					throw new Error('Received empty message from OpenRouter API');
+					throw new Error('Received empty message from Ollama API');
 				}
 
 				return { message };
 			} catch (error) {
 				const apiError = error as any;
 				logger.error(
-					`Error in OpenRouter API call (Attempt ${attempts}/${MAX_ATTEMPTS}): ${apiError.message || JSON.stringify(apiError, null, 2)}`,
+					`Error in Ollama API call (Attempt ${attempts}/${MAX_ATTEMPTS}): ${apiError.message || JSON.stringify(apiError, null, 2)}`,
 					{ status: apiError.status, headers: apiError.headers }
 				);
 
-				if (apiError.status === 400 && apiError.error?.code === 'context_length_exceeded') {
+				// Ollama-specific error handling
+				if (apiError.status === 400) {
 					logger.warn(
-						`Context length exceeded. ContextManager compression might not be sufficient. Error details: ${JSON.stringify(apiError.error)}`
+						`Ollama API error - check if model '${this.model}' is available locally. Error details: ${JSON.stringify(apiError.error)}`
+					);
+				}
+
+				// Connection errors might indicate Ollama is not running
+				if (apiError.code === 'ECONNREFUSED' || apiError.code === 'ENOTFOUND') {
+					logger.error(
+						'Failed to connect to Ollama server. Please ensure Ollama is running and accessible.'
 					);
 				}
 
 				if (attempts >= MAX_ATTEMPTS) {
-					logger.error(`Failed to get response from OpenRouter after ${MAX_ATTEMPTS} attempts.`);
+					logger.error(`Failed to get response from Ollama after ${MAX_ATTEMPTS} attempts.`);
 					throw error;
 				}
 
@@ -247,8 +255,8 @@ export class OpenRouterService implements ILLMService {
 		throw new Error('Failed to get response after maximum retry attempts');
 	}
 
-	private formatToolsForOpenRouter(tools: ToolSet): any[] {
-		// OpenRouter uses the same format as OpenAI for tools
+	private formatToolsForOllama(tools: ToolSet): any[] {
+		// Ollama uses the same format as OpenAI for tools
 		// Convert the ToolSet object to an array of tools in OpenAI's format
 		return Object.entries(tools).map(([name, tool]) => {
 			return {

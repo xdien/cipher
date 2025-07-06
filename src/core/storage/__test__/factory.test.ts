@@ -79,7 +79,7 @@ describe('Storage Factory', () => {
 
 		it('should work with fallback backends', async () => {
 			const config: StorageConfig = {
-				cache: { type: 'redis', host: 'invalid-host' },
+				cache: { type: 'redis', host: 'invalid-host', connectionTimeoutMillis: 1000 },
 				database: { type: 'sqlite', path: './invalid' },
 			};
 
@@ -95,7 +95,7 @@ describe('Storage Factory', () => {
 
 			// Cleanup
 			await result.manager.disconnect();
-		});
+		}, 10000); // Increase timeout for this test
 	});
 
 	describe('createDefaultStorage', () => {
@@ -133,24 +133,6 @@ describe('Storage Factory', () => {
 			await result.manager.disconnect();
 		});
 
-		it('should create Redis cache from env vars', async () => {
-			process.env.STORAGE_CACHE_TYPE = 'redis';
-			process.env.STORAGE_CACHE_HOST = 'test-host';
-			process.env.STORAGE_CACHE_PORT = '6380';
-			process.env.STORAGE_CACHE_PASSWORD = 'test-pass';
-			process.env.STORAGE_CACHE_DATABASE = '1';
-
-			const result = await createStorageFromEnv();
-
-			// Will fallback to in-memory due to connection failure
-			const info = result.manager.getInfo();
-			expect(info.backends.cache.fallback).toBe(true);
-			expect(info.backends.cache.type).toBe('in-memory');
-
-			// Cleanup
-			await result.manager.disconnect();
-		});
-
 		it('should create SQLite database from env vars', async () => {
 			process.env.STORAGE_DATABASE_TYPE = 'sqlite';
 			process.env.STORAGE_DATABASE_PATH = './test-data';
@@ -181,18 +163,44 @@ describe('Storage Factory', () => {
 			await result.manager.disconnect();
 		});
 
-		it('should handle invalid port numbers gracefully', async () => {
+		it('should handle invalid Redis port configuration', async () => {
+			// Test invalid port handling without actual connection
 			process.env.STORAGE_CACHE_TYPE = 'redis';
 			process.env.STORAGE_CACHE_PORT = 'invalid';
+			process.env.STORAGE_CACHE_CONNECTION_TIMEOUT_MILLIS = '1000';
 
+			// The factory should handle invalid config gracefully and fall back to in-memory
 			const result = await createStorageFromEnv();
 
-			// Should still create storage (with fallback)
+			// Should still create storage (with fallback due to invalid port)
 			expect(result.manager).toBeInstanceOf(StorageManager);
+			const info = result.manager.getInfo();
+			expect(info.backends.cache.type).toBe('in-memory');
 
 			// Cleanup
 			await result.manager.disconnect();
 		});
+
+		it('should parse Redis cache config from env vars', async () => {
+			// Test Redis config parsing - this will fail to connect and fallback to in-memory
+			// but that's the expected behavior we want to test
+			process.env.STORAGE_CACHE_TYPE = 'redis';
+			process.env.STORAGE_CACHE_HOST = 'nonexistent-host-12345';
+			process.env.STORAGE_CACHE_PORT = '6380';
+			process.env.STORAGE_CACHE_PASSWORD = 'test-pass';
+			process.env.STORAGE_CACHE_DATABASE = '1';
+			process.env.STORAGE_CACHE_CONNECTION_TIMEOUT_MILLIS = '100'; // Very short timeout
+
+			const result = await createStorageFromEnv();
+			
+			// Should fallback to in-memory due to connection failure
+			const info = result.manager.getInfo();
+			expect(info.backends.cache.fallback).toBe(true);
+			expect(info.backends.cache.type).toBe('in-memory');
+
+			// Cleanup
+			await result.manager.disconnect();
+		}, 15000); // Increase timeout to 15 seconds
 	});
 
 	describe('isStorageFactory', () => {
@@ -252,7 +260,7 @@ describe('Storage Factory', () => {
 		it('should handle lifecycle correctly on error', async () => {
 			// Create storage that will use fallbacks
 			const { manager, backends } = await createStorageBackends({
-				cache: { type: 'redis', host: 'nonexistent' },
+				cache: { type: 'redis', host: 'nonexistent', connectionTimeoutMillis: 1000 },
 				database: { type: 'sqlite', path: './nonexistent' },
 			});
 
@@ -269,6 +277,6 @@ describe('Storage Factory', () => {
 			// Cleanup should work
 			await manager.disconnect();
 			expect(manager.isConnected()).toBe(false);
-		});
+		}, 10000); // Increase timeout for this test
 	});
 });

@@ -14,6 +14,7 @@ function getFormatter(provider: string): IMessageFormatter {
 	switch (normalizedProvider) {
 		case 'openai':
 		case 'openrouter': // OpenRouter uses OpenAI-compatible API format
+		case 'ollama': // Ollama uses OpenAI-compatible API format
 			formatter = new OpenAIMessageFormatter();
 			break;
 		case 'anthropic':
@@ -21,7 +22,7 @@ function getFormatter(provider: string): IMessageFormatter {
 			break;
 		default:
 			throw new Error(
-				`Unsupported provider: ${provider}. Supported providers: openai, anthropic, openrouter`
+				`Unsupported provider: ${provider}. Supported providers: openai, anthropic, openrouter, ollama`
 			);
 	}
 

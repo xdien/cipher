@@ -191,10 +191,11 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 		unifiedToolManager,
 		embeddingManager,
 		vectorStoreManager,
-		llmService: llmService || {
-			generate: async () => '',
-			getAllTools: async () => ({}),
-			getConfig: () => ({ provider: 'unknown', model: 'unknown' }),
-		},
+			llmService: llmService || {
+		generate: async () => '',
+		directGenerate: async () => '',
+		getAllTools: async () => ({}),
+		getConfig: () => ({ provider: 'unknown', model: 'unknown' }),
+	},
 	};
 }
