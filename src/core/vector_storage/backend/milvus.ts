@@ -11,6 +11,10 @@ import {
 import { Logger, createLogger } from '../../logger/index.js';
 import { LOG_PREFIXES, DEFAULTS, ERROR_MESSAGES } from '../constants.js';
 
+// Read index and distance config from environment variables (with fallback)
+const MILVUS_INDEX_TYPE = process.env.MILVUS_INDEX_TYPE || 'IVF_FLAT';
+const VECTOR_STORE_DISTANCE = process.env.VECTOR_STORE_DISTANCE || 'L2';
+
 /**
  * MilvusBackend Class
  *
@@ -41,7 +45,6 @@ export class MilvusBackend implements VectorStore {
 				name: 'vector',
 				description: 'Vector field',
 				data_type: DataType.FloatVector,
-				// dim will be set dynamically
 			},
 			{
 				name: 'payload',
@@ -51,8 +54,8 @@ export class MilvusBackend implements VectorStore {
 		],
 		index: {
 			field_name: 'vector',
-			index_type: 'IVF_FLAT',
-			metric_type: 'L2',
+			index_type: MILVUS_INDEX_TYPE,
+			metric_type: VECTOR_STORE_DISTANCE,
 			params: { efConstruction: 10, M: 4 },
 		},
 	};
@@ -281,17 +284,25 @@ export class MilvusBackend implements VectorStore {
 
 function filtersToExpr(filters?: SearchFilters): string | undefined {
 	if (!filters) return undefined;
-	// Only support simple equality and 'in' for now
+	// Support equality, 'in', and comparison operators (gte, lte, gt, lt)
 	return Object.entries(filters)
 		.map(([key, value]) => {
 			if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
 				return `${key} == "${value}"`;
 			}
-			if (value && typeof value === 'object' && 'any' in value && Array.isArray(value.any)) {
-				const arr = value.any.map(v => `"${v}"`).join(', ');
-				return `${key} in [${arr}]`;
+			if (value && typeof value === 'object') {
+				// Support 'in' operator
+				if ('any' in value && Array.isArray(value.any)) {
+					const arr = value.any.map(v => `"${v}"`).join(', ');
+					return `${key} in [${arr}]`;
+				}
+				// Support comparison operators
+				const ops: Record<string, string> = { gte: '>=', lte: '<=', gt: '>', lt: '<' };
+				return Object.entries(ops)
+					.filter(([op]) => op in value)
+					.map(([op, symbol]) => `${key} ${symbol} ${value[op]}`)
+					.join(' && ');
 			}
-			// Add more cases as needed
 			return '';
 		})
 		.filter(Boolean)
