@@ -1,6 +1,8 @@
 import { MemAgent, logger } from '@core/index.js';
 import * as readline from 'readline';
 import chalk from 'chalk';
+import { executeCommand } from './commands.js';
+import { commandParser } from './parser.js';
 
 /**
  * Start interactive CLI mode where user can continuously chat with the agent
@@ -11,7 +13,9 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 
 	console.log(chalk.cyan('🚀 Welcome to Cipher Interactive CLI!'));
 	console.log(chalk.gray('Your memory-powered coding assistant is ready.'));
-	console.log(chalk.gray('Type "exit" or "quit" to end the session.\n'));
+	console.log(chalk.gray('• Type /help to see available commands'));
+	console.log(chalk.gray('• Use /exit or /quit to end the session'));
+	console.log(chalk.gray('• Regular messages will be sent to the AI agent\n'));
 
 	const rl = readline.createInterface({
 		input: process.stdin,
@@ -34,12 +38,6 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 	rl.on('line', async (input: string) => {
 		const trimmedInput = input.trim();
 
-		// Handle exit commands
-		if (trimmedInput.toLowerCase() === 'exit' || trimmedInput.toLowerCase() === 'quit') {
-			handleExit();
-			return;
-		}
-
 		// Skip empty inputs
 		if (!trimmedInput) {
 			rl.prompt();
@@ -47,14 +45,36 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 		}
 
 		try {
-			console.log(chalk.gray('🤔 Thinking...'));
-			const response = await agent.run(trimmedInput);
-
-			if (response) {
-				// Display the AI response with nice formatting
-				logger.displayAIResponse(response);
+			// Parse input to determine if it's a command or regular prompt
+			const parsedInput = commandParser.parseInput(trimmedInput);
+			
+			if (parsedInput.isCommand) {
+				// Handle slash command
+				if (parsedInput.command && parsedInput.args !== undefined) {
+					const commandSuccess = await executeCommand(
+						parsedInput.command, 
+						parsedInput.args, 
+						agent
+					);
+					
+					if (!commandSuccess) {
+						console.log(chalk.gray('Command execution failed or was cancelled.'));
+					}
+				} else {
+					console.log(chalk.red('❌ Invalid command format'));
+					commandParser.displayHelp();
+				}
 			} else {
-				console.log(chalk.gray('No response received.'));
+				// Handle regular user prompt - pass to agent
+				console.log(chalk.gray('🤔 Thinking...'));
+				const response = await agent.run(trimmedInput);
+
+				if (response) {
+					// Display the AI response with nice formatting
+					logger.displayAIResponse(response);
+				} else {
+					console.log(chalk.gray('No response received.'));
+				}
 			}
 		} catch (error) {
 			logger.error(

@@ -31,6 +31,7 @@ export class MemAgent {
 	private defaultSession: ConversationSession | null = null;
 
 	private currentDefaultSessionId: string = 'default';
+	private currentActiveSessionId: string = 'default';
 
 	private isStarted: boolean = false;
 	private isStopped: boolean = false;
@@ -157,15 +158,11 @@ export class MemAgent {
 				session =
 					(await this.sessionManager.getSession(sessionId)) ??
 					(await this.sessionManager.createSession(sessionId));
+				this.currentActiveSessionId = sessionId;
 			} else {
-				// Use loaded default session for backward compatibility
-				if (!this.defaultSession || this.defaultSession.id !== this.currentDefaultSessionId) {
-					this.defaultSession = await this.sessionManager.createSession(
-						this.currentDefaultSessionId
-					);
-					logger.debug(`MemAgent.run: created/loaded default session ${this.defaultSession.id}`);
-				}
-				session = this.defaultSession;
+				// Use current active session or fall back to default
+				session = (await this.sessionManager.getSession(this.currentActiveSessionId)) ??
+					(await this.sessionManager.createSession(this.currentActiveSessionId));
 			}
 			logger.debug(`MemAgent.run: using session ${session.id}`);
 			const response = await session.run(userInput, imageDataInput, stream);
@@ -189,6 +186,79 @@ export class MemAgent {
 	public async getSession(sessionId: string): Promise<ConversationSession | null> {
 		this.ensureStarted();
 		return await this.sessionManager.getSession(sessionId);
+	}
+
+	/**
+	 * Get the current active session ID
+	 */
+	public getCurrentSessionId(): string {
+		this.ensureStarted();
+		return this.currentActiveSessionId;
+	}
+
+	/**
+	 * Load (switch to) a specific session
+	 */
+	public async loadSession(sessionId: string): Promise<ConversationSession> {
+		this.ensureStarted();
+		let session = await this.sessionManager.getSession(sessionId);
+		
+		if (!session) {
+			throw new Error(`Session not found: ${sessionId}`);
+		}
+		
+		this.currentActiveSessionId = sessionId;
+		logger.debug(`MemAgent: Switched to session ${sessionId}`);
+		return session;
+	}
+
+	/**
+	 * Get all active session IDs
+	 */
+	public async listSessions(): Promise<string[]> {
+		this.ensureStarted();
+		return await this.sessionManager.getActiveSessionIds();
+	}
+
+	/**
+	 * Remove a session
+	 */
+	public async removeSession(sessionId: string): Promise<boolean> {
+		this.ensureStarted();
+		
+		// Prevent removing the currently active session
+		if (sessionId === this.currentActiveSessionId) {
+			throw new Error('Cannot remove the currently active session. Switch to another session first.');
+		}
+		
+		return await this.sessionManager.removeSession(sessionId);
+	}
+
+	/**
+	 * Get session metadata including creation time and activity
+	 */
+	public async getSessionMetadata(sessionId: string): Promise<{
+		id: string;
+		createdAt?: number;
+		lastActivity?: number;
+		messageCount?: number;
+	} | null> {
+		this.ensureStarted();
+		
+		// Check if session exists
+		const session = await this.sessionManager.getSession(sessionId);
+		if (!session) {
+			return null;
+		}
+		
+		// For now, return basic metadata since SessionManager doesn't expose internal metadata
+		// This could be enhanced later to track more detailed session statistics
+		return {
+			id: sessionId,
+			createdAt: Date.now(), // Placeholder - actual creation time would need to be tracked
+			lastActivity: Date.now(), // Placeholder - actual last activity would need to be tracked
+			messageCount: 0 // Placeholder - message count would need to be tracked
+		};
 	}
 
 	public getCurrentLLMConfig(): LLMConfig {

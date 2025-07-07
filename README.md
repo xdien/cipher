@@ -1,4 +1,21 @@
-# Overview
+# Cipher
+
+<div align="center">
+
+<img src="./assets/cipher-logo.png" alt="Cipher Agent Logo" width="400" />
+
+<p align="center">
+<em>Memory-powered AI agent framework with MCP integration</em>
+</p>
+
+<p align="center">
+<a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License" /></a>
+<a href="https://discord.com/invite/UMRrpNjh5W"><img src="https://img.shields.io/badge/Discord-Join%20Community-7289da" alt="Discord" /></a>
+</p>
+
+</div>
+
+## Overview
 
 *`cipher`* is a simple, composable framework to build memory for agents using [Model Context Protocol](https://modelcontextprotocol.io/introduction).
 
@@ -84,6 +101,18 @@ Before running cipher in any mode, ensure you have:
 ### Additional Options
 
 ```bash
+# Use custom agent config file
+cipher --agent /path/to/custom/config.yml
+cipher -a /path/to/custom/config.yml
+
+# Require all MCP server connections to succeed (strict mode)
+cipher --strict
+cipher -s --strict
+
+# Start with a new session
+cipher --new-session                    # Auto-generated session ID
+cipher --new-session myCustomSession    # Custom session ID
+
 # Disable verbose output
 cipher --no-verbose
 
@@ -92,6 +121,89 @@ cipher --version
 
 # Show help
 cipher --help
+```
+
+### Command Line Interface
+
+Cipher provides a rich interactive CLI with various commands for managing sessions, system information, and agent interactions:
+
+#### Session Management Commands
+
+```bash
+# Session commands (alias: /s)
+/session help                 # Show session management help
+/session list                 # List all active sessions  
+/session new [sessionId]      # Create new session (optional custom ID)
+/session switch <sessionId>   # Switch to a different session
+/session current              # Show current session information
+/session delete <sessionId>   # Delete a session (cannot delete active session)
+
+# Session command aliases
+/s list                       # Same as /session list
+/s new mySession             # Same as /session new mySession
+/s sw sessionId              # Same as /session switch sessionId
+/s curr                      # Same as /session current
+/s del sessionId             # Same as /session delete sessionId
+```
+
+#### System Information Commands
+
+```bash
+# System and configuration
+/config                      # Display current agent configuration
+/stats                       # Show system statistics and metrics
+/prompt                      # Display current system prompt
+/tools                       # List all available MCP tools
+
+# Basic commands
+/help [command]              # Show help (alias: /h, /?)
+/clear                       # Reset conversation history (alias: /reset)
+/exit                        # Exit the CLI session (alias: /quit, /q)
+```
+
+#### Interactive Features
+
+- **Tab Completion**: Use Tab key for command auto-completion
+- **Command History**: Navigate previous commands with arrow keys
+- **Colored Output**: Commands use color coding for better readability
+- **Error Handling**: Comprehensive error messages with helpful guidance
+- **Session Persistence**: Conversations are saved across sessions with memory integration
+
+#### Usage Examples
+
+**Session Management Workflow:**
+
+```bash
+# Start cipher and create a new session
+cipher --new-session work-project
+
+# In the CLI, create additional sessions
+/session new personal-chat
+/session new research-notes
+
+# List all sessions
+/session list
+
+# Switch between sessions
+/session switch work-project
+/session current
+
+# Delete a session (must switch away first)
+/session switch personal-chat
+/session delete research-notes
+```
+
+**Configuration and Startup:**
+
+```bash
+# Start with custom config and strict mode
+cipher --agent ./my-config.yml --strict
+
+# Start with new session and verbose logging
+cipher --new-session experiment-1 --verbose
+
+# Quick start with all features
+cipher -a custom.yml -s --new-session main-session
 ```
 
 ## Configuration
@@ -201,7 +313,7 @@ llm:
 ```yaml
 llm:
   provider: openrouter
-  model: openai/gpt-4o               # Any model available on OpenRouter
+  model: openai/gpt-4.1               # Any model available on OpenRouter
   apiKey: $OPENROUTER_API_KEY
 ```
 
@@ -219,10 +331,27 @@ llm:
 **Note**: Ollama is unique among providers as it runs locally on your machine. No API key or internet connection is required for inference - only the `OLLAMA_BASE_URL` environment variable pointing to your local Ollama instance.
 
 **OpenRouter Model Examples:**
-- `openai/gpt-4o`, `openai/gpt-4o-mini`
+- `openai/gpt-4.1`, `openai/gpt-4.1-mini`
 - `anthropic/claude-3.5-sonnet`, `anthropic/claude-3-haiku`
 - `google/gemini-pro-1.5`, `meta-llama/llama-3.1-8b-instruct`
 - See [OpenRouter models](https://openrouter.ai/models) for full list
+
+### Connection Modes
+
+MCP servers support two connection modes:
+
+- **`lenient` (default)**: Failed connections are logged as warnings but don't prevent startup
+- **`strict`**: Failed connections cause the application to exit with an error
+
+You can override connection modes globally using the `--strict` CLI flag, which makes all MCP servers use strict mode regardless of their individual configuration.
+
+```bash
+# Force all MCP servers to use strict mode
+cipher --strict
+
+# Use individual server connection modes (default behavior)
+cipher
+```
 
 ### MCP Server Types
 
@@ -285,16 +414,54 @@ You can use environment variables anywhere in the YAML configuration:
 llm:
   apiKey: $OPENAI_API_KEY          # Simple expansion
   baseURL: ${API_BASE_URL}         # Brace syntax
-  model: ${MODEL_NAME:-gpt-4}      # With default value (syntax may vary)
+  model: ${MODEL_NAME:-gpt-4.1}      # With default value (syntax may vary)
 ```
 
 ### Configuration Loading
 
-1. Cipher looks for `memAgent/cipher.yml` in the current directory
-2. Environment variables are loaded from `.env` if present
-3. Configuration is parsed, validated, and environment variables are expanded
+Cipher uses intelligent path resolution for configuration files:
+
+1. **Default behavior**: Looks for `memAgent/cipher.yml` relative to the package installation root
+2. **Custom config with `--agent`**: 
+   - Absolute paths are used as-is
+   - Relative paths are resolved relative to the current working directory
+   - Default path is resolved relative to the package installation root
+3. Environment variables are loaded from `.env` if present
+4. Configuration is parsed, validated, and environment variables are expanded
+
+**Examples:**
+```bash
+# Use default config (memAgent/cipher.yml in package root)
+cipher
+
+# Use custom config with absolute path
+cipher --agent /home/user/my-config.yml
+
+# Use custom config with relative path (relative to current directory)
+cipher --agent ./configs/custom.yml
+
+# Use config in current directory
+cipher -a cipher-custom.yml
+```
 
 ## Capabilities
+
+### Session Management
+Cipher provides advanced session management capabilities for maintaining separate conversation contexts:
+
+- **Multiple Sessions**: Create and manage multiple conversation sessions simultaneously
+- **Session Persistence**: Each session maintains its own conversation history and context
+- **Session Switching**: Seamlessly switch between different sessions during CLI interactions
+- **Memory Integration**: All sessions integrate with the agent's memory system for learning and retention
+- **Session Lifecycle**: Automatic session cleanup with configurable TTL and maximum session limits
+- **CLI Integration**: Full command-line interface for session operations with intuitive commands
+
+**Key Features:**
+- Auto-generated or custom session IDs
+- Session metadata tracking (creation time, last activity, message count)
+- Protection against deleting active sessions
+- Session listing with visual indicators for the current active session
+- Integration with the `--new-session` CLI flag for immediate session creation
 
 ### MCP Integration
 Cipher handles all the complexity of MCP server connections and lifecycle management, providing seamless integration with MCP-compatible tools and services.
@@ -308,8 +475,8 @@ Cipher now supports multiple LLM providers with seamless integration and advance
 
 Cipher supports multiple LLM providers for maximum flexibility:
 
-- **OpenAI**: Direct API integration for GPT models (`gpt-4`, `gpt-3.5-turbo`, etc.)
-- **Anthropic**: Native Claude API support (`claude-3-sonnet`, `claude-3-opus`, etc.)
+- **OpenAI**: Direct API integration for GPT models (`gpt-4.1`, `04-mini`, etc.)
+- **Anthropic**: Native Claude API support (`claude-4-sonnet`, `claude-4-opus`, etc.)
 - **OpenRouter**: Access to 200+ models from multiple providers through a single API
 - **Ollama**: Self-hosted local models with no API costs (`qwen3:8b`, `llama3.1:8b`, `mistral:7b`, etc.) - **No API key required**
 
@@ -317,9 +484,9 @@ Cipher supports multiple LLM providers for maximum flexibility:
 OpenRouter provides access to a vast ecosystem of AI models through one unified API:
 
 #### Supported Model Providers
-- **OpenAI**: `openai/gpt-4o`, `openai/gpt-4o-mini`
-- **Anthropic**: `anthropic/claude-3.5-sonnet`, `anthropic/claude-3-haiku`
-- **Google**: `google/gemini-pro-1.5`, `google/gemini-flash`
+- **OpenAI**: `openai/gpt-4.1`, `openai/gpt-4.1-mini`
+- **Anthropic**: `anthropic/claude-4-sonnet`, `anthropic/claude-3.5-haiku`
+- **Google**: `google/gemini-pro-2.5`
 - **Meta**: `meta-llama/llama-3.1-8b-instruct`, `meta-llama/llama-3.1-70b-instruct`
 - **Mistral**: `mistralai/mistral-7b-instruct`, `mistralai/mixtral-8x7b-instruct`
 - **And 200+ more models**
