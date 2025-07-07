@@ -9,16 +9,8 @@
 
 import type { VectorStore, VectorStoreConfig } from './types.js';
 import { VectorStoreSchema } from './config.js';
-import { VectorStoreError, VectorStoreConnectionError } from './backend/types.js';
 import { Logger, createLogger } from '../logger/index.js';
-import {
-	LOG_PREFIXES,
-	ERROR_MESSAGES,
-	TIMEOUTS,
-	BACKEND_TYPES,
-	DEFAULTS,
-	METRICS_EVENTS,
-} from './constants.js';
+import { LOG_PREFIXES, ERROR_MESSAGES, TIMEOUTS, BACKEND_TYPES } from './constants.js';
 
 /**
  * Health check result for vector store backend
@@ -376,8 +368,6 @@ export class VectorStoreManager {
 	 */
 	private async createBackend(): Promise<VectorStore> {
 		const config = this.config;
-
-		this.logger.info(`${LOG_PREFIXES.MANAGER} Creating backend`, { type: config.type });
 
 		switch (config.type) {
 			case BACKEND_TYPES.QDRANT: {

@@ -242,6 +242,41 @@ describe('MilvusBackend', () => {
 				VectorDimensionError
 			);
 		});
+
+		it('should throw if payloads are null or undefined', async () => {
+			await backend.connect();
+			await expect(backend.insert([[1,2,3]], ['vec1'], null)).rejects.toThrow();
+			await expect(backend.insert([[1,2,3]], ['vec1'], undefined)).rejects.toThrow();
+		});
+
+		it('should throw VectorDimensionError if search vector has wrong dimension', async () => {
+			await backend.connect();
+			await expect(backend.search([1, 2], 1)).rejects.toThrow(VectorDimensionError);
+		});
+
+		it('should throw VectorStoreError on get failure', async () => {
+			mockMilvusClient.query.mockRejectedValue(new Error('Query failed'));
+			await backend.connect();
+			await expect(backend.get('vec1')).rejects.toThrow(VectorStoreError);
+		});
+
+		it('should throw VectorStoreError on list failure', async () => {
+			mockMilvusClient.query.mockRejectedValue(new Error('Query failed'));
+			await backend.connect();
+			await expect(backend.list()).rejects.toThrow(VectorStoreError);
+		});
+
+		it('should throw VectorStoreError on upsert failure', async () => {
+			mockMilvusClient.upsert.mockRejectedValue(new Error('Upsert failed'));
+			await backend.connect();
+			await expect(backend.update('vec1', [1,2,3], { title: 'Fail' })).rejects.toThrow(VectorStoreError);
+		});
+
+		it('should throw VectorStoreError on deleteEntities failure', async () => {
+			mockMilvusClient.deleteEntities.mockRejectedValue(new Error('Delete failed'));
+			await backend.connect();
+			await expect(backend.delete('vec1')).rejects.toThrow(VectorStoreError);
+		});
 	});
 
 	describe('Collection Management', () => {
@@ -268,6 +303,22 @@ describe('MilvusBackend', () => {
 			await backend.connect();
 			const collections = await backend.listCollections();
 			expect(collections).toEqual(['col1', 'col2']);
+		});
+
+		it('should throw VectorStoreError if deleteCollection is called before connect', async () => {
+			const backend = new MilvusBackend(validConfig);
+			await expect(backend.deleteCollection()).rejects.toThrow(VectorStoreError);
+		});
+
+		it('should throw VectorStoreError if listCollections is called before connect', async () => {
+			const backend = new MilvusBackend(validConfig);
+			await expect(backend.listCollections()).rejects.toThrow(VectorStoreError);
+		});
+
+		it('should throw VectorStoreError on dropCollection failure', async () => {
+			mockMilvusClient.dropCollection.mockRejectedValue(new Error('Drop failed'));
+			await backend.connect();
+			await expect(backend.deleteCollection()).rejects.toThrow(VectorStoreError);
 		});
 	});
 

@@ -10,13 +10,9 @@
 import { VectorStoreManager } from './manager.js';
 import type { VectorStoreConfig } from './types.js';
 import { VectorStore } from './backend/vector-store.js';
-import type { BackendConfig, QdrantBackendConfig } from './config.js';
-import { InMemoryBackend } from './backend/in-memory.js';
-import { QdrantBackend } from './backend/qdrant.js';
-import { Logger, createLogger } from '../logger/index.js';
+import { createLogger } from '../logger/index.js';
 import { LOG_PREFIXES } from './constants.js';
 import { env } from '../env.js';
-import * as fs from 'node:fs';
 
 /**
  * Factory result containing both the manager and vector store
@@ -244,13 +240,6 @@ export function getVectorStoreConfigFromEnv(): VectorStoreConfig {
 		const password = env.VECTOR_STORE_PASSWORD;
 		const token = env.VECTOR_STORE_API_KEY;
 
-		console.log('url', url);
-		console.log('host', host);
-		console.log('port', port);
-		console.log('username', username);
-		console.log('password', password);
-		console.log('token', token);
-
 		if (!url && !host) {
 			return {
 				type: 'in-memory',
@@ -295,48 +284,6 @@ export function isVectorStoreFactory(obj: unknown): obj is VectorStoreFactory {
 		'store' in obj &&
 		obj.manager instanceof VectorStoreManager
 	);
-}
-
-/**
- * Get Qdrant configuration from environment variables
- * Supports both cloud and local configurations
- */
-export function getQdrantConfigFromEnv(): QdrantBackendConfig | null {
-	const qdrantUrl = process.env.VECTOR_STORE_URL;
-	const qdrantApiKey = process.env.VECTOR_STORE_API_KEY;
-	const qdrantHost = process.env.VECTOR_STORE_HOST;
-	const qdrantPort = process.env.VECTOR_STORE_PORT;
-
-	// Always resolve collectionName to a string
-	const collectionName =
-		process.env.VECTOR_STORE_COLLECTION_NAME || process.env.VECTOR_STORE_COLLECTION || 'default';
-
-	// Check if we have cloud configuration
-	if (qdrantUrl) {
-		return {
-			type: 'qdrant',
-			url: qdrantUrl,
-			apiKey: qdrantApiKey, // API key is required for cloud
-			collectionName,
-			dimension: parseInt(process.env.VECTOR_STORE_DIMENSION || '1536', 10),
-			distance: (process.env.VECTOR_STORE_DISTANCE as any) || 'Cosine',
-		};
-	}
-
-	// Check if we have local configuration
-	if (qdrantHost || qdrantPort) {
-		return {
-			type: 'qdrant',
-			host: qdrantHost || 'localhost',
-			port: qdrantPort ? parseInt(qdrantPort, 10) : 6333,
-			apiKey: qdrantApiKey, // Optional for local
-			collectionName,
-			dimension: parseInt(process.env.VECTOR_STORE_DIMENSION || '1536', 10),
-			distance: (process.env.VECTOR_STORE_DISTANCE as any) || 'Cosine',
-		};
-	}
-
-	return null;
 }
 
 /**
