@@ -17,6 +17,7 @@ export const LOG_PREFIXES = {
 	SEARCH: '[VectorStore:Search]',
 	INDEX: '[VectorStore:Index]',
 	QDRANT: '[VectorStore:Qdrant]',
+	MILVUS: '[VectorStore:Milvus]',
 	MEMORY: '[VectorStore:Memory]',
 } as const;
 
@@ -66,6 +67,7 @@ export const BACKEND_TYPES = {
 	WEAVIATE: 'weaviate',
 	CHROMA: 'chroma',
 	IN_MEMORY: 'in-memory',
+	MILVUS: 'milvus',
 } as const;
 
 /**

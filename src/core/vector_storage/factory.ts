@@ -10,13 +10,9 @@
 import { VectorStoreManager } from './manager.js';
 import type { VectorStoreConfig } from './types.js';
 import { VectorStore } from './backend/vector-store.js';
-import type { BackendConfig, QdrantBackendConfig } from './config.js';
-import { InMemoryBackend } from './backend/in-memory.js';
-import { QdrantBackend } from './backend/qdrant.js';
-import { Logger, createLogger } from '../logger/index.js';
+import { createLogger } from '../logger/index.js';
 import { LOG_PREFIXES } from './constants.js';
 import { env } from '../env.js';
-import * as fs from 'node:fs';
 
 /**
  * Factory result containing both the manager and vector store
@@ -208,9 +204,6 @@ export function getVectorStoreConfigFromEnv(): VectorStoreConfig {
 		? 10000
 		: env.VECTOR_STORE_MAX_VECTORS;
 
-	// Build configuration based on type
-	let config: VectorStoreConfig;
-
 	if (storeType === 'qdrant') {
 		const host = env.VECTOR_STORE_HOST;
 		const url = env.VECTOR_STORE_URL;
@@ -219,7 +212,16 @@ export function getVectorStoreConfigFromEnv(): VectorStoreConfig {
 		const distance = env.VECTOR_STORE_DISTANCE;
 		const onDisk = env.VECTOR_STORE_ON_DISK;
 
-		config = {
+		if (!url && !host) {
+			return {
+				type: 'in-memory',
+				collectionName,
+				dimension,
+				maxVectors,
+			};
+		}
+
+		return {
 			type: 'qdrant',
 			collectionName,
 			dimension,
@@ -230,27 +232,42 @@ export function getVectorStoreConfigFromEnv(): VectorStoreConfig {
 			distance,
 			onDisk,
 		};
+	} else if ((storeType as string) === 'milvus') {
+		const host = env.VECTOR_STORE_HOST;
+		const url = env.VECTOR_STORE_URL;
+		const port = Number.isNaN(env.VECTOR_STORE_PORT) ? undefined : env.VECTOR_STORE_PORT;
+		const username = env.VECTOR_STORE_USERNAME;
+		const password = env.VECTOR_STORE_PASSWORD;
+		const token = env.VECTOR_STORE_API_KEY;
 
-		// Validate required fields and fallback if necessary
 		if (!url && !host) {
-			config = {
+			return {
 				type: 'in-memory',
 				collectionName,
 				dimension,
 				maxVectors,
 			};
 		}
+
+		return {
+			type: 'milvus',
+			collectionName,
+			dimension,
+			url,
+			host,
+			port,
+			username,
+			password,
+			token,
+		};
 	} else {
-		// Use in-memory
-		config = {
+		return {
 			type: 'in-memory',
 			collectionName,
 			dimension,
 			maxVectors,
 		};
 	}
-
-	return config;
 }
 
 /**
@@ -267,48 +284,6 @@ export function isVectorStoreFactory(obj: unknown): obj is VectorStoreFactory {
 		'store' in obj &&
 		obj.manager instanceof VectorStoreManager
 	);
-}
-
-/**
- * Get Qdrant configuration from environment variables
- * Supports both cloud and local configurations
- */
-export function getQdrantConfigFromEnv(): QdrantBackendConfig | null {
-	const qdrantUrl = process.env.VECTOR_STORE_URL;
-	const qdrantApiKey = process.env.VECTOR_STORE_API_KEY;
-	const qdrantHost = process.env.VECTOR_STORE_HOST;
-	const qdrantPort = process.env.VECTOR_STORE_PORT;
-
-	// Always resolve collectionName to a string
-	const collectionName =
-		process.env.VECTOR_STORE_COLLECTION_NAME || process.env.VECTOR_STORE_COLLECTION || 'default';
-
-	// Check if we have cloud configuration
-	if (qdrantUrl) {
-		return {
-			type: 'qdrant',
-			url: qdrantUrl,
-			apiKey: qdrantApiKey, // API key is required for cloud
-			collectionName,
-			dimension: parseInt(process.env.VECTOR_STORE_DIMENSION || '1536', 10),
-			distance: (process.env.VECTOR_STORE_DISTANCE as any) || 'Cosine',
-		};
-	}
-
-	// Check if we have local configuration
-	if (qdrantHost || qdrantPort) {
-		return {
-			type: 'qdrant',
-			host: qdrantHost || 'localhost',
-			port: qdrantPort ? parseInt(qdrantPort, 10) : 6333,
-			apiKey: qdrantApiKey, // Optional for local
-			collectionName,
-			dimension: parseInt(process.env.VECTOR_STORE_DIMENSION || '1536', 10),
-			distance: (process.env.VECTOR_STORE_DISTANCE as any) || 'Cosine',
-		};
-	}
-
-	return null;
 }
 
 /**

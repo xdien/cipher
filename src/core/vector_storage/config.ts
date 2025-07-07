@@ -138,6 +138,45 @@ const QdrantBackendSchema = BaseVectorStoreSchema.extend({
 export type QdrantBackendConfig = z.infer<typeof QdrantBackendSchema>;
 
 /**
+ * Milvus Backend Configuration
+ *
+ * Configuration for Milvus vector database backend.
+ *
+ * @example
+ * ```typescript
+ * const config: MilvusBackendConfig = {
+ *   type: 'milvus',
+ *   url: 'http://localhost:19530',
+ *   collectionName: 'documents',
+ *   dimension: 1536
+ * };
+ * ```
+ */
+const MilvusBackendSchema = BaseVectorStoreSchema.extend({
+	type: z.literal('milvus'),
+
+	/** Milvus connection URL (http://...) - overrides individual params if provided */
+	url: z.string().url().optional().describe('Milvus connection URL'),
+
+	/** Milvus server hostname */
+	host: z.string().optional().describe('Milvus host'),
+
+	/** Milvus REST API port (default: 19530) */
+	port: z.number().int().positive().default(19530).optional().describe('Milvus port'),
+
+	/** Milvus username for authentication (Zilliz Cloud) */
+	username: z.string().optional().describe('Milvus username'),
+
+	/** Milvus password for authentication (Zilliz Cloud) */
+	password: z.string().optional().describe('Milvus password'),
+
+	/** Milvus API token for authentication (Zilliz Cloud) */
+	token: z.string().optional().describe('Milvus API token'),
+}).strict();
+
+export type MilvusBackendConfig = z.infer<typeof MilvusBackendSchema>;
+
+/**
  * Backend Configuration Union Schema
  *
  * Discriminated union of all supported backend configurations.
@@ -146,11 +185,11 @@ export type QdrantBackendConfig = z.infer<typeof QdrantBackendSchema>;
  * Includes custom validation to ensure backends have required connection info.
  */
 const BackendConfigSchema = z
-	.discriminatedUnion('type', [InMemoryBackendSchema, QdrantBackendSchema], {
+	.discriminatedUnion('type', [InMemoryBackendSchema, QdrantBackendSchema, MilvusBackendSchema], {
 		errorMap: (issue, ctx) => {
 			if (issue.code === z.ZodIssueCode.invalid_union_discriminator) {
 				return {
-					message: `Invalid backend type. Expected 'in-memory' or 'qdrant'.`,
+					message: `Invalid backend type. Expected 'in-memory', 'qdrant', or 'milvus'.`,
 				};
 			}
 			return { message: ctx.defaultError };
@@ -169,7 +208,16 @@ const BackendConfigSchema = z
 				});
 			}
 		}
-
+		// Validate Milvus backend requirements
+		if (data.type === 'milvus') {
+			if (!data.url && !data.host) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: "Milvus backend requires either 'url' or 'host' to be specified",
+					path: ['url'],
+				});
+			}
+		}
 		// Validate collection name format
 		if (!/^[a-zA-Z0-9_-]+$/.test(data.collectionName)) {
 			ctx.addIssue({

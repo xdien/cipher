@@ -9,16 +9,8 @@
 
 import type { VectorStore, VectorStoreConfig } from './types.js';
 import { VectorStoreSchema } from './config.js';
-import { VectorStoreError, VectorStoreConnectionError } from './backend/types.js';
 import { Logger, createLogger } from '../logger/index.js';
-import {
-	LOG_PREFIXES,
-	ERROR_MESSAGES,
-	TIMEOUTS,
-	BACKEND_TYPES,
-	DEFAULTS,
-	METRICS_EVENTS,
-} from './constants.js';
+import { LOG_PREFIXES, ERROR_MESSAGES, TIMEOUTS, BACKEND_TYPES } from './constants.js';
 
 /**
  * Health check result for vector store backend
@@ -87,6 +79,7 @@ export class VectorStoreManager {
 	// Lazy loading module references (static to share across instances)
 	private static qdrantModule?: any;
 	private static inMemoryModule?: any;
+	private static milvusModule?: any;
 
 	// In VectorStoreManager, track if in-memory is used as fallback or primary
 	private usedFallback = false;
@@ -199,7 +192,6 @@ export class VectorStoreManager {
 			try {
 				this.store = await this.createBackend();
 				await this.store.connect();
-				this.backendMetadata.connectionTime = Date.now() - startTime;
 				this.usedFallback = false; // Not a fallback if primary backend succeeded
 
 				this.logger.info(`${LOG_PREFIXES.MANAGER} Connected successfully`, {
@@ -377,8 +369,6 @@ export class VectorStoreManager {
 	private async createBackend(): Promise<VectorStore> {
 		const config = this.config;
 
-		this.logger.debug(`${LOG_PREFIXES.MANAGER} Creating backend`, { type: config.type });
-
 		switch (config.type) {
 			case BACKEND_TYPES.QDRANT: {
 				try {
@@ -396,6 +386,28 @@ export class VectorStoreManager {
 					return new QdrantBackend(config);
 				} catch (error) {
 					this.logger.debug(`${LOG_PREFIXES.MANAGER} Failed to create Qdrant backend`, {
+						error: error instanceof Error ? error.message : String(error),
+					});
+					throw error; // Let connection handler deal with fallback
+				}
+			}
+
+			case BACKEND_TYPES.MILVUS: {
+				try {
+					// Lazy load Milvus module
+					if (!VectorStoreManager.milvusModule) {
+						this.logger.info(`${LOG_PREFIXES.MANAGER} Lazy loading Milvus module`);
+						const { MilvusBackend } = await import('./backend/milvus.js');
+						VectorStoreManager.milvusModule = MilvusBackend;
+					}
+
+					const MilvusBackend = VectorStoreManager.milvusModule;
+					this.backendMetadata.type = BACKEND_TYPES.MILVUS;
+					this.backendMetadata.isFallback = false;
+
+					return new MilvusBackend(config);
+				} catch (error) {
+					this.logger.info(`${LOG_PREFIXES.MANAGER} Failed to create Milvus backend: ${error}`, {
 						error: error instanceof Error ? error.message : String(error),
 					});
 					throw error; // Let connection handler deal with fallback
