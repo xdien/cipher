@@ -163,6 +163,15 @@ const MilvusBackendSchema = BaseVectorStoreSchema.extend({
 
 	/** Milvus REST API port (default: 19530) */
 	port: z.number().int().positive().default(19530).optional().describe('Milvus port'),
+
+	/** Milvus username for authentication (Zilliz Cloud) */
+	username: z.string().optional().describe('Milvus username'),
+
+	/** Milvus password for authentication (Zilliz Cloud) */
+	password: z.string().optional().describe('Milvus password'),
+
+	/** Milvus API token for authentication (Zilliz Cloud) */
+	token: z.string().optional().describe('Milvus API token'),
 }).strict();
 
 export type MilvusBackendConfig = z.infer<typeof MilvusBackendSchema>;

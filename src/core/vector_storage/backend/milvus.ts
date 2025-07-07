@@ -1,5 +1,5 @@
 // Requires: npm install @zilliz/milvus2-sdk-node
-import { MilvusClient, DataType } from '@zilliz/milvus2-sdk-node';
+import { MilvusClient, DataType, ConsistencyLevelEnum } from '@zilliz/milvus2-sdk-node';
 import type { VectorStore } from './vector-store.js';
 import type { SearchFilters, VectorStoreResult, MilvusBackendConfig } from './types.js';
 import {
@@ -20,8 +20,7 @@ const VECTOR_STORE_CONFIG_EFCONSTRUCTION = process.env.VECTOR_STORE_CONFIG_EFCON
 const VECTOR_STORE_CONFIG_M = process.env.VECTOR_STORE_CONFIG_M || 4;
 const VECTOR_STORE_CLUSTER_ENDPOINT = process.env.VECTOR_STORE_URL || '';
 const VECTOR_STORE_TOKEN = process.env.VECTOR_STORE_API_KEY || '';
-const VECTOR_STORE_COLLECTION_NAME =
-	process.env.VECTOR_STORE_COLLECTION_NAME || 'cipher_collection';
+const VECTOR_STORE_COLLECTION_NAME = process.env.VECTOR_STORE_COLLECTION_NAME || 'cipher_collection';
 const VECTOR_STORE_USERNAME = process.env.VECTOR_STORE_USERNAME || '';
 const VECTOR_STORE_PASSWORD = process.env.VECTOR_STORE_PASSWORD || '';
 
@@ -77,21 +76,39 @@ export class MilvusBackend implements VectorStore {
 		this.logger = createLogger({
 			level: process.env.LOG_LEVEL || 'info',
 		});
-		console.log('VECTOR_STORE_CLUSTER_ENDPOINT: ', VECTOR_STORE_CLUSTER_ENDPOINT);
-		console.log('VECTOR_STORE_TOKEN: ', VECTOR_STORE_TOKEN);
-		console.log('VECTOR_STORE_USERNAME: ', VECTOR_STORE_USERNAME);
-		console.log('VECTOR_STORE_PASSWORD: ', VECTOR_STORE_PASSWORD);
-		this.client = new MilvusClient({
-			address: VECTOR_STORE_CLUSTER_ENDPOINT,
-			token: VECTOR_STORE_TOKEN,
-			username: VECTOR_STORE_USERNAME,
-			password: VECTOR_STORE_PASSWORD,
-		});
-		console.log('Milvus client: ', this.client);
+
+		// Prefer config values, fallback to env if not provided
+		const address = config.url || (config.host && config.port ? `http://${config.host}:${config.port}` : undefined) || process.env.VECTOR_STORE_URL || '';
+		const token = config.token || process.env.VECTOR_STORE_API_KEY || '';
+		const username = config.username || process.env.VECTOR_STORE_USERNAME || '';
+		const password = config.password || process.env.VECTOR_STORE_PASSWORD || '';
+
+		try {
+			this.client = new MilvusClient({
+				address,
+				token,
+				username,
+				password,
+			});
+		} catch (error) {
+			this.logger.error(`${LOG_PREFIXES.MILVUS} Milvus connection failed inside milvus.ts file`, { error });
+			throw new VectorStoreConnectionError(
+				ERROR_MESSAGES.CONNECTION_FAILED,
+				'milvus',
+				error as Error
+			);
+		}
 		this.logger.info(`${LOG_PREFIXES.MILVUS} Milvus Initialized`, {
 			collection: this.collectionName,
 			dimension: this.dimension,
-			host: config.host || config.url || 'local',
+			host: address,
+		});
+
+		this.logger.info('Milvus connection params', {
+			address,
+			username,
+			password: password ? '***' : undefined,
+			token: token ? '***' : undefined,
 		});
 	}
 
@@ -107,33 +124,36 @@ export class MilvusBackend implements VectorStore {
 
 	async connect(): Promise<void> {
 		if (this.connected) {
-			this.logger.debug(`Milvus already connected`);
+			this.logger.debug(`${LOG_PREFIXES.MILVUS} Already connected`);
 			return;
 		}
-		this.logger.info(`Connecting to Milvus`);
+
+		this.logger.info(`${LOG_PREFIXES.MILVUS} Connecting to Milvus`);
+
 		try {
+			// List collections
 			const collections = await this.client.showCollections();
 			const exists = collections.data.some((c: any) => c.name === this.collectionName);
+
 			if (!exists) {
-				this.logger.info(`Creating collection ${this.collectionName}`);
-				// Clone schema and set dimension dynamically
-				const schema = this.MILVUS_COLLECTION_CONFIG.schema.map(field =>
-					field.name === 'vector' ? { ...field, dim: this.dimension } : { ...field }
-				);
+				this.logger.info(`${LOG_PREFIXES.MILVUS} Creating collection ${this.collectionName}`);
 				await this.client.createCollection({
 					collection_name: this.collectionName,
-					fields: schema,
+					dimension: this.dimension,
+					metric_type: (this.config as any).metric_type || 'IP', // fallback to 'IP' if not present
 				});
-				await this.client.createIndex({
-					collection_name: this.collectionName,
-					...this.MILVUS_COLLECTION_CONFIG.index,
-				});
+			} else {
+				this.logger.info(`${LOG_PREFIXES.MILVUS} Collection already exists: ${this.collectionName}`);
 			}
+
 			await this.client.loadCollection({ collection_name: this.collectionName });
 			this.connected = true;
-			this.logger.info(`Milvus connected`);
+			this.logger.info(`${LOG_PREFIXES.MILVUS} Successfully connected`);
 		} catch (error) {
-			this.logger.error(`Milvus connection failed`, { error });
+			this.logger.error(`${LOG_PREFIXES.MILVUS} Connection failed`, { error });
+			if (error instanceof VectorStoreConnectionError) {
+				throw error;
+			}
 			throw new VectorStoreConnectionError(
 				ERROR_MESSAGES.CONNECTION_FAILED,
 				'milvus',

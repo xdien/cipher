@@ -39,6 +39,8 @@ const envSchema = z.object({
 	VECTOR_STORE_DISTANCE: z.enum(['Cosine', 'Euclidean', 'Dot', 'Manhattan']).default('Cosine'),
 	VECTOR_STORE_ON_DISK: z.boolean().default(false),
 	VECTOR_STORE_MAX_VECTORS: z.number().default(10000),
+	VECTOR_STORE_USERNAME: z.string().optional(),
+	VECTOR_STORE_PASSWORD: z.string().optional(),
 });
 
 type EnvSchema = z.infer<typeof envSchema>;
@@ -122,6 +124,10 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 				return process.env.VECTOR_STORE_MAX_VECTORS
 					? parseInt(process.env.VECTOR_STORE_MAX_VECTORS, 10)
 					: 10000;
+			case 'VECTOR_STORE_USERNAME':
+				return process.env.VECTOR_STORE_USERNAME;
+			case 'VECTOR_STORE_PASSWORD':
+				return process.env.VECTOR_STORE_PASSWORD;
 			default:
 				return process.env[prop];
 		}
@@ -185,6 +191,8 @@ export const validateEnv = () => {
 		VECTOR_STORE_MAX_VECTORS: process.env.VECTOR_STORE_MAX_VECTORS
 			? parseInt(process.env.VECTOR_STORE_MAX_VECTORS, 10)
 			: 10000,
+		VECTOR_STORE_USERNAME: process.env.VECTOR_STORE_USERNAME,
+		VECTOR_STORE_PASSWORD: process.env.VECTOR_STORE_PASSWORD,
 	};
 
 	const result = envSchema.safeParse(envToValidate);

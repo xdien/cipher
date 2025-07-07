@@ -200,7 +200,6 @@ export class VectorStoreManager {
 			try {
 				this.store = await this.createBackend();
 				await this.store.connect();
-				this.backendMetadata.connectionTime = Date.now() - startTime;
 				this.usedFallback = false; // Not a fallback if primary backend succeeded
 
 				this.logger.info(`${LOG_PREFIXES.MANAGER} Connected successfully`, {
@@ -378,7 +377,7 @@ export class VectorStoreManager {
 	private async createBackend(): Promise<VectorStore> {
 		const config = this.config;
 
-		this.logger.debug(`${LOG_PREFIXES.MANAGER} Creating backend`, { type: config.type });
+		this.logger.info(`${LOG_PREFIXES.MANAGER} Creating backend`, { type: config.type });
 
 		switch (config.type) {
 			case BACKEND_TYPES.QDRANT: {
@@ -407,7 +406,7 @@ export class VectorStoreManager {
 				try {
 					// Lazy load Milvus module
 					if (!VectorStoreManager.milvusModule) {
-						this.logger.debug(`${LOG_PREFIXES.MANAGER} Lazy loading Milvus module`);
+						this.logger.info(`${LOG_PREFIXES.MANAGER} Lazy loading Milvus module`);
 						const { MilvusBackend } = await import('./backend/milvus.js');
 						VectorStoreManager.milvusModule = MilvusBackend;
 					}
@@ -418,7 +417,7 @@ export class VectorStoreManager {
 
 					return new MilvusBackend(config);
 				} catch (error) {
-					this.logger.debug(`${LOG_PREFIXES.MANAGER} Failed to create Milvus backend`, {
+					this.logger.info(`${LOG_PREFIXES.MANAGER} Failed to create Milvus backend: ${error}`, {
 						error: error instanceof Error ? error.message : String(error),
 					});
 					throw error; // Let connection handler deal with fallback

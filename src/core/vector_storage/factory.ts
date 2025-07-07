@@ -240,6 +240,16 @@ export function getVectorStoreConfigFromEnv(): VectorStoreConfig {
 		const host = env.VECTOR_STORE_HOST;
 		const url = env.VECTOR_STORE_URL;
 		const port = Number.isNaN(env.VECTOR_STORE_PORT) ? undefined : env.VECTOR_STORE_PORT;
+		const username = env.VECTOR_STORE_USERNAME;
+		const password = env.VECTOR_STORE_PASSWORD;
+		const token = env.VECTOR_STORE_API_KEY;
+
+		console.log('url', url);
+		console.log('host', host);
+		console.log('port', port);
+		console.log('username', username);
+		console.log('password', password);
+		console.log('token', token);
 
 		if (!url && !host) {
 			return {
@@ -257,6 +267,9 @@ export function getVectorStoreConfigFromEnv(): VectorStoreConfig {
 			url,
 			host,
 			port,
+			username,
+			password,
+			token,
 		};
 	} else {
 		return {
