@@ -87,6 +87,7 @@ export class VectorStoreManager {
 	// Lazy loading module references (static to share across instances)
 	private static qdrantModule?: any;
 	private static inMemoryModule?: any;
+	private static milvusModule?: any;
 
 	// In VectorStoreManager, track if in-memory is used as fallback or primary
 	private usedFallback = false;
@@ -396,6 +397,28 @@ export class VectorStoreManager {
 					return new QdrantBackend(config);
 				} catch (error) {
 					this.logger.debug(`${LOG_PREFIXES.MANAGER} Failed to create Qdrant backend`, {
+						error: error instanceof Error ? error.message : String(error),
+					});
+					throw error; // Let connection handler deal with fallback
+				}
+			}
+
+			case BACKEND_TYPES.MILVUS: {
+				try {
+					// Lazy load Milvus module
+					if (!VectorStoreManager.milvusModule) {
+						this.logger.debug(`${LOG_PREFIXES.MANAGER} Lazy loading Milvus module`);
+						const { MilvusBackend } = await import('./backend/milvus.js');
+						VectorStoreManager.milvusModule = MilvusBackend;
+					}
+
+					const MilvusBackend = VectorStoreManager.milvusModule;
+					this.backendMetadata.type = BACKEND_TYPES.MILVUS;
+					this.backendMetadata.isFallback = false;
+
+					return new MilvusBackend(config);
+				} catch (error) {
+					this.logger.debug(`${LOG_PREFIXES.MANAGER} Failed to create Milvus backend`, {
 						error: error instanceof Error ? error.message : String(error),
 					});
 					throw error; // Let connection handler deal with fallback

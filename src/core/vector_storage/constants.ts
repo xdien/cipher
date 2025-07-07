@@ -67,6 +67,7 @@ export const BACKEND_TYPES = {
 	WEAVIATE: 'weaviate',
 	CHROMA: 'chroma',
 	IN_MEMORY: 'in-memory',
+	MILVUS: 'milvus',
 } as const;
 
 /**

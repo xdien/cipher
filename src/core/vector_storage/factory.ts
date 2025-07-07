@@ -208,9 +208,6 @@ export function getVectorStoreConfigFromEnv(): VectorStoreConfig {
 		? 10000
 		: env.VECTOR_STORE_MAX_VECTORS;
 
-	// Build configuration based on type
-	let config: VectorStoreConfig;
-
 	if (storeType === 'qdrant') {
 		const host = env.VECTOR_STORE_HOST;
 		const url = env.VECTOR_STORE_URL;
@@ -219,7 +216,16 @@ export function getVectorStoreConfigFromEnv(): VectorStoreConfig {
 		const distance = env.VECTOR_STORE_DISTANCE;
 		const onDisk = env.VECTOR_STORE_ON_DISK;
 
-		config = {
+		if (!url && !host) {
+			return {
+				type: 'in-memory',
+				collectionName,
+				dimension,
+				maxVectors,
+			};
+		}
+
+		return {
 			type: 'qdrant',
 			collectionName,
 			dimension,
@@ -230,27 +236,36 @@ export function getVectorStoreConfigFromEnv(): VectorStoreConfig {
 			distance,
 			onDisk,
 		};
+	} else if ((storeType as string) === 'milvus') {
+		const host = env.VECTOR_STORE_HOST;
+		const url = env.VECTOR_STORE_URL;
+		const port = Number.isNaN(env.VECTOR_STORE_PORT) ? undefined : env.VECTOR_STORE_PORT;
 
-		// Validate required fields and fallback if necessary
 		if (!url && !host) {
-			config = {
+			return {
 				type: 'in-memory',
 				collectionName,
 				dimension,
 				maxVectors,
 			};
 		}
+
+		return {
+			type: 'milvus',
+			collectionName,
+			dimension,
+			url,
+			host,
+			port,
+		};
 	} else {
-		// Use in-memory
-		config = {
+		return {
 			type: 'in-memory',
 			collectionName,
 			dimension,
 			maxVectors,
 		};
 	}
-
-	return config;
 }
 
 /**
