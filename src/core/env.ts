@@ -14,6 +14,7 @@ const envSchema = z.object({
 	ANTHROPIC_API_KEY: z.string().optional(),
 	OPENROUTER_API_KEY: z.string().optional(),
 	OPENAI_BASE_URL: z.string().optional(),
+	OLLAMA_BASE_URL: z.string().optional(),
 	OPENAI_ORG_ID: z.string().optional(),
 	// Embedding Configuration
 	EMBEDDING_MODEL: z.string().optional(),
@@ -39,8 +40,8 @@ const envSchema = z.object({
 	VECTOR_STORE_DISTANCE: z.enum(['Cosine', 'Euclidean', 'Dot', 'Manhattan']).default('Cosine'),
 	VECTOR_STORE_ON_DISK: z.boolean().default(false),
 	VECTOR_STORE_MAX_VECTORS: z.number().default(10000),
-	VECTOR_STORE_USERNAME: z.string().optional(),
-	VECTOR_STORE_PASSWORD: z.string().optional(),
+	// Memory Search Configuration
+	SEARCH_MEMORY_TYPE: z.enum(['knowledge', 'reflection', 'both']).default('both'),
 });
 
 type EnvSchema = z.infer<typeof envSchema>;
@@ -63,6 +64,8 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 				return process.env.OPENROUTER_API_KEY;
 			case 'OPENAI_BASE_URL':
 				return process.env.OPENAI_BASE_URL;
+			case 'OLLAMA_BASE_URL':
+				return process.env.OLLAMA_BASE_URL;
 			case 'OPENAI_ORG_ID':
 				return process.env.OPENAI_ORG_ID;
 			// Embedding Configuration
@@ -124,10 +127,9 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 				return process.env.VECTOR_STORE_MAX_VECTORS
 					? parseInt(process.env.VECTOR_STORE_MAX_VECTORS, 10)
 					: 10000;
-			case 'VECTOR_STORE_USERNAME':
-				return process.env.VECTOR_STORE_USERNAME;
-			case 'VECTOR_STORE_PASSWORD':
-				return process.env.VECTOR_STORE_PASSWORD;
+			// Memory Search Configuration
+			case 'SEARCH_MEMORY_TYPE':
+				return process.env.SEARCH_MEMORY_TYPE || 'both';
 			default:
 				return process.env[prop];
 		}
@@ -152,6 +154,7 @@ export const validateEnv = () => {
 		ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
 		OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
 		OPENAI_BASE_URL: process.env.OPENAI_BASE_URL,
+		OLLAMA_BASE_URL: process.env.OLLAMA_BASE_URL,
 		OPENAI_ORG_ID: process.env.OPENAI_ORG_ID,
 		// Embedding Configuration
 		EMBEDDING_MODEL: process.env.EMBEDDING_MODEL,
@@ -191,8 +194,8 @@ export const validateEnv = () => {
 		VECTOR_STORE_MAX_VECTORS: process.env.VECTOR_STORE_MAX_VECTORS
 			? parseInt(process.env.VECTOR_STORE_MAX_VECTORS, 10)
 			: 10000,
-		VECTOR_STORE_USERNAME: process.env.VECTOR_STORE_USERNAME,
-		VECTOR_STORE_PASSWORD: process.env.VECTOR_STORE_PASSWORD,
+		// Memory Search Configuration
+		SEARCH_MEMORY_TYPE: process.env.SEARCH_MEMORY_TYPE || 'both',
 	};
 
 	const result = envSchema.safeParse(envToValidate);
