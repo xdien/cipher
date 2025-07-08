@@ -33,22 +33,22 @@ program
 	)
 	/**
 	 * Main CLI action handler for the Cipher agent.
-	 * 
+	 *
 	 * Strict Mode Behavior:
 	 * When the --strict flag is used, all MCP server connectionMode properties
 	 * are overridden to 'strict', requiring all server connections to succeed.
 	 * This takes precedence over individual server configuration settings.
-	 * 
+	 *
 	 * If any MCP server fails to connect in strict mode, the application will
 	 * exit with an error. Without strict mode, failed connections are logged
 	 * as warnings but don't prevent startup.
-	 * 
+	 *
 	 * New Session Behavior:
 	 * When the --new-session flag is used, a new conversation session is created
 	 * and made available for the CLI interaction. The session ID parameter is optional:
 	 * - --new-session: Creates a session with auto-generated UUID
 	 * - --new-session mySessionId: Creates a session with the specified ID
-	 * 
+	 *
 	 * Created sessions persist for the duration of the CLI session and follow
 	 * the agent's session management lifecycle and TTL settings.
 	 */
@@ -96,15 +96,13 @@ program
 						'Please ensure the config file exists or create one based on memAgent/cipher.yml'
 					);
 				} else {
-					logger.error(
-						`Please ensure the specified config file exists at ${configPath}`
-					);
+					logger.error(`Please ensure the specified config file exists at ${configPath}`);
 				}
 				process.exit(1);
 			}
 
 			const cfg = await loadAgentConfig(configPath);
-			
+
 			// Apply --strict flag to all MCP server configs if specified
 			if (opts.strict && cfg.mcpServers) {
 				logger.info('Applying strict mode to all MCP server connections');
@@ -113,7 +111,7 @@ program
 					serverConfig.connectionMode = 'strict';
 				}
 			}
-			
+
 			agent = new MemAgent(cfg);
 
 			// Start the agent (initialize async services)
@@ -124,9 +122,7 @@ program
 				try {
 					// Use provided session ID or generate a random one
 					const sessionId =
-						typeof opts.newSession === 'string' && opts.newSession
-							? opts.newSession
-							: undefined; // Let agent generate random ID
+						typeof opts.newSession === 'string' && opts.newSession ? opts.newSession : undefined; // Let agent generate random ID
 
 					const session = await agent.createSession(sessionId);
 
@@ -147,7 +143,7 @@ program
 			}
 		} catch (err) {
 			const errorMessage = err instanceof Error ? err.message : String(err);
-			
+
 			if (opts.strict) {
 				logger.error(
 					`Failed to load agent config from ${resolveConfigPath(opts.agent)} (strict mode enabled):`,
@@ -155,7 +151,7 @@ program
 				);
 				logger.error(
 					'Strict mode requires all MCP server connections to succeed. ' +
-					'Check your MCP server configurations or run without --strict flag to allow lenient connections.'
+						'Check your MCP server configurations or run without --strict flag to allow lenient connections.'
 				);
 			} else {
 				logger.error(

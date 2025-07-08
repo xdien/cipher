@@ -123,7 +123,9 @@ describe('UnifiedToolManager', () => {
 	describe('Tool Execution', () => {
 		it('should execute internal tools correctly', async () => {
 			const result = await unifiedManager.executeTool('cipher_extract_and_operate_memory', {
-				interaction: ['The API endpoint requires authentication using JWT tokens. The function validates user permissions and handles error responses. Database queries use async operations for better performance.'],
+				interaction: [
+					'The API endpoint requires authentication using JWT tokens. The function validates user permissions and handles error responses. Database queries use async operations for better performance.',
+				],
 			});
 
 			expect(result.success).toBe(true);
@@ -133,7 +135,9 @@ describe('UnifiedToolManager', () => {
 		it('should route tools to correct manager', async () => {
 			// Test internal tool routing
 			const internalResult = await unifiedManager.executeTool('cipher_extract_and_operate_memory', {
-				interaction: ['The microservice architecture uses Docker containers for deployment. Redis cache improves API performance and reduces database load.'],
+				interaction: [
+					'The microservice architecture uses Docker containers for deployment. Redis cache improves API performance and reduces database load.',
+				],
 			});
 			expect(internalResult.success).toBe(true);
 
@@ -293,7 +297,9 @@ describe('UnifiedToolManager', () => {
 
 			// 3. Execute a tool
 			const extractResult = await unifiedManager.executeTool('cipher_extract_and_operate_memory', {
-				interaction: ['The REST API implements OAuth authentication for secure access. JSON Web Tokens validate user sessions and handle authorization.'],
+				interaction: [
+					'The REST API implements OAuth authentication for secure access. JSON Web Tokens validate user sessions and handle authorization.',
+				],
 			});
 			expect(extractResult.success).toBe(true);
 

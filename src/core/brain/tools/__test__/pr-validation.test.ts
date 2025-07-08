@@ -41,8 +41,8 @@ const mockVectorStore = {
 		{
 			id: 'mock_memory_1',
 			score: 0.9,
-			payload: { text: 'Existing similar memory', tags: ['programming'] }
-		}
+			payload: { text: 'Existing similar memory', tags: ['programming'] },
+		},
 	]),
 	insert: vi.fn().mockResolvedValue(true),
 	update: vi.fn().mockResolvedValue(true),
@@ -58,7 +58,11 @@ const mockVectorStoreManager = {
 };
 
 const mockLLMService = {
-	directGenerate: vi.fn().mockResolvedValue('Operation: ADD\nConfidence: 0.8\nReasoning: New technical information to store'),
+	directGenerate: vi
+		.fn()
+		.mockResolvedValue(
+			'Operation: ADD\nConfidence: 0.8\nReasoning: New technical information to store'
+		),
 };
 
 const mockInternalToolContext = {
@@ -123,7 +127,7 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 	describe('Fix 2: Tool Categories - Tool Info by Name (definitions.test.ts line 122)', () => {
 		it('should get tool info for cipher_extract_and_operate_memory', () => {
 			const extractInfo = getToolInfo('cipher_extract_and_operate_memory');
-			
+
 			expect(extractInfo).toBeDefined();
 			expect(extractInfo).not.toBeNull();
 			expect(extractInfo?.category).toBe('memory');
@@ -132,7 +136,7 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 
 		it('should get tool info for cipher_memory_search', () => {
 			const searchInfo = getToolInfo('cipher_memory_search');
-			
+
 			expect(searchInfo).toBeDefined();
 			expect(searchInfo).not.toBeNull();
 			expect(searchInfo?.category).toBe('memory');
@@ -141,7 +145,7 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 		it('should NOT return tool info for old deprecated tools', () => {
 			const oldExtractInfo = getToolInfo('cipher_extract_knowledge');
 			const oldOperationInfo = getToolInfo('cipher_memory_operation');
-			
+
 			expect(oldExtractInfo).toBeNull();
 			expect(oldOperationInfo).toBeNull();
 		});
@@ -150,7 +154,7 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 	describe('Fix 3: Tool Categories - Tools by Category (definitions.test.ts line 133)', () => {
 		it('should include new tools in memory category', () => {
 			const memoryTools = getToolsByCategory('memory');
-			
+
 			expect(memoryTools).toHaveLength(2);
 			expect(memoryTools).toContain('cipher_extract_and_operate_memory');
 			expect(memoryTools).toContain('cipher_memory_search');
@@ -158,7 +162,7 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 
 		it('should NOT include old deprecated tools in memory category', () => {
 			const memoryTools = getToolsByCategory('memory');
-			
+
 			expect(memoryTools).not.toContain('cipher_extract_knowledge');
 			expect(memoryTools).not.toContain('cipher_memory_operation');
 		});
@@ -173,23 +177,20 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 	describe('Fix 4: Integration with Manager (definitions.test.ts line 147)', () => {
 		it('should register and execute all tools through manager successfully', async () => {
 			// Test extract and operate memory tool (using real manager with mock services)
-			const extractResult = await internalToolManager.executeTool(
-				'extract_and_operate_memory', 
-				{
-					interaction: 'TypeScript interface pattern for tools',
-				}
-			);
-			
+			const extractResult = await internalToolManager.executeTool('extract_and_operate_memory', {
+				interaction: 'TypeScript interface pattern for tools',
+			});
+
 			expect(extractResult.success).toBe(true);
 			expect(extractResult.extraction).toBeDefined();
 		});
 
 		it('should register and execute memory search tool successfully', async () => {
-			const searchResult = await internalToolManager.executeTool(
-				'memory_search', 
-				{ query: 'test search', type: 'knowledge' }
-			);
-			
+			const searchResult = await internalToolManager.executeTool('memory_search', {
+				query: 'test search',
+				type: 'knowledge',
+			});
+
 			expect(searchResult.success).toBe(true);
 			expect(searchResult.results).toBeDefined();
 		});
@@ -227,13 +228,18 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 
 		it('should route tools to correct manager', async () => {
 			// Test internal tool routing
-			const internalResult = await unifiedToolManager.executeTool('cipher_extract_and_operate_memory', {
-				interaction: ['Test knowledge extraction'],
-			});
+			const internalResult = await unifiedToolManager.executeTool(
+				'cipher_extract_and_operate_memory',
+				{
+					interaction: ['Test knowledge extraction'],
+				}
+			);
 			expect(internalResult.success).toBe(true);
 
 			// Test that internal tools are identified correctly
-			const isInternal = await unifiedToolManager.getToolSource('cipher_extract_and_operate_memory');
+			const isInternal = await unifiedToolManager.getToolSource(
+				'cipher_extract_and_operate_memory'
+			);
 			expect(isInternal).toBe('internal');
 		});
 
@@ -242,15 +248,15 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 				unifiedToolManager.executeTool('cipher_extract_knowledge', {})
 			).rejects.toThrow();
 
-			await expect(
-				unifiedToolManager.executeTool('cipher_memory_operation', {})
-			).rejects.toThrow();
+			await expect(unifiedToolManager.executeTool('cipher_memory_operation', {})).rejects.toThrow();
 		});
 	});
 
 	describe('Fix 8: Tool Availability Check (unified-tool-manager.test.ts line 151)', () => {
 		it('should check tool availability correctly for new tools', async () => {
-			const isExtractAvailable = await unifiedToolManager.isToolAvailable('cipher_extract_and_operate_memory');
+			const isExtractAvailable = await unifiedToolManager.isToolAvailable(
+				'cipher_extract_and_operate_memory'
+			);
 			expect(isExtractAvailable).toBe(true);
 
 			const isSearchAvailable = await unifiedToolManager.isToolAvailable('cipher_memory_search');
@@ -261,17 +267,22 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 		});
 
 		it('should return false for old deprecated tools', async () => {
-			const oldExtractAvailable = await unifiedToolManager.isToolAvailable('cipher_extract_knowledge');
+			const oldExtractAvailable = await unifiedToolManager.isToolAvailable(
+				'cipher_extract_knowledge'
+			);
 			expect(oldExtractAvailable).toBe(false);
 
-			const oldOperationAvailable = await unifiedToolManager.isToolAvailable('cipher_memory_operation');
+			const oldOperationAvailable =
+				await unifiedToolManager.isToolAvailable('cipher_memory_operation');
 			expect(oldOperationAvailable).toBe(false);
 		});
 	});
 
 	describe('Fix 9: Tool Source Detection (unified-tool-manager.test.ts line 260)', () => {
 		it('should correctly identify internal tool sources for new tools', async () => {
-			const extractSource = await unifiedToolManager.getToolSource('cipher_extract_and_operate_memory');
+			const extractSource = await unifiedToolManager.getToolSource(
+				'cipher_extract_and_operate_memory'
+			);
 			expect(extractSource).toBe('internal');
 
 			const searchSource = await unifiedToolManager.getToolSource('cipher_memory_search');
@@ -303,9 +314,12 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 			expect(openaiTools.length).toBe(2);
 
 			// 3. Execute a tool with new name (this will use the real manager now)
-			const extractResult = await unifiedToolManager.executeTool('cipher_extract_and_operate_memory', {
-				interaction: ['Integration test fact'],
-			});
+			const extractResult = await unifiedToolManager.executeTool(
+				'cipher_extract_and_operate_memory',
+				{
+					interaction: ['Integration test fact'],
+				}
+			);
 			expect(extractResult.success).toBe(true);
 
 			// 4. Check statistics (should now be recorded properly)
@@ -319,7 +333,7 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 			// Create a fresh manager with clean registry
 			InternalToolRegistry.reset();
 			const freshManager = new InternalToolManager();
-			
+
 			// Should work after initialization
 			await freshManager.initialize();
 			const result = freshManager.registerTool(extractAndOperateMemoryTool);
@@ -331,10 +345,10 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 			InternalToolRegistry.reset();
 			const freshManager = new InternalToolManager();
 			await freshManager.initialize();
-			
+
 			const registerResult = freshManager.registerTool(extractAndOperateMemoryTool);
 			expect(registerResult.success).toBe(true);
-			
+
 			const tools = freshManager.getAllTools();
 			expect(Object.keys(tools)).toContain('cipher_extract_and_operate_memory');
 			expect(freshManager.isInternalTool('cipher_extract_and_operate_memory')).toBe(true);
@@ -346,9 +360,12 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 		it('should have correct parameter schema for extract_and_operate_memory', () => {
 			expect(extractAndOperateMemoryTool.parameters.type).toBe('object');
 			expect(extractAndOperateMemoryTool.parameters.properties?.interaction).toBeDefined();
-			expect(extractAndOperateMemoryTool.parameters.properties?.interaction?.type).toEqual(['string', 'array']);
+			expect(extractAndOperateMemoryTool.parameters.properties?.interaction?.type).toEqual([
+				'string',
+				'array',
+			]);
 			expect(extractAndOperateMemoryTool.parameters.required).toContain('interaction');
-			
+
 			// Should NOT have old conversation parameter
 			expect(extractAndOperateMemoryTool.parameters.properties?.conversation).toBeUndefined();
 		});
@@ -364,15 +381,21 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 	describe('Bonus: Tool Execution with Correct Parameters', () => {
 		it('should execute extract_and_operate_memory with interaction parameter', async () => {
 			// Test with string interaction using mocked context
-			const stringResult = await extractAndOperateMemoryTool.handler({
-				interaction: 'TypeScript interface pattern for tools',
-			}, mockInternalToolContext);
+			const stringResult = await extractAndOperateMemoryTool.handler(
+				{
+					interaction: 'TypeScript interface pattern for tools',
+				},
+				mockInternalToolContext
+			);
 			expect(stringResult.success).toBe(true);
 
 			// Test with array interaction using mocked context
-			const arrayResult = await extractAndOperateMemoryTool.handler({
-				interaction: ['TypeScript interface pattern', 'React component optimization'],
-			}, mockInternalToolContext);
+			const arrayResult = await extractAndOperateMemoryTool.handler(
+				{
+					interaction: ['TypeScript interface pattern', 'React component optimization'],
+				},
+				mockInternalToolContext
+			);
 			expect(arrayResult.success).toBe(true);
 		});
 
@@ -381,10 +404,10 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 				{ query: 'test search query' },
 				mockInternalToolContext
 			);
-			
+
 			expect(searchResult.success).toBe(true);
 			expect(searchResult.query).toBe('test search query');
 			expect(searchResult.results).toBeDefined();
 		});
 	});
-}); 
+});

@@ -47,16 +47,12 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 		try {
 			// Parse input to determine if it's a command or regular prompt
 			const parsedInput = commandParser.parseInput(trimmedInput);
-			
+
 			if (parsedInput.isCommand) {
 				// Handle slash command
 				if (parsedInput.command && parsedInput.args !== undefined) {
-					const commandSuccess = await executeCommand(
-						parsedInput.command, 
-						parsedInput.args, 
-						agent
-					);
-					
+					const commandSuccess = await executeCommand(parsedInput.command, parsedInput.args, agent);
+
 					if (!commandSuccess) {
 						console.log(chalk.gray('Command execution failed or was cancelled.'));
 					}

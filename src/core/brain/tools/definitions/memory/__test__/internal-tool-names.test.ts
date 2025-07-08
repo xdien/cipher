@@ -14,7 +14,9 @@ describe('Internal Tool Names', () => {
 
 		mockMCPManager = {
 			getAllTools: async () => ({}), // No MCP tools
-			executeTool: async () => { throw new Error('Not implemented'); },
+			executeTool: async () => {
+				throw new Error('Not implemented');
+			},
 			clients: new Map(),
 			failedConnections: new Map(),
 			logger: console,
@@ -24,7 +26,9 @@ describe('Internal Tool Names', () => {
 			connect: async () => {},
 			disconnect: async () => {},
 			getAvailableTools: async () => ({}),
-			executeToolCall: async () => { throw new Error('Not implemented'); },
+			executeToolCall: async () => {
+				throw new Error('Not implemented');
+			},
 			getToolSchema: () => null,
 			listTools: async () => [],
 			getConnectionStatus: () => ({ connected: [], failed: [] }),
@@ -49,7 +53,7 @@ describe('Internal Tool Names', () => {
 			eventNames: () => [],
 			prependListener: () => {},
 			prependOnceListener: () => {},
-			rawListeners: () => []
+			rawListeners: () => [],
 		};
 	});
 
@@ -69,24 +73,24 @@ describe('Internal Tool Names', () => {
 	});
 
 	it('should make tools available in UnifiedToolManager', async () => {
-		const unifiedToolManager = new UnifiedToolManager(
-			mockMCPManager, 
-			internalToolManager, 
-			{ enableInternalTools: true, enableMcpTools: false }
-		);
+		const unifiedToolManager = new UnifiedToolManager(mockMCPManager, internalToolManager, {
+			enableInternalTools: true,
+			enableMcpTools: false,
+		});
 
 		const allTools = await unifiedToolManager.getAllTools();
 		expect(Object.keys(allTools)).toContain('cipher_extract_and_operate_memory');
 	});
 
 	it('should check tool availability correctly', async () => {
-		const unifiedToolManager = new UnifiedToolManager(
-			mockMCPManager, 
-			internalToolManager, 
-			{ enableInternalTools: true, enableMcpTools: false }
-		);
+		const unifiedToolManager = new UnifiedToolManager(mockMCPManager, internalToolManager, {
+			enableInternalTools: true,
+			enableMcpTools: false,
+		});
 
-		expect(await unifiedToolManager.isToolAvailable('cipher_extract_and_operate_memory')).toBe(true);
+		expect(await unifiedToolManager.isToolAvailable('cipher_extract_and_operate_memory')).toBe(
+			true
+		);
 		expect(await unifiedToolManager.isToolAvailable('nonexistent_tool')).toBe(false);
 	});
-}); 
+});

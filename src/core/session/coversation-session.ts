@@ -79,12 +79,17 @@ export class ConversationSession {
 
 			// Check if the unifiedToolManager is available
 			if (!this.services.unifiedToolManager) {
-				logger.warn('ConversationSession: UnifiedToolManager not available, skipping memory extraction');
+				logger.warn(
+					'ConversationSession: UnifiedToolManager not available, skipping memory extraction'
+				);
 				return;
 			}
 
 			// Extract comprehensive interaction data including tool usage
-			const comprehensiveInteractionData = this.extractComprehensiveInteractionData(userInput, aiResponse);
+			const comprehensiveInteractionData = this.extractComprehensiveInteractionData(
+				userInput,
+				aiResponse
+			);
 
 			// Call the extract_and_operate_memory tool directly (with cipher_ prefix)
 			const memoryResult = await this.services.unifiedToolManager.executeTool(
@@ -94,15 +99,15 @@ export class ConversationSession {
 					context: {
 						sessionId: this.id,
 						conversationTopic: 'Interactive CLI session',
-						recentMessages: comprehensiveInteractionData
+						recentMessages: comprehensiveInteractionData,
 					},
 					options: {
 						similarityThreshold: 0.7,
 						maxSimilarResults: 5,
 						useLLMDecisions: true,
 						confidenceThreshold: 0.4,
-						enableDeleteOperations: true
-					}
+						enableDeleteOperations: true,
+					},
 				}
 			);
 
@@ -110,18 +115,19 @@ export class ConversationSession {
 				success: memoryResult.success,
 				extractedFacts: memoryResult.extraction?.extracted || 0,
 				totalMemoryActions: memoryResult.memory?.length || 0,
-				actionBreakdown: memoryResult.memory ? {
-					ADD: memoryResult.memory.filter((a: any) => a.event === 'ADD').length,
-					UPDATE: memoryResult.memory.filter((a: any) => a.event === 'UPDATE').length,
-					DELETE: memoryResult.memory.filter((a: any) => a.event === 'DELETE').length,
-					NONE: memoryResult.memory.filter((a: any) => a.event === 'NONE').length
-				} : {}
+				actionBreakdown: memoryResult.memory
+					? {
+							ADD: memoryResult.memory.filter((a: any) => a.event === 'ADD').length,
+							UPDATE: memoryResult.memory.filter((a: any) => a.event === 'UPDATE').length,
+							DELETE: memoryResult.memory.filter((a: any) => a.event === 'DELETE').length,
+							NONE: memoryResult.memory.filter((a: any) => a.event === 'NONE').length,
+						}
+					: {},
 			});
-
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			logger.error('ConversationSession: Memory extraction failed', {
-				error: errorMessage
+				error: errorMessage,
 			});
 			// Don't throw error to avoid breaking the main conversation flow
 		}
@@ -133,40 +139,42 @@ export class ConversationSession {
 	 */
 	private extractComprehensiveInteractionData(userInput: string, aiResponse: string): string[] {
 		const interactionData: string[] = [];
-		
+
 		// Start with the user input
 		interactionData.push(`User: ${userInput}`);
 
 		// Get recent messages from context manager to extract tool usage
 		const recentMessages = this.contextManager.getRawMessages();
-		
+
 		// Find messages from this current interaction (after the user input)
 		// We'll look for the most recent assistant and tool messages
 		const currentInteractionMessages = [];
 		let foundUserMessage = false;
-		
+
 		// Process messages in reverse to get the most recent interaction
 		for (let i = recentMessages.length - 1; i >= 0; i--) {
 			const message = recentMessages[i];
-			
+
 			if (!message) {
 				continue;
 			}
-			
+
 			// Skip if we haven't reached the current user message yet
 			if (!foundUserMessage) {
-				if (message.role === 'user' && 
-					Array.isArray(message.content) && 
-					message.content.length > 0 && 
-					message.content[0] && 
-					message.content[0].type === 'text' && 
+				if (
+					message.role === 'user' &&
+					Array.isArray(message.content) &&
+					message.content.length > 0 &&
+					message.content[0] &&
+					message.content[0].type === 'text' &&
 					'text' in message.content[0] &&
-					message.content[0].text === userInput) {
+					message.content[0].text === userInput
+				) {
 					foundUserMessage = true;
 				}
 				continue;
 			}
-			
+
 			// Add messages from this interaction
 			if (message.role === 'assistant' || message.role === 'tool') {
 				currentInteractionMessages.unshift(message);
@@ -179,12 +187,12 @@ export class ConversationSession {
 		// Process the interaction messages to extract technical details
 		const toolsUsed: string[] = [];
 		const toolResults: string[] = [];
-		
+
 		for (const message of currentInteractionMessages) {
 			if (!message) {
 				continue;
 			}
-			
+
 			if (message.role === 'assistant' && message.toolCalls && message.toolCalls.length > 0) {
 				// Extract tool calls
 				for (const toolCall of message.toolCalls) {
@@ -213,7 +221,7 @@ export class ConversationSession {
 		if (toolsUsed.length > 0) {
 			interactionData.push(`Tools used: ${toolsUsed.join(', ')}`);
 		}
-		
+
 		if (toolResults.length > 0) {
 			interactionData.push(`Tool results: ${toolResults.join('; ')}`);
 		}
@@ -225,7 +233,7 @@ export class ConversationSession {
 			userInput: userInput.substring(0, 50),
 			toolsUsed: toolsUsed.length,
 			toolResults: toolResults.length,
-			totalDataPoints: interactionData.length
+			totalDataPoints: interactionData.length,
 		});
 
 		return interactionData;
@@ -243,10 +251,13 @@ export class ConversationSession {
 			case 'list_files':
 				return args.path ? `directory: ${args.path}` : 'directory listing';
 			case 'cipher_memory_search':
-				return args.query ? `query: "${args.query.substring(0, 50)}${args.query.length > 50 ? '...' : ''}"` : 'memory search';
+				return args.query
+					? `query: "${args.query.substring(0, 50)}${args.query.length > 50 ? '...' : ''}"`
+					: 'memory search';
 			default:
 				// For other tools, try to extract key identifying information
-				if (args.query) return `query: "${args.query.substring(0, 30)}${args.query.length > 30 ? '...' : ''}"`;
+				if (args.query)
+					return `query: "${args.query.substring(0, 30)}${args.query.length > 30 ? '...' : ''}"`;
 				if (args.path) return `path: ${args.path}`;
 				if (args.file) return `file: ${args.file}`;
 				return 'arguments provided';
@@ -263,19 +274,17 @@ export class ConversationSession {
 				const parsed = JSON.parse(content);
 				return this.formatToolResultSummary(toolName, parsed);
 			}
-			
+
 			// Handle object content
 			if (typeof content === 'object') {
 				return this.formatToolResultSummary(toolName, content);
 			}
-			
+
 			return 'result received';
 		} catch (e) {
 			// If parsing fails, provide a basic summary
 			const contentStr = String(content);
-			return contentStr.length > 100 ? 
-				`${contentStr.substring(0, 100)}...` : 
-				contentStr;
+			return contentStr.length > 100 ? `${contentStr.substring(0, 100)}...` : contentStr;
 		}
 	}
 
@@ -292,13 +301,13 @@ export class ConversationSession {
 					return `file read (${lines} lines, ${size} chars)`;
 				}
 				return 'file read';
-			
+
 			case 'cipher_memory_search':
 				if (result.results && Array.isArray(result.results)) {
 					return `found ${result.results.length} memory entries`;
 				}
 				return 'memory search completed';
-			
+
 			case 'list_files':
 				if (result.content && Array.isArray(result.content)) {
 					const files = result.content.filter((item: any) => item.type === 'file').length;
@@ -306,7 +315,7 @@ export class ConversationSession {
 					return `listed ${files} files, ${dirs} directories`;
 				}
 				return 'directory listing';
-			
+
 			default:
 				// Generic result summary
 				if (result.success !== undefined) {

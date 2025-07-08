@@ -49,7 +49,10 @@ describe('Tool Definitions', () => {
 				it('should have valid parameter schema', () => {
 					expect(extractAndOperateMemoryTool.parameters.type).toBe('object');
 					expect(extractAndOperateMemoryTool.parameters.properties?.interaction).toBeDefined();
-					expect(extractAndOperateMemoryTool.parameters.properties?.interaction?.type).toEqual(['string', 'array']);
+					expect(extractAndOperateMemoryTool.parameters.properties?.interaction?.type).toEqual([
+						'string',
+						'array',
+					]);
 					expect(extractAndOperateMemoryTool.parameters.required).toContain('interaction');
 				});
 
@@ -57,8 +60,8 @@ describe('Tool Definitions', () => {
 					// Create mock services for the tool
 					const mockEmbeddingManager = {
 						getEmbedder: vi.fn().mockReturnValue({
-							embed: vi.fn().mockResolvedValue([0.1, 0.2, 0.3])
-						})
+							embed: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
+						}),
 					};
 
 					const mockVectorStoreManager = {
@@ -66,25 +69,32 @@ describe('Tool Definitions', () => {
 							search: vi.fn().mockResolvedValue([]),
 							insert: vi.fn().mockResolvedValue(undefined),
 							update: vi.fn().mockResolvedValue(undefined),
-							delete: vi.fn().mockResolvedValue(undefined)
-						})
+							delete: vi.fn().mockResolvedValue(undefined),
+						}),
 					};
 
 					const mockLlmService = {
-						directGenerate: vi.fn().mockResolvedValue('ADD')
+						directGenerate: vi.fn().mockResolvedValue('ADD'),
 					};
 
 					const mockContext = {
+						toolName: 'extract_and_operate_memory',
+						startTime: Date.now(),
+						sessionId: 'test-session',
+						metadata: {},
 						services: {
 							embeddingManager: mockEmbeddingManager,
 							vectorStoreManager: mockVectorStoreManager,
-							llmService: mockLlmService
-						}
-					};
+							llmService: mockLlmService,
+						},
+					} as any;
 
-					const result = await extractAndOperateMemoryTool.handler({
-						interaction: 'TypeScript interface pattern for tools',
-					}, mockContext);
+					const result = await extractAndOperateMemoryTool.handler(
+						{
+							interaction: 'TypeScript interface pattern for tools',
+						},
+						mockContext
+					);
 
 					expect(result.success).toBe(true);
 					expect(result.extraction).toBeDefined();

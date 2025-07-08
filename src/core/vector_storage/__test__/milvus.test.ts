@@ -132,25 +132,25 @@ describe('MilvusBackend', () => {
 				[1, 2, 3],
 				[4, 5, 6],
 			];
-			const ids = ['vec1', 'vec2'];
+			const ids = [1, 2];
 			const payloads = [{ title: 'First' }, { title: 'Second' }];
 			await backend.insert(vectors, ids, payloads);
 			expect(mockMilvusClient.insert).toHaveBeenCalledWith({
 				collection_name: 'test_collection',
 				data: [
-					{ id: 'vec1', vector: [1, 2, 3], payload: { title: 'First' } },
-					{ id: 'vec2', vector: [4, 5, 6], payload: { title: 'Second' } },
+					{ id: '1', vector: [1, 2, 3], payload: { title: 'First' } },
+					{ id: '2', vector: [4, 5, 6], payload: { title: 'Second' } },
 				],
 			});
 		});
 
 		it('should retrieve vectors by ID', async () => {
 			mockMilvusClient.query.mockResolvedValue({
-				data: [{ id: 'vec1', vector: [1, 2, 3], payload: { title: 'Test' } }],
+				data: [{ id: '1', vector: [1, 2, 3], payload: { title: 'Test' } }],
 			});
-			const result = await backend.get('vec1');
+			const result = await backend.get(1);
 			expect(result).toEqual({
-				id: 'vec1',
+				id: '1',
 				vector: [1, 2, 3],
 				payload: { title: 'Test' },
 				score: 1.0,
@@ -159,43 +159,43 @@ describe('MilvusBackend', () => {
 
 		it('should return null if vector not found', async () => {
 			mockMilvusClient.query.mockResolvedValue({ data: [] });
-			const result = await backend.get('notfound');
+			const result = await backend.get(999);
 			expect(result).toBeNull();
 		});
 
 		it('should update vectors successfully', async () => {
 			mockMilvusClient.upsert.mockResolvedValue({});
-			await backend.update('vec1', [1, 2, 3], { title: 'Updated' });
+			await backend.update(1, [1, 2, 3], { title: 'Updated' });
 			expect(mockMilvusClient.upsert).toHaveBeenCalledWith({
 				collection_name: 'test_collection',
-				data: [{ id: 'vec1', vector: [1, 2, 3], payload: { title: 'Updated' } }],
+				data: [{ id: '1', vector: [1, 2, 3], payload: { title: 'Updated' } }],
 			});
 		});
 
 		it('should delete vectors successfully', async () => {
 			mockMilvusClient.deleteEntities.mockResolvedValue({});
-			await backend.delete('vec1');
+			await backend.delete(1);
 			expect(mockMilvusClient.deleteEntities).toHaveBeenCalledWith({
 				collection_name: 'test_collection',
-				expr: 'id == "vec1"',
+				expr: 'id == "1"',
 			});
 		});
 
 		it('should search vectors successfully', async () => {
 			mockMilvusClient.search.mockResolvedValue({
-				results: [{ id: 'vec1', score: 0.99, payload: { title: 'Test' } }],
+				results: [{ id: '1', score: 0.99, payload: { title: 'Test' } }],
 			});
 			const result = await backend.search([1, 2, 3], 1);
-			expect(result).toEqual([{ id: 'vec1', score: 0.99, payload: { title: 'Test' } }]);
+			expect(result).toEqual([{ id: '1', score: 0.99, payload: { title: 'Test' } }]);
 		});
 
 		it('should list vectors successfully', async () => {
 			mockMilvusClient.query.mockResolvedValue({
-				data: [{ id: 'vec1', vector: [1, 2, 3], payload: { title: 'Test' } }],
+				data: [{ id: '1', vector: [1, 2, 3], payload: { title: 'Test' } }],
 			});
 			const [results, count] = await backend.list();
 			expect(results).toEqual([
-				{ id: 'vec1', vector: [1, 2, 3], payload: { title: 'Test' }, score: 1.0 },
+				{ id: '1', vector: [1, 2, 3], payload: { title: 'Test' }, score: 1.0 },
 			]);
 			expect(count).toBe(1);
 		});
@@ -203,50 +203,50 @@ describe('MilvusBackend', () => {
 		it('should throw VectorStoreError if insert is called before connect', async () => {
 			const backend = new MilvusBackend(validConfig);
 			const vectors = [[1, 2, 3]];
-			const ids = ['vec1'];
+			const ids = [1];
 			const payloads = [{ title: 'Test' }];
 			await expect(backend.insert(vectors, ids, payloads)).rejects.toThrow(VectorStoreError);
 		});
 
 		it('should throw VectorStoreError if update is called before connect', async () => {
 			const backend = new MilvusBackend(validConfig);
-			await expect(backend.update('vec1', [1, 2, 3], { title: 'Test' })).rejects.toThrow(
+			await expect(backend.update(1, [1, 2, 3], { title: 'Test' })).rejects.toThrow(
 				VectorStoreError
 			);
 		});
 
 		it('should throw VectorStoreError if delete is called before connect', async () => {
 			const backend = new MilvusBackend(validConfig);
-			await expect(backend.delete('vec1')).rejects.toThrow(VectorStoreError);
+			await expect(backend.delete(1)).rejects.toThrow(VectorStoreError);
 		});
 
 		it('should throw VectorStoreError if get is called before connect', async () => {
 			const backend = new MilvusBackend(validConfig);
-			await expect(backend.get('vec1')).rejects.toThrow(VectorStoreError);
+			await expect(backend.get(1)).rejects.toThrow(VectorStoreError);
 		});
 
 		it('should throw VectorStoreError if vectors, ids, and payloads lengths do not match', async () => {
 			mockMilvusClient.showCollections.mockResolvedValue({ data: [{ name: 'test_collection' }] });
 			mockMilvusClient.loadCollection.mockResolvedValue({});
 			await backend.connect();
-			await expect(
-				backend.insert([[1, 2, 3]], ['vec1', 'vec2'], [{ title: 'Test' }])
-			).rejects.toThrow(VectorStoreError);
+			await expect(backend.insert([[1, 2, 3]], [1, 2], [{ title: 'Test' }])).rejects.toThrow(
+				VectorStoreError
+			);
 		});
 
 		it('should throw VectorDimensionError if update vector has wrong dimension', async () => {
 			mockMilvusClient.showCollections.mockResolvedValue({ data: [{ name: 'test_collection' }] });
 			mockMilvusClient.loadCollection.mockResolvedValue({});
 			await backend.connect();
-			await expect(backend.update('vec1', [1, 2], { title: 'Test' })).rejects.toThrow(
+			await expect(backend.update(1, [1, 2], { title: 'Test' })).rejects.toThrow(
 				VectorDimensionError
 			);
 		});
 
 		it('should throw if payloads are null or undefined', async () => {
 			await backend.connect();
-			await expect(backend.insert([[1,2,3]], ['vec1'], null)).rejects.toThrow();
-			await expect(backend.insert([[1,2,3]], ['vec1'], undefined)).rejects.toThrow();
+			await expect(backend.insert([[1, 2, 3]], [1], null as any)).rejects.toThrow();
+			await expect(backend.insert([[1, 2, 3]], [1], undefined as any)).rejects.toThrow();
 		});
 
 		it('should throw VectorDimensionError if search vector has wrong dimension', async () => {
@@ -257,7 +257,7 @@ describe('MilvusBackend', () => {
 		it('should throw VectorStoreError on get failure', async () => {
 			mockMilvusClient.query.mockRejectedValue(new Error('Query failed'));
 			await backend.connect();
-			await expect(backend.get('vec1')).rejects.toThrow(VectorStoreError);
+			await expect(backend.get(1)).rejects.toThrow(VectorStoreError);
 		});
 
 		it('should throw VectorStoreError on list failure', async () => {
@@ -269,13 +269,15 @@ describe('MilvusBackend', () => {
 		it('should throw VectorStoreError on upsert failure', async () => {
 			mockMilvusClient.upsert.mockRejectedValue(new Error('Upsert failed'));
 			await backend.connect();
-			await expect(backend.update('vec1', [1,2,3], { title: 'Fail' })).rejects.toThrow(VectorStoreError);
+			await expect(backend.update(1, [1, 2, 3], { title: 'Fail' })).rejects.toThrow(
+				VectorStoreError
+			);
 		});
 
 		it('should throw VectorStoreError on deleteEntities failure', async () => {
 			mockMilvusClient.deleteEntities.mockRejectedValue(new Error('Delete failed'));
 			await backend.connect();
-			await expect(backend.delete('vec1')).rejects.toThrow(VectorStoreError);
+			await expect(backend.delete(1)).rejects.toThrow(VectorStoreError);
 		});
 	});
 
@@ -330,14 +332,14 @@ describe('MilvusBackend', () => {
 		});
 
 		it('should throw VectorDimensionError on dimension mismatch', async () => {
-			await expect(backend.insert([[1, 2]], ['vec1'], [{ title: 'Bad' }])).rejects.toThrow(
+			await expect(backend.insert([[1, 2]], [1], [{ title: 'Bad' }])).rejects.toThrow(
 				VectorDimensionError
 			);
 		});
 
 		it('should throw VectorStoreError on insert failure', async () => {
 			mockMilvusClient.insert.mockRejectedValue(new Error('Insert failed'));
-			await expect(backend.insert([[1, 2, 3]], ['vec1'], [{ title: 'Fail' }])).rejects.toThrow(
+			await expect(backend.insert([[1, 2, 3]], [1], [{ title: 'Fail' }])).rejects.toThrow(
 				VectorStoreError
 			);
 		});

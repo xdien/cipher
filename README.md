@@ -469,7 +469,74 @@ Cipher handles all the complexity of MCP server connections and lifecycle manage
 ### Enhanced LLM Provider Support
 Cipher now supports multiple LLM providers with seamless integration and advanced capabilities:
 
+### Knowledge Graph Memory
+Cipher features a sophisticated knowledge graph system that provides structured, persistent memory for agents. This system enables agents to build and maintain complex relationships between entities, concepts, and information across conversations.
 
+#### Overview
+The knowledge graph memory system transforms unstructured conversational data into a structured graph of entities and relationships. Unlike traditional flat memory systems, knowledge graphs excel at:
+
+- **Relationship Modeling**: Capture complex relationships between entities (e.g., "John works at Google as a Software Engineer")
+- **Semantic Search**: Find related information through graph traversal and relationship patterns
+- **Knowledge Evolution**: Update and evolve understanding as new information becomes available
+- **Contextual Retrieval**: Retrieve relevant information based on entity relationships and graph structure
+
+#### Supported Backends
+
+**Neo4j**
+- Full-featured graph database with Cypher query support
+- Advanced indexing and query optimization
+- ACID transactions and data consistency
+- Suitable for production workloads and complex graph operations
+
+**In-Memory**
+- Fast local storage ideal for development and testing
+- No external dependencies required
+- Configurable memory limits and indexing
+- Automatic cleanup and garbage collection options
+
+#### Configuration
+
+**Environment Variables**
+Add these to your `.env` file to configure knowledge graph functionality:
+
+```bash
+# Enable knowledge graph functionality
+KNOWLEDGE_GRAPH_ENABLED=true
+
+# Backend configuration
+KNOWLEDGE_GRAPH_TYPE=neo4j              # or 'in-memory'
+
+# Neo4j configuration (if using Neo4j backend)
+KNOWLEDGE_GRAPH_HOST=localhost
+KNOWLEDGE_GRAPH_PORT=7687
+KNOWLEDGE_GRAPH_URI=bolt://localhost:7687    # Alternative to host/port
+KNOWLEDGE_GRAPH_USERNAME=neo4j
+KNOWLEDGE_GRAPH_PASSWORD=your_password
+KNOWLEDGE_GRAPH_DATABASE=neo4j
+
+# In-memory configuration (if using in-memory backend)
+# No additional configuration required - uses sensible defaults
+```
+
+#### Backend Setup
+
+**Neo4j Setup:**
+1. **Install Neo4j**: Download from [neo4j.com](https://neo4j.com/download/)
+2. **Start Neo4j**: Run Neo4j Desktop or server
+3. **Create Database**: Set up your knowledge graph database
+4. **Configure Authentication**: Set username/password
+5. **Environment Variables**: Configure connection details in `.env`
+
+```bash
+# Example Neo4j configuration
+KNOWLEDGE_GRAPH_ENABLED=true
+KNOWLEDGE_GRAPH_TYPE=neo4j
+KNOWLEDGE_GRAPH_HOST=localhost
+KNOWLEDGE_GRAPH_PORT=7687
+KNOWLEDGE_GRAPH_USERNAME=neo4j
+KNOWLEDGE_GRAPH_PASSWORD=your_secure_password
+KNOWLEDGE_GRAPH_DATABASE=knowledge
+```
 
 ## LLM Providers
 

@@ -1,4 +1,4 @@
-import { MemAgent } from "@core/index.js";
+import { MemAgent } from '@core/index.js';
 import { commandParser } from './parser.js';
 
 /**
@@ -6,9 +6,9 @@ import { commandParser } from './parser.js';
  * This function integrates with the command parser to handle slash commands
  */
 export async function executeCommand(
-  command: string,
-  args: string[],
-  agent: MemAgent
-) : Promise<boolean> {
-  return await commandParser.executeCommand(command, args, agent);
+	command: string,
+	args: string[],
+	agent: MemAgent
+): Promise<boolean> {
+	return await commandParser.executeCommand(command, args, agent);
 }

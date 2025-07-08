@@ -192,7 +192,7 @@ describe('Storage Factory', () => {
 			process.env.STORAGE_CACHE_CONNECTION_TIMEOUT_MILLIS = '100'; // Very short timeout
 
 			const result = await createStorageFromEnv();
-			
+
 			// Should fallback to in-memory due to connection failure
 			const info = result.manager.getInfo();
 			expect(info.backends.cache.fallback).toBe(true);

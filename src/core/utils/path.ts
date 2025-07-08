@@ -11,7 +11,7 @@ export const DEFAULT_CONFIG_PATH = 'memAgent/cipher.yml';
  * - If it's absolute, return as-is.
  * - If it's the default config, resolve relative to the package installation root.
  * - Otherwise resolve relative to the current working directory.
- * 
+ *
  * @param configPath - The config path to resolve
  * @returns The resolved absolute path to the config file
  */

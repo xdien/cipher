@@ -161,7 +161,8 @@ export class MemAgent {
 				this.currentActiveSessionId = sessionId;
 			} else {
 				// Use current active session or fall back to default
-				session = (await this.sessionManager.getSession(this.currentActiveSessionId)) ??
+				session =
+					(await this.sessionManager.getSession(this.currentActiveSessionId)) ??
 					(await this.sessionManager.createSession(this.currentActiveSessionId));
 			}
 			logger.debug(`MemAgent.run: using session ${session.id}`);
@@ -202,11 +203,11 @@ export class MemAgent {
 	public async loadSession(sessionId: string): Promise<ConversationSession> {
 		this.ensureStarted();
 		let session = await this.sessionManager.getSession(sessionId);
-		
+
 		if (!session) {
 			throw new Error(`Session not found: ${sessionId}`);
 		}
-		
+
 		this.currentActiveSessionId = sessionId;
 		logger.debug(`MemAgent: Switched to session ${sessionId}`);
 		return session;
@@ -225,12 +226,14 @@ export class MemAgent {
 	 */
 	public async removeSession(sessionId: string): Promise<boolean> {
 		this.ensureStarted();
-		
+
 		// Prevent removing the currently active session
 		if (sessionId === this.currentActiveSessionId) {
-			throw new Error('Cannot remove the currently active session. Switch to another session first.');
+			throw new Error(
+				'Cannot remove the currently active session. Switch to another session first.'
+			);
 		}
-		
+
 		return await this.sessionManager.removeSession(sessionId);
 	}
 
@@ -244,20 +247,20 @@ export class MemAgent {
 		messageCount?: number;
 	} | null> {
 		this.ensureStarted();
-		
+
 		// Check if session exists
 		const session = await this.sessionManager.getSession(sessionId);
 		if (!session) {
 			return null;
 		}
-		
+
 		// For now, return basic metadata since SessionManager doesn't expose internal metadata
 		// This could be enhanced later to track more detailed session statistics
 		return {
 			id: sessionId,
 			createdAt: Date.now(), // Placeholder - actual creation time would need to be tracked
 			lastActivity: Date.now(), // Placeholder - actual last activity would need to be tracked
-			messageCount: 0 // Placeholder - message count would need to be tracked
+			messageCount: 0, // Placeholder - message count would need to be tracked
 		};
 	}
 
