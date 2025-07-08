@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { Logger, createLogger } from '../../logger/index.js';
 import { env } from '../../env.js';
 import { InternalTool, InternalToolContext } from './types.js';
+import { logger } from '../../logger/index.js';
 
 /**
  * Zod Schemas for Reflection Memory
@@ -460,7 +461,6 @@ export const extractReasoningSteps: InternalTool = {
 			};
 		}
 
-		const logger = createLogger({ level: 'debug' });
 		logger.debug('Starting reasoning extraction', { 
 			conversationLength: args.conversation?.length || 0,
 			options: args.options 
@@ -595,7 +595,6 @@ export const evaluateReasoning: InternalTool = {
 			};
 		}
 
-		const logger = createLogger({ level: 'debug' });
 		logger.debug('Starting reasoning evaluation', { 
 			traceId: args.trace?.id,
 			stepCount: args.trace?.steps?.length || 0,
@@ -719,7 +718,6 @@ export const searchReasoningPatterns: InternalTool = {
 			};
 		}
 
-		const logger = createLogger({ level: 'debug' });
 		logger.debug('Starting reasoning pattern search', { 
 			query: args.query,
 			context: args.context,

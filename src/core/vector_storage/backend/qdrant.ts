@@ -104,7 +104,7 @@ export class QdrantBackend implements VectorStore {
 			this.client = new QdrantClient(params);
 		}
 
-		this.logger.info(`${LOG_PREFIXES.QDRANT} Initialized`, {
+		this.logger.debug(`${LOG_PREFIXES.QDRANT} Initialized`, {
 			collection: this.collectionName,
 			dimension: this.dimension,
 			host: config.host || config.url || 'local',

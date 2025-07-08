@@ -72,7 +72,7 @@ export class InMemoryBackend implements VectorStore {
 			level: process.env.LOG_LEVEL || 'info',
 		});
 
-		this.logger.info(`${LOG_PREFIXES.MEMORY} Initialized`, {
+		this.logger.debug(`${LOG_PREFIXES.MEMORY} Initialized`, {
 			collection: this.collectionName,
 			dimension: this.dimension,
 			maxVectors: this.maxVectors,
@@ -228,7 +228,7 @@ export class InMemoryBackend implements VectorStore {
 			});
 		}
 
-		this.logger.info(`${LOG_PREFIXES.INDEX} Inserted ${vectors.length} vectors`);
+		this.logger.debug(`${LOG_PREFIXES.INDEX} Inserted ${vectors.length} vectors`);
 	}
 
 	async search(
@@ -373,7 +373,7 @@ export class InMemoryBackend implements VectorStore {
 
 		// In-memory doesn't need actual connection
 		this.connected = true;
-		this.logger.info(`${LOG_PREFIXES.MEMORY} Connected (in-memory)`);
+		this.logger.debug(`${LOG_PREFIXES.MEMORY} Connected (in-memory)`);
 	}
 
 	async disconnect(): Promise<void> {

@@ -122,14 +122,14 @@ export class MilvusBackend implements VectorStore {
 			return;
 		}
 
-		this.logger.info(`${LOG_PREFIXES.MILVUS} Connecting to Milvus`);
+		this.logger.debug(`${LOG_PREFIXES.MILVUS} Connecting to Milvus`);
 
 		try {
 			const collections = await this.client.showCollections();
 			const exists = collections.data.some((c: any) => c.name === this.collectionName);
 
 			if (!exists) {
-				this.logger.info(`${LOG_PREFIXES.MILVUS} Creating collection ${this.collectionName}`);
+				this.logger.debug(`${LOG_PREFIXES.MILVUS} Creating collection ${this.collectionName}`);
 				// Use fields array for schema
 				const schema = this.MILVUS_COLLECTION_CONFIG.schema.map(field =>
 					field.name === 'vector' ? { ...field, dim: this.dimension } : { ...field }
@@ -143,16 +143,16 @@ export class MilvusBackend implements VectorStore {
 					collection_name: this.collectionName,
 					...this.MILVUS_COLLECTION_CONFIG.index,
 				});
-				this.logger.info(`${LOG_PREFIXES.MILVUS} Collection created: ${this.collectionName}`);
+				this.logger.debug(`${LOG_PREFIXES.MILVUS} Collection created: ${this.collectionName}`);
 			} else {
-				this.logger.info(
+				this.logger.debug(
 					`${LOG_PREFIXES.MILVUS} Collection already exists: ${this.collectionName}`
 				);
 			}
 
 			await this.client.loadCollection({ collection_name: this.collectionName });
 			this.connected = true;
-			this.logger.info(`${LOG_PREFIXES.MILVUS} Successfully connected`);
+			this.logger.debug(`${LOG_PREFIXES.MILVUS} Successfully connected`);
 		} catch (error) {
 			this.logger.error(`${LOG_PREFIXES.MILVUS} Connection failed`, { error });
 			if (error instanceof VectorStoreConnectionError) {
@@ -185,7 +185,7 @@ export class MilvusBackend implements VectorStore {
 				collection_name: this.collectionName,
 				data,
 			});
-			this.logger.info(`Inserted ${vectors.length} vectors`);
+			this.logger.debug(`Inserted ${vectors.length} vectors`);
 		} catch (error) {
 			this.logger.error(`Insert failed`, { error });
 			throw new VectorStoreError('Failed to insert vectors', 'insert', error as Error);
