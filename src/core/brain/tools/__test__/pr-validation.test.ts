@@ -200,10 +200,10 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 		it('should load internal tools when enabled', async () => {
 			const tools = await unifiedToolManager.getAllTools();
 
-			// Should have 2 memory tools
-			expect(Object.keys(tools)).toHaveLength(2);
-			expect(tools['cipher_extract_and_operate_memory']).toBeDefined();
-			expect(tools['cipher_memory_search']).toBeDefined();
+					// Should have 13 tools total: 2 memory + 11 knowledge graph tools
+		expect(Object.keys(tools)).toHaveLength(13);
+		expect(tools['cipher_extract_and_operate_memory']).toBeDefined();
+		expect(tools['cipher_memory_search']).toBeDefined();
 
 			// Should NOT have old deprecated tools
 			expect(tools['cipher_extract_knowledge']).toBeUndefined();
@@ -305,13 +305,13 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 
 	describe('Fix 10: Integration Scenarios (unified-tool-manager.test.ts line 295)', () => {
 		it('should work with real tool execution flow using new tools', async () => {
-			// 1. Get all available tools
-			const allTools = await unifiedToolManager.getAllTools();
-			expect(Object.keys(allTools).length).toBe(2);
+					// 1. Get all available tools
+		const allTools = await unifiedToolManager.getAllTools();
+		expect(Object.keys(allTools).length).toBe(13);
 
 			// 2. Format tools for OpenAI
 			const openaiTools = await unifiedToolManager.getToolsForProvider('openai');
-			expect(openaiTools.length).toBe(2);
+			expect(openaiTools.length).toBe(13);
 
 			// 3. Execute a tool with new name (this will use the real manager now)
 			const extractResult = await unifiedToolManager.executeTool(

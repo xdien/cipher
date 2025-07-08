@@ -114,16 +114,19 @@ describe('Tool Definitions', () => {
 		it('should load all tool definitions', async () => {
 			const tools = await getAllToolDefinitions();
 
-			expect(Object.keys(tools)).toHaveLength(2); // 2 memory tools
+			expect(Object.keys(tools)).toHaveLength(13); // 2 memory + 11 knowledge graph tools
 			expect(tools['extract_and_operate_memory']).toBeDefined();
 			expect(tools['memory_search']).toBeDefined();
+			// Check that knowledge graph tools are also loaded
+			expect(tools['add_node']).toBeDefined();
+			expect(tools['search_graph']).toBeDefined();
 		});
 
 		it('should register all tools successfully', async () => {
 			const result = await registerAllTools(manager);
 
-			expect(result.total).toBe(2);
-			expect(result.registered.length).toBe(2);
+			expect(result.total).toBe(13);
+			expect(result.registered.length).toBe(13);
 			expect(result.failed.length).toBe(0);
 			expect(result.registered).toContain('extract_and_operate_memory');
 			expect(result.registered).toContain('memory_search');
@@ -140,9 +143,9 @@ describe('Tool Definitions', () => {
 
 			const result = await registerAllTools(failingManager);
 
-			expect(result.total).toBe(2);
+			expect(result.total).toBe(13);
 			expect(result.registered.length).toBe(0);
-			expect(result.failed.length).toBe(2);
+			expect(result.failed.length).toBe(13);
 			expect(result.failed?.[0]?.error).toBe('Simulated failure');
 		});
 	});
