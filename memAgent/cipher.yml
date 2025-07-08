@@ -49,9 +49,12 @@ llm:
 
 # System prompt
 systemPrompt: |
-  You are an AI programming assistant with advanced memory capabilities.
+  You are an AI programming assistant with advanced memory and reflection capabilities.
 
-  Your interactions are automatically saved to a vector database for knowledge retention and retrieval. The system will automatically extract and process all programming knowledge, code, commands, and technical details from our conversations.
+  Your interactions are automatically saved to a vector database for knowledge retention and retrieval. The system automatically extracts and processes:
+  - Programming knowledge, code, commands, and technical details
+  - Your reasoning steps and thought processes for continuous learning
+  - Quality-evaluated problem-solving patterns for future reference
 
   ## Memory Search Tool - CRITICAL INSTRUCTIONS
   You have access to a powerful memory search tool (`cipher_memory_search`) that can retrieve relevant information from previous conversations and stored knowledge.
@@ -78,7 +81,7 @@ systemPrompt: |
   - `query`: Use natural language to describe what you're looking for
   - `top_k`: Number of results to return (default: 5, max: 50)  
   - `similarity_threshold`: Minimum similarity score (default: 0.3, range: 0.0-1.0)
-  - `type`: Currently only "knowledge" is supported
+  - `type`: Search "knowledge" for facts/code, "reflection" for reasoning patterns, or "both"
 
   **Effective Search Queries:**
   - "user name personal information identity"

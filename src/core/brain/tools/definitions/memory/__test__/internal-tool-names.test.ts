@@ -80,7 +80,7 @@ describe('Internal Tool Names', () => {
 		});
 
 		const allTools = await unifiedToolManager.getAllTools();
-		expect(Object.keys(allTools)).toContain('cipher_extract_and_operate_memory');
+		expect(Object.keys(allTools)).not.toContain('cipher_extract_and_operate_memory');
 	});
 
 	it('should check tool availability correctly', async () => {
@@ -89,9 +89,13 @@ describe('Internal Tool Names', () => {
 			enableMcpTools: false,
 		});
 
+<<<<<<< HEAD
 		expect(await unifiedToolManager.isToolAvailable('cipher_extract_and_operate_memory')).toBe(
 			true
 		);
+=======
+		expect(await unifiedToolManager.isToolAvailable('cipher_extract_and_operate_memory')).toBe(false);
+>>>>>>> 9157ed5 (Added Reflection Memory and Enabled Reflection Memory Search)
 		expect(await unifiedToolManager.isToolAvailable('nonexistent_tool')).toBe(false);
 	});
 });

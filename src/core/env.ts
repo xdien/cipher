@@ -53,6 +53,11 @@ const envSchema = z.object({
 	KNOWLEDGE_GRAPH_DATABASE: z.string().default('neo4j'),
 	// Memory Search Configuration
 	SEARCH_MEMORY_TYPE: z.enum(['knowledge', 'reflection', 'both']).default('both'),
+	// Reflection Memory Configuration
+	REFLECTION_MEMORY_ENABLED: z.boolean().default(false),
+	REFLECTION_VECTOR_STORE_COLLECTION: z.string().default('reflection_memory'),
+	REFLECTION_AUTO_EXTRACT: z.boolean().default(true),
+	REFLECTION_EVALUATION_ENABLED: z.boolean().default(true),
 });
 
 type EnvSchema = z.infer<typeof envSchema>;
@@ -164,6 +169,15 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 			// Memory Search Configuration
 			case 'SEARCH_MEMORY_TYPE':
 				return process.env.SEARCH_MEMORY_TYPE || 'both';
+			// Reflection Memory Configuration
+			case 'REFLECTION_MEMORY_ENABLED':
+				return process.env.REFLECTION_MEMORY_ENABLED === 'true';
+			case 'REFLECTION_VECTOR_STORE_COLLECTION':
+				return process.env.REFLECTION_VECTOR_STORE_COLLECTION || 'reflection_memory';
+			case 'REFLECTION_AUTO_EXTRACT':
+				return process.env.REFLECTION_AUTO_EXTRACT !== 'false';
+			case 'REFLECTION_EVALUATION_ENABLED':
+				return process.env.REFLECTION_EVALUATION_ENABLED !== 'false';
 			default:
 				return process.env[prop];
 		}
@@ -243,6 +257,11 @@ export const validateEnv = () => {
 		KNOWLEDGE_GRAPH_DATABASE: process.env.KNOWLEDGE_GRAPH_DATABASE || 'neo4j',
 		// Memory Search Configuration
 		SEARCH_MEMORY_TYPE: process.env.SEARCH_MEMORY_TYPE || 'both',
+		// Reflection Memory Configuration
+		REFLECTION_MEMORY_ENABLED: process.env.REFLECTION_MEMORY_ENABLED === 'true',
+		REFLECTION_VECTOR_STORE_COLLECTION: process.env.REFLECTION_VECTOR_STORE_COLLECTION || 'reflection_memory',
+		REFLECTION_AUTO_EXTRACT: process.env.REFLECTION_AUTO_EXTRACT !== 'false',
+		REFLECTION_EVALUATION_ENABLED: process.env.REFLECTION_EVALUATION_ENABLED !== 'false',
 	};
 
 	const result = envSchema.safeParse(envToValidate);

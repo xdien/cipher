@@ -231,7 +231,10 @@ export class InternalToolManager implements IInternalToolManager {
 			sessionId: context?.sessionId,
 			userId: context?.userId || '',
 			metadata: context?.metadata,
-			services: this.services || {},
+			services: {
+				...this.services,
+				...context?.services,
+			},
 		};
 
 		logger.debug(`InternalToolManager: Executing tool '${normalizedName}'`, {

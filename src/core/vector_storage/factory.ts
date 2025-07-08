@@ -8,6 +8,7 @@
  */
 
 import { VectorStoreManager } from './manager.js';
+import { DualCollectionVectorManager } from './dual-collection-manager.js';
 import type { VectorStoreConfig } from './types.js';
 import { VectorStore } from './backend/vector-store.js';
 import { createLogger } from '../logger/index.js';
@@ -22,6 +23,18 @@ export interface VectorStoreFactory {
 	manager: VectorStoreManager;
 	/** The connected vector store ready for use */
 	store: VectorStore;
+}
+
+/**
+ * Dual collection factory result containing dual manager and stores
+ */
+export interface DualCollectionVectorFactory {
+	/** The dual collection manager instance for lifecycle control */
+	manager: DualCollectionVectorManager;
+	/** The knowledge vector store ready for use */
+	knowledgeStore: VectorStore;
+	/** The reflection vector store ready for use (null if disabled) */
+	reflectionStore: VectorStore | null;
 }
 
 /**
@@ -176,6 +189,79 @@ export async function createVectorStoreFromEnv(): Promise<VectorStoreFactory> {
 	});
 
 	return createVectorStore(config);
+}
+
+/**
+ * Creates dual collection vector storage from environment variables
+ *
+ * Creates a dual collection manager that handles both knowledge and reflection
+ * memory collections. Reflection collection is only created if enabled via
+ * REFLECTION_MEMORY_ENABLED environment variable.
+ *
+ * @returns Promise resolving to dual collection manager and stores
+ *
+ * @example
+ * ```typescript
+ * // Set environment variables
+ * process.env.REFLECTION_MEMORY_ENABLED = 'true';
+ * process.env.VECTOR_STORE_TYPE = 'in-memory';
+ * process.env.VECTOR_STORE_COLLECTION = 'knowledge';
+ * process.env.REFLECTION_VECTOR_STORE_COLLECTION = 'reflection_memory';
+ *
+ * const { manager, knowledgeStore, reflectionStore } = await createDualCollectionVectorStoreFromEnv();
+ * ```
+ */
+export async function createDualCollectionVectorStoreFromEnv(): Promise<DualCollectionVectorFactory> {
+	const logger = createLogger({ level: env.CIPHER_LOG_LEVEL });
+
+	// Get base configuration from environment variables
+	const config = getVectorStoreConfigFromEnv();
+
+	logger.info(`${LOG_PREFIXES.FACTORY} Creating dual collection vector storage from environment`, {
+		type: config.type,
+		knowledgeCollection: config.collectionName,
+		reflectionCollection: env.REFLECTION_VECTOR_STORE_COLLECTION,
+		reflectionEnabled: env.REFLECTION_MEMORY_ENABLED,
+	});
+
+	// Create dual collection manager
+	const manager = new DualCollectionVectorManager(config);
+
+	try {
+		// Connect both collections
+		await manager.connect();
+
+		// Get the stores
+		const knowledgeStore = manager.getStore('knowledge');
+		const reflectionStore = manager.getStore('reflection');
+
+		if (!knowledgeStore) {
+			throw new Error('Failed to get knowledge store from dual collection manager');
+		}
+
+		logger.info(`${LOG_PREFIXES.FACTORY} Dual collection vector storage created successfully`, {
+			knowledgeConnected: manager.isConnected('knowledge'),
+			reflectionConnected: manager.isConnected('reflection'),
+			reflectionEnabled: env.REFLECTION_MEMORY_ENABLED,
+		});
+
+		return { 
+			manager, 
+			knowledgeStore, 
+			reflectionStore 
+		};
+	} catch (error) {
+		// If connection fails, ensure cleanup
+		await manager.disconnect().catch(() => {
+			// Ignore disconnect errors during cleanup
+		});
+
+		logger.error(`${LOG_PREFIXES.FACTORY} Failed to create dual collection vector storage`, {
+			error: error instanceof Error ? error.message : String(error),
+		});
+
+		throw error;
+	}
 }
 
 /**

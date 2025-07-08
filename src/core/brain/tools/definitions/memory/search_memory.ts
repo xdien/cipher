@@ -1,33 +1,78 @@
 import { InternalTool, InternalToolContext } from '../../types.js';
 import { logger } from '../../../../logger/index.js';
+// Import payload migration utilities
+import { KnowledgePayload, ReasoningPayload } from './payloads.js';
 import { env } from '../../../../env.js';
 
 /**
  * Memory Search Tool Result Interface
  */
 interface MemorySearchResult {
-	success: boolean;
-	query: string;
-	results: {
-		id: string;
-		text: string;
-		tags: string[];
-		confidence: number;
-		reasoning: string;
-		timestamp: string;
-		similarity: number;
-		code_pattern?: string;
-		event?: string;
-	}[];
-	metadata: {
-		totalResults: number;
-		searchTime: number;
-		embeddingTime: number;
-		maxSimilarity: number;
-		minSimilarity: number;
-		averageSimilarity: number;
-	};
-	timestamp: string;
+  success: boolean;
+  query: string;
+  results: Array<{
+    id: string;
+    text: string;
+    tags: string[];
+    timestamp: string;
+    similarity: number;
+    source?: 'knowledge' | 'reflection';
+    memoryType?: 'knowledge' | 'reflection';
+    version?: number;
+    // Knowledge memory fields
+    confidence?: number;
+    reasoning?: string;
+    event?: string;
+    domain?: string;
+    qualitySource?: string;
+    code_pattern?: string;
+    old_memory?: string;
+    // Reasoning memory fields
+    reasoningSteps?: Array<{
+      type: string;
+      content: string;
+      confidence?: number;
+      [key: string]: any;
+    }>;
+    evaluation?: {
+      qualityScore: number;
+      issues: Array<{
+        type: string;
+        description: string;
+        severity?: string;
+        [key: string]: any;
+      }>;
+      suggestions: string[];
+      [key: string]: any;
+    };
+    taskContext?: {
+      goal?: string;
+      input?: string;
+      taskType?: string;
+      domain?: string;
+      complexity?: 'low' | 'medium' | 'high';
+      conversationLength?: number;
+      hasExplicitMarkup?: boolean;
+      [key: string]: any;
+    };
+    stepCount?: number;
+    stepTypes?: string[];
+    issueCount?: number;
+    sourceSessionId?: string;
+  }>;
+  metadata: {
+    totalResults: number;
+    searchTime: number;
+    embeddingTime: number;
+    maxSimilarity: number;
+    minSimilarity: number;
+    averageSimilarity: number;
+    knowledgeResults?: number;
+    reflectionResults?: number;
+    searchMode: 'knowledge' | 'reflection' | 'both';
+    usedFallback?: boolean;
+  };
+  timestamp: string;
 }
 
 /**
@@ -106,18 +151,6 @@ export const searchMemoryTool: InternalTool = {
 			const similarityThreshold = Math.max(0.0, Math.min(1.0, args.similarity_threshold || 0.3));
 			const includeMetadata = args.include_metadata !== false;
 
-			// Validate memory type
-			if (memoryType === 'reflection' || memoryType === 'both') {
-				logger.warn(
-					'MemorySearch: Reflection memory not yet implemented, searching knowledge only',
-					{
-						requestedType: memoryType,
-						envDefault: env.SEARCH_MEMORY_TYPE,
-						fallbackTo: 'knowledge',
-					}
-				);
-			}
-
 			// Get required services from context
 			if (!context?.services) {
 				throw new Error('InternalToolContext.services is required for memory search');
@@ -126,6 +159,7 @@ export const searchMemoryTool: InternalTool = {
 			const embeddingManager = context.services.embeddingManager;
 			const vectorStoreManager = context.services.vectorStoreManager;
 
+<<<<<<< HEAD
 			if (!embeddingManager || !vectorStoreManager) {
 				throw new Error('EmbeddingManager and VectorStoreManager are required in context.services');
 			}
@@ -136,6 +170,13 @@ export const searchMemoryTool: InternalTool = {
 			if (!embedder || !vectorStore) {
 				throw new Error('Embedder and VectorStore must be initialized and available');
 			}
+=======
+      const embedder = embeddingManager.getEmbedder('default');
+
+      if (!embedder || !embedder.embed || typeof embedder.embed !== 'function') {
+        throw new Error('Embedder is not properly initialized or missing embed() method');
+      }
+>>>>>>> 9157ed5 (Added Reflection Memory and Enabled Reflection Memory Search)
 
 			if (!embedder.embed || typeof embedder.embed !== 'function') {
 				throw new Error('Embedder is not properly initialized or missing embed() method');
@@ -151,6 +192,7 @@ export const searchMemoryTool: InternalTool = {
 			const queryEmbedding = await embedder.embed(query);
 			const embeddingTime = Date.now() - embeddingStartTime;
 
+<<<<<<< HEAD
 			logger.debug('MemorySearch: Embedding generated successfully', {
 				embeddingTime: `${embeddingTime}ms`,
 				embeddingDimensions: Array.isArray(queryEmbedding) ? queryEmbedding.length : 'unknown',
@@ -166,6 +208,224 @@ export const searchMemoryTool: InternalTool = {
 				rawResultCount: rawResults.length,
 				topK: topK,
 			});
+=======
+      // Detect vector store manager type and perform appropriate search
+      const searchStartTime = Date.now();
+      let allResults: any[] = [];
+      let knowledgeResultCount = 0;
+      let reflectionResultCount = 0;
+      let usedFallback = false;
+
+      // Check if we have a DualCollectionVectorManager
+      const isDualManager = vectorStoreManager.constructor.name === 'DualCollectionVectorManager' ||
+                            (typeof vectorStoreManager.getStore === 'function' && 
+                             vectorStoreManager.getStore.length === 1); // getStore(type) signature
+
+      if (isDualManager && (memoryType === 'both' || memoryType === 'reflection')) {
+        logger.debug('MemorySearch: Using DualCollectionVectorManager for multi-collection search', {
+          requestedType: memoryType,
+          isDualManager: true
+        });
+
+        try {
+          // Search knowledge collection if needed
+          if (memoryType === 'both' || memoryType === 'knowledge') {
+            let knowledgeStore = null;
+            try {
+              // Try dual manager API first
+              knowledgeStore = (vectorStoreManager as any).getStore('knowledge');
+            } catch {
+              // Fallback to single collection API
+              knowledgeStore = vectorStoreManager.getStore();
+            }
+            
+            if (knowledgeStore) {
+              const knowledgeResults = await knowledgeStore.search(queryEmbedding, topK * 2);
+              knowledgeResultCount = knowledgeResults.length;
+              
+              // Mark results with source
+              const markedKnowledgeResults = knowledgeResults.map((result: any) => ({
+                ...result,
+                payload: {
+                  ...result.payload,
+                  source: 'knowledge',
+                  memoryType: 'knowledge'
+                }
+              }));
+              
+              allResults.push(...markedKnowledgeResults);
+              
+              logger.debug('MemorySearch: Knowledge collection search completed', {
+                resultsFound: knowledgeResultCount
+              });
+            }
+          }
+
+          // Search reflection collection if needed
+          if (memoryType === 'both' || memoryType === 'reflection') {
+            let reflectionStore = null;
+            try {
+              // Try dual manager API
+              reflectionStore = (vectorStoreManager as any).getStore('reflection');
+            } catch {
+              // Reflection not available in single collection manager
+              if (memoryType === 'reflection') {
+                throw new Error('Reflection memory collection not available');
+              }
+            }
+            
+            if (reflectionStore) {
+              const reflectionResults = await reflectionStore.search(queryEmbedding, topK * 2);
+              reflectionResultCount = reflectionResults.length;
+              
+              // Mark results with source and extract reflection-specific metadata
+              const markedReflectionResults = reflectionResults.map((result: any) => ({
+                ...result,
+                payload: {
+                  ...result.payload,
+                  source: 'reflection',
+                  memoryType: 'reflection',
+                  // Extract reflection-specific fields from metadata
+                  ...(result.payload?.qualityScore && { qualityScore: result.payload.qualityScore }),
+                  ...(result.payload?.stepTypes && { stepTypes: result.payload.stepTypes }),
+                  ...(result.payload?.issueCount && { issueCount: result.payload.issueCount }),
+                  ...(result.payload?.traceId && { traceId: result.payload.traceId })
+                }
+              }));
+              
+              allResults.push(...markedReflectionResults);
+              
+              logger.debug('MemorySearch: Reflection collection search completed', {
+                resultsFound: reflectionResultCount
+              });
+            } else if (memoryType === 'reflection') {
+              // Reflection requested but not available
+              throw new Error('Reflection memory collection not available');
+            }
+          }
+
+        } catch (error) {
+          logger.warn('MemorySearch: Dual collection search failed, falling back to knowledge only', {
+            error: error instanceof Error ? error.message : String(error),
+            requestedType: memoryType
+          });
+          
+          // Fallback to knowledge collection only
+          usedFallback = true;
+          const knowledgeStore = vectorStoreManager.getStore();
+          if (knowledgeStore) {
+            const fallbackResults = await knowledgeStore.search(queryEmbedding, topK * 2);
+            allResults = fallbackResults.map((result: any) => ({
+              ...result,
+              payload: {
+                ...result.payload,
+                source: 'knowledge',
+                memoryType: 'knowledge'
+              }
+            }));
+            knowledgeResultCount = allResults.length;
+          }
+        }
+
+      } else {
+        // Single collection manager or knowledge-only search
+        logger.debug('MemorySearch: Using single collection search', {
+          requestedType: memoryType,
+          isDualManager: false
+        });
+
+        if (memoryType === 'reflection') {
+          throw new Error('Reflection memory search requires DualCollectionVectorManager but single collection manager detected');
+        }
+
+        const vectorStore = vectorStoreManager.getStore();
+        if (!vectorStore) {
+          throw new Error('VectorStore not available');
+        }
+
+        const singleResults = await vectorStore.search(queryEmbedding, topK * 2);
+        allResults = singleResults.map((result: any) => ({
+          ...result,
+          payload: {
+            ...result.payload,
+            source: 'knowledge',
+            memoryType: 'knowledge'
+          }
+        }));
+        knowledgeResultCount = allResults.length;
+      }
+
+      const searchTime = Date.now() - searchStartTime;
+
+      logger.debug('MemorySearch: All searches completed', {
+        searchTime: `${searchTime}ms`,
+        totalResults: allResults.length,
+        knowledgeResults: knowledgeResultCount,
+        reflectionResults: reflectionResultCount,
+        requestedType: memoryType
+      });
+
+      // Merge, rank, and filter results
+      const filteredResults = allResults
+        .filter(result => (result.score || 0) >= similarityThreshold)
+        .sort((a, b) => (b.score || 0) - (a.score || 0)) // Sort by similarity score descending
+        .slice(0, topK) // Take top K results overall
+        .map(result => {
+          const rawPayload = result.payload || {};
+          
+          // All data is V2 format after collection cleanup - no migration needed
+          const payload = rawPayload as KnowledgePayload | ReasoningPayload;
+          
+          // Detect if this is knowledge or reasoning memory based on structure
+          const isReasoningMemory = rawPayload.source === 'reflection' || 
+                                   rawPayload.memoryType === 'reflection' || 
+                                   (rawPayload.tags && rawPayload.tags.includes('reasoning')) ||
+                                   'reasoningSteps' in rawPayload;
+          
+          // Return unified result format with V2 payload data
+          const baseResult = {
+            id: result.id || payload.id || 'unknown',
+            text: payload.text || 'No content available',
+            tags: payload.tags || [],
+            timestamp: payload.timestamp || new Date().toISOString(),
+            similarity: result.score || 0,
+            version: payload.version || 2, // All data is V2 after cleanup
+            ...(rawPayload.source && { source: rawPayload.source }),
+            ...(rawPayload.memoryType && { memoryType: rawPayload.memoryType })
+          };
+          
+          // Add type-specific fields based on payload type
+          if (isReasoningMemory) {
+            // Reasoning memory - return raw reasoning steps and evaluation
+            const reasoningPayload = payload as ReasoningPayload;
+            return {
+              ...baseResult,
+              reasoningSteps: reasoningPayload.reasoningSteps,
+              evaluation: reasoningPayload.evaluation,
+              taskContext: reasoningPayload.taskContext,
+              // Computed metrics for convenience
+              stepCount: reasoningPayload.stepCount,
+              stepTypes: reasoningPayload.stepTypes,
+              issueCount: reasoningPayload.issueCount,
+              sourceSessionId: reasoningPayload.sourceSessionId
+            };
+          } else {
+            // Knowledge memory
+            const knowledgePayload = payload as KnowledgePayload;
+            return {
+              ...baseResult,
+              confidence: knowledgePayload.confidence || 0,
+              reasoning: knowledgePayload.reasoning || 'No reasoning available',
+              event: knowledgePayload.event,
+              domain: knowledgePayload.domain,
+              qualitySource: knowledgePayload.qualitySource,
+              sourceSessionId: knowledgePayload.sourceSessionId,
+              ...(knowledgePayload.code_pattern && { code_pattern: knowledgePayload.code_pattern }),
+              ...(knowledgePayload.old_memory && { old_memory: knowledgePayload.old_memory })
+            };
+          }
+        });
+>>>>>>> 9157ed5 (Added Reflection Memory and Enabled Reflection Memory Search)
 
 			// Filter results by similarity threshold and process
 			const filteredResults = rawResults
@@ -174,6 +434,7 @@ export const searchMemoryTool: InternalTool = {
 				.map(result => {
 					const payload = result.payload || {};
 
+<<<<<<< HEAD
 					return {
 						id: result.id || payload.id || 'unknown',
 						text: payload.text || payload.data || 'No content available',
@@ -198,6 +459,45 @@ export const searchMemoryTool: InternalTool = {
 					: 0;
 
 			const totalTime = Date.now() - startTime;
+=======
+      // Calculate memory type breakdown from filtered results
+      const finalKnowledgeCount = filteredResults.filter(r => r.source === 'knowledge').length;
+      const finalReflectionCount = filteredResults.filter(r => r.source === 'reflection').length;
+
+      const totalTime = Date.now() - startTime;
+
+      // Prepare result
+      const result: MemorySearchResult = {
+        success: true,
+        query: query,
+        results: filteredResults,
+        metadata: {
+          totalResults,
+          searchTime: totalTime,
+          embeddingTime,
+          maxSimilarity,
+          minSimilarity,
+          averageSimilarity,
+          knowledgeResults: finalKnowledgeCount,
+          reflectionResults: finalReflectionCount,
+          searchMode: memoryType as 'knowledge' | 'reflection' | 'both',
+          usedFallback
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      logger.info('MemorySearch: Search completed successfully', {
+        query: query.substring(0, 50),
+        resultsFound: totalResults,
+        knowledgeResults: finalKnowledgeCount,
+        reflectionResults: finalReflectionCount,
+        searchMode: memoryType,
+        maxSimilarity: maxSimilarity.toFixed(3),
+        averageSimilarity: averageSimilarity.toFixed(3),
+        totalTime: `${totalTime}ms`,
+        usedFallback
+      });
+>>>>>>> 9157ed5 (Added Reflection Memory and Enabled Reflection Memory Search)
 
 			// Prepare result
 			const result: MemorySearchResult = {
@@ -223,6 +523,7 @@ export const searchMemoryTool: InternalTool = {
 				totalTime: `${totalTime}ms`,
 			});
 
+<<<<<<< HEAD
 			return result;
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
@@ -251,3 +552,26 @@ export const searchMemoryTool: InternalTool = {
 		}
 	},
 };
+=======
+      return {
+        success: false,
+        query: args.query || 'undefined',
+        results: [],
+        metadata: {
+          totalResults: 0,
+          searchTime: totalTime,
+          embeddingTime: 0,
+          maxSimilarity: 0,
+          minSimilarity: 0,
+          averageSimilarity: 0,
+          knowledgeResults: 0,
+          reflectionResults: 0,
+          searchMode: 'knowledge',
+          usedFallback: true
+        },
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+}; 
+>>>>>>> 9157ed5 (Added Reflection Memory and Enabled Reflection Memory Search)

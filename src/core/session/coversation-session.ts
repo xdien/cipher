@@ -309,12 +309,162 @@ export class ConversationSession {
 						}
 					: {},
 			});
+
+			// **NEW: Automatic Reflection Memory Processing**
+			// Process reasoning traces in the background, similar to knowledge memory
+			await this.enforceReflectionMemoryProcessing(userInput, aiResponse);
+
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			logger.error('ConversationSession: Memory extraction failed', {
 				error: errorMessage,
 			});
-			// Don't throw error to avoid breaking the main conversation flow
+			// Continue execution even if memory extraction fails
+		}
+	}
+
+	/**
+	 * Programmatically enforce reflection memory processing after each interaction
+	 * This automatically extracts, evaluates, and stores reasoning patterns in the background
+	 */
+	private async enforceReflectionMemoryProcessing(userInput: string, aiResponse: string): Promise<void> {
+		try {
+			logger.debug('ConversationSession: Enforcing reflection memory processing');
+
+			// Check if reflection memory is enabled
+			if (!process.env.REFLECTION_MEMORY_ENABLED || process.env.REFLECTION_MEMORY_ENABLED.toLowerCase() !== 'true') {
+				logger.debug('ConversationSession: Reflection memory disabled, skipping processing');
+				return;
+			}
+
+			// Check if automatic reflection extraction is enabled
+			if (process.env.REFLECTION_AUTO_EXTRACT === 'false') {
+				logger.debug('ConversationSession: Automatic reflection extraction disabled, skipping processing');
+				return;
+			}
+
+			// Create full conversation context for reasoning extraction
+			const fullConversationContext = `User: ${userInput}\n\nAssistant: ${aiResponse}`;
+
+			// Step 1: Extract reasoning steps from the interaction
+			let extractionResult: any;
+			try {
+				extractionResult = await this.services.unifiedToolManager.executeTool(
+					'cipher_extract_reasoning_steps',
+					{
+						conversation: fullConversationContext,
+						options: {
+							extractExplicit: true,
+							extractImplicit: true,
+							includeMetadata: true
+						}
+					}
+				);
+
+				logger.debug('ConversationSession: Reasoning extraction completed', {
+					success: extractionResult.success,
+					stepCount: extractionResult.result?.trace?.steps?.length || 0,
+					traceId: extractionResult.result?.trace?.id
+				});
+			} catch (extractError) {
+				logger.debug('ConversationSession: Reasoning extraction failed', {
+					error: extractError instanceof Error ? extractError.message : String(extractError)
+				});
+				return; // Skip if extraction fails
+			}
+
+			// Only proceed if we extracted reasoning steps
+			if (!extractionResult.success || !extractionResult.result?.trace?.steps?.length) {
+				logger.debug('ConversationSession: No reasoning steps extracted, skipping evaluation and storage');
+				return;
+			}
+
+			const reasoningTrace = extractionResult.result.trace;
+
+			// Step 2: Evaluate the reasoning quality
+			let evaluationResult: any;
+			try {
+				evaluationResult = await this.services.unifiedToolManager.executeTool(
+					'cipher_evaluate_reasoning',
+					{
+						trace: reasoningTrace,
+						options: {
+							checkEfficiency: true,
+							detectLoops: true,
+							generateSuggestions: true
+						}
+					}
+				);
+
+				logger.debug('ConversationSession: Reasoning evaluation completed', {
+					success: evaluationResult.success,
+					qualityScore: evaluationResult.result?.evaluation?.qualityScore,
+					shouldStore: evaluationResult.result?.evaluation?.shouldStore
+				});
+			} catch (evalError) {
+				logger.debug('ConversationSession: Reasoning evaluation failed', {
+					error: evalError instanceof Error ? evalError.message : String(evalError),
+					traceId: reasoningTrace.id
+				});
+				return; // Skip if evaluation fails
+			}
+
+			// Only proceed if evaluation was successful and indicates we should store
+			if (!evaluationResult.success || !evaluationResult.result?.evaluation?.shouldStore) {
+				logger.debug('ConversationSession: Evaluation indicates should not store, skipping storage', {
+					shouldStore: evaluationResult.result?.evaluation?.shouldStore,
+					qualityScore: evaluationResult.result?.evaluation?.qualityScore
+				});
+				return;
+			}
+
+			const evaluation = evaluationResult.result.evaluation;
+
+			// Step 3: Store the unified reasoning entry
+			try {
+				const storageResult = await this.services.unifiedToolManager.executeTool(
+					'cipher_store_reasoning_memory',
+					{
+						trace: reasoningTrace,
+						evaluation: evaluation
+					}
+				);
+
+				logger.debug('ConversationSession: Reflection memory storage completed', {
+					success: storageResult.success,
+					stored: storageResult.result?.stored,
+					traceId: storageResult.result?.traceId,
+					vectorId: storageResult.result?.vectorId,
+					stepCount: storageResult.result?.metrics?.stepCount,
+					qualityScore: storageResult.result?.metrics?.qualityScore
+				});
+
+				// Log successful end-to-end reflection processing
+				if (storageResult.success && storageResult.result?.stored) {
+					logger.debug('ConversationSession: Reflection memory processing completed successfully', {
+						pipeline: 'extract → evaluate → store',
+						traceId: storageResult.result.traceId,
+						stepCount: reasoningTrace.steps.length,
+						qualityScore: evaluation.qualityScore.toFixed(3),
+						issueCount: evaluation.issues?.length || 0,
+						suggestionCount: evaluation.suggestions?.length || 0
+					});
+				}
+
+			} catch (storageError) {
+				logger.debug('ConversationSession: Reflection memory storage failed', {
+					error: storageError instanceof Error ? storageError.message : String(storageError),
+					traceId: reasoningTrace.id,
+					qualityScore: evaluation.qualityScore
+				});
+				// Continue execution even if storage fails
+			}
+
+		} catch (error) {
+			logger.debug('ConversationSession: Reflection memory processing failed', {
+				error: error instanceof Error ? error.message : String(error)
+			});
+			// Continue execution even if reflection processing fails
 		}
 	}
 

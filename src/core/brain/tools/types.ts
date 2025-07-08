@@ -45,6 +45,14 @@ export interface InternalTool extends Tool {
 	internal: true;
 
 	/**
+	 * Whether this tool should be accessible to agents
+	 * - true: Tool can be called by agents (e.g., search tools)
+	 * - false: Tool is internal-only, used for background processing (e.g., extraction, storage)
+	 * @default true
+	 */
+	agentAccessible?: boolean;
+
+	/**
 	 * Handler function that executes the tool
 	 */
 	handler: InternalToolHandler;

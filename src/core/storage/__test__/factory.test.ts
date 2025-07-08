@@ -25,6 +25,34 @@ vi.mock('../../logger/index.js', () => ({
 	}),
 }));
 
+// Mock Redis to prevent actual network connections during tests
+vi.mock('ioredis', () => {
+	const mockRedis = vi.fn().mockImplementation(() => ({
+		connect: vi.fn().mockRejectedValue(new Error('Mock Redis connection error')),
+		disconnect: vi.fn().mockResolvedValue(undefined),
+		quit: vi.fn().mockResolvedValue(undefined),
+		get: vi.fn().mockResolvedValue(null),
+		set: vi.fn().mockResolvedValue('OK'),
+		del: vi.fn().mockResolvedValue(1),
+		exists: vi.fn().mockResolvedValue(0),
+		expire: vi.fn().mockResolvedValue(1),
+		mget: vi.fn().mockResolvedValue([]),
+		mset: vi.fn().mockResolvedValue('OK'),
+		pipeline: vi.fn().mockReturnValue({
+			set: vi.fn(),
+			exec: vi.fn().mockResolvedValue([]),
+		}),
+		on: vi.fn(),
+		status: 'disconnected',
+		isConnected: () => false,
+	}));
+	
+	return {
+		Redis: mockRedis,
+		default: mockRedis,
+	};
+});
+
 describe('Storage Factory', () => {
 	// Store original env vars
 	const originalEnv = { ...process.env };

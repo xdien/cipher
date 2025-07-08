@@ -10,13 +10,17 @@ import { AgentConfig } from '../brain/memAgent/config.js';
 import { ServerConfigsSchema } from '../mcp/config.js';
 import { ServerConfigs } from '../mcp/types.js';
 import { EmbeddingManager } from '../brain/embedding/index.js';
-import { VectorStoreManager } from '../vector_storage/index.js';
+import { VectorStoreManager, DualCollectionVectorManager } from '../vector_storage/index.js';
 import { createLLMService } from '../brain/llm/services/factory.js';
 import { createContextManager } from '../brain/llm/messages/factory.js';
 import { ILLMService } from '../brain/llm/index.js';
+<<<<<<< HEAD
 import { createVectorStoreFromEnv } from '../vector_storage/factory.js';
 import { KnowledgeGraphManager } from '../knowledge_graph/manager.js';
 import { createKnowledgeGraphFromEnv } from '../knowledge_graph/factory.js';
+=======
+import { createVectorStoreFromEnv, createDualCollectionVectorStoreFromEnv } from '../vector_storage/factory.js';
+>>>>>>> 9157ed5 (Added Reflection Memory and Enabled Reflection Memory Search)
 
 export type AgentServices = {
 	mcpManager: MCPManager;
@@ -26,7 +30,7 @@ export type AgentServices = {
 	internalToolManager: InternalToolManager;
 	unifiedToolManager: UnifiedToolManager;
 	embeddingManager: EmbeddingManager;
-	vectorStoreManager: VectorStoreManager;
+	vectorStoreManager: VectorStoreManager | DualCollectionVectorManager;
 	llmService?: ILLMService;
 	knowledgeGraphManager?: KnowledgeGraphManager;
 };
@@ -74,20 +78,49 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 	}
 
 	// 3. Initialize vector storage manager with configuration
+	// Use dual collection manager if reflection memory is enabled, otherwise use regular manager
 	logger.debug('Initializing vector storage manager...');
-	const { manager: vectorStoreManager, store: _vectorStore } = await createVectorStoreFromEnv();
-
+	
+	let vectorStoreManager: VectorStoreManager | DualCollectionVectorManager;
+	
 	try {
-		logger.info('Vector storage manager initialized successfully', {
-			backend: vectorStoreManager.getInfo().backend.type,
-			collection: vectorStoreManager.getInfo().backend.collectionName,
-			dimension: vectorStoreManager.getInfo().backend.dimension,
-			fallback: vectorStoreManager.getInfo().backend.fallback || false,
-		});
+		// Check if reflection memory is enabled to determine which manager to use
+		const { env } = await import('../env.js');
+		
+		if (env.REFLECTION_MEMORY_ENABLED) {
+			logger.debug('Reflection memory enabled, using dual collection vector manager');
+			const { manager } = await createDualCollectionVectorStoreFromEnv();
+			vectorStoreManager = manager;
+			
+			const info = vectorStoreManager.getInfo();
+			logger.info('Dual collection vector storage manager initialized successfully', {
+				backend: info.knowledge.manager.getInfo().backend.type,
+				knowledgeCollection: info.knowledge.collectionName,
+				reflectionCollection: info.reflection.collectionName,
+				dimension: info.knowledge.manager.getInfo().backend.dimension,
+				knowledgeConnected: info.knowledge.connected,
+				reflectionConnected: info.reflection.connected,
+				reflectionEnabled: info.reflection.enabled,
+			});
+		} else {
+			logger.debug('Reflection memory disabled, using single collection vector manager');
+			const { manager } = await createVectorStoreFromEnv();
+			vectorStoreManager = manager;
+			
+			logger.info('Vector storage manager initialized successfully', {
+				backend: vectorStoreManager.getInfo().backend.type,
+				collection: vectorStoreManager.getInfo().backend.collectionName,
+				dimension: vectorStoreManager.getInfo().backend.dimension,
+				fallback: vectorStoreManager.getInfo().backend.fallback || false,
+			});
+		}
 	} catch (error) {
 		logger.warn('Failed to initialize vector storage manager', {
 			error: error instanceof Error ? error.message : String(error),
 		});
+		// Fallback to regular manager in case of error
+		const { manager } = await createVectorStoreFromEnv();
+		vectorStoreManager = manager;
 	}
 
 	// 4. Initialize knowledge graph manager with configuration

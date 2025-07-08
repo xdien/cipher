@@ -63,13 +63,16 @@ export {
 	createVectorStore,
 	createDefaultVectorStore,
 	createVectorStoreFromEnv,
+	createDualCollectionVectorStoreFromEnv,
 	getVectorStoreConfigFromEnv,
 	isVectorStoreFactory,
 	type VectorStoreFactory,
+	type DualCollectionVectorFactory,
 } from './factory.js';
 
-// Export manager
+// Export managers
 export { VectorStoreManager, type HealthCheckResult, type VectorStoreInfo } from './manager.js';
+export { DualCollectionVectorManager, type CollectionType } from './dual-collection-manager.js';
 
 // Export constants for external use
 export { BACKEND_TYPES, DEFAULTS, DISTANCE_METRICS } from './constants.js';
