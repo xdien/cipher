@@ -16,6 +16,11 @@ const VECTOR_STORE_CONFIG_M = process.env.VECTOR_STORE_CONFIG_M || 4;
 const VECTOR_STORE_USERNAME = process.env.VECTOR_STORE_USERNAME || '';
 const VECTOR_STORE_PASSWORD = process.env.VECTOR_STORE_PASSWORD || '';
 
+// Helper to convert number ID to string for Milvus
+function numberIdToMilvusId(id: number): string {
+	return id.toString();
+}
+
 /**
  * MilvusBackend Class
  *
@@ -171,7 +176,7 @@ export class MilvusBackend implements VectorStore {
 		}
 		for (const vector of vectors) this.validateDimension(vector, 'insert');
 		const data = vectors.map((vector, idx) => ({
-			id: ids[idx]!.toString(),
+			id: numberIdToMilvusId(ids[idx]),
 			vector,
 			payload: payloads[idx],
 		}));
@@ -224,13 +229,17 @@ export class MilvusBackend implements VectorStore {
 			const res = await this.client.query({
 				collection_name: this.collectionName,
 				output_fields: ['id', 'vector', 'payload'],
+<<<<<<< HEAD
 				filter: `id == "${vectorId.toString()}"`,
+=======
+				filter: `id == "${numberIdToMilvusId(vectorId)}"`,
+>>>>>>> 1e21e75 (Fixes Milvus Errors)
 			});
 			if (!res.data.length || !res.data[0]) return null;
 			const doc = res.data[0];
 			if (!doc) return null;
 			return {
-				id: doc.id,
+				id: vectorId,
 				vector: doc.vector,
 				payload: doc.payload,
 				score: 1.0,
@@ -248,7 +257,11 @@ export class MilvusBackend implements VectorStore {
 		try {
 			await this.client.upsert({
 				collection_name: this.collectionName,
+<<<<<<< HEAD
 				data: [{ id: vectorId.toString(), vector, payload }],
+=======
+				data: [{ id: numberIdToMilvusId(vectorId), vector, payload }],
+>>>>>>> 1e21e75 (Fixes Milvus Errors)
 			});
 			this.logger.info(`Updated vector ${vectorId}`);
 		} catch (error) {
@@ -263,7 +276,11 @@ export class MilvusBackend implements VectorStore {
 		try {
 			await this.client.deleteEntities({
 				collection_name: this.collectionName,
+<<<<<<< HEAD
 				expr: `id == "${vectorId.toString()}"`,
+=======
+				expr: `id == "${numberIdToMilvusId(vectorId)}"`,
+>>>>>>> 1e21e75 (Fixes Milvus Errors)
 			});
 			this.logger.info(`Deleted vector ${vectorId}`);
 		} catch (error) {

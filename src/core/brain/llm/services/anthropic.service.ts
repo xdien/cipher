@@ -1,56 +1,72 @@
-async generate(
-	input: string,
-	imageDataInput?: { image: string; mimeType: string },
-	stream: boolean = false
-): Promise<string> {
-	const startTime = Date.now();
+import { logger } from 'src/core/logger/index.js';
 
-	try {
-		// Check for file references in user input and attempt to find them
-		const fileReferences = this.extractFileReferences(input);
-		let contextualInfo = '';
-		
-		if (fileReferences.length > 0 && this.unifiedToolManager) {
-			contextualInfo = await this.searchForReferencedFiles(fileReferences);
-		}
+export class AnthropicService {
+	private contextManager: any;
+	private unifiedToolManager: any;
+	private config: any;
 
-		// Add the user message to context
-		this.contextManager.addUserMessage(input, imageDataInput);
+	constructor(contextManager: any, unifiedToolManager: any, config: any) {
+		this.contextManager = contextManager;
+		this.unifiedToolManager = unifiedToolManager;
+		this.config = config;
+	}
 
-		// Get the current context for the API call
-		const messages = this.contextManager.getMessages();
-		
-		// Add contextual file information if found
-		if (contextualInfo) {
-			// Insert context before the last user message
-			const lastUserMessageIndex = messages.length - 1;
-			if (lastUserMessageIndex >= 0 && messages[lastUserMessageIndex].role === 'user') {
-				const lastMessage = messages[lastUserMessageIndex];
-				if (Array.isArray(lastMessage.content) && lastMessage.content.length > 0) {
-					const lastContent = lastMessage.content[lastMessage.content.length - 1];
-					if (lastContent.type === 'text') {
-						lastContent.text = `${contextualInfo}\n\n${lastContent.text}`;
+	async generate(
+		input: string,
+		imageDataInput?: { image: string; mimeType: string },
+		stream: boolean = false
+	): Promise<string> {
+		const startTime = Date.now();
+
+		try {
+			// Check for file references in user input and attempt to find them
+			const fileReferences = this.extractFileReferences(input);
+			let contextualInfo = '';
+			
+			if (fileReferences.length > 0 && this.unifiedToolManager) {
+				contextualInfo = await this.searchForReferencedFiles(fileReferences);
+			}
+
+			// Add the user message to context
+			this.contextManager.addUserMessage(input, imageDataInput);
+
+			// Get the current context for the API call
+			const messages = this.contextManager.getMessages();
+			
+			// Add contextual file information if found
+			if (contextualInfo) {
+				// Insert context before the last user message
+				const lastUserMessageIndex = messages.length - 1;
+				if (lastUserMessageIndex >= 0 && messages[lastUserMessageIndex].role === 'user') {
+					const lastMessage = messages[lastUserMessageIndex];
+					if (Array.isArray(lastMessage.content) && lastMessage.content.length > 0) {
+						const lastContent = lastMessage.content[lastMessage.content.length - 1];
+						if (lastContent.type === 'text') {
+							lastContent.text = `${contextualInfo}\n\n${lastContent.text}`;
+						}
 					}
 				}
 			}
+
+			const systemMessage = this.contextManager.getSystemMessage();
+
+			logger.debug('AnthropicService: Sending request to Anthropic API', {
+				messageCount: messages.length,
+				hasSystem: !!systemMessage,
+				stream,
+				model: this.config.anthropic?.model || 'claude-3-5-sonnet-20241022',
+				hasFileContext: !!contextualInfo
+			});
+
+			// ... existing code ...
+			// ... existing code ...
+			// Add a dummy return for now (replace with actual result if available)
+			return '';
+		} catch (error) {
+			logger.error('AnthropicService: Error generating response', { error });
+			throw error;
 		}
-
-		const systemMessage = this.contextManager.getSystemMessage();
-
-		logger.debug('AnthropicService: Sending request to Anthropic API', {
-			messageCount: messages.length,
-			hasSystem: !!systemMessage,
-			stream,
-			model: this.config.anthropic?.model || 'claude-3-5-sonnet-20241022',
-			hasFileContext: !!contextualInfo
-		});
-
-		// ... existing code ...
-	} catch (error) {
-		logger.error('AnthropicService: Error generating response', { error });
-		throw error;
 	}
-}
 
 	/**
 	 * Extract potential file references from user input
@@ -120,4 +136,5 @@ async generate(
 		}
 
 		return '';
-	} 
+	}
+} 

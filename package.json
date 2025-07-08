@@ -83,7 +83,7 @@
 		"@anthropic-ai/sdk": "^0.39.0",
 		"@modelcontextprotocol/sdk": "^1.13.0",
 		"@qdrant/js-client-rest": "^1.14.1",
-		"@zilliz/milvus2-sdk-node": "^2.5.10",
+		"@zilliz/milvus2-sdk-node": "^2.5.12",
 		"better-sqlite3": "^12.2.0",
 		"boxen": "^8.0.1",
 		"chalk": "^5.4.1",

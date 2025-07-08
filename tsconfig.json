@@ -10,7 +10,8 @@
     "paths": {
       "@app/*": ["src/app/*"],
       "@core/*": ["src/core/*"],
-      "mitt": ["./node_modules/mitt/dist/index.d.ts"]
+      "mitt": ["./node_modules/mitt/dist/index.d.ts"],
+      "src/core/logger/index.js": ["src/core/logger/index.ts"]
     },
     "outDir": "./dist",
     "rootDir": ".",

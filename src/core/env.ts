@@ -244,6 +244,7 @@ export const validateEnv = () => {
 		VECTOR_STORE_MAX_VECTORS: process.env.VECTOR_STORE_MAX_VECTORS
 			? parseInt(process.env.VECTOR_STORE_MAX_VECTORS, 10)
 			: 10000,
+<<<<<<< HEAD
 		// Knowledge Graph Configuration
 		KNOWLEDGE_GRAPH_ENABLED: process.env.KNOWLEDGE_GRAPH_ENABLED === 'true',
 		KNOWLEDGE_GRAPH_TYPE: process.env.KNOWLEDGE_GRAPH_TYPE || 'in-memory',
@@ -255,6 +256,10 @@ export const validateEnv = () => {
 		KNOWLEDGE_GRAPH_USERNAME: process.env.KNOWLEDGE_GRAPH_USERNAME,
 		KNOWLEDGE_GRAPH_PASSWORD: process.env.KNOWLEDGE_GRAPH_PASSWORD,
 		KNOWLEDGE_GRAPH_DATABASE: process.env.KNOWLEDGE_GRAPH_DATABASE || 'neo4j',
+=======
+		VECTOR_STORE_USERNAME: process.env.VECTOR_STORE_USERNAME,
+		VECTOR_STORE_PASSWORD: process.env.VECTOR_STORE_PASSWORD,
+>>>>>>> 1e21e75 (Fixes Milvus Errors)
 		// Memory Search Configuration
 		SEARCH_MEMORY_TYPE: process.env.SEARCH_MEMORY_TYPE || 'both',
 		// Reflection Memory Configuration
