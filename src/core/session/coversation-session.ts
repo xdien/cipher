@@ -206,12 +206,9 @@ export class ConversationSession {
 		// Generate response
 		const response = await this.llmService.generate(input, imageDataInput, stream);
 
-		// PROGRAMMATIC ENFORCEMENT: Memory extraction runs in background (non-blocking)
-		this.enforceMemoryExtraction(input, response).catch(error => {
-			logger.error('ConversationSession: Background memory extraction failed', { error });
-		});
-		
-		return response; // CLI displays response IMMEDIATELY, memory extraction logs appear after
+		// PROGRAMMATIC ENFORCEMENT: Memory extraction runs synchronously before returning
+		await this.enforceMemoryExtraction(input, response);
+		return response;
 	}
 
 	/**

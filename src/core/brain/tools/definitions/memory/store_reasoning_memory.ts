@@ -783,7 +783,7 @@ export const storeReasoningMemoryTool: InternalTool = {
 
       const processingTime = Date.now() - startTime;
 
-      logger.info('StoreReasoningMemory: Successfully stored unified reasoning entry with task context', {
+      logger.debug('StoreReasoningMemory: Successfully stored unified reasoning entry with task context', {
         traceId: trace.id,
         vectorId,
         stepCount: validSteps.length,
