@@ -146,8 +146,8 @@ const SqliteBackendSchema = BaseBackendSchema.extend({
 			'SQLite database file path (optional, will auto-detect using path resolver if not provided)'
 		),
 
-	/** Database filename (default: saiki.db) */
-	database: z.string().optional().describe('Database filename (default: saiki.db)'),
+	/** Database filename (default: cipher.db) */
+	database: z.string().optional().describe('Database filename (default: cipher.db)'),
 }).strict();
 
 export type SqliteBackendConfig = z.infer<typeof SqliteBackendSchema>;

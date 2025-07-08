@@ -11,6 +11,8 @@ export function validateCliOptions(opts: any): void {
 			})
 			.optional()
 			.default('cli'),
+		strict: z.boolean().optional().default(false),
+		newSession: z.union([z.boolean(), z.string()]).optional(),
 	});
 
 	const cliOptionSchema = cliOptionShape;
@@ -18,6 +20,8 @@ export function validateCliOptions(opts: any): void {
 	const result = cliOptionSchema.safeParse({
 		verbose: opts.verbose,
 		mode: opts.mode,
+		strict: opts.strict,
+		newSession: opts.newSession,
 	});
 
 	if (!result.success) {
