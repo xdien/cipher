@@ -13,9 +13,15 @@ export class ConversationSession {
 	private llmService!: ILLMService;
 
 	private sessionMemoryMetadata?: Record<string, any>;
-	private mergeMetadata?: (sessionMeta: Record<string, any>, runMeta: Record<string, any>) => Record<string, any>;
+	private mergeMetadata?: (
+		sessionMeta: Record<string, any>,
+		runMeta: Record<string, any>
+	) => Record<string, any>;
 	private metadataSchema?: ZodSchema<any>;
-	private beforeMemoryExtraction?: (meta: Record<string, any>, context: Record<string, any>) => void;
+	private beforeMemoryExtraction?: (
+		meta: Record<string, any>,
+		context: Record<string, any>
+	) => void;
 
 	/**
 	 * @param services - Required dependencies for the session, including unifiedToolManager
@@ -32,18 +38,26 @@ export class ConversationSession {
 		public readonly id: string,
 		options?: {
 			sessionMemoryMetadata?: Record<string, any>;
-			mergeMetadata?: (sessionMeta: Record<string, any>, runMeta: Record<string, any>) => Record<string, any>;
+			mergeMetadata?: (
+				sessionMeta: Record<string, any>,
+				runMeta: Record<string, any>
+			) => Record<string, any>;
 			metadataSchema?: ZodSchema<any>;
 			beforeMemoryExtraction?: (meta: Record<string, any>, context: Record<string, any>) => void;
 		}
 	) {
 		logger.debug('ConversationSession initialized with services', { services, id });
-		if (options?.sessionMemoryMetadata && typeof options.sessionMemoryMetadata === 'object' && !Array.isArray(options.sessionMemoryMetadata)) {
+		if (
+			options?.sessionMemoryMetadata &&
+			typeof options.sessionMemoryMetadata === 'object' &&
+			!Array.isArray(options.sessionMemoryMetadata)
+		) {
 			this.sessionMemoryMetadata = options.sessionMemoryMetadata;
 		}
 		if (options?.mergeMetadata) this.mergeMetadata = options.mergeMetadata;
 		if (options?.metadataSchema) this.metadataSchema = options.metadataSchema;
-		if (options?.beforeMemoryExtraction) this.beforeMemoryExtraction = options.beforeMemoryExtraction;
+		if (options?.beforeMemoryExtraction)
+			this.beforeMemoryExtraction = options.beforeMemoryExtraction;
 	}
 
 	/**
@@ -92,12 +106,15 @@ export class ConversationSession {
 			timestamp: new Date().toISOString(),
 		};
 		const sessionMeta = this.sessionMemoryMetadata || {};
-		const customMeta = (runMeta && typeof runMeta === 'object' && !Array.isArray(runMeta)) ? runMeta : {};
+		const customMeta =
+			runMeta && typeof runMeta === 'object' && !Array.isArray(runMeta) ? runMeta : {};
 		let merged = this.mergeMetadata
 			? this.mergeMetadata(sessionMeta, customMeta)
 			: { ...base, ...sessionMeta, ...customMeta };
 		if (this.metadataSchema && !this.metadataSchema.safeParse(merged).success) {
-			logger.warn('ConversationSession: Metadata validation failed, using session-level metadata only.');
+			logger.warn(
+				'ConversationSession: Metadata validation failed, using session-level metadata only.'
+			);
 			merged = { ...base, ...sessionMeta };
 		}
 		return merged;
@@ -135,11 +152,15 @@ export class ConversationSession {
 		const defaultContext = {
 			sessionId: this.id,
 			conversationTopic: 'Interactive CLI session',
-			recentMessages: this.extractComprehensiveInteractionData(input, response)
+			recentMessages: this.extractComprehensiveInteractionData(input, response),
 		};
 		const mergedContext = {
 			...defaultContext,
-			...(options?.contextOverrides && typeof options.contextOverrides === 'object' && !Array.isArray(options.contextOverrides) ? options.contextOverrides : {})
+			...(options?.contextOverrides &&
+			typeof options.contextOverrides === 'object' &&
+			!Array.isArray(options.contextOverrides)
+				? options.contextOverrides
+				: {}),
 		};
 		if (this.beforeMemoryExtraction) {
 			this.beforeMemoryExtraction(mergedMeta, mergedContext);
@@ -155,12 +176,20 @@ export class ConversationSession {
 	 * Programmatically enforce memory extraction after each user interaction
 	 * This ensures the extract_and_operate_memory tool is always called, regardless of AI decisions
 	 */
-	private async enforceMemoryExtraction(userInput: string, aiResponse: string, options?: {
-		memoryMetadata?: Record<string, any>;
-		contextOverrides?: Record<string, any>;
-	}): Promise<void> {
+	private async enforceMemoryExtraction(
+		userInput: string,
+		aiResponse: string,
+		options?: {
+			memoryMetadata?: Record<string, any>;
+			contextOverrides?: Record<string, any>;
+		}
+	): Promise<void> {
 		console.log('ConversationSession.enforceMemoryExtraction called');
-		console.log('enforceMemoryExtraction: unifiedToolManager at entry', this.services.unifiedToolManager, typeof this.services.unifiedToolManager);
+		console.log(
+			'enforceMemoryExtraction: unifiedToolManager at entry',
+			this.services.unifiedToolManager,
+			typeof this.services.unifiedToolManager
+		);
 		try {
 			logger.info('ConversationSession: Enforcing memory extraction for interaction');
 
@@ -175,17 +204,24 @@ export class ConversationSession {
 			// unifiedToolManager is now always required and injected; no global mock debug needed
 
 			// Extract comprehensive interaction data including tool usage
-			const comprehensiveInteractionData = this.extractComprehensiveInteractionData(userInput, aiResponse);
+			const comprehensiveInteractionData = this.extractComprehensiveInteractionData(
+				userInput,
+				aiResponse
+			);
 
 			// Prepare context with overrides
 			const defaultContext = {
 				sessionId: this.id,
 				conversationTopic: 'Interactive CLI session',
-				recentMessages: comprehensiveInteractionData
+				recentMessages: comprehensiveInteractionData,
 			};
 			const mergedContext = {
 				...defaultContext,
-				...(options?.contextOverrides && typeof options.contextOverrides === 'object' && !Array.isArray(options.contextOverrides) ? options.contextOverrides : {})
+				...(options?.contextOverrides &&
+				typeof options.contextOverrides === 'object' &&
+				!Array.isArray(options.contextOverrides)
+					? options.contextOverrides
+					: {}),
 			};
 
 			// Prepare memory metadata (merge session-level and per-run, per-run takes precedence)
@@ -194,7 +230,9 @@ export class ConversationSession {
 				if (typeof options.memoryMetadata === 'object' && !Array.isArray(options.memoryMetadata)) {
 					memoryMetadata = this.getSessionMetadata(options.memoryMetadata);
 				} else {
-					logger.warn('ConversationSession: Invalid memoryMetadata provided, expected a plain object. Using session-level or default metadata.');
+					logger.warn(
+						'ConversationSession: Invalid memoryMetadata provided, expected a plain object. Using session-level or default metadata.'
+					);
 					memoryMetadata = this.getSessionMetadata();
 				}
 			} else {

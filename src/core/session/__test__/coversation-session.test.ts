@@ -29,12 +29,15 @@ let mockUnifiedToolManager: any;
 describe('Minimal ConversationSession direct invocation', () => {
 	it('should call run and log from inside run', async () => {
 		const { ConversationSession } = await import('../coversation-session.js');
-		const session = new ConversationSession({
-			stateManager: { getLLMConfig: () => ({ provider: 'test', model: 'test' }) } as any,
-			promptManager: { getInstruction: () => 'prompt' } as any,
-			mcpManager: { getAllTools: async () => ({}), getClients: () => new Map() } as any,
-			unifiedToolManager: mockUnifiedToolManager as any
-		}, 'minimal-test');
+		const session = new ConversationSession(
+			{
+				stateManager: { getLLMConfig: () => ({ provider: 'test', model: 'test' }) } as any,
+				promptManager: { getInstruction: () => 'prompt' } as any,
+				mcpManager: { getAllTools: async () => ({}), getClients: () => new Map() } as any,
+				unifiedToolManager: mockUnifiedToolManager as any,
+			},
+			'minimal-test'
+		);
 		session.init = async () => {};
 		session.run = async (...args: any[]) => {
 			console.log('MINIMAL TEST: run called with', ...args);
@@ -111,7 +114,9 @@ describe('ConversationSession', () => {
 		mockCreateLLMService.mockReturnValue(mockLLMService);
 
 		mockUnifiedToolManager = {
-			executeTool: vi.fn().mockResolvedValue({ success: true, extraction: { extracted: 1 }, memory: [] }),
+			executeTool: vi
+				.fn()
+				.mockResolvedValue({ success: true, extraction: { extracted: 1 }, memory: [] }),
 			mcpManager: undefined,
 			internalToolManager: undefined,
 			config: {},
@@ -146,15 +151,18 @@ describe('ConversationSession', () => {
 			getToolsForProvider: vi.fn(),
 			handleToolConflict: vi.fn(),
 			formatToolsForOpenAI: vi.fn(),
-			formatToolsForAnthropic: vi.fn()
+			formatToolsForAnthropic: vi.fn(),
 		};
 
-		session = new ConversationSession({
-			stateManager: mockStateManager,
-			promptManager: mockPromptManager,
-			mcpManager: mockMcpManager,
-			unifiedToolManager: mockUnifiedToolManager as any
-		}, sessionId);
+		session = new ConversationSession(
+			{
+				stateManager: mockStateManager,
+				promptManager: mockPromptManager,
+				mcpManager: mockMcpManager,
+				unifiedToolManager: mockUnifiedToolManager as any,
+			},
+			sessionId
+		);
 	});
 
 	describe('Initialization', () => {
@@ -263,7 +271,7 @@ describe('ConversationSession', () => {
 					stateManager: mockStateManager,
 					promptManager: mockPromptManager,
 					mcpManager: mockMcpManager,
-					unifiedToolManager: mockUnifiedToolManager as any
+					unifiedToolManager: mockUnifiedToolManager as any,
 				},
 				'uninitialized-session'
 			);
@@ -276,12 +284,15 @@ describe('ConversationSession', () => {
 			const input = 'Test input with metadata';
 			const expectedResponse = 'Response with metadata';
 
-			session = new ConversationSession({
-				stateManager: mockStateManager,
-				promptManager: mockPromptManager,
-				mcpManager: mockMcpManager,
-				unifiedToolManager: mockUnifiedToolManager as any
-			}, sessionId);
+			session = new ConversationSession(
+				{
+					stateManager: mockStateManager,
+					promptManager: mockPromptManager,
+					mcpManager: mockMcpManager,
+					unifiedToolManager: mockUnifiedToolManager as any,
+				},
+				sessionId
+			);
 			await session.init();
 
 			// Assert the session is using the correct mocks
@@ -290,20 +301,28 @@ describe('ConversationSession', () => {
 			mockLLMService.generate.mockResolvedValue(expectedResponse);
 
 			// Debug: Assert the session is using the mock
-			console.log('TEST DEBUG: session.getUnifiedToolManager() === mockUnifiedToolManager?', (session.getUnifiedToolManager() as any) === mockUnifiedToolManager);
+			console.log(
+				'TEST DEBUG: session.getUnifiedToolManager() === mockUnifiedToolManager?',
+				(session.getUnifiedToolManager() as any) === mockUnifiedToolManager
+			);
 			console.log('TEST DEBUG: session.getUnifiedToolManager():', session.getUnifiedToolManager());
 			console.log('TEST DEBUG: mockUnifiedToolManager:', mockUnifiedToolManager);
 			expect(session.getUnifiedToolManager()).toBe(mockUnifiedToolManager);
 
 			// Debug: Spy on enforceMemoryExtraction
 			const enforceSpy = vi.spyOn(session as any, 'enforceMemoryExtraction');
-			console.log('enforceMemoryExtraction: unifiedToolManager ref', session.getUnifiedToolManager());
+			console.log(
+				'enforceMemoryExtraction: unifiedToolManager ref',
+				session.getUnifiedToolManager()
+			);
 
 			const memoryMetadata = { customKey: 'customValue', userId: 'user-123' };
 			const contextOverrides = { conversationTopic: 'Overridden Topic', extra: 'extraContext' };
 
 			// Debug: Ensure no errors are thrown
-			await expect(session.run(input, undefined, undefined, { memoryMetadata, contextOverrides })).resolves.not.toThrow();
+			await expect(
+				session.run(input, undefined, undefined, { memoryMetadata, contextOverrides })
+			).resolves.not.toThrow();
 
 			// Debug: Assert enforceMemoryExtraction is called
 			expect(enforceSpy).toHaveBeenCalled();
@@ -313,12 +332,15 @@ describe('ConversationSession', () => {
 
 		// Minimal debug test
 		it('debug enforceMemoryExtraction and executeTool', async () => {
-			session = new ConversationSession({
-				stateManager: mockStateManager,
-				promptManager: mockPromptManager,
-				mcpManager: mockMcpManager,
-				unifiedToolManager: mockUnifiedToolManager as any
-			}, sessionId);
+			session = new ConversationSession(
+				{
+					stateManager: mockStateManager,
+					promptManager: mockPromptManager,
+					mcpManager: mockMcpManager,
+					unifiedToolManager: mockUnifiedToolManager as any,
+				},
+				sessionId
+			);
 			await session.init();
 
 			// Assert the session is using the correct mocks
@@ -328,7 +350,10 @@ describe('ConversationSession', () => {
 
 			expect(session.getUnifiedToolManager()).toBe(mockUnifiedToolManager);
 			const enforceSpy = vi.spyOn(session as any, 'enforceMemoryExtraction');
-			console.log('enforceMemoryExtraction: unifiedToolManager ref', session.getUnifiedToolManager());
+			console.log(
+				'enforceMemoryExtraction: unifiedToolManager ref',
+				session.getUnifiedToolManager()
+			);
 
 			await session.run('debug input', undefined, undefined, { memoryMetadata: { foo: 'bar' } });
 
@@ -343,22 +368,30 @@ describe('ConversationSession', () => {
 		it('should merge session metadata with custom metadata, custom takes precedence', async () => {
 			const input = 'Test merging metadata';
 			const expectedResponse = 'Response';
-			session = new ConversationSession({
-				stateManager: mockStateManager,
-				promptManager: mockPromptManager,
-				mcpManager: mockMcpManager,
-				unifiedToolManager: mockUnifiedToolManager as any
-			}, sessionId, {
-				sessionMemoryMetadata: {
-					sessionKey: 'sessionValue',
-					sessionId: 'session-meta',
-					source: 'session-source'
+			session = new ConversationSession(
+				{
+					stateManager: mockStateManager,
+					promptManager: mockPromptManager,
+					mcpManager: mockMcpManager,
+					unifiedToolManager: mockUnifiedToolManager as any,
+				},
+				sessionId,
+				{
+					sessionMemoryMetadata: {
+						sessionKey: 'sessionValue',
+						sessionId: 'session-meta',
+						source: 'session-source',
+					},
 				}
-			});
+			);
 			await session.init();
 			mockLLMService.generate.mockResolvedValue(expectedResponse);
 
-			const memoryMetadata = { sessionId: 'override-session', source: 'override-source', custom: 'yes' };
+			const memoryMetadata = {
+				sessionId: 'override-session',
+				source: 'override-source',
+				custom: 'yes',
+			};
 			await session.run(input, undefined, undefined, { memoryMetadata });
 
 			expect(mockUnifiedToolManager.executeTool).toHaveBeenCalledWith(
@@ -369,8 +402,8 @@ describe('ConversationSession', () => {
 						source: 'override-source',
 						custom: 'yes',
 						sessionKey: 'sessionValue', // session-level key should be present if not overridden
-						timestamp: expect.any(String)
-					})
+						timestamp: expect.any(String),
+					}),
 				})
 			);
 			// Also test session-level only (no per-run override)
@@ -382,8 +415,8 @@ describe('ConversationSession', () => {
 						sessionId: 'session-meta',
 						source: 'session-source',
 						sessionKey: 'sessionValue',
-						timestamp: expect.any(String)
-					})
+						timestamp: expect.any(String),
+					}),
 				})
 			);
 		});
@@ -391,12 +424,15 @@ describe('ConversationSession', () => {
 		it('should handle invalid memoryMetadata gracefully', async () => {
 			const input = 'Test invalid metadata';
 			const expectedResponse = 'Response';
-			session = new ConversationSession({
-				stateManager: mockStateManager,
-				promptManager: mockPromptManager,
-				mcpManager: mockMcpManager,
-				unifiedToolManager: mockUnifiedToolManager as any
-			}, sessionId);
+			session = new ConversationSession(
+				{
+					stateManager: mockStateManager,
+					promptManager: mockPromptManager,
+					mcpManager: mockMcpManager,
+					unifiedToolManager: mockUnifiedToolManager as any,
+				},
+				sessionId
+			);
 			await session.init();
 			mockLLMService.generate.mockResolvedValue(expectedResponse);
 
@@ -409,8 +445,8 @@ describe('ConversationSession', () => {
 					memoryMetadata: expect.objectContaining({
 						sessionId: sessionId,
 						source: 'conversation-session',
-						timestamp: expect.any(String)
-					})
+						timestamp: expect.any(String),
+					}),
 				})
 			);
 		});
@@ -418,12 +454,15 @@ describe('ConversationSession', () => {
 		it('should use only per-run metadata if no session-level metadata is provided', async () => {
 			const input = 'Test per-run metadata only';
 			const expectedResponse = 'Response';
-			session = new ConversationSession({
-				stateManager: mockStateManager,
-				promptManager: mockPromptManager,
-				mcpManager: mockMcpManager,
-				unifiedToolManager: mockUnifiedToolManager as any
-			}, sessionId);
+			session = new ConversationSession(
+				{
+					stateManager: mockStateManager,
+					promptManager: mockPromptManager,
+					mcpManager: mockMcpManager,
+					unifiedToolManager: mockUnifiedToolManager as any,
+				},
+				sessionId
+			);
 			await session.init();
 			mockLLMService.generate.mockResolvedValue(expectedResponse);
 			const memoryMetadata = { only: 'perRun', foo: 'bar' };
@@ -436,8 +475,8 @@ describe('ConversationSession', () => {
 						foo: 'bar',
 						sessionId: sessionId,
 						source: 'conversation-session',
-						timestamp: expect.any(String)
-					})
+						timestamp: expect.any(String),
+					}),
 				})
 			);
 		});
@@ -445,12 +484,15 @@ describe('ConversationSession', () => {
 		it('should maintain backward compatibility when no metadata is provided', async () => {
 			const input = 'Test legacy';
 			const expectedResponse = 'Legacy response';
-			session = new ConversationSession({
-				stateManager: mockStateManager,
-				promptManager: mockPromptManager,
-				mcpManager: mockMcpManager,
-				unifiedToolManager: mockUnifiedToolManager as any
-			}, sessionId);
+			session = new ConversationSession(
+				{
+					stateManager: mockStateManager,
+					promptManager: mockPromptManager,
+					mcpManager: mockMcpManager,
+					unifiedToolManager: mockUnifiedToolManager as any,
+				},
+				sessionId
+			);
 			await session.init();
 			mockLLMService.generate.mockResolvedValue(expectedResponse);
 			await session.run(input);
@@ -460,8 +502,8 @@ describe('ConversationSession', () => {
 					memoryMetadata: expect.objectContaining({
 						sessionId: sessionId,
 						source: 'conversation-session',
-						timestamp: expect.any(String)
-					})
+						timestamp: expect.any(String),
+					}),
 				})
 			);
 		});
@@ -488,7 +530,7 @@ describe('ConversationSession', () => {
 					stateManager: mockStateManager,
 					promptManager: mockPromptManager,
 					mcpManager: mockMcpManager,
-					unifiedToolManager: mockUnifiedToolManager as any
+					unifiedToolManager: mockUnifiedToolManager as any,
 				},
 				'uninitialized-session'
 			);
@@ -662,28 +704,53 @@ describe('ConversationSession Advanced Metadata Integration', () => {
 		vi.clearAllMocks();
 		mockStateManager = { getLLMConfig: vi.fn().mockReturnValue(mockLLMConfig) };
 		mockPromptManager = { getInstruction: vi.fn().mockReturnValue('prompt') };
-		mockMcpManager = { getAllTools: vi.fn().mockResolvedValue({}), getClients: vi.fn().mockReturnValue(new Map()) };
-		mockContextManager = { addMessage: vi.fn(), getMessages: vi.fn().mockReturnValue([]), clearMessages: vi.fn(), getRawMessages: vi.fn().mockReturnValue([]) };
-		mockLLMService = { generate: vi.fn().mockResolvedValue('response'), getAllTools: vi.fn(), getConfig: vi.fn() };
+		mockMcpManager = {
+			getAllTools: vi.fn().mockResolvedValue({}),
+			getClients: vi.fn().mockReturnValue(new Map()),
+		};
+		mockContextManager = {
+			addMessage: vi.fn(),
+			getMessages: vi.fn().mockReturnValue([]),
+			clearMessages: vi.fn(),
+			getRawMessages: vi.fn().mockReturnValue([]),
+		};
+		mockLLMService = {
+			generate: vi.fn().mockResolvedValue('response'),
+			getAllTools: vi.fn(),
+			getConfig: vi.fn(),
+		};
 		const { createContextManager } = await import('../../brain/llm/messages/factory.js');
 		const { createLLMService } = await import('../../brain/llm/services/factory.js');
 		mockCreateContextManager = vi.mocked(createContextManager);
 		mockCreateLLMService = vi.mocked(createLLMService);
 		mockCreateContextManager.mockReturnValue(mockContextManager);
 		mockCreateLLMService.mockReturnValue(mockLLMService);
-		mockUnifiedToolManager = { executeTool: vi.fn().mockResolvedValue({ success: true }), ...Object.fromEntries(Array(30).fill(0).map((_,i)=>["fn"+i,vi.fn()])) };
+		mockUnifiedToolManager = {
+			executeTool: vi.fn().mockResolvedValue({ success: true }),
+			...Object.fromEntries(
+				Array(30)
+					.fill(0)
+					.map((_, i) => ['fn' + i, vi.fn()])
+			),
+		};
 	});
 
 	it('should merge session-level and per-run metadata (per-run takes precedence)', async () => {
-		session = new ConversationSession({
-			stateManager: mockStateManager,
-			promptManager: mockPromptManager,
-			mcpManager: mockMcpManager,
-			unifiedToolManager: mockUnifiedToolManager
-		}, sessionId, { sessionMemoryMetadata: { foo: 'bar', sessionId: 'session-x', sessionOnly: 1 } });
+		session = new ConversationSession(
+			{
+				stateManager: mockStateManager,
+				promptManager: mockPromptManager,
+				mcpManager: mockMcpManager,
+				unifiedToolManager: mockUnifiedToolManager,
+			},
+			sessionId,
+			{ sessionMemoryMetadata: { foo: 'bar', sessionId: 'session-x', sessionOnly: 1 } }
+		);
 		await session.init?.();
 		mockLLMService.generate.mockResolvedValue('ok');
-		await session.run('input', undefined, undefined, { memoryMetadata: { foo: 'baz', custom: 123 } });
+		await session.run('input', undefined, undefined, {
+			memoryMetadata: { foo: 'baz', custom: 123 },
+		});
 		expect(mockUnifiedToolManager.executeTool).toHaveBeenCalledWith(
 			'cipher_extract_and_operate_memory',
 			expect.objectContaining({
@@ -693,39 +760,51 @@ describe('ConversationSession Advanced Metadata Integration', () => {
 					sessionOnly: 1,
 					custom: 123,
 					source: 'conversation-session',
-					timestamp: expect.any(String)
-				})
+					timestamp: expect.any(String),
+				}),
 			})
 		);
 	});
 
 	it('should use custom merge function if provided', async () => {
-		const customMerge = (sessionMeta: any, runMeta: any) => ({ ...sessionMeta, ...runMeta, merged: true });
-		session = new ConversationSession({
-			stateManager: mockStateManager,
-			promptManager: mockPromptManager,
-			mcpManager: mockMcpManager,
-			unifiedToolManager: mockUnifiedToolManager
-		}, sessionId, { sessionMemoryMetadata: { a: 1 }, mergeMetadata: customMerge });
+		const customMerge = (sessionMeta: any, runMeta: any) => ({
+			...sessionMeta,
+			...runMeta,
+			merged: true,
+		});
+		session = new ConversationSession(
+			{
+				stateManager: mockStateManager,
+				promptManager: mockPromptManager,
+				mcpManager: mockMcpManager,
+				unifiedToolManager: mockUnifiedToolManager,
+			},
+			sessionId,
+			{ sessionMemoryMetadata: { a: 1 }, mergeMetadata: customMerge }
+		);
 		await session.init?.();
 		mockLLMService.generate.mockResolvedValue('ok');
 		await session.run('input', undefined, undefined, { memoryMetadata: { b: 2 } });
 		expect(mockUnifiedToolManager.executeTool).toHaveBeenCalledWith(
 			'cipher_extract_and_operate_memory',
 			expect.objectContaining({
-				memoryMetadata: expect.objectContaining({ a: 1, b: 2, merged: true })
+				memoryMetadata: expect.objectContaining({ a: 1, b: 2, merged: true }),
 			})
 		);
 	});
 
 	it('should validate metadata with schema and fallback on failure', async () => {
 		const schema = z.object({ foo: z.string() });
-		session = new ConversationSession({
-			stateManager: mockStateManager,
-			promptManager: mockPromptManager,
-			mcpManager: mockMcpManager,
-			unifiedToolManager: mockUnifiedToolManager
-		}, sessionId, { sessionMemoryMetadata: { foo: 'bar', valid: true }, metadataSchema: schema });
+		session = new ConversationSession(
+			{
+				stateManager: mockStateManager,
+				promptManager: mockPromptManager,
+				mcpManager: mockMcpManager,
+				unifiedToolManager: mockUnifiedToolManager,
+			},
+			sessionId,
+			{ sessionMemoryMetadata: { foo: 'bar', valid: true }, metadataSchema: schema }
+		);
 		await session.init?.();
 		mockLLMService.generate.mockResolvedValue('ok');
 		// Valid
@@ -733,7 +812,7 @@ describe('ConversationSession Advanced Metadata Integration', () => {
 		expect(mockUnifiedToolManager.executeTool).toHaveBeenCalledWith(
 			'cipher_extract_and_operate_memory',
 			expect.objectContaining({
-				memoryMetadata: expect.objectContaining({ foo: 'baz' })
+				memoryMetadata: expect.objectContaining({ foo: 'baz' }),
 			})
 		);
 		// Invalid (should fallback to session-level)
@@ -741,35 +820,49 @@ describe('ConversationSession Advanced Metadata Integration', () => {
 		expect(mockUnifiedToolManager.executeTool).toHaveBeenCalledWith(
 			'cipher_extract_and_operate_memory',
 			expect.objectContaining({
-				memoryMetadata: expect.objectContaining({ foo: 'bar', valid: true })
+				memoryMetadata: expect.objectContaining({ foo: 'bar', valid: true }),
 			})
 		);
 	});
 
 	it('should call beforeMemoryExtraction hook if provided', async () => {
 		const hook = vi.fn();
-		session = new ConversationSession({
-			stateManager: mockStateManager,
-			promptManager: mockPromptManager,
-			mcpManager: mockMcpManager,
-			unifiedToolManager: mockUnifiedToolManager
-		}, sessionId, { beforeMemoryExtraction: hook });
+		session = new ConversationSession(
+			{
+				stateManager: mockStateManager,
+				promptManager: mockPromptManager,
+				mcpManager: mockMcpManager,
+				unifiedToolManager: mockUnifiedToolManager,
+			},
+			sessionId,
+			{ beforeMemoryExtraction: hook }
+		);
 		await session.init?.();
 		mockLLMService.generate.mockResolvedValue('ok');
 		await session.run('input', undefined, undefined, { memoryMetadata: { foo: 'bar' } });
 		expect(hook).toHaveBeenCalled();
-		const [meta, context] = hook.mock.calls[0];
-		expect(meta).toMatchObject({ foo: 'bar', sessionId: sessionId, source: 'conversation-session' });
+		const callArgs = hook.mock.calls[0];
+		expect(callArgs).toBeDefined();
+		const [meta, context] = callArgs!;
+		expect(meta).toMatchObject({
+			foo: 'bar',
+			sessionId: sessionId,
+			source: 'conversation-session',
+		});
 		expect(context).toHaveProperty('sessionId', sessionId);
 	});
 
 	it('should allow updating session-level metadata after construction', async () => {
-		session = new ConversationSession({
-			stateManager: mockStateManager,
-			promptManager: mockPromptManager,
-			mcpManager: mockMcpManager,
-			unifiedToolManager: mockUnifiedToolManager
-		}, sessionId, { sessionMemoryMetadata: { foo: 'bar' } });
+		session = new ConversationSession(
+			{
+				stateManager: mockStateManager,
+				promptManager: mockPromptManager,
+				mcpManager: mockMcpManager,
+				unifiedToolManager: mockUnifiedToolManager,
+			},
+			sessionId,
+			{ sessionMemoryMetadata: { foo: 'bar' } }
+		);
 		await session.init?.();
 		mockLLMService.generate.mockResolvedValue('ok');
 		session.updateSessionMetadata({ foo: 'baz', newKey: 42 });
@@ -777,43 +870,54 @@ describe('ConversationSession Advanced Metadata Integration', () => {
 		expect(mockUnifiedToolManager.executeTool).toHaveBeenCalledWith(
 			'cipher_extract_and_operate_memory',
 			expect.objectContaining({
-				memoryMetadata: expect.objectContaining({ foo: 'baz', newKey: 42 })
+				memoryMetadata: expect.objectContaining({ foo: 'baz', newKey: 42 }),
 			})
 		);
 	});
 
 	it('should handle invalid memoryMetadata gracefully', async () => {
-		session = new ConversationSession({
-			stateManager: mockStateManager,
-			promptManager: mockPromptManager,
-			mcpManager: mockMcpManager,
-			unifiedToolManager: mockUnifiedToolManager
-		}, sessionId, { sessionMemoryMetadata: { foo: 'bar' } });
+		session = new ConversationSession(
+			{
+				stateManager: mockStateManager,
+				promptManager: mockPromptManager,
+				mcpManager: mockMcpManager,
+				unifiedToolManager: mockUnifiedToolManager,
+			},
+			sessionId,
+			{ sessionMemoryMetadata: { foo: 'bar' } }
+		);
 		await session.init?.();
 		mockLLMService.generate.mockResolvedValue('ok');
 		await session.run('input', undefined, undefined, { memoryMetadata: 'not-an-object' as any });
 		expect(mockUnifiedToolManager.executeTool).toHaveBeenCalledWith(
 			'cipher_extract_and_operate_memory',
 			expect.objectContaining({
-				memoryMetadata: expect.objectContaining({ foo: 'bar' })
+				memoryMetadata: expect.objectContaining({ foo: 'bar' }),
 			})
 		);
 	});
 
 	it('should maintain backward compatibility when no metadata is provided', async () => {
-		session = new ConversationSession({
-			stateManager: mockStateManager,
-			promptManager: mockPromptManager,
-			mcpManager: mockMcpManager,
-			unifiedToolManager: mockUnifiedToolManager
-		}, sessionId);
+		session = new ConversationSession(
+			{
+				stateManager: mockStateManager,
+				promptManager: mockPromptManager,
+				mcpManager: mockMcpManager,
+				unifiedToolManager: mockUnifiedToolManager,
+			},
+			sessionId
+		);
 		await session.init?.();
 		mockLLMService.generate.mockResolvedValue('ok');
 		await session.run('input');
 		expect(mockUnifiedToolManager.executeTool).toHaveBeenCalledWith(
 			'cipher_extract_and_operate_memory',
 			expect.objectContaining({
-				memoryMetadata: expect.objectContaining({ sessionId: sessionId, source: 'conversation-session', timestamp: expect.any(String) })
+				memoryMetadata: expect.objectContaining({
+					sessionId: sessionId,
+					source: 'conversation-session',
+					timestamp: expect.any(String),
+				}),
 			})
 		);
 	});
