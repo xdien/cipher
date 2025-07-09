@@ -42,7 +42,7 @@ pnpm i && pnpm run build && npm link
 
 ## Run Modes
 
-Cipher supports three operational modes to fit different usage patterns:
+Cipher supports multiple operational modes to fit different usage patterns:
 
 ### CLI Mode (Interactive)
 
@@ -64,6 +64,55 @@ cipher --mode cli
 - Session management capabilities
 - Graceful exit with `exit` or `quit` commands
 - Signal handling (Ctrl+C) for clean shutdown
+
+### One-Shot Mode (Headless)
+
+Execute a single prompt and exit without starting an interactive session:
+
+```bash
+# One-shot command execution
+cipher "what is ourn own logics of implementing the binary search tree?"
+cipher task "store this logics (logics...) to the memory"
+
+# Works with all existing flags
+cipher --strict "analyze this code"
+cipher --new-session debug-session "fix this bug"
+cipher --mode cli "remember this important detail"
+```
+
+**Key Features:**
+
+- **Quick Execution**: Run a single prompt and exit immediately
+- **Full Compatibility**: Works with all existing CLI flags (`--strict`, `--new-session`, `--mode`, etc.)
+- **Memory Integration**: All interactions are stored in memory for future reference
+- **Processing Feedback**: Shows "🤔 Processing..." indicator while working
+- **Error Handling**: Comprehensive error handling with meaningful messages
+- **Clean Exit**: Proper process termination after execution
+
+**Usage Examples:**
+
+```bash
+# Simple one-shot command
+cipher "What's the weather like?"
+
+# Store information to memory
+cipher "Remember that I'm working on the authentication module"
+
+# Quick analysis with strict mode
+cipher --strict "Analyze this error message for me"
+
+# Create a new session and execute
+cipher --new-session analysis-work "Help me understand this algorithm"
+
+# Use with custom agent configuration
+cipher --agent ./my-config.yml "Process this data"
+```
+
+The one-shot mode is perfect for:
+- Quick queries that don't need ongoing conversation
+- Storing information to memory from scripts
+- Integrating cipher into automated workflows
+- Testing prompts without starting interactive mode
 
 ### API Mode (REST Server)
 
