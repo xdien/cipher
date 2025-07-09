@@ -93,7 +93,7 @@ describe('Tool Definitions', () => {
 						{
 							interaction: 'TypeScript interface pattern for tools',
 						},
-						mockContext
+						mockContext as any
 					);
 
 					expect(result.success).toBe(true);

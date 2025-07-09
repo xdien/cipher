@@ -7,10 +7,7 @@
 
 // Export all tool categories
 export * from './memory/index.js';
-
-// Export individual tools for direct access
-export { extractKnowledgeTool } from './memory/extract-knowledge.js';
-export { memoryOperationTool } from './memory/memory_operation.js';
+export * from './knowledge_graph/index.js';
 
 // Import types and utilities
 import type { InternalToolSet } from '../types.js';

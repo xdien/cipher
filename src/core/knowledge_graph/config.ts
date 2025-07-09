@@ -166,18 +166,26 @@ export const KnowledgeGraphEnvConfigSchema = z.object({
 	KNOWLEDGE_GRAPH_ENABLED: z.boolean().default(false),
 	/** Backend type */
 	KNOWLEDGE_GRAPH_TYPE: z.enum(['neo4j', 'in-memory']).default('in-memory'),
-	/** Neo4j host */
+	/** Connection mode for Neo4j */
+	KNOWLEDGE_GRAPH_CONNECTION_MODE: z.enum(['local', 'cloud']).default('local'),
+	/** Neo4j host (for local mode) */
 	KNOWLEDGE_GRAPH_HOST: z.string().optional(),
-	/** Neo4j port */
+	/** Neo4j port (for local mode) */
 	KNOWLEDGE_GRAPH_PORT: z.number().optional(),
-	/** Neo4j URI */
+	/** Neo4j URI (for local mode) */
 	KNOWLEDGE_GRAPH_URI: z.string().optional(),
-	/** Neo4j username */
+	/** Neo4j username (for local mode) */
 	KNOWLEDGE_GRAPH_USERNAME: z.string().optional(),
-	/** Neo4j password */
+	/** Neo4j password (for local mode) */
 	KNOWLEDGE_GRAPH_PASSWORD: z.string().optional(),
 	/** Neo4j database name */
 	KNOWLEDGE_GRAPH_DATABASE: z.string().default('neo4j'),
+	/** Neo4j URL (for cloud mode) */
+	NEO4J_URL: z.string().optional(),
+	/** Neo4j username (for cloud mode) */
+	NEO4J_USERNAME: z.string().optional(),
+	/** Neo4j password (for cloud mode) */
+	NEO4J_PASSWORD: z.string().optional(),
 });
 
 // Export inferred types
@@ -231,6 +239,7 @@ export function parseKnowledgeGraphConfigFromEnv(
 	const envConfig = KnowledgeGraphEnvConfigSchema.parse({
 		KNOWLEDGE_GRAPH_ENABLED: env.KNOWLEDGE_GRAPH_ENABLED === 'true',
 		KNOWLEDGE_GRAPH_TYPE: env.KNOWLEDGE_GRAPH_TYPE || 'in-memory',
+		KNOWLEDGE_GRAPH_CONNECTION_MODE: env.KNOWLEDGE_GRAPH_CONNECTION_MODE || 'local',
 		KNOWLEDGE_GRAPH_HOST: env.KNOWLEDGE_GRAPH_HOST,
 		KNOWLEDGE_GRAPH_PORT: env.KNOWLEDGE_GRAPH_PORT
 			? parseInt(env.KNOWLEDGE_GRAPH_PORT, 10)
@@ -239,6 +248,9 @@ export function parseKnowledgeGraphConfigFromEnv(
 		KNOWLEDGE_GRAPH_USERNAME: env.KNOWLEDGE_GRAPH_USERNAME,
 		KNOWLEDGE_GRAPH_PASSWORD: env.KNOWLEDGE_GRAPH_PASSWORD,
 		KNOWLEDGE_GRAPH_DATABASE: env.KNOWLEDGE_GRAPH_DATABASE || 'neo4j',
+		NEO4J_URL: env.NEO4J_URL,
+		NEO4J_USERNAME: env.NEO4J_USERNAME,
+		NEO4J_PASSWORD: env.NEO4J_PASSWORD,
 	});
 
 	// Return null if knowledge graph is disabled
@@ -253,33 +265,43 @@ export function parseKnowledgeGraphConfigFromEnv(
 			database: envConfig.KNOWLEDGE_GRAPH_DATABASE,
 		};
 
-		// Add connection details
-		if (envConfig.KNOWLEDGE_GRAPH_URI) {
-			neo4jConfig.uri = envConfig.KNOWLEDGE_GRAPH_URI;
-		} else if (envConfig.KNOWLEDGE_GRAPH_HOST && envConfig.KNOWLEDGE_GRAPH_PORT) {
-			neo4jConfig.host = envConfig.KNOWLEDGE_GRAPH_HOST;
-			neo4jConfig.port = envConfig.KNOWLEDGE_GRAPH_PORT;
+		// Handle different connection modes
+		if (envConfig.KNOWLEDGE_GRAPH_CONNECTION_MODE === 'cloud') {
+			// Cloud mode: use NEO4J_* environment variables
+			if (!envConfig.NEO4J_URL) {
+				throw new Error('For Neo4j cloud mode, NEO4J_URL must be provided');
+			}
+
+			if (!envConfig.NEO4J_USERNAME || !envConfig.NEO4J_PASSWORD) {
+				throw new Error(
+					'For Neo4j cloud mode, both NEO4J_USERNAME and NEO4J_PASSWORD must be provided'
+				);
+			}
+
+			neo4jConfig.uri = envConfig.NEO4J_URL;
+			neo4jConfig.username = envConfig.NEO4J_USERNAME;
+			neo4jConfig.password = envConfig.NEO4J_PASSWORD;
 		} else {
-			throw new Error(
-				'For Neo4j backend, either KNOWLEDGE_GRAPH_URI or both KNOWLEDGE_GRAPH_HOST and KNOWLEDGE_GRAPH_PORT must be provided'
-			);
-		}
+			// Local mode: use KNOWLEDGE_GRAPH_* environment variables
+			if (envConfig.KNOWLEDGE_GRAPH_URI) {
+				neo4jConfig.uri = envConfig.KNOWLEDGE_GRAPH_URI;
+			} else if (envConfig.KNOWLEDGE_GRAPH_HOST && envConfig.KNOWLEDGE_GRAPH_PORT) {
+				neo4jConfig.host = envConfig.KNOWLEDGE_GRAPH_HOST;
+				neo4jConfig.port = envConfig.KNOWLEDGE_GRAPH_PORT;
+			} else {
+				throw new Error(
+					'For Neo4j local mode, either KNOWLEDGE_GRAPH_URI or both KNOWLEDGE_GRAPH_HOST and KNOWLEDGE_GRAPH_PORT must be provided'
+				);
+			}
 
-		// Add authentication
-		if (!envConfig.KNOWLEDGE_GRAPH_USERNAME || !envConfig.KNOWLEDGE_GRAPH_PASSWORD) {
-			throw new Error(
-				'For Neo4j backend, both KNOWLEDGE_GRAPH_USERNAME and KNOWLEDGE_GRAPH_PASSWORD must be provided'
-			);
-		}
+			if (!envConfig.KNOWLEDGE_GRAPH_USERNAME || !envConfig.KNOWLEDGE_GRAPH_PASSWORD) {
+				throw new Error(
+					'For Neo4j local mode, both KNOWLEDGE_GRAPH_USERNAME and KNOWLEDGE_GRAPH_PASSWORD must be provided'
+				);
+			}
 
-		neo4jConfig.username = envConfig.KNOWLEDGE_GRAPH_USERNAME;
-		neo4jConfig.password = envConfig.KNOWLEDGE_GRAPH_PASSWORD;
-
-		// Validate the connection requirements
-		if (!neo4jConfig.uri && (!neo4jConfig.host || !neo4jConfig.port)) {
-			throw new Error(
-				'For Neo4j backend, either KNOWLEDGE_GRAPH_URI or both KNOWLEDGE_GRAPH_HOST and KNOWLEDGE_GRAPH_PORT must be provided'
-			);
+			neo4jConfig.username = envConfig.KNOWLEDGE_GRAPH_USERNAME;
+			neo4jConfig.password = envConfig.KNOWLEDGE_GRAPH_PASSWORD;
 		}
 
 		return parseKnowledgeGraphConfig(neo4jConfig);

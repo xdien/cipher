@@ -264,6 +264,42 @@ export class MemAgent {
 		};
 	}
 
+	/**
+	 * Get conversation history for a specific session
+	 */
+	public async getSessionHistory(sessionId: string): Promise<any[]> {
+		this.ensureStarted();
+
+		// Get the session
+		const session = await this.sessionManager.getSession(sessionId);
+		if (!session) {
+			throw new Error(`Session not found: ${sessionId}`);
+		}
+
+		// Access the context manager to get raw messages
+		// Note: We need to access the private contextManager property
+		// This is a temporary solution until we add a proper public method to ConversationSession
+		const contextManager = (session as any).contextManager;
+		if (!contextManager) {
+			// Session might not be initialized yet
+			return [];
+		}
+
+		// Get raw messages and convert them to a format suitable for API response
+		const rawMessages = contextManager.getRawMessages();
+
+		// Transform the messages to a more user-friendly format
+		return rawMessages.map((msg: any, index: number) => ({
+			id: index + 1,
+			role: msg.role,
+			content: msg.content,
+			timestamp: new Date().toISOString(), // Placeholder - actual timestamps would need to be tracked
+			...(msg.toolCalls && { toolCalls: msg.toolCalls }),
+			...(msg.toolCallId && { toolCallId: msg.toolCallId }),
+			...(msg.name && { name: msg.name }),
+		}));
+	}
+
 	public getCurrentLLMConfig(): LLMConfig {
 		this.ensureStarted();
 		return structuredClone(this.stateManager.getLLMConfig());

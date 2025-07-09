@@ -30,27 +30,32 @@ const envSchema = z.object({
 	STORAGE_DATABASE_PATH: z.string().optional(),
 	STORAGE_DATABASE_NAME: z.string().optional(),
 	// Vector Storage Configuration
-	VECTOR_STORE_TYPE: z.enum(['qdrant', 'in-memory']).default('in-memory'),
+	VECTOR_STORE_TYPE: z.enum(['qdrant', 'milvus', 'in-memory']).default('in-memory'),
 	VECTOR_STORE_HOST: z.string().optional(),
 	VECTOR_STORE_PORT: z.number().optional(),
 	VECTOR_STORE_URL: z.string().optional(),
 	VECTOR_STORE_API_KEY: z.string().optional(),
+	VECTOR_STORE_USERNAME: z.string().optional(),
+	VECTOR_STORE_PASSWORD: z.string().optional(),
 	VECTOR_STORE_COLLECTION: z.string().default('default'),
 	VECTOR_STORE_DIMENSION: z.number().default(1536),
 	VECTOR_STORE_DISTANCE: z.enum(['Cosine', 'Euclidean', 'Dot', 'Manhattan']).default('Cosine'),
 	VECTOR_STORE_ON_DISK: z.boolean().default(false),
 	VECTOR_STORE_MAX_VECTORS: z.number().default(10000),
-	VECTOR_STORE_USERNAME: z.string().optional(),
-	VECTOR_STORE_PASSWORD: z.string().optional(),
 	// Knowledge Graph Configuration
-	KNOWLEDGE_GRAPH_ENABLED: z.boolean().default(false),
+	KNOWLEDGE_GRAPH_ENABLED: z.boolean().default(true),
 	KNOWLEDGE_GRAPH_TYPE: z.enum(['neo4j', 'in-memory']).default('in-memory'),
+	KNOWLEDGE_GRAPH_CONNECTION_MODE: z.enum(['local', 'cloud']).default('local'),
 	KNOWLEDGE_GRAPH_HOST: z.string().optional(),
 	KNOWLEDGE_GRAPH_PORT: z.number().optional(),
 	KNOWLEDGE_GRAPH_URI: z.string().optional(),
 	KNOWLEDGE_GRAPH_USERNAME: z.string().optional(),
 	KNOWLEDGE_GRAPH_PASSWORD: z.string().optional(),
 	KNOWLEDGE_GRAPH_DATABASE: z.string().default('neo4j'),
+	// Neo4j Cloud Configuration
+	NEO4J_URL: z.string().optional(),
+	NEO4J_USERNAME: z.string().optional(),
+	NEO4J_PASSWORD: z.string().optional(),
 	// Memory Search Configuration
 	SEARCH_MEMORY_TYPE: z.enum(['knowledge', 'reflection', 'both']).default('both'),
 });
@@ -124,6 +129,10 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 				return process.env.VECTOR_STORE_URL;
 			case 'VECTOR_STORE_API_KEY':
 				return process.env.VECTOR_STORE_API_KEY;
+			case 'VECTOR_STORE_USERNAME':
+				return process.env.VECTOR_STORE_USERNAME;
+			case 'VECTOR_STORE_PASSWORD':
+				return process.env.VECTOR_STORE_PASSWORD;
 			case 'VECTOR_STORE_COLLECTION':
 				return process.env.VECTOR_STORE_COLLECTION || 'default';
 			case 'VECTOR_STORE_DIMENSION':
@@ -140,7 +149,7 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 					: 10000;
 			// Knowledge Graph Configuration
 			case 'KNOWLEDGE_GRAPH_ENABLED':
-				return process.env.KNOWLEDGE_GRAPH_ENABLED === 'true';
+				return process.env.KNOWLEDGE_GRAPH_ENABLED !== 'false';
 			case 'KNOWLEDGE_GRAPH_TYPE':
 				return process.env.KNOWLEDGE_GRAPH_TYPE || 'in-memory';
 			case 'KNOWLEDGE_GRAPH_HOST':
@@ -157,6 +166,15 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 				return process.env.KNOWLEDGE_GRAPH_PASSWORD;
 			case 'KNOWLEDGE_GRAPH_DATABASE':
 				return process.env.KNOWLEDGE_GRAPH_DATABASE || 'neo4j';
+			case 'KNOWLEDGE_GRAPH_CONNECTION_MODE':
+				return process.env.KNOWLEDGE_GRAPH_CONNECTION_MODE || 'local';
+			// Neo4j Cloud Configuration
+			case 'NEO4J_URL':
+				return process.env.NEO4J_URL;
+			case 'NEO4J_USERNAME':
+				return process.env.NEO4J_USERNAME;
+			case 'NEO4J_PASSWORD':
+				return process.env.NEO4J_PASSWORD;
 			// Memory Search Configuration
 			case 'SEARCH_MEMORY_TYPE':
 				return process.env.SEARCH_MEMORY_TYPE || 'both';
@@ -215,6 +233,8 @@ export const validateEnv = () => {
 			: undefined,
 		VECTOR_STORE_URL: process.env.VECTOR_STORE_URL,
 		VECTOR_STORE_API_KEY: process.env.VECTOR_STORE_API_KEY,
+		VECTOR_STORE_USERNAME: process.env.VECTOR_STORE_USERNAME,
+		VECTOR_STORE_PASSWORD: process.env.VECTOR_STORE_PASSWORD,
 		VECTOR_STORE_COLLECTION: process.env.VECTOR_STORE_COLLECTION || 'default',
 		VECTOR_STORE_DIMENSION: process.env.VECTOR_STORE_DIMENSION
 			? parseInt(process.env.VECTOR_STORE_DIMENSION, 10)
@@ -235,6 +255,11 @@ export const validateEnv = () => {
 		KNOWLEDGE_GRAPH_USERNAME: process.env.KNOWLEDGE_GRAPH_USERNAME,
 		KNOWLEDGE_GRAPH_PASSWORD: process.env.KNOWLEDGE_GRAPH_PASSWORD,
 		KNOWLEDGE_GRAPH_DATABASE: process.env.KNOWLEDGE_GRAPH_DATABASE || 'neo4j',
+		KNOWLEDGE_GRAPH_CONNECTION_MODE: process.env.KNOWLEDGE_GRAPH_CONNECTION_MODE || 'local',
+		// Neo4j Cloud Configuration
+		NEO4J_URL: process.env.NEO4J_URL,
+		NEO4J_USERNAME: process.env.NEO4J_USERNAME,
+		NEO4J_PASSWORD: process.env.NEO4J_PASSWORD,
 		// Memory Search Configuration
 		SEARCH_MEMORY_TYPE: process.env.SEARCH_MEMORY_TYPE || 'both',
 	};

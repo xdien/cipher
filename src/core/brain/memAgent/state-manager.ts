@@ -96,4 +96,46 @@ export class MemAgentStateManager {
 			maxIterations: config.llm.maxIterations ?? 10, // Provide default value
 		};
 	}
+
+	/**
+	 * Update LLM configuration globally or for a specific session
+	 */
+	public updateLLMConfig(newConfig: Partial<LLMConfig>, sessionId?: string): void {
+		if (sessionId) {
+			// Update session-specific config
+			const existingOverride = this.sessionOverrides.get(sessionId) || {};
+			this.sessionOverrides.set(sessionId, {
+				...existingOverride,
+				llm: { ...existingOverride.llm, ...newConfig },
+			});
+			logger.info(`Updated LLM config for session ${sessionId}`, { newConfig });
+		} else {
+			// Update global runtime config
+			this.runtimeConfig.llm = { ...this.runtimeConfig.llm, ...newConfig };
+			logger.info('Updated global LLM config', { newConfig });
+		}
+	}
+
+	/**
+	 * Remove session-specific LLM configuration override
+	 */
+	public clearSessionLLMOverride(sessionId: string): void {
+		const override = this.sessionOverrides.get(sessionId);
+		if (override) {
+			if (override.llm) {
+				delete override.llm;
+				if (Object.keys(override).length === 0) {
+					this.sessionOverrides.delete(sessionId);
+				}
+				logger.info(`Cleared LLM config override for session ${sessionId}`);
+			}
+		}
+	}
+
+	/**
+	 * Get all active session overrides (for debugging/inspection)
+	 */
+	public getSessionOverrides(): Map<string, SessionOverride> {
+		return new Map(this.sessionOverrides);
+	}
 }

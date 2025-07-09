@@ -397,6 +397,19 @@ export const extractAndOperateMemoryTool: InternalTool = {
 				},
 				additionalProperties: false,
 			},
+			memoryMetadata: {
+				type: 'object',
+				description:
+					'Custom metadata to attach to created memories (projectId, userId, teamId, etc.)',
+				additionalProperties: true,
+				properties: {
+					projectId: { type: 'string', description: 'Project identifier for scoped memory' },
+					userId: { type: 'string', description: 'User identifier for personalized memory' },
+					teamId: { type: 'string', description: 'Team identifier for team-scoped memory' },
+					environment: { type: 'string', description: 'Environment (dev, staging, prod)' },
+					source: { type: 'string', description: 'Source of the memory (cli, api, web)' },
+				},
+			},
 		},
 		required: ['interaction'],
 	},
@@ -668,6 +681,13 @@ export const extractAndOperateMemoryTool: InternalTool = {
 						reasoning: action.reasoning,
 						event: action.event,
 						timestamp: new Date().toISOString(),
+						metadata: {
+							...(args.memoryMetadata || {}),
+							sessionId: args.context?.sessionId,
+							userId: args.context?.userId,
+							projectId: args.context?.projectId,
+							conversationTopic: args.context?.conversationTopic,
+						},
 					};
 
 					try {
@@ -678,6 +698,7 @@ export const extractAndOperateMemoryTool: InternalTool = {
 								textPreview: action.text.substring(0, 60) + (action.text.length > 60 ? '...' : ''),
 								tags: action.tags,
 								confidence: action.confidence.toFixed(3),
+								metadata: payload.metadata,
 							});
 						} else if (action.event === 'UPDATE') {
 							await vectorStore.update(action.id, embedding, payload);
@@ -686,12 +707,14 @@ export const extractAndOperateMemoryTool: InternalTool = {
 								textPreview: action.text.substring(0, 60) + (action.text.length > 60 ? '...' : ''),
 								tags: action.tags,
 								confidence: action.confidence.toFixed(3),
+								metadata: payload.metadata,
 							});
 						} else if (action.event === 'DELETE') {
 							await vectorStore.delete(action.id);
 							logger.info(`ExtractAndOperateMemory: ${action.event} operation completed`, {
 								memoryId: action.id,
 								reasoning: action.reasoning,
+								metadata: payload.metadata,
 							});
 						}
 						persistedCount++;
@@ -700,6 +723,7 @@ export const extractAndOperateMemoryTool: InternalTool = {
 							memoryId: action.id,
 							textPreview: action.text.substring(0, 60) + (action.text.length > 60 ? '...' : ''),
 							error: error instanceof Error ? error.message : String(error),
+							metadata: payload.metadata,
 						});
 					}
 				}
@@ -739,3 +763,5 @@ export const extractAndOperateMemoryTool: InternalTool = {
 		}
 	},
 };
+
+export const handler = extractAndOperateMemoryTool.handler;

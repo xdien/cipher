@@ -8,6 +8,7 @@ import { resolveConfigPath } from '@core/utils/path.js';
 import { handleCliOptionsError, validateCliOptions } from './cli/utils/options.js';
 import { loadAgentConfig } from '../core/brain/memAgent/loader.js';
 import { startInteractiveCli, startMcpMode } from './cli/cli.js';
+import { ApiServer } from './api/server.js';
 
 const program = new Command();
 
@@ -19,17 +20,22 @@ program
 	.option('-a, --agent <path>', 'Path to agent config file', DEFAULT_CONFIG_PATH)
 	.option('-s, --strict', 'Require all MCP server connections to succeed')
 	.option('--new-session [sessionId]', 'Start with a new session (optionally specify session ID)')
-	.option('--mode <mode>', 'The application mode for cipher memory agent - cli | mcp', 'cli');
+	.option('--mode <mode>', 'The application mode for cipher memory agent - cli | mcp | api', 'cli')
+	.option('--port <port>', 'Port for API server (only used with --mode api)', '3000')
+	.option('--host <host>', 'Host for API server (only used with --mode api)', 'localhost');
 
 program
 	.description(
 		'Cipher CLI allows you to interact with cipher memory agent in interactive mode.\n' +
 			'Available modes:\n' +
 			'  - cli: Interactive command-line interface\n' +
-			'  - mcp: Model Context Protocol server mode\n\n' +
+			'  - mcp: Model Context Protocol server mode\n' +
+			'  - api: REST API server mode\n\n' +
 			'Options:\n' +
 			'  -s, --strict: Require all MCP server connections to succeed (overrides individual server connection modes)\n' +
-			'  --new-session [sessionId]: Start with a new session (optionally specify session ID)'
+			'  --new-session [sessionId]: Start with a new session (optionally specify session ID)\n' +
+			'  --port <port>: Port for API server (default: 3000, only used with --mode api)\n' +
+			'  --host <host>: Host for API server (default: localhost, only used with --mode api)'
 	)
 	/**
 	 * Main CLI action handler for the Cipher agent.
@@ -162,6 +168,33 @@ program
 			process.exit(1);
 		}
 
+		/**
+		 * Start the API server mode
+		 */
+		async function startApiMode(agent: MemAgent, options: any): Promise<void> {
+			const port = parseInt(options.port) || 3000;
+			const host = options.host || 'localhost';
+
+			logger.info(`Starting API server on ${host}:${port}`, null, 'green');
+
+			const apiServer = new ApiServer(agent, {
+				port,
+				host,
+				corsOrigins: ['http://localhost:3000', 'http://localhost:3001'], // Default CORS origins
+				rateLimitWindowMs: 15 * 60 * 1000, // 15 minutes
+				rateLimitMaxRequests: 100, // 100 requests per window
+			});
+
+			try {
+				await apiServer.start();
+				logger.info(`API server is running and ready to accept requests`, null, 'green');
+			} catch (error) {
+				const errorMsg = error instanceof Error ? error.message : String(error);
+				logger.error(`Failed to start API server: ${errorMsg}`);
+				process.exit(1);
+			}
+		}
+
 		// ——— Dispatch based on --mode ———
 		switch (opts.mode) {
 			case 'cli':
@@ -170,8 +203,11 @@ program
 			case 'mcp':
 				await startMcpMode(agent);
 				break;
+			case 'api':
+				await startApiMode(agent, opts);
+				break;
 			default:
-				logger.error(`Unknown mode '${opts.mode}'. Use cli or mcp.`);
+				logger.error(`Unknown mode '${opts.mode}'. Use cli, mcp, or api.`);
 				process.exit(1);
 		}
 	});
