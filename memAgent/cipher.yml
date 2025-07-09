@@ -33,7 +33,7 @@ llm:
   # maxIterations: 50
   provider: anthropic
   model: claude-3-5-haiku-20241022
-  apiKey: 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
+  apiKey: $ANTHROPIC_API_KEY
   maxIterations: 50
   # provider: openrouter
   # model: google/gemini-2.5-pro
