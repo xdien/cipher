@@ -153,6 +153,70 @@ const SqliteBackendSchema = BaseBackendSchema.extend({
 export type SqliteBackendConfig = z.infer<typeof SqliteBackendSchema>;
 
 /**
+ * PostgreSQL Backend Configuration
+ *
+ * Configuration for PostgreSQL database backend.
+ * Supports both connection URL and individual connection parameters.
+ *
+ * @example
+ * ```typescript
+ * // Using connection URL
+ * const config: PostgresBackendConfig = {
+ *   type: 'postgres',
+ *   url: 'postgresql://user:password@localhost:5432/mydb'
+ * };
+ *
+ * // Using individual parameters
+ * const config: PostgresBackendConfig = {
+ *   type: 'postgres',
+ *   host: 'localhost',
+ *   port: 5432,
+ *   database: 'mydb',
+ *   user: 'postgres',
+ *   password: 'secret'
+ * };
+ * ```
+ */
+const PostgresBackendSchema = BaseBackendSchema.extend({
+	type: z.literal('postgres'),
+
+	/** PostgreSQL connection URL (postgresql://...) - overrides individual params if provided */
+	url: z.string().optional().describe('PostgreSQL connection URL (postgresql://...)'),
+
+	/** PostgreSQL server hostname */
+	host: z.string().optional().describe('PostgreSQL host'),
+
+	/** PostgreSQL server port (default: 5432) */
+	port: z.number().int().positive().optional().describe('PostgreSQL port'),
+
+	/** Database name */
+	database: z.string().optional().describe('Database name'),
+
+	/** Username for authentication */
+	user: z.string().optional().describe('Username'),
+
+	/** Password for authentication */
+	password: z.string().optional().describe('Password'),
+
+	/** Enable SSL connection (default: false) */
+	ssl: z.boolean().optional().describe('Enable SSL connection'),
+
+	/** Connection pool settings */
+	pool: z.object({
+		/** Minimum number of connections in pool */
+		min: z.number().int().nonnegative().optional().describe('Minimum pool size'),
+		/** Maximum number of connections in pool */
+		max: z.number().int().positive().optional().describe('Maximum pool size'),
+		/** Connection idle timeout in ms */
+		idleTimeoutMillis: z.number().int().positive().optional().describe('Connection idle timeout'),
+		/** Connection acquire timeout in ms */
+		acquireTimeoutMillis: z.number().int().positive().optional().describe('Connection acquire timeout'),
+	}).optional().describe('Connection pool settings'),
+}).strict();
+
+export type PostgresBackendConfig = z.infer<typeof PostgresBackendSchema>;
+
+/**
  * Backend Configuration Union Schema
  *
  * Discriminated union of all supported backend configurations.
@@ -161,7 +225,7 @@ export type SqliteBackendConfig = z.infer<typeof SqliteBackendSchema>;
  * Includes custom validation to ensure Redis backends have required connection info.
  */
 const BackendConfigSchema = z
-	.discriminatedUnion('type', [InMemoryBackendSchema, RedisBackendSchema, SqliteBackendSchema], {
+	.discriminatedUnion('type', [InMemoryBackendSchema, RedisBackendSchema, SqliteBackendSchema, PostgresBackendSchema], {
 		errorMap: (issue, ctx) => {
 			if (issue.code === z.ZodIssueCode.invalid_union_discriminator) {
 				return {
@@ -180,6 +244,18 @@ const BackendConfigSchema = z
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
 					message: "Redis backend requires either 'url' or 'host' to be specified",
+					path: ['url'],
+				});
+			}
+		}
+
+		// Validate PostgreSQL backend requirements
+		if (data.type === 'postgres') {
+			// PostgreSQL requires either a connection URL or host + database
+			if (!data.url && (!data.host || !data.database)) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: "PostgreSQL backend requires either 'url' or both 'host' and 'database' to be specified",
 					path: ['url'],
 				});
 			}

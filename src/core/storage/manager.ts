@@ -505,6 +505,28 @@ export class StorageManager {
 				}
 			}
 
+			case BACKEND_TYPES.POSTGRES: {
+				try {
+					// Lazy load PostgreSQL module
+					if (!StorageManager.postgresModule) {
+						this.logger.debug(`${LOG_PREFIXES.DATABASE} Lazy loading PostgreSQL module`);
+						const { PostgresBackend } = await import('./backend/postgresql.js');
+						StorageManager.postgresModule = PostgresBackend;
+					}
+
+					const PostgresBackend = StorageManager.postgresModule;
+					this.databaseMetadata.type = BACKEND_TYPES.POSTGRES;
+					this.databaseMetadata.isFallback = false;
+
+					return new PostgresBackend(config);
+				} catch (error) {
+					this.logger.debug(`${LOG_PREFIXES.DATABASE} Failed to create PostgreSQL backend`, {
+						error: error instanceof Error ? error.message : String(error),
+					});
+					throw error; // Let connection handler deal with fallback
+				}
+			}
+
 			case BACKEND_TYPES.IN_MEMORY:
 			default: {
 				// Use in-memory backend

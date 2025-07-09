@@ -22,6 +22,7 @@ export type {
 	InMemoryBackendConfig,
 	RedisBackendConfig,
 	SqliteBackendConfig,
+	PostgresBackendConfig,
 } from '../config.js';
 
 /**
@@ -61,11 +62,11 @@ export interface StorageBackends {
  */
 export class StorageError extends Error {
 	constructor(
-		override message: string,
+		message: string,
 		/** The operation that failed (e.g., 'get', 'set', 'delete', 'connection') */
 		public readonly operation: string,
 		/** The underlying error that caused this error, if any */
-		public override readonly cause?: Error
+		public readonly cause?: Error
 	) {
 		super(message);
 		this.name = 'StorageError';
