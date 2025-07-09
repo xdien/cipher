@@ -27,6 +27,12 @@ vi.mock('../../../logger/index.js', () => ({
 		error: vi.fn(),
 		debug: vi.fn(),
 	})),
+	logger: {
+		info: vi.fn(),
+		warn: vi.fn(),
+		error: vi.fn(),
+		debug: vi.fn(),
+	},
 }));
 
 describe('Phase 2: Reflection Memory Tools', () => {
