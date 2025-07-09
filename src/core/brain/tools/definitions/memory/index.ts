@@ -21,10 +21,7 @@ import type { InternalTool } from '../../types.js';
 /**
  * Collection of all memory tools
  */
-export const memoryTools: InternalTool[] = [
-	extractAndOperateMemoryTool,
-	searchMemoryTool
-];
+export const memoryTools: InternalTool[] = [extractAndOperateMemoryTool, searchMemoryTool];
 
 // Load tools dynamically to avoid potential circular dependencies
 // import('./extract-knowledge.js').then(module => memoryTools.push(module.extractKnowledgeTool));
@@ -46,13 +43,15 @@ export async function getMemoryTools(): Promise<Record<string, InternalTool>> {
 export const MEMORY_TOOL_INFO = {
 	extract_and_operate_memory: {
 		category: 'memory',
-		purpose: 'Extract knowledge facts from raw interaction(s) and immediately process them to determine memory operations (ADD, UPDATE, DELETE, NONE) in a single atomic step.',
+		purpose:
+			'Extract knowledge facts from raw interaction(s) and immediately process them to determine memory operations (ADD, UPDATE, DELETE, NONE) in a single atomic step.',
 		useCase:
 			'Use when you need to capture important technical information, code patterns, or implementation details and immediately manage memory in a single, atomic operation.',
 	},
 	memory_search: {
 		category: 'memory',
-		purpose: 'Perform semantic search over stored memory entries to retrieve relevant knowledge and reasoning traces that can inform current decision-making.',
+		purpose:
+			'Perform semantic search over stored memory entries to retrieve relevant knowledge and reasoning traces that can inform current decision-making.',
 		useCase:
 			'Use when you need to find previously stored knowledge, code patterns, or technical information that may be relevant to answering current questions or solving problems.',
 	},

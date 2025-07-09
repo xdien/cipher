@@ -53,18 +53,22 @@ export class InternalToolManager implements IInternalToolManager {
 		embeddingManager?: any;
 		vectorStoreManager?: any;
 		llmService?: any;
+		knowledgeGraphManager?: any;
 	};
 
 	constructor(config: InternalToolManagerConfig = {}) {
 		this.config = { ...DEFAULT_CONFIG, ...config };
 		this.registry = InternalToolRegistry.getInstance();
-		
+
 		// Initialize with mock services for testing environments
 		this.services = {
 			embeddingManager: {
 				getEmbedder: () => ({
-					embed: async (text: string) => Array(128).fill(0).map(() => Math.random())
-				})
+					embed: async (text: string) =>
+						Array(128)
+							.fill(0)
+							.map(() => Math.random()),
+				}),
 			},
 			vectorStoreManager: {
 				getStore: () => ({
@@ -72,8 +76,8 @@ export class InternalToolManager implements IInternalToolManager {
 						{
 							id: 1,
 							score: 0.7,
-							payload: { text: 'Similar existing memory', tags: ['programming'] }
-						}
+							payload: { text: 'Similar existing memory', tags: ['programming'] },
+						},
 					],
 					insert: async (embeddings: number[][], ids: number[], payloads: any[]) => {
 						// Mock successful insert
@@ -86,12 +90,13 @@ export class InternalToolManager implements IInternalToolManager {
 					delete: async (id: number) => {
 						// Mock successful delete
 						return;
-					}
-				})
+					},
+				}),
 			},
 			llmService: {
-				directGenerate: async (prompt: string) => 'Operation: ADD\nConfidence: 0.8\nReasoning: New technical information to store'
-			}
+				directGenerate: async (prompt: string) =>
+					'Operation: ADD\nConfidence: 0.8\nReasoning: New technical information to store',
+			},
 		};
 	}
 
@@ -498,12 +503,14 @@ export class InternalToolManager implements IInternalToolManager {
 		embeddingManager?: any;
 		vectorStoreManager?: any;
 		llmService?: any;
+		knowledgeGraphManager?: any;
 	}): void {
 		this.services = services;
 		logger.debug('InternalToolManager: Services configured', {
 			hasEmbeddingManager: !!services.embeddingManager,
 			hasVectorStoreManager: !!services.vectorStoreManager,
 			hasLlmService: !!services.llmService,
+			hasKnowledgeGraphManager: !!services.knowledgeGraphManager,
 		});
 	}
 }

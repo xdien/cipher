@@ -15,6 +15,8 @@ import { createLLMService } from '../brain/llm/services/factory.js';
 import { createContextManager } from '../brain/llm/messages/factory.js';
 import { ILLMService } from '../brain/llm/index.js';
 import { createVectorStoreFromEnv } from '../vector_storage/factory.js';
+import { KnowledgeGraphManager } from '../knowledge_graph/manager.js';
+import { createKnowledgeGraphFromEnv } from '../knowledge_graph/factory.js';
 
 export type AgentServices = {
 	mcpManager: MCPManager;
@@ -26,6 +28,7 @@ export type AgentServices = {
 	embeddingManager: EmbeddingManager;
 	vectorStoreManager: VectorStoreManager;
 	llmService?: ILLMService;
+	knowledgeGraphManager?: KnowledgeGraphManager;
 };
 
 export async function createAgentServices(agentConfig: AgentConfig): Promise<AgentServices> {
@@ -87,17 +90,40 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 		});
 	}
 
-	// 4. Initialize prompt manager
+	// 4. Initialize knowledge graph manager with configuration
+	logger.debug('Initializing knowledge graph manager...');
+	let knowledgeGraphManager: KnowledgeGraphManager | undefined = undefined;
+
+	try {
+		const kgFactory = await createKnowledgeGraphFromEnv();
+		if (kgFactory) {
+			knowledgeGraphManager = kgFactory.manager;
+			logger.info('Knowledge graph manager initialized successfully', {
+				backend: knowledgeGraphManager.getInfo().backend.type,
+				connected: knowledgeGraphManager.isConnected(),
+				fallback: knowledgeGraphManager.getInfo().backend.fallback || false,
+			});
+		} else {
+			logger.info('Knowledge graph is disabled in environment configuration');
+		}
+	} catch (error) {
+		logger.warn('Failed to initialize knowledge graph manager', {
+			error: error instanceof Error ? error.message : String(error),
+		});
+		console.log(error);
+	}
+
+	// 5. Initialize prompt manager
 	const promptManager = new PromptManager();
 	if (config.systemPrompt) {
 		promptManager.load(config.systemPrompt);
 	}
 
-	// 5. Initialize state manager for runtime state tracking
+	// 6. Initialize state manager for runtime state tracking
 	const stateManager = new MemAgentStateManager(config);
 	logger.debug('Agent state manager initialized');
 
-	// 6. Initialize LLM service
+	// 7. Initialize LLM service
 	let llmService: ILLMService | undefined = undefined;
 	try {
 		logger.debug('Initializing LLM service...');
@@ -116,7 +142,7 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 		});
 	}
 
-	// 7. Prepare session manager configuration
+	// 8. Prepare session manager configuration
 	const sessionConfig: { maxSessions?: number; sessionTTL?: number } = {};
 	if (config.sessions?.maxSessions !== undefined) {
 		sessionConfig.maxSessions = config.sessions.maxSessions;
@@ -125,7 +151,7 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 		sessionConfig.sessionTTL = config.sessions.sessionTTL;
 	}
 
-	// 8. Initialize internal tool manager
+	// 9. Initialize internal tool manager
 	const internalToolManager = new InternalToolManager({
 		enabled: true,
 		timeout: 30000,
@@ -154,9 +180,10 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 		embeddingManager,
 		vectorStoreManager,
 		llmService,
+		knowledgeGraphManager,
 	});
 
-	// 9. Initialize unified tool manager
+	// 10. Initialize unified tool manager
 	const unifiedToolManager = new UnifiedToolManager(mcpManager, internalToolManager, {
 		enableInternalTools: true,
 		enableMcpTools: true,
@@ -165,7 +192,7 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 
 	logger.debug('Unified tool manager initialized');
 
-	// 10. Create session manager with unified tool manager
+	// 11. Create session manager with unified tool manager
 	const sessionManager = new SessionManager(
 		{
 			stateManager,
@@ -181,8 +208,8 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 
 	logger.debug('Session manager with unified tools initialized');
 
-	// 11. Return the core services
-	return {
+	// 12. Return the core services
+	const services: AgentServices = {
 		mcpManager,
 		promptManager,
 		stateManager,
@@ -191,11 +218,18 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 		unifiedToolManager,
 		embeddingManager,
 		vectorStoreManager,
-			llmService: llmService || {
-		generate: async () => '',
-		directGenerate: async () => '',
-		getAllTools: async () => ({}),
-		getConfig: () => ({ provider: 'unknown', model: 'unknown' }),
-	},
+		llmService: llmService || {
+			generate: async () => '',
+			directGenerate: async () => '',
+			getAllTools: async () => ({}),
+			getConfig: () => ({ provider: 'unknown', model: 'unknown' }),
+		},
 	};
+
+	// Only include knowledgeGraphManager when it's defined
+	if (knowledgeGraphManager) {
+		services.knowledgeGraphManager = knowledgeGraphManager;
+	}
+
+	return services;
 }

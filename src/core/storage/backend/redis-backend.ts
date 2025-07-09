@@ -96,7 +96,7 @@ export class RedisBackend implements CacheBackend {
 		});
 
 		let connectionError: Error | null = null;
-		this.redis.on('error', (err) => {
+		this.redis.on('error', err => {
 			connectionError = err;
 		});
 

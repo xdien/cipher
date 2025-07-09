@@ -53,6 +53,6 @@ test-temp/
 .windsurf/
 CONTRIBUTING.md
 *.py
-
+v10/
 .mcp.json
 CLAUDE.md

@@ -7,10 +7,7 @@
 
 // Export all tool categories
 export * from './memory/index.js';
-
-// Export individual tools for direct access
-export { extractKnowledgeTool } from './memory/extract-knowledge.js';
-export { memoryOperationTool } from './memory/memory_operation.js';
+export * from './knowledge_graph/index.js';
 
 // Import types and utilities
 import type { InternalToolSet } from '../types.js';
@@ -24,18 +21,21 @@ export async function getAllToolDefinitions(): Promise<InternalToolSet> {
 		logger.debug('Loading all tool definitions...');
 
 		// Import all tools dynamically
-		const [memoryTools] = await Promise.all([
+		const [memoryTools, knowledgeGraphTools] = await Promise.all([
 			import('./memory/index.js').then(m => m.getMemoryTools()),
+			import('./knowledge_graph/index.js').then(m => m.getKnowledgeGraphTools()),
 		]);
 
 		// Combine all tools
 		const allTools: InternalToolSet = {
 			...memoryTools,
+			...knowledgeGraphTools,
 		};
 
 		logger.info('Tool definitions loaded successfully', {
 			totalTools: Object.keys(allTools).length,
 			memoryTools: Object.keys(memoryTools).length,
+			knowledgeGraphTools: Object.keys(knowledgeGraphTools).length,
 		});
 
 		return allTools;
@@ -108,6 +108,24 @@ export const TOOL_CATEGORIES = {
 		tools: ['extract_and_operate_memory', 'memory_search'] as string[],
 		useCase:
 			'Use these tools to capture, search, and store important information for future reference',
+	},
+	knowledge_graph: {
+		description: 'Tools for managing and querying knowledge graphs',
+		tools: [
+			'add_node',
+			'add_edge',
+			'search_graph',
+			'get_neighbors',
+			'extract_entities',
+			'update_node',
+			'delete_node',
+			'query_graph',
+			'intelligent_processor',
+			'enhanced_search',
+			'relationship_manager',
+		] as string[],
+		useCase:
+			'Use these tools to build, query, and manage knowledge graphs for understanding relationships between entities',
 	},
 };
 

@@ -10,11 +10,12 @@ import { Tool, ToolParameters, ToolExecutionResult } from '../../mcp/types.js';
 import type { EmbeddingManager } from '../embedding/index.js';
 import type { VectorStoreManager } from '../../vector_storage/index.js';
 import type { ILLMService } from '../llm/index.js';
+import type { KnowledgeGraphManager } from '../../knowledge_graph/manager.js';
 
 /**
  * Categories for organizing internal tools
  */
-export type InternalToolCategory = 'memory' | 'session' | 'system';
+export type InternalToolCategory = 'memory' | 'session' | 'system' | 'knowledge_graph';
 
 /**
  * Internal tool handler function signature
@@ -169,6 +170,11 @@ export interface InternalToolContext {
 		 * LLM service for intelligent reasoning (Phase 3)
 		 */
 		llmService?: ILLMService;
+
+		/**
+		 * Knowledge graph manager for graph operations
+		 */
+		knowledgeGraphManager?: KnowledgeGraphManager;
 	};
 
 	/**

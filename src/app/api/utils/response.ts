@@ -27,10 +27,10 @@ export function successResponse<T>(
 		data,
 		meta: {
 			timestamp: new Date().toISOString(),
-			...(requestId && { requestId })
-		}
+			...(requestId && { requestId }),
+		},
 	};
-	
+
 	res.status(statusCode).json(response);
 }
 
@@ -48,14 +48,14 @@ export function errorResponse(
 		error: {
 			code,
 			message,
-			details
+			details,
 		},
 		meta: {
 			timestamp: new Date().toISOString(),
-			...(requestId && { requestId })
-		}
+			...(requestId && { requestId }),
+		},
 	};
-	
+
 	res.status(statusCode).json(response);
 }
 
@@ -69,7 +69,7 @@ export const ERROR_CODES = {
 	SESSION_NOT_FOUND: 'SESSION_NOT_FOUND',
 	MCP_SERVER_ERROR: 'MCP_SERVER_ERROR',
 	LLM_ERROR: 'LLM_ERROR',
-	RATE_LIMIT_EXCEEDED: 'RATE_LIMIT_EXCEEDED'
+	RATE_LIMIT_EXCEEDED: 'RATE_LIMIT_EXCEEDED',
 } as const;
 
-export type ErrorCode = keyof typeof ERROR_CODES; 
+export type ErrorCode = keyof typeof ERROR_CODES;

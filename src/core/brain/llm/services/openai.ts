@@ -128,22 +128,22 @@ export class OpenAIService implements ILLMService {
 		try {
 			logger.debug('OpenAIService: Direct generate call (bypassing conversation context)', {
 				inputLength: userInput.length,
-				hasSystemPrompt: !!systemPrompt
+				hasSystemPrompt: !!systemPrompt,
 			});
 
 			// Create a minimal message array for direct API call
 			const messages: any[] = [];
-			
+
 			if (systemPrompt) {
 				messages.push({
 					role: 'system',
-					content: systemPrompt
+					content: systemPrompt,
 				});
 			}
 
 			messages.push({
 				role: 'user',
-				content: userInput
+				content: userInput,
 			});
 
 			// Make direct API call without adding to conversation context
@@ -154,17 +154,17 @@ export class OpenAIService implements ILLMService {
 			});
 
 			const responseText = response.choices[0]?.message?.content || '';
-			
+
 			logger.debug('OpenAIService: Direct generate completed', {
-				responseLength: responseText.length
+				responseLength: responseText.length,
 			});
 
 			return responseText;
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
-			logger.error('OpenAIService: Direct generate failed', { 
+			logger.error('OpenAIService: Direct generate failed', {
 				error: errorMessage,
-				inputLength: userInput.length
+				inputLength: userInput.length,
 			});
 			throw new Error(`Direct generate failed: ${errorMessage}`);
 		}

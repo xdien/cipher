@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { InternalToolManager } from '../../../manager.js';
 import { UnifiedToolManager } from '../../../unified-tool-manager.js';
 import { extractAndOperateMemoryTool } from '../extract_and_operate_memory.js';
@@ -16,7 +16,9 @@ describe('Internal Tool Names', () => {
 
 		mockMCPManager = {
 			getAllTools: async () => ({}), // No MCP tools
-			executeTool: async () => { throw new Error('Not implemented'); },
+			executeTool: async () => {
+				throw new Error('Not implemented');
+			},
 			clients: new Map(),
 			failedConnections: new Map(),
 			logger: console,
@@ -26,7 +28,9 @@ describe('Internal Tool Names', () => {
 			connect: async () => {},
 			disconnect: async () => {},
 			getAvailableTools: async () => ({}),
-			executeToolCall: async () => { throw new Error('Not implemented'); },
+			executeToolCall: async () => {
+				throw new Error('Not implemented');
+			},
 			getToolSchema: () => null,
 			listTools: async () => [],
 			getConnectionStatus: () => ({ connected: [], failed: [] }),
@@ -51,7 +55,7 @@ describe('Internal Tool Names', () => {
 			eventNames: () => [],
 			prependListener: () => {},
 			prependOnceListener: () => {},
-			rawListeners: () => []
+			rawListeners: () => [],
 		};
 	});
 
@@ -71,24 +75,24 @@ describe('Internal Tool Names', () => {
 	});
 
 	it('should make tools available in UnifiedToolManager', async () => {
-		const unifiedToolManager = new UnifiedToolManager(
-			mockMCPManager, 
-			internalToolManager, 
-			{ enableInternalTools: true, enableMcpTools: false }
-		);
+		const unifiedToolManager = new UnifiedToolManager(mockMCPManager, internalToolManager, {
+			enableInternalTools: true,
+			enableMcpTools: false,
+		});
 
 		const allTools = await unifiedToolManager.getAllTools();
 		expect(Object.keys(allTools)).toContain('cipher_extract_and_operate_memory');
 	});
 
 	it('should check tool availability correctly', async () => {
-		const unifiedToolManager = new UnifiedToolManager(
-			mockMCPManager, 
-			internalToolManager, 
-			{ enableInternalTools: true, enableMcpTools: false }
-		);
+		const unifiedToolManager = new UnifiedToolManager(mockMCPManager, internalToolManager, {
+			enableInternalTools: true,
+			enableMcpTools: false,
+		});
 
-		expect(await unifiedToolManager.isToolAvailable('cipher_extract_and_operate_memory')).toBe(true);
+		expect(await unifiedToolManager.isToolAvailable('cipher_extract_and_operate_memory')).toBe(
+			true
+		);
 		expect(await unifiedToolManager.isToolAvailable('nonexistent_tool')).toBe(false);
 	});
 });
@@ -126,31 +130,31 @@ describe('memoryMetadata parameter and metadata merging', () => {
 				userId: 'user-456',
 				teamId: 'team-789',
 				environment: 'dev',
-				source: 'cli'
+				source: 'cli',
 			},
 			context: {
 				sessionId: 'sess-789',
 				userId: 'user-override',
 				projectId: 'proj-override',
-				conversationTopic: 'Test Topic'
-			}
+				conversationTopic: 'Test Topic',
+			},
 		};
 		const mockContext = {
 			services: {
 				embeddingManager: mockEmbeddingManager,
 				vectorStoreManager: mockVectorStoreManager,
-				llmService: mockLlmService
-			}
+				llmService: mockLlmService,
+			},
 		} as any;
 		await handler(args, mockContext);
 		expect(insertedPayloads[0].metadata).toMatchObject({
 			projectId: 'proj-override', // context.projectId overrides memoryMetadata.projectId
-			userId: 'user-override',   // context.userId overrides memoryMetadata.userId
+			userId: 'user-override', // context.userId overrides memoryMetadata.userId
 			teamId: 'team-789',
 			environment: 'dev',
 			source: 'cli',
 			sessionId: 'sess-789',
-			conversationTopic: 'Test Topic'
+			conversationTopic: 'Test Topic',
 		});
 	});
 
@@ -163,38 +167,41 @@ describe('memoryMetadata parameter and metadata merging', () => {
 				userId: 'user-456',
 				teamId: 'team-789',
 				environment: 'dev',
-				source: 'cli'
+				source: 'cli',
 			},
 			context: {
 				sessionId: 'sess-789',
 				userId: 'user-override',
 				projectId: 'proj-override',
-				conversationTopic: 'Test Topic'
-			}
+				conversationTopic: 'Test Topic',
+			},
 		};
 		const mockContext = {
 			services: {
 				embeddingManager: mockEmbeddingManager,
 				vectorStoreManager: mockVectorStoreManager,
-				llmService: mockLlmService
-			}
+				llmService: mockLlmService,
+			},
 		} as any;
 		const logs: any[] = [];
 		const origInfo = logger.info;
-		logger.info = (...args) => { logs.push(args); return origInfo.apply(logger, args); };
+		logger.info = (...args) => {
+			logs.push(args);
+			return origInfo.apply(logger, args);
+		};
 		try {
 			await handler(args, mockContext);
 			expect(insertedPayloads[0].metadata).toMatchObject({
 				projectId: 'proj-override', // context.projectId overrides memoryMetadata.projectId
-				userId: 'user-override',   // context.userId overrides memoryMetadata.userId
+				userId: 'user-override', // context.userId overrides memoryMetadata.userId
 				teamId: 'team-789',
 				environment: 'dev',
 				source: 'cli',
 				sessionId: 'sess-789',
-				conversationTopic: 'Test Topic'
+				conversationTopic: 'Test Topic',
 			});
 		} finally {
 			logger.info = origInfo;
 		}
 	});
-}); 
+});

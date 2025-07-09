@@ -222,10 +222,16 @@ export class InternalToolRegistry {
 	 * Get tool count by category
 	 */
 	public getToolCountByCategory(): Record<InternalToolCategory, number> {
+		const memoryCount = this.toolsByCategory.get('memory')?.size || 0;
+		const sessionCount = this.toolsByCategory.get('session')?.size || 0;
+		const systemCount = this.toolsByCategory.get('system')?.size || 0;
+		const knowledgeGraphCount = this.toolsByCategory.get('knowledge_graph')?.size || 0;
+
 		return {
-			memory: this.toolsByCategory.get('memory')?.size || 0,
-			session: this.toolsByCategory.get('session')?.size || 0,
-			system: this.toolsByCategory.get('system')?.size || 0,
+			memory: memoryCount,
+			session: sessionCount,
+			system: systemCount,
+			knowledge_graph: knowledgeGraphCount,
 		};
 	}
 
@@ -270,8 +276,15 @@ export class InternalToolRegistry {
 			return { valid: false, error: 'Tool description is required and must be a string' };
 		}
 
-		if (!tool.category || !['memory', 'session', 'system'].includes(tool.category)) {
-			return { valid: false, error: 'Tool category must be one of: memory, session, system' };
+		// Use all available categories instead of hardcoded list
+		const validCategories: InternalToolCategory[] = [
+			'memory',
+			'session',
+			'system',
+			'knowledge_graph',
+		];
+		if (!tool.category || !validCategories.includes(tool.category)) {
+			return { valid: false, error: `Tool category must be one of: ${validCategories.join(', ')}` };
 		}
 
 		if (tool.internal !== true) {
