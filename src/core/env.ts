@@ -30,11 +30,13 @@ const envSchema = z.object({
 	STORAGE_DATABASE_PATH: z.string().optional(),
 	STORAGE_DATABASE_NAME: z.string().optional(),
 	// Vector Storage Configuration
-	VECTOR_STORE_TYPE: z.enum(['qdrant', 'in-memory']).default('in-memory'),
+	VECTOR_STORE_TYPE: z.enum(['qdrant', 'milvus', 'in-memory']).default('in-memory'),
 	VECTOR_STORE_HOST: z.string().optional(),
 	VECTOR_STORE_PORT: z.number().optional(),
 	VECTOR_STORE_URL: z.string().optional(),
 	VECTOR_STORE_API_KEY: z.string().optional(),
+	VECTOR_STORE_USERNAME: z.string().optional(),
+	VECTOR_STORE_PASSWORD: z.string().optional(),
 	VECTOR_STORE_COLLECTION: z.string().default('default'),
 	VECTOR_STORE_DIMENSION: z.number().default(1536),
 	VECTOR_STORE_DISTANCE: z.enum(['Cosine', 'Euclidean', 'Dot', 'Manhattan']).default('Cosine'),
@@ -113,6 +115,10 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 				return process.env.VECTOR_STORE_URL;
 			case 'VECTOR_STORE_API_KEY':
 				return process.env.VECTOR_STORE_API_KEY;
+			case 'VECTOR_STORE_USERNAME':
+				return process.env.VECTOR_STORE_USERNAME;
+			case 'VECTOR_STORE_PASSWORD':
+				return process.env.VECTOR_STORE_PASSWORD;
 			case 'VECTOR_STORE_COLLECTION':
 				return process.env.VECTOR_STORE_COLLECTION || 'default';
 			case 'VECTOR_STORE_DIMENSION':
@@ -185,6 +191,8 @@ export const validateEnv = () => {
 			: undefined,
 		VECTOR_STORE_URL: process.env.VECTOR_STORE_URL,
 		VECTOR_STORE_API_KEY: process.env.VECTOR_STORE_API_KEY,
+		VECTOR_STORE_USERNAME: process.env.VECTOR_STORE_USERNAME,
+		VECTOR_STORE_PASSWORD: process.env.VECTOR_STORE_PASSWORD,
 		VECTOR_STORE_COLLECTION: process.env.VECTOR_STORE_COLLECTION || 'default',
 		VECTOR_STORE_DIMENSION: process.env.VECTOR_STORE_DIMENSION
 			? parseInt(process.env.VECTOR_STORE_DIMENSION, 10)
