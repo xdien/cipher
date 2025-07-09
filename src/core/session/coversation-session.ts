@@ -6,21 +6,51 @@ import { logger } from '../logger/index.js';
 import { createContextManager } from '../brain/llm/messages/factory.js';
 import { createLLMService } from '../brain/llm/services/factory.js';
 import { MemAgentStateManager } from '../brain/memAgent/state-manager.js';
+import type { ZodSchema } from 'zod';
 
 export class ConversationSession {
 	private contextManager!: ContextManager;
 	private llmService!: ILLMService;
 
+	private sessionMemoryMetadata?: Record<string, any>;
+	private mergeMetadata?: (sessionMeta: Record<string, any>, runMeta: Record<string, any>) => Record<string, any>;
+	private metadataSchema?: ZodSchema<any>;
+	private beforeMemoryExtraction?: (meta: Record<string, any>, context: Record<string, any>) => void;
+
+	/**
+	 * @param services - Required dependencies for the session, including unifiedToolManager
+	 * @param id - Session identifier
+	 * @param options - Optional advanced metadata options
+	 */
 	constructor(
 		private services: {
 			stateManager: MemAgentStateManager;
 			promptManager: PromptManager;
 			mcpManager: MCPManager;
-			unifiedToolManager?: UnifiedToolManager;
+			unifiedToolManager: UnifiedToolManager;
 		},
-		public readonly id: string
+		public readonly id: string,
+		options?: {
+			sessionMemoryMetadata?: Record<string, any>;
+			mergeMetadata?: (sessionMeta: Record<string, any>, runMeta: Record<string, any>) => Record<string, any>;
+			metadataSchema?: ZodSchema<any>;
+			beforeMemoryExtraction?: (meta: Record<string, any>, context: Record<string, any>) => void;
+		}
 	) {
 		logger.debug('ConversationSession initialized with services', { services, id });
+		if (options?.sessionMemoryMetadata && typeof options.sessionMemoryMetadata === 'object' && !Array.isArray(options.sessionMemoryMetadata)) {
+			this.sessionMemoryMetadata = options.sessionMemoryMetadata;
+		}
+		if (options?.mergeMetadata) this.mergeMetadata = options.mergeMetadata;
+		if (options?.metadataSchema) this.metadataSchema = options.metadataSchema;
+		if (options?.beforeMemoryExtraction) this.beforeMemoryExtraction = options.beforeMemoryExtraction;
+	}
+
+	/**
+	 * Update session-level memory metadata after construction.
+	 */
+	public updateSessionMetadata(newMeta: Record<string, any>) {
+		this.sessionMemoryMetadata = { ...this.sessionMemoryMetadata, ...newMeta };
 	}
 
 	public async init(): Promise<void> {
@@ -51,11 +81,48 @@ export class ConversationSession {
 		logger.debug(`ChatSession ${this.id}: Services initialized`);
 	}
 
+	/**
+	 * Extract session-level metadata, merging defaults, session, and per-run metadata.
+	 * Uses custom merge and validation if provided.
+	 */
+	private getSessionMetadata(runMeta?: Record<string, any>): Record<string, any> {
+		const base = {
+			sessionId: this.id,
+			source: 'conversation-session',
+			timestamp: new Date().toISOString(),
+		};
+		const sessionMeta = this.sessionMemoryMetadata || {};
+		const customMeta = (runMeta && typeof runMeta === 'object' && !Array.isArray(runMeta)) ? runMeta : {};
+		let merged = this.mergeMetadata
+			? this.mergeMetadata(sessionMeta, customMeta)
+			: { ...base, ...sessionMeta, ...customMeta };
+		if (this.metadataSchema && !this.metadataSchema.safeParse(merged).success) {
+			logger.warn('ConversationSession: Metadata validation failed, using session-level metadata only.');
+			merged = { ...base, ...sessionMeta };
+		}
+		return merged;
+	}
+
+	/**
+	 * Run a conversation session with input, optional image data, streaming, and custom options.
+	 * @param input - User input string
+	 * @param imageDataInput - Optional image data
+	 * @param stream - Optional stream flag
+	 * @param options - Optional parameters for memory extraction:
+	 *   - memoryMetadata: Custom metadata to attach to memory extraction (merged with session defaults)
+	 *   - contextOverrides: Overrides for context fields passed to memory extraction
+	 * @returns The generated assistant response as a string
+	 */
 	public async run(
 		input: string,
 		imageDataInput?: { image: string; mimeType: string },
-		stream?: boolean
+		stream?: boolean,
+		options?: {
+			memoryMetadata?: Record<string, any>;
+			contextOverrides?: Record<string, any>;
+		}
 	): Promise<string> {
+		console.log('ConversationSession.run called');
 		logger.debug(
 			`Running session ${this.id} with input: ${input} and imageDataInput: ${imageDataInput} and stream: ${stream}`
 		);
@@ -63,8 +130,23 @@ export class ConversationSession {
 		// Generate response
 		const response = await this.llmService.generate(input, imageDataInput, stream);
 
+		// Prepare merged metadata and context
+		const mergedMeta = this.getSessionMetadata(options?.memoryMetadata);
+		const defaultContext = {
+			sessionId: this.id,
+			conversationTopic: 'Interactive CLI session',
+			recentMessages: this.extractComprehensiveInteractionData(input, response)
+		};
+		const mergedContext = {
+			...defaultContext,
+			...(options?.contextOverrides && typeof options.contextOverrides === 'object' && !Array.isArray(options.contextOverrides) ? options.contextOverrides : {})
+		};
+		if (this.beforeMemoryExtraction) {
+			this.beforeMemoryExtraction(mergedMeta, mergedContext);
+		}
+
 		// PROGRAMMATIC ENFORCEMENT: Automatically call extract_and_operate_memory after every interaction
-		await this.enforceMemoryExtraction(input, response);
+		await this.enforceMemoryExtraction(input, response, options);
 
 		return response;
 	}
@@ -73,7 +155,12 @@ export class ConversationSession {
 	 * Programmatically enforce memory extraction after each user interaction
 	 * This ensures the extract_and_operate_memory tool is always called, regardless of AI decisions
 	 */
-	private async enforceMemoryExtraction(userInput: string, aiResponse: string): Promise<void> {
+	private async enforceMemoryExtraction(userInput: string, aiResponse: string, options?: {
+		memoryMetadata?: Record<string, any>;
+		contextOverrides?: Record<string, any>;
+	}): Promise<void> {
+		console.log('ConversationSession.enforceMemoryExtraction called');
+		console.log('enforceMemoryExtraction: unifiedToolManager at entry', this.services.unifiedToolManager, typeof this.services.unifiedToolManager);
 		try {
 			logger.info('ConversationSession: Enforcing memory extraction for interaction');
 
@@ -83,19 +170,42 @@ export class ConversationSession {
 				return;
 			}
 
+			// unifiedToolManager is now always required and injected; no global mock debug needed
+
 			// Extract comprehensive interaction data including tool usage
 			const comprehensiveInteractionData = this.extractComprehensiveInteractionData(userInput, aiResponse);
+
+			// Prepare context with overrides
+			const defaultContext = {
+				sessionId: this.id,
+				conversationTopic: 'Interactive CLI session',
+				recentMessages: comprehensiveInteractionData
+			};
+			const mergedContext = {
+				...defaultContext,
+				...(options?.contextOverrides && typeof options.contextOverrides === 'object' && !Array.isArray(options.contextOverrides) ? options.contextOverrides : {})
+			};
+
+			// Prepare memory metadata (merge session-level and per-run, per-run takes precedence)
+			let memoryMetadata: Record<string, any> = {};
+			if (options?.memoryMetadata !== undefined) {
+				if (typeof options.memoryMetadata === 'object' && !Array.isArray(options.memoryMetadata)) {
+					memoryMetadata = this.getSessionMetadata(options.memoryMetadata);
+				} else {
+					logger.warn('ConversationSession: Invalid memoryMetadata provided, expected a plain object. Using session-level or default metadata.');
+					memoryMetadata = this.getSessionMetadata();
+				}
+			} else {
+				memoryMetadata = this.getSessionMetadata();
+			}
 
 			// Call the extract_and_operate_memory tool directly (with cipher_ prefix)
 			const memoryResult = await this.services.unifiedToolManager.executeTool(
 				'cipher_extract_and_operate_memory',
 				{
 					interaction: comprehensiveInteractionData,
-					context: {
-						sessionId: this.id,
-						conversationTopic: 'Interactive CLI session',
-						recentMessages: comprehensiveInteractionData
-					},
+					context: mergedContext,
+					memoryMetadata,
 					options: {
 						similarityThreshold: 0.7,
 						maxSimilarResults: 5,
@@ -325,5 +435,9 @@ export class ConversationSession {
 
 	public getLLMService(): ILLMService {
 		return this.llmService;
+	}
+
+	public getUnifiedToolManager(): UnifiedToolManager {
+		return this.services.unifiedToolManager;
 	}
 }
