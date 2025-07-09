@@ -42,7 +42,7 @@ pnpm i && pnpm run build && npm link
 
 ## Run Modes
 
-Cipher supports two operational modes to fit different usage patterns:
+Cipher supports three operational modes to fit different usage patterns:
 
 ### CLI Mode (Interactive)
 
@@ -60,8 +60,32 @@ cipher --mode cli
 - Real-time conversation with the agent
 - Persistent memory throughout the session
 - Memory learning from every interaction
+- Rich command system with slash commands
+- Session management capabilities
 - Graceful exit with `exit` or `quit` commands
 - Signal handling (Ctrl+C) for clean shutdown
+
+### API Mode (REST Server)
+
+Runs cipher as a REST API server, allowing HTTP clients to interact with the agent programmatically:
+
+```bash
+# Run as API server (default: localhost:3000)
+cipher --mode api
+
+# Run on custom host/port
+cipher --mode api --host 0.0.0.0 --port 8080
+```
+
+**Features:**
+
+- RESTful API endpoints for agent interaction
+- Session management via HTTP requests
+- Message processing with image support
+- Health check endpoints
+- CORS support for web applications
+- Request/response logging and security middleware
+- Rate limiting for API protection
 
 ### MCP Server Mode
 
@@ -107,7 +131,7 @@ cipher -a /path/to/custom/config.yml
 
 # Require all MCP server connections to succeed (strict mode)
 cipher --strict
-cipher -s --strict
+cipher -s
 
 # Start with a new session
 cipher --new-session                    # Auto-generated session ID
@@ -204,6 +228,442 @@ cipher --new-session experiment-1 --verbose
 
 # Quick start with all features
 cipher -a custom.yml -s --new-session main-session
+```
+
+## API Usage
+
+When running cipher in API mode (`--mode api`), it exposes a comprehensive REST API for programmatic interaction with the agent. The API provides endpoints for message processing, session management, and system information.
+
+### Starting the API Server
+
+```bash
+# Start API server on default port (3000)
+cipher --mode api
+
+# Start on custom host and port
+cipher --mode api --host 0.0.0.0 --port 8080
+
+# Start with specific agent configuration
+cipher --mode api --agent ./custom-config.yml --port 5000
+```
+
+### API Endpoints
+
+#### Health Check
+
+```bash
+# Check if the API server is running
+GET /health
+
+# Response:
+{
+  "status": "healthy",
+  "timestamp": "2024-01-15T10:30:00.000Z",
+  "uptime": 3600.5,
+  "version": "1.0.0"
+}
+```
+
+#### Message Processing
+
+**Send Message to Agent**
+
+```bash
+# Process a message synchronously
+POST /api/message/sync
+Content-Type: application/json
+
+{
+  "message": "Hello, how are you?",
+  "sessionId": "my-session-id",        # Optional: defaults to current session
+  "images": ["base64-encoded-image"]   # Optional: array of base64 images
+}
+
+# Response:
+{
+  "success": true,
+  "data": {
+    "response": "Hello! I'm doing well, thank you for asking...",
+    "sessionId": "my-session-id",
+    "timestamp": "2024-01-15T10:30:00.000Z"
+  },
+  "requestId": "req-123456"
+}
+```
+
+**Reset Conversation**
+
+```bash
+# Reset current session's conversation history
+POST /api/message/reset
+Content-Type: application/json
+
+{
+  "sessionId": "my-session-id"  # Optional: defaults to current session
+}
+
+# Response:
+{
+  "success": true,
+  "data": {
+    "message": "Session my-session-id has been reset",
+    "sessionId": "my-session-id",
+    "timestamp": "2024-01-15T10:30:00.000Z"
+  },
+  "requestId": "req-123456"
+}
+```
+
+#### Session Management
+
+**List All Sessions**
+
+```bash
+# Get all active sessions with metadata
+GET /api/sessions
+
+# Response:
+{
+  "success": true,
+  "data": {
+    "sessions": [
+      {
+        "id": "session-1",
+        "messageCount": 15,
+        "createdAt": "2024-01-15T09:00:00.000Z",
+        "lastActivity": "2024-01-15T10:25:00.000Z"
+      }
+    ],
+    "count": 1,
+    "currentSession": "session-1"
+  },
+  "requestId": "req-123456"
+}
+```
+
+**Create New Session**
+
+```bash
+# Create a new session
+POST /api/sessions
+Content-Type: application/json
+
+{
+  "sessionId": "custom-session-id"  # Optional: auto-generated if not provided
+}
+
+# Response:
+{
+  "success": true,
+  "data": {
+    "sessionId": "custom-session-id",
+    "created": true,
+    "timestamp": "2024-01-15T10:30:00.000Z"
+  },
+  "requestId": "req-123456"
+}
+```
+
+**Get Current Session**
+
+```bash
+# Get current active session information
+GET /api/sessions/current
+
+# Response:
+{
+  "success": true,
+  "data": {
+    "sessionId": "current-session-id",
+    "metadata": {
+      "id": "current-session-id",
+      "messageCount": 5,
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "lastActivity": "2024-01-15T10:30:00.000Z"
+    },
+    "isCurrent": true
+  },
+  "requestId": "req-123456"
+}
+```
+
+**Get Session Details**
+
+```bash
+# Get specific session information
+GET /api/sessions/{sessionId}
+
+# Response:
+{
+  "success": true,
+  "data": {
+    "sessionId": "session-123",
+    "metadata": {
+      "id": "session-123",
+      "messageCount": 10,
+      "createdAt": "2024-01-15T09:30:00.000Z",
+      "lastActivity": "2024-01-15T10:15:00.000Z"
+    },
+    "isCurrent": false
+  },
+  "requestId": "req-123456"
+}
+```
+
+**Load Session (Switch To)**
+
+```bash
+# Switch to a different session
+POST /api/sessions/{sessionId}/load
+
+# Response:
+{
+  "success": true,
+  "data": {
+    "sessionId": "session-123",
+    "loaded": true,
+    "currentSession": "session-123",
+    "timestamp": "2024-01-15T10:30:00.000Z"
+  },
+  "requestId": "req-123456"
+}
+```
+
+**Get Session History**
+
+```bash
+# Get conversation history for a session
+GET /api/sessions/{sessionId}/history
+
+# Response:
+{
+  "success": true,
+  "data": {
+    "sessionId": "session-123",
+    "history": [
+      {
+        "role": "user",
+        "content": "Hello",
+        "timestamp": "2024-01-15T10:00:00.000Z"
+      },
+      {
+        "role": "assistant", 
+        "content": "Hello! How can I help you today?",
+        "timestamp": "2024-01-15T10:00:05.000Z"
+      }
+    ],
+    "count": 2,
+    "timestamp": "2024-01-15T10:30:00.000Z"
+  },
+  "requestId": "req-123456"
+}
+```
+
+**Delete Session**
+
+```bash
+# Delete a session (cannot delete currently active session)
+DELETE /api/sessions/{sessionId}
+
+# Response:
+{
+  "success": true,
+  "data": {
+    "sessionId": "session-123",
+    "deleted": true,
+    "timestamp": "2024-01-15T10:30:00.000Z"
+  },
+  "requestId": "req-123456"
+}
+```
+
+### Error Handling
+
+The API uses standardized error responses:
+
+```bash
+# Example error response
+{
+  "success": false,
+  "error": {
+    "code": "SESSION_NOT_FOUND",
+    "message": "Session session-123 not found",
+    "timestamp": "2024-01-15T10:30:00.000Z"
+  },
+  "requestId": "req-123456"
+}
+```
+
+**Common Error Codes:**
+- `VALIDATION_ERROR`: Invalid request parameters
+- `SESSION_NOT_FOUND`: Session doesn't exist
+- `INTERNAL_ERROR`: Server-side error
+- `RATE_LIMIT_EXCEEDED`: Too many requests
+- `BAD_REQUEST`: Malformed request
+- `UNAUTHORIZED`: Authentication required (if implemented)
+
+### API Usage Examples
+
+**Using curl:**
+
+```bash
+# Start cipher API server
+cipher --mode api --port 3000
+
+# Send a message
+curl -X POST http://localhost:3000/api/message/sync \
+  -H "Content-Type: application/json" \
+  -d '{"message": "What is the weather like?"}'
+
+# Create a new session
+curl -X POST http://localhost:3000/api/sessions \
+  -H "Content-Type: application/json" \
+  -d '{"sessionId": "weather-chat"}'
+
+# List all sessions
+curl http://localhost:3000/api/sessions
+
+# Get session history
+curl http://localhost:3000/api/sessions/weather-chat/history
+```
+
+**Using JavaScript/Node.js:**
+
+```javascript
+// Example client for cipher API
+class CipherClient {
+  constructor(baseUrl = 'http://localhost:3000') {
+    this.baseUrl = baseUrl;
+  }
+
+  async sendMessage(message, sessionId = null, images = null) {
+    const response = await fetch(`${this.baseUrl}/api/message/sync`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message,
+        sessionId,
+        images
+      })
+    });
+    
+    return response.json();
+  }
+
+  async createSession(sessionId = null) {
+    const response = await fetch(`${this.baseUrl}/api/sessions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ sessionId })
+    });
+    
+    return response.json();
+  }
+
+  async listSessions() {
+    const response = await fetch(`${this.baseUrl}/api/sessions`);
+    return response.json();
+  }
+
+  async getSessionHistory(sessionId) {
+    const response = await fetch(`${this.baseUrl}/api/sessions/${sessionId}/history`);
+    return response.json();
+  }
+}
+
+// Usage example
+const client = new CipherClient();
+
+(async () => {
+  // Create a new session
+  const session = await client.createSession('my-chat');
+  console.log('Created session:', session.data.sessionId);
+
+  // Send a message
+  const response = await client.sendMessage('Hello, cipher!', session.data.sessionId);
+  console.log('Agent response:', response.data.response);
+
+  // Get conversation history
+  const history = await client.getSessionHistory(session.data.sessionId);
+  console.log('Chat history:', history.data.history);
+})();
+```
+
+**Using Python:**
+
+```python
+import requests
+import json
+
+class CipherClient:
+    def __init__(self, base_url="http://localhost:3000"):
+        self.base_url = base_url
+        self.session = requests.Session()
+    
+    def send_message(self, message, session_id=None, images=None):
+        url = f"{self.base_url}/api/message/sync"
+        data = {"message": message}
+        
+        if session_id:
+            data["sessionId"] = session_id
+        if images:
+            data["images"] = images
+            
+        response = self.session.post(url, json=data)
+        return response.json()
+    
+    def create_session(self, session_id=None):
+        url = f"{self.base_url}/api/sessions"
+        data = {}
+        if session_id:
+            data["sessionId"] = session_id
+            
+        response = self.session.post(url, json=data)
+        return response.json()
+    
+    def list_sessions(self):
+        url = f"{self.base_url}/api/sessions"
+        response = self.session.get(url)
+        return response.json()
+    
+    def get_session_history(self, session_id):
+        url = f"{self.base_url}/api/sessions/{session_id}/history"
+        response = self.session.get(url)
+        return response.json()
+
+# Usage example
+client = CipherClient()
+
+# Create a new session
+session = client.create_session("python-chat")
+print(f"Created session: {session['data']['sessionId']}")
+
+# Send a message
+response = client.send_message("Hello from Python!", session['data']['sessionId'])
+print(f"Agent response: {response['data']['response']}")
+
+# Get conversation history
+history = client.get_session_history(session['data']['sessionId'])
+print(f"Chat history: {history['data']['history']}")
+```
+
+### API Server Configuration
+
+The API server supports various configuration options:
+
+```bash
+# Custom host and port
+cipher --mode api --host 0.0.0.0 --port 8080
+
+# With custom agent configuration
+cipher --mode api --agent ./my-config.yml --port 5000
+
+# Combined with other options
+cipher --mode api --host 0.0.0.0 --port 8080 --agent ./config.yml --strict
 ```
 
 ## Configuration
