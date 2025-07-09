@@ -31,7 +31,7 @@ export class SessionManager {
 			stateManager: MemAgentStateManager;
 			promptManager: PromptManager;
 			mcpManager: MCPManager;
-			unifiedToolManager?: UnifiedToolManager;
+			unifiedToolManager: UnifiedToolManager;
 		},
 		config: SessionManagerConfig = {}
 	) {
