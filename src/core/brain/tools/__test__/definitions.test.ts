@@ -75,6 +75,10 @@ describe('Tool Definitions', () => {
 					};
 
 					const mockContext = {
+						toolName: 'extract_and_operate_memory',
+						startTime: Date.now(),
+						sessionId: 'test-session',
+						metadata: {},
 						services: {
 							embeddingManager: mockEmbeddingManager,
 							vectorStoreManager: mockVectorStoreManager,
@@ -84,7 +88,7 @@ describe('Tool Definitions', () => {
 
 					const result = await extractAndOperateMemoryTool.handler({
 						interaction: 'TypeScript interface pattern for tools',
-					}, mockContext);
+					}, mockContext as any);
 
 					expect(result.success).toBe(true);
 					expect(result.extraction).toBeDefined();

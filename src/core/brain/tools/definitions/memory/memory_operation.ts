@@ -97,6 +97,7 @@ export interface MemoryOperationArgs {
 		recentMessages?: string[];
 		sessionMetadata?: Record<string, any>;
 	};
+	memoryMetadata?: Record<string, any>;
 	options?: {
 		similarityThreshold?: number;
 		maxSimilarResults?: number;

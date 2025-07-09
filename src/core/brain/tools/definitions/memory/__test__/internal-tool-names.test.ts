@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { InternalToolManager } from '../../../manager.js';
 import { UnifiedToolManager } from '../../../unified-tool-manager.js';
 import { extractAndOperateMemoryTool } from '../extract_and_operate_memory.js';
+import { handler } from '../extract_and_operate_memory.js';
+import { logger } from '../../../../../logger/index.js';
 
 describe('Internal Tool Names', () => {
 	let internalToolManager: InternalToolManager;
@@ -88,5 +90,111 @@ describe('Internal Tool Names', () => {
 
 		expect(await unifiedToolManager.isToolAvailable('cipher_extract_and_operate_memory')).toBe(true);
 		expect(await unifiedToolManager.isToolAvailable('nonexistent_tool')).toBe(false);
+	});
+});
+
+describe('memoryMetadata parameter and metadata merging', () => {
+	const insertedPayloads: any[] = [];
+	const mockEmbedder = {
+		embed: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
+	};
+	const mockVectorStore = {
+		search: vi.fn().mockResolvedValue([]),
+		insert: vi.fn().mockImplementation((embeddings, ids, payloads) => {
+			insertedPayloads.push(...payloads);
+			return undefined;
+		}),
+		update: vi.fn().mockResolvedValue(undefined),
+		delete: vi.fn().mockResolvedValue(undefined),
+	};
+	const mockEmbeddingManager = {
+		getEmbedder: vi.fn().mockReturnValue(mockEmbedder),
+	};
+	const mockVectorStoreManager = {
+		getStore: vi.fn().mockReturnValue(mockVectorStore),
+	};
+	const mockLlmService = {
+		directGenerate: vi.fn().mockResolvedValue('ADD'),
+	};
+
+	it('should log the correct merged metadata payload (logger spy)', async () => {
+		insertedPayloads.length = 0; // Clear before test
+		const args = {
+			interaction: 'In TypeScript, an interface defines the shape of an object.',
+			memoryMetadata: {
+				projectId: 'proj-123',
+				userId: 'user-456',
+				teamId: 'team-789',
+				environment: 'dev',
+				source: 'cli'
+			},
+			context: {
+				sessionId: 'sess-789',
+				userId: 'user-override',
+				projectId: 'proj-override',
+				conversationTopic: 'Test Topic'
+			}
+		};
+		const mockContext = {
+			services: {
+				embeddingManager: mockEmbeddingManager,
+				vectorStoreManager: mockVectorStoreManager,
+				llmService: mockLlmService
+			}
+		} as any;
+		await handler(args, mockContext);
+		expect(insertedPayloads[0].metadata).toMatchObject({
+			projectId: 'proj-override', // context.projectId overrides memoryMetadata.projectId
+			userId: 'user-override',   // context.userId overrides memoryMetadata.userId
+			teamId: 'team-789',
+			environment: 'dev',
+			source: 'cli',
+			sessionId: 'sess-789',
+			conversationTopic: 'Test Topic'
+		});
+	});
+
+	it('should log the correct merged metadata payload (logger spy)', async () => {
+		insertedPayloads.length = 0; // Clear before test
+		const args = {
+			interaction: 'In TypeScript, an interface defines the shape of an object.',
+			memoryMetadata: {
+				projectId: 'proj-123',
+				userId: 'user-456',
+				teamId: 'team-789',
+				environment: 'dev',
+				source: 'cli'
+			},
+			context: {
+				sessionId: 'sess-789',
+				userId: 'user-override',
+				projectId: 'proj-override',
+				conversationTopic: 'Test Topic'
+			}
+		};
+		const mockContext = {
+			services: {
+				embeddingManager: mockEmbeddingManager,
+				vectorStoreManager: mockVectorStoreManager,
+				llmService: mockLlmService
+			}
+		} as any;
+		const logs: any[] = [];
+		const origInfo = logger.info;
+		logger.info = (...args) => { logs.push(args); return origInfo.apply(logger, args); };
+		try {
+			await handler(args, mockContext);
+			expect(insertedPayloads[0].metadata).toMatchObject({
+				projectId: 'proj-override', // context.projectId overrides memoryMetadata.projectId
+				userId: 'user-override',   // context.userId overrides memoryMetadata.userId
+				teamId: 'team-789',
+				environment: 'dev',
+				source: 'cli',
+				sessionId: 'sess-789',
+				conversationTopic: 'Test Topic'
+			});
+		} finally {
+			logger.info = origInfo;
+		}
 	});
 }); 
