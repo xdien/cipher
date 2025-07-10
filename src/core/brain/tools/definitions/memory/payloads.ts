@@ -40,8 +40,7 @@ export interface ReasoningPayload extends BasePayload {
   reasoningSteps: Array<{
     type: string;
     content: string;
-    confidence?: number;
-    [key: string]: any; // Preserve any additional step data
+    [key: string]: any; // Preserve any additional step data (except confidence/timestamp)
   }>;
   evaluation: {
     qualityScore: number;
@@ -112,7 +111,6 @@ export function createReasoningPayload(
   reasoningSteps: Array<{
     type: string;
     content: string;
-    confidence?: number;
     [key: string]: any;
   }>,
   evaluation: {

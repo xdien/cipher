@@ -5,16 +5,13 @@ import type { SearchFilters, VectorStoreResult, MilvusBackendConfig } from './ty
 import { VectorStoreError, VectorStoreConnectionError, VectorDimensionError } from './types.js';
 import { Logger, createLogger } from '../../logger/index.js';
 import { LOG_PREFIXES, ERROR_MESSAGES } from '../constants.js';
-import dotenv from 'dotenv';
-dotenv.config();
+import { env } from '../../env.js';
 
 // Read index and distance config from environment variables (with fallback)
 const MILVUS_INDEX_TYPE = process.env.MILVUS_INDEX_TYPE || 'IVF_FLAT';
-const VECTOR_STORE_DISTANCE = process.env.VECTOR_STORE_DISTANCE || 'Cosine';
+const VECTOR_STORE_DISTANCE = env.VECTOR_STORE_DISTANCE || 'Cosine';
 const VECTOR_STORE_CONFIG_EFCONSTRUCTION = process.env.VECTOR_STORE_CONFIG_EFCONSTRUCTION || 10;
 const VECTOR_STORE_CONFIG_M = process.env.VECTOR_STORE_CONFIG_M || 4;
-const VECTOR_STORE_USERNAME = process.env.VECTOR_STORE_USERNAME || '';
-const VECTOR_STORE_PASSWORD = process.env.VECTOR_STORE_PASSWORD || '';
 
 // Helper to convert number ID to string for Milvus
 function numberIdToMilvusId(id: number): string {
@@ -71,17 +68,17 @@ export class MilvusBackend implements VectorStore {
 		this.collectionName = config.collectionName;
 		this.dimension = config.dimension;
 		this.logger = createLogger({
-			level: process.env.LOG_LEVEL || 'info',
+			level: env.CIPHER_LOG_LEVEL || 'info',
 		});
 
 		// Prefer config values, fallback to env if not provided
 		const address =
 			config.url ||
 			(config.host && config.port ? `http://${config.host}:${config.port}` : undefined) ||
-			process.env.VECTOR_STORE_URL ||
+			env.VECTOR_STORE_URL ||
 			'';
-		const username = config.username || process.env.VECTOR_STORE_USERNAME || '';
-		const password = config.password || process.env.VECTOR_STORE_PASSWORD || '';
+		const username = config.username || env.VECTOR_STORE_USERNAME || '';
+		const password = config.password || env.VECTOR_STORE_PASSWORD || '';
 
 		try {
 			this.client = new MilvusClient({
@@ -99,7 +96,7 @@ export class MilvusBackend implements VectorStore {
 				error as Error
 			);
 		}
-		this.logger.info(`${LOG_PREFIXES.MILVUS} Milvus Initialized`, {
+		this.logger.debug(`${LOG_PREFIXES.MILVUS} Backend initialized`, {
 			collection: this.collectionName,
 			dimension: this.dimension,
 			host: address,
@@ -263,7 +260,7 @@ export class MilvusBackend implements VectorStore {
 				data: [{ id: numberIdToMilvusId(vectorId), vector, payload }],
 >>>>>>> 1e21e75 (Fixes Milvus Errors)
 			});
-			this.logger.info(`Updated vector ${vectorId}`);
+			this.logger.debug(`${LOG_PREFIXES.MILVUS} Updated vector ${vectorId}`);
 		} catch (error) {
 			this.logger.error(`Update failed`, { error });
 			throw new VectorStoreError('Failed to update vector', 'update', error as Error);
@@ -282,7 +279,7 @@ export class MilvusBackend implements VectorStore {
 				expr: `id == "${numberIdToMilvusId(vectorId)}"`,
 >>>>>>> 1e21e75 (Fixes Milvus Errors)
 			});
-			this.logger.info(`Deleted vector ${vectorId}`);
+			this.logger.debug(`${LOG_PREFIXES.MILVUS} Deleted vector ${vectorId}`);
 		} catch (error) {
 			this.logger.error(`Delete failed`, { error });
 			throw new VectorStoreError('Failed to delete vector', 'delete', error as Error);

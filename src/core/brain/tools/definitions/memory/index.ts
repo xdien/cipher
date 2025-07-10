@@ -28,15 +28,11 @@ export {
 	searchReasoningPatterns
 };
 
-// Array of all memory tools
-export const memoryTools: InternalTool[] = [
-	extractAndOperateMemoryTool,
-	searchMemoryTool,
-	storeReasoningMemoryTool,
-	extractReasoningSteps,
-	evaluateReasoning,
-	searchReasoningPatterns
-];
+// Array of all memory tools (dynamic based on LLM context)
+export async function getMemoryToolsArray(): Promise<InternalTool[]> {
+	const toolMap = await getAllMemoryToolDefinitions();
+	return Object.values(toolMap);
+}
 
 // Load tools dynamically to avoid potential circular dependencies
 // import('./extract-knowledge.js').then(module => memoryTools.push(module.extractKnowledgeTool));
@@ -60,14 +56,18 @@ export async function getMemoryTools(): Promise<Record<string, InternalTool>> {
  * Get memory tool definitions for registration
  */
 export async function getAllMemoryToolDefinitions(): Promise<Record<string, InternalTool>> {
-	return {
+	// Base tools always available
+	const tools: Record<string, InternalTool> = {
 		extract_and_operate_memory: extractAndOperateMemoryTool,
 		memory_search: searchMemoryTool,
 		store_reasoning_memory: storeReasoningMemoryTool,
+		// All reasoning tools are always available for testing and functionality
 		extract_reasoning_steps: extractReasoningSteps,
 		evaluate_reasoning: evaluateReasoning,
 		search_reasoning_patterns: searchReasoningPatterns
 	};
+	
+	return tools;
 }
 
 /**

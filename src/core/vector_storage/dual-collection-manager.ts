@@ -60,16 +60,16 @@ export class DualCollectionVectorManager {
 	
 	constructor(baseConfig: VectorStoreConfig) {
 		this.logger = createLogger({
-			level: process.env.LOG_LEVEL || 'info',
+			level: env.CIPHER_LOG_LEVEL || 'info',
 		});
 
-		// Check if reflection memory is enabled
-		this.reflectionEnabled = env.REFLECTION_MEMORY_ENABLED;
+		// Check if reflection memory is enabled (based on collection name being set and not empty)
+		this.reflectionEnabled = !!(env.REFLECTION_VECTOR_STORE_COLLECTION && env.REFLECTION_VECTOR_STORE_COLLECTION.trim());
 
-		// Create knowledge manager with original collection name
+		// Create knowledge manager with original collection name (single log for dual manager)
 		this.knowledgeManager = new VectorStoreManager(baseConfig);
 
-		// Create reflection manager only if enabled
+		// Create reflection manager only if reflection collection name is set
 		if (this.reflectionEnabled) {
 			const reflectionConfig: VectorStoreConfig = {
 				...baseConfig,
@@ -77,14 +77,18 @@ export class DualCollectionVectorManager {
 			};
 			this.reflectionManager = new VectorStoreManager(reflectionConfig);
 
-			this.logger.info('DualCollectionVectorManager: Initialized with reflection memory enabled', {
+			this.logger.info('DualCollectionVectorManager: Initialized with dual collections', {
+				backend: baseConfig.type,
 				knowledgeCollection: baseConfig.collectionName,
 				reflectionCollection: env.REFLECTION_VECTOR_STORE_COLLECTION,
+				dimension: baseConfig.dimension,
 			});
 		} else {
 			this.reflectionManager = null;
-			this.logger.info('DualCollectionVectorManager: Initialized with reflection memory disabled', {
+			this.logger.info('DualCollectionVectorManager: Initialized with single collection', {
+				backend: baseConfig.type,
 				knowledgeCollection: baseConfig.collectionName,
+				dimension: baseConfig.dimension,
 			});
 		}
 	}
@@ -155,7 +159,9 @@ export class DualCollectionVectorManager {
 				case 'knowledge':
 					return this.knowledgeManager.isConnected();
 				case 'reflection':
-					return this.reflectionEnabled && this.reflectionManager?.isConnected() === true;
+					// Only return true if reflection is enabled and manager is connected
+					if (!this.reflectionEnabled) return false;
+					return this.reflectionManager?.isConnected() === true;
 				default:
 					throw new Error(`Unknown collection type: ${type}`);
 			}

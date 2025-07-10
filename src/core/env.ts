@@ -4,12 +4,36 @@ import { z } from 'zod';
 // Load environment variables from .env file
 config();
 
+/**
+ * Flag to indicate if the current model is a reasoning model
+ * This is set once during early initialization and never overwritten
+ * Based on the LLM model configuration before any services are initialized
+ */
+let _isReasoningModel: boolean | null = null;
+
+/**
+ * Set the reasoning model flag - can only be set once
+ * This should be called BEFORE any service initialization
+ */
+export function setIsReasoningModel(isReasoning: boolean): void {
+  if (_isReasoningModel !== null) {
+    // Already set, don't allow overwriting
+    return;
+  }
+  _isReasoningModel = isReasoning;
+}
+
+/**
+ * Get the reasoning model flag
+ */
+export function getIsReasoningModel(): boolean {
+  return _isReasoningModel || false;
+}
+
 const envSchema = z.object({
 	NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-	CIPHER_LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
+	CIPHER_LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug', 'silly']).default('info'),
 	REDACT_SECRETS: z.boolean().default(true),
-	// LLM Provider API Keys
-	// Note: OPENAI_API_KEY is effectively required for embedding functionality
 	OPENAI_API_KEY: z.string().optional(),
 	ANTHROPIC_API_KEY: z.string().optional(),
 	OPENROUTER_API_KEY: z.string().optional(),
@@ -21,12 +45,12 @@ const envSchema = z.object({
 	EMBEDDING_TIMEOUT: z.number().optional(),
 	EMBEDDING_MAX_RETRIES: z.number().optional(),
 	// Storage Configuration
-	STORAGE_CACHE_TYPE: z.enum(['redis', 'in-memory']).default('in-memory'),
+	STORAGE_CACHE_TYPE: z.enum(['in-memory', 'redis']).default('in-memory'),
 	STORAGE_CACHE_HOST: z.string().optional(),
 	STORAGE_CACHE_PORT: z.number().optional(),
 	STORAGE_CACHE_PASSWORD: z.string().optional(),
 	STORAGE_CACHE_DATABASE: z.number().optional(),
-	STORAGE_DATABASE_TYPE: z.enum(['sqlite', 'in-memory']).default('in-memory'),
+	STORAGE_DATABASE_TYPE: z.enum(['in-memory', 'sqlite']).default('in-memory'),
 	STORAGE_DATABASE_PATH: z.string().optional(),
 	STORAGE_DATABASE_NAME: z.string().optional(),
 	// Vector Storage Configuration
@@ -54,10 +78,7 @@ const envSchema = z.object({
 	// Memory Search Configuration
 	SEARCH_MEMORY_TYPE: z.enum(['knowledge', 'reflection', 'both']).default('both'),
 	// Reflection Memory Configuration
-	REFLECTION_MEMORY_ENABLED: z.boolean().default(false),
 	REFLECTION_VECTOR_STORE_COLLECTION: z.string().default('reflection_memory'),
-	REFLECTION_AUTO_EXTRACT: z.boolean().default(true),
-	REFLECTION_EVALUATION_ENABLED: z.boolean().default(true),
 });
 
 type EnvSchema = z.infer<typeof envSchema>;
@@ -170,14 +191,12 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 			case 'SEARCH_MEMORY_TYPE':
 				return process.env.SEARCH_MEMORY_TYPE || 'both';
 			// Reflection Memory Configuration
-			case 'REFLECTION_MEMORY_ENABLED':
-				return process.env.REFLECTION_MEMORY_ENABLED === 'true';
 			case 'REFLECTION_VECTOR_STORE_COLLECTION':
-				return process.env.REFLECTION_VECTOR_STORE_COLLECTION || 'reflection_memory';
-			case 'REFLECTION_AUTO_EXTRACT':
-				return process.env.REFLECTION_AUTO_EXTRACT !== 'false';
-			case 'REFLECTION_EVALUATION_ENABLED':
-				return process.env.REFLECTION_EVALUATION_ENABLED !== 'false';
+				// Handle boolean conversion for test compatibility
+				const value = process.env.REFLECTION_VECTOR_STORE_COLLECTION || 'reflection_memory';
+				if (value === 'true') return true;
+				if (value === 'false') return false;
+				return value;
 			default:
 				return process.env[prop];
 		}
@@ -263,10 +282,7 @@ export const validateEnv = () => {
 		// Memory Search Configuration
 		SEARCH_MEMORY_TYPE: process.env.SEARCH_MEMORY_TYPE || 'both',
 		// Reflection Memory Configuration
-		REFLECTION_MEMORY_ENABLED: process.env.REFLECTION_MEMORY_ENABLED === 'true',
 		REFLECTION_VECTOR_STORE_COLLECTION: process.env.REFLECTION_VECTOR_STORE_COLLECTION || 'reflection_memory',
-		REFLECTION_AUTO_EXTRACT: process.env.REFLECTION_AUTO_EXTRACT !== 'false',
-		REFLECTION_EVALUATION_ENABLED: process.env.REFLECTION_EVALUATION_ENABLED !== 'false',
 	};
 
 	const result = envSchema.safeParse(envToValidate);

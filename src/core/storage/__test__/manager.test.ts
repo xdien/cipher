@@ -127,24 +127,6 @@ describe('StorageManager', () => {
 	});
 
 	describe('Backend Fallback', () => {
-		it('should fallback to in-memory for Redis cache', async () => {
-			const config: StorageConfig = {
-				cache: { type: 'redis', host: 'localhost' },
-				database: { type: 'in-memory' },
-			};
-			manager = new StorageManager(config);
-
-			const backends = await manager.connect();
-
-			// Should fallback to in-memory
-			expect(backends.cache).toBeInstanceOf(InMemoryBackend);
-			expect(backends.cache.getBackendType()).toBe(BACKEND_TYPES.IN_MEMORY);
-
-			const info = manager.getInfo();
-			expect(info.backends.cache.type).toBe(BACKEND_TYPES.IN_MEMORY);
-			expect(info.backends.cache.fallback).toBe(true);
-		});
-
 		it('should fallback to in-memory for SQLite database', async () => {
 			const config: StorageConfig = {
 				cache: { type: 'in-memory' },

@@ -1,43 +1,37 @@
 /**
- * Reflective Memory Tools
+ * LLM Reflection Memory Tools (Phase 2)
  *
- * These tools implement the reflection memory system for capturing and analyzing
- * agent reasoning steps to optimize thinking patterns and improve decision-making.
+ * These tools enable the agent to extract, evaluate, and store reasoning patterns
+ * for continuous learning and improvement. They work with the existing vector storage
+ * infrastructure to build a reflection memory system.
  * 
- * Part of Phase 2: Core Reflection Memory Tools Implementation
+ * Phase 2: Basic reasoning extraction, evaluation, and storage
+ * Phase 3: Advanced pattern recognition and reasoning recommendations
  */
 
 import { z } from 'zod';
-import { Logger, createLogger } from '../../logger/index.js';
-import { env } from '../../env.js';
-import { InternalTool, InternalToolContext } from './types.js';
 import { logger } from '../../logger/index.js';
+import { env, getIsReasoningModel } from '../../env.js';
+import type { InternalTool, InternalToolContext } from './types.js';
 
 /**
- * Zod Schemas for Reflection Memory
+ * Core Types and Schemas
  */
 
-// Reasoning Step Schema
+// Reasoning step without confidence and timestamp (as per new requirements)
 export const ReasoningStepSchema = z.object({
 	type: z.enum(['thought', 'action', 'observation', 'decision', 'conclusion', 'reflection']),
-	content: z.string().min(1),
-	confidence: z.number().min(0).max(1),
-	timestamp: z.string(),
-	context: z.string().optional(),
-	metadata: z.record(z.any()).optional()
+	content: z.string().min(1)
 });
 
-export type ReasoningStep = z.infer<typeof ReasoningStepSchema>;
-
-// Reasoning Trace Schema
 export const ReasoningTraceSchema = z.object({
 	id: z.string(),
 	steps: z.array(ReasoningStepSchema),
 	metadata: z.object({
 		extractedAt: z.string(),
-		conversationLength: z.number().optional(),
+		conversationLength: z.number(),
 		stepCount: z.number(),
-		hasExplicitMarkup: z.boolean().optional(),
+		hasExplicitMarkup: z.boolean(),
 		sessionId: z.string().optional(),
 		taskContext: z.object({
 			goal: z.string().optional(),
@@ -46,33 +40,38 @@ export const ReasoningTraceSchema = z.object({
 			domain: z.string().optional(),
 			complexity: z.enum(['low', 'medium', 'high']).optional()
 		}).optional(),
-		extractionOptions: z.record(z.any()).optional()
-	}).passthrough()
+		extractionOptions: z.object({
+			extractExplicit: z.boolean().optional(),
+			extractImplicit: z.boolean().optional(),
+			includeMetadata: z.boolean().optional()
+		}).optional()
+	})
 });
 
-export type ReasoningTrace = z.infer<typeof ReasoningTraceSchema>;
-
-// Reasoning Evaluation Schema
 export const ReasoningEvaluationSchema = z.object({
 	qualityScore: z.number().min(0).max(1),
-	efficiencyScore: z.number().min(0).max(1).optional(),
-	correctness: z.boolean().optional(),
 	issues: z.array(z.object({
-		type: z.enum(['redundant_step', 'incorrect_step', 'missing_step', 'inefficient_path']),
-		stepIndex: z.number().optional(),
+		type: z.string(),
 		description: z.string(),
-		severity: z.enum(['low', 'medium', 'high'])
+		severity: z.enum(['low', 'medium', 'high']).optional()
 	})),
 	suggestions: z.array(z.string()),
-	shouldStore: z.boolean().optional(),
-	optimizedSteps: z.array(ReasoningStepSchema).optional()
+	shouldStore: z.boolean(),
+	metrics: z.object({
+		efficiency: z.number().min(0).max(1),
+		clarity: z.number().min(0).max(1),
+		completeness: z.number().min(0).max(1)
+	}).optional()
 });
 
+export type ReasoningStep = z.infer<typeof ReasoningStepSchema>;
+export type ReasoningTrace = z.infer<typeof ReasoningTraceSchema>;
 export type ReasoningEvaluation = z.infer<typeof ReasoningEvaluationSchema>;
 
 // Input schemas for tools
 export const extractReasoningInputSchema = z.object({
-	conversation: z.string().min(1),
+	userInput: z.string().min(1),
+	reasoningContent: z.string().min(1),
 	options: z.object({
 		extractExplicit: z.boolean().default(true),
 		extractImplicit: z.boolean().default(true),
@@ -98,7 +97,7 @@ export const searchReasoningInputSchema = z.object({
 	}).optional(),
 	options: z.object({
 		maxResults: z.number().min(1).max(50).default(10),
-		minQualityScore: z.number().min(0).max(1).default(0.6),
+		minQualityScore: z.number().min(0).max(1).default(0.5),
 		includeEvaluations: z.boolean().default(true)
 	}).optional().default({})
 });
@@ -108,39 +107,34 @@ export const searchReasoningInputSchema = z.object({
  */
 
 function generateTraceId(): string {
-	return `trace_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+	return `trace_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
 function detectReasoningLoops(steps: ReasoningStep[]): boolean {
-	// Simple loop detection by checking for repeated content
-	const contents = steps.map(s => s.content.toLowerCase().trim());
-	for (let i = 0; i < contents.length; i++) {
-		for (let j = i + 1; j < contents.length; j++) {
-			const contentI = contents[i];
-			const contentJ = contents[j];
-			if (contentI && contentJ && contentI === contentJ && contentI.length > 10) {
+	const contentSet = new Set();
+	for (const step of steps) {
+		if (contentSet.has(step.content)) {
 				return true;
-			}
 		}
+		contentSet.add(step.content);
 	}
 	return false;
-}
-
-function calculateAverageConfidence(steps: ReasoningStep[]): number {
-	if (steps.length === 0) return 0;
-	return steps.reduce((sum, step) => sum + step.confidence, 0) / steps.length;
 }
 
 /**
  * Core Processing Functions
  */
 
-async function extractReasoningFromConversation(
-	conversation: string,
+async function extractReasoningFromContent(
+	userInput: string,
+	reasoningContent: string,
 	options: { extractExplicit?: boolean; extractImplicit?: boolean; includeMetadata?: boolean }
 ): Promise<ReasoningStep[]> {
 	const steps: ReasoningStep[] = [];
-	const lines = conversation.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+	
+	// Combine user input and reasoning content for analysis
+	const combinedContent = `User Input: ${userInput}\n\nReasoning: ${reasoningContent}`;
+	const lines = combinedContent.split('\n').map(line => line.trim()).filter(line => line.length > 0);
 
 	// Extract explicit markup patterns
 	if (options.extractExplicit !== false) {
@@ -150,9 +144,7 @@ async function extractReasoningFromConversation(
 			if (thoughtMatch && thoughtMatch[1]) {
 				steps.push({
 					type: 'thought',
-					content: thoughtMatch[1],
-					confidence: 0.9,
-					timestamp: new Date().toISOString()
+					content: thoughtMatch[1]
 				});
 				continue;
 			}
@@ -161,9 +153,7 @@ async function extractReasoningFromConversation(
 			if (actionMatch && actionMatch[1]) {
 				steps.push({
 					type: 'action',
-					content: actionMatch[1],
-					confidence: 0.9,
-					timestamp: new Date().toISOString()
+					content: actionMatch[1]
 				});
 				continue;
 			}
@@ -172,9 +162,7 @@ async function extractReasoningFromConversation(
 			if (observationMatch && observationMatch[1]) {
 				steps.push({
 					type: 'observation',
-					content: observationMatch[1],
-					confidence: 0.9,
-					timestamp: new Date().toISOString()
+					content: observationMatch[1]
 				});
 				continue;
 			}
@@ -183,9 +171,7 @@ async function extractReasoningFromConversation(
 			if (resultMatch && resultMatch[1]) {
 				steps.push({
 					type: 'conclusion',
-					content: resultMatch[1],
-					confidence: 0.9,
-					timestamp: new Date().toISOString()
+					content: resultMatch[1]
 				});
 				continue;
 			}
@@ -194,9 +180,7 @@ async function extractReasoningFromConversation(
 			if (conclusionMatch && conclusionMatch[1]) {
 				steps.push({
 					type: 'conclusion',
-					content: conclusionMatch[1],
-					confidence: 0.9,
-					timestamp: new Date().toISOString()
+					content: conclusionMatch[1]
 				});
 				continue;
 			}
@@ -229,9 +213,7 @@ async function extractReasoningFromConversation(
 
 				steps.push({
 					type: stepType,
-					content: line,
-					confidence: 0.7, // Lower confidence for implicit extraction
-					timestamp: new Date().toISOString()
+					content: line
 				});
 			}
 		}
@@ -241,191 +223,227 @@ async function extractReasoningFromConversation(
 }
 
 /**
- * Extract task context from conversation
+ * Extract task context from user input and reasoning content
  */
-async function extractTaskContextFromConversation(conversation: string): Promise<{
+async function extractTaskContextFromContent(userInput: string, reasoningContent: string): Promise<{
   goal?: string;
   input?: string;
   taskType?: string;
   domain?: string;
   complexity?: 'low' | 'medium' | 'high';
 }> {
-  const context: any = {};
-  
-  // Extract goal/objective patterns
-  const goalPatterns = [
-    /(?:goal|objective|aim|purpose)(?:\s*is)?[\s:]+([^.\n]+)/i,
-    /(?:trying to|attempting to|want to|need to)\s+([^.\n]+)/i,
-    /(?:implement|create|build|write|develop)\s+([^.\n]+)/i,
-    /(?:solve|fix|resolve|address)\s+([^.\n]+)/i
-  ];
-  
-  for (const pattern of goalPatterns) {
-    const match = conversation.match(pattern);
-    if (match && match[1]?.trim()) {
-      context.goal = match[1].trim();
-      break;
-    }
-  }
-  
-  // Extract original input/request
-  const inputPatterns = [
-    /(?:user asked|user requested|user wants|request)[\s:]+([^.\n]+)/i,
-    /(?:original request|initial request)[\s:]+([^.\n]+)/i,
-    /(?:problem statement|task description)[\s:]+([^.\n]+)/i
-  ];
-  
-  for (const pattern of inputPatterns) {
-    const match = conversation.match(pattern);
-    if (match && match[1]?.trim()) {
-      context.input = match[1].trim();
-      break;
-    }
-  }
-  
-  // Infer task type from content
-  const codeKeywords = ['function', 'class', 'method', 'algorithm', 'implement', 'code', 'program', 'script'];
-  const analysisKeywords = ['analyze', 'examine', 'review', 'investigate', 'study', 'assess'];
-  const problemSolvingKeywords = ['solve', 'fix', 'debug', 'troubleshoot', 'resolve', 'find solution'];
-  const planningKeywords = ['plan', 'design', 'architecture', 'strategy', 'approach', 'workflow'];
-  
-  const lowerConv = conversation.toLowerCase();
-  
-  if (codeKeywords.some(kw => lowerConv.includes(kw))) {
-    context.taskType = 'code_generation';
-  } else if (analysisKeywords.some(kw => lowerConv.includes(kw))) {
-    context.taskType = 'analysis';
-  } else if (problemSolvingKeywords.some(kw => lowerConv.includes(kw))) {
-    context.taskType = 'problem_solving';
-  } else if (planningKeywords.some(kw => lowerConv.includes(kw))) {
-    context.taskType = 'planning';
+	const combinedContent = `User Input: ${userInput}\n\nReasoning: ${reasoningContent}`;
+	
+	// Extract goal from user input
+	let goal: string | undefined;
+	if (userInput.toLowerCase().includes('write') || userInput.toLowerCase().includes('create')) {
+		goal = 'Create or write code/solution';
+	} else if (userInput.toLowerCase().includes('fix') || userInput.toLowerCase().includes('debug')) {
+		goal = 'Fix or debug issue';
+	} else if (userInput.toLowerCase().includes('explain') || userInput.toLowerCase().includes('understand')) {
+		goal = 'Explain or understand concept';
+	}
+
+	// Determine task type
+	let taskType: string | undefined;
+	if (combinedContent.toLowerCase().includes('function') || combinedContent.toLowerCase().includes('code')) {
+		taskType = 'code_generation';
+	} else if (combinedContent.toLowerCase().includes('analyze') || combinedContent.toLowerCase().includes('review')) {
+		taskType = 'analysis';
+	} else if (combinedContent.toLowerCase().includes('solve') || combinedContent.toLowerCase().includes('problem')) {
+		taskType = 'problem_solving';
+	}
+
+	// Determine domain
+	let domain: string | undefined;
+	if (combinedContent.toLowerCase().includes('javascript') || combinedContent.toLowerCase().includes('typescript')) {
+		domain = 'javascript';
+	} else if (combinedContent.toLowerCase().includes('python')) {
+		domain = 'python';
+	} else if (combinedContent.toLowerCase().includes('react') || combinedContent.toLowerCase().includes('component')) {
+		domain = 'frontend';
+	} else if (combinedContent.toLowerCase().includes('server') || combinedContent.toLowerCase().includes('api')) {
+		domain = 'backend';
+	}
+
+	// Determine complexity
+	let complexity: 'low' | 'medium' | 'high' | undefined;
+	const wordCount = combinedContent.split(' ').length;
+	if (wordCount < 50) {
+		complexity = 'low';
+	} else if (wordCount < 200) {
+		complexity = 'medium';
   } else {
-    context.taskType = 'general';
-  }
-  
-  // Infer domain
-  const programmingKeywords = ['code', 'function', 'class', 'algorithm', 'programming', 'software', 'api', 'database'];
-  const mathKeywords = ['math', 'calculate', 'equation', 'formula', 'number', 'statistics'];
-  const dataKeywords = ['data', 'analysis', 'dataset', 'visualization', 'chart', 'report'];
-  
-  if (programmingKeywords.some(kw => lowerConv.includes(kw))) {
-    context.domain = 'programming';
-  } else if (mathKeywords.some(kw => lowerConv.includes(kw))) {
-    context.domain = 'mathematics';
-  } else if (dataKeywords.some(kw => lowerConv.includes(kw))) {
-    context.domain = 'data_analysis';
-  } else {
-    context.domain = 'general';
-  }
-  
-  // Infer complexity based on conversation length and technical depth
-  const conversationLength = conversation.length;
-  const technicalKeywords = ['algorithm', 'optimization', 'complexity', 'architecture', 'framework', 'advanced'];
-  const hasTechnicalTerms = technicalKeywords.some(kw => lowerConv.includes(kw));
-  
-  if (conversationLength > 2000 || hasTechnicalTerms) {
-    context.complexity = 'high';
-  } else if (conversationLength > 500) {
-    context.complexity = 'medium';
-  } else {
-    context.complexity = 'low';
-  }
-  
-  return context;
+		complexity = 'high';
+	}
+
+	return {
+		goal,
+		input: userInput,
+		taskType,
+		domain,
+		complexity
+	};
 }
 
 async function evaluateReasoningQuality(
 	trace: ReasoningTrace,
 	options: { checkEfficiency?: boolean; detectLoops?: boolean; generateSuggestions?: boolean }
 ): Promise<ReasoningEvaluation> {
-	const issues: ReasoningEvaluation['issues'] = [];
+	const issues: Array<{ type: string; description: string; severity?: 'low' | 'medium' | 'high' }> = [];
 	const suggestions: string[] = [];
 
-	// Calculate quality score based on confidence and completeness
-	const avgConfidence = calculateAverageConfidence(trace.steps);
-	const hasVariedStepTypes = new Set(trace.steps.map(s => s.type)).size > 1;
-	const qualityScore = (avgConfidence + (hasVariedStepTypes ? 0.2 : 0)) * 0.9; // Max 0.9 to allow room for improvement
-
-	// Check for efficiency issues
-	if (options.checkEfficiency !== false) {
-		if (trace.steps.length > 15) {
+	// Basic quality checks
+	if (trace.steps.length === 0) {
 			issues.push({
-				type: 'inefficient_path',
-				description: `Reasoning trace has ${trace.steps.length} steps, which may indicate inefficient thinking`,
-				severity: 'medium'
-			});
-			suggestions.push('Consider consolidating related reasoning steps to improve efficiency');
-		}
-
-		// Check for low confidence steps
-		const lowConfidenceSteps = trace.steps.filter(s => s.confidence < 0.5);
-		if (lowConfidenceSteps.length > 0) {
-			issues.push({
-				type: 'incorrect_step',
-				description: `Found ${lowConfidenceSteps.length} low-confidence steps`,
+			type: 'empty_trace',
+			description: 'Reasoning trace contains no steps',
 				severity: 'high'
 			});
-			suggestions.push('Review and strengthen reasoning for low-confidence steps');
-		}
 	}
 
-	// Check for loops
+	// Enhanced redundancy detection
 	if (options.detectLoops !== false) {
-		const hasLoops = detectReasoningLoops(trace.steps);
-		if (hasLoops) {
+		// Check for exact content loops
+		if (detectReasoningLoops(trace.steps)) {
 			issues.push({
-				type: 'redundant_step',
-				description: 'Detected repeated reasoning patterns that may indicate circular thinking',
+				type: 'reasoning_loop',
+				description: 'Detected repetitive reasoning patterns',
 				severity: 'medium'
 			});
-			suggestions.push('Avoid repeating the same reasoning steps; build incrementally instead');
+			suggestions.push('Avoid repetitive reasoning steps');
+		}
+
+		// Check for semantic redundancy (similar content in different steps)
+		const semanticRedundancy = detectSemanticRedundancy(trace.steps);
+		if (semanticRedundancy > 0.5) {
+			issues.push({
+				type: 'semantic_redundancy',
+				description: 'Multiple steps contain very similar content',
+				severity: 'medium'
+			});
+			suggestions.push('Consolidate similar reasoning steps for clarity');
+		}
+
+		// Check for trivial steps (very short or generic content)
+		const trivialSteps = trace.steps.filter(step => 
+			step.content.length < 20 || 
+			/^(ok|yes|no|done|good)$/i.test(step.content.trim())
+		);
+		if (trivialSteps.length > trace.steps.length * 0.3) {
+			issues.push({
+				type: 'trivial_content',
+				description: 'Too many trivial or very short reasoning steps',
+				severity: 'low'
+			});
+			suggestions.push('Focus on substantial reasoning steps that add value');
 		}
 	}
 
-	// Generate additional suggestions
-	if (options.generateSuggestions !== false) {
-		if (trace.steps.length < 3) {
-			suggestions.push('Consider breaking down complex problems into more detailed reasoning steps');
-		}
-		if (avgConfidence > 0.9) {
-			suggestions.push('Excellent confidence levels - this reasoning pattern could be reused for similar problems');
-		}
+	// Check step diversity
+	const stepTypes = new Set(trace.steps.map(s => s.type));
+	if (stepTypes.size === 1 && trace.steps.length > 3) {
+		issues.push({
+			type: 'low_diversity',
+			description: 'All reasoning steps are of the same type',
+			severity: 'low'
+		});
+		suggestions.push('Include different types of reasoning steps (thoughts, actions, observations)');
 	}
 
-	// Calculate efficiency score
-	const efficiencyScore = Math.max(0, 1 - (trace.steps.length / 20)); // Penalize longer traces
+	// Check for valuable content vs basic programming tasks
+	const hasValueableContent = trace.steps.some(step => 
+		step.content.length > 50 && 
+		(step.content.toLowerCase().includes('analyze') ||
+		 step.content.toLowerCase().includes('consider') ||
+		 step.content.toLowerCase().includes('approach') ||
+		 step.content.toLowerCase().includes('strategy') ||
+		 step.content.toLowerCase().includes('pattern') ||
+		 step.content.toLowerCase().includes('because'))
+	);
 
-	// Determine if should store
-	const shouldStore = qualityScore > 0.6 || issues.length > 0;
+	if (!hasValueableContent && trace.steps.length < 5) {
+		issues.push({
+			type: 'insufficient_insight',
+			description: 'Reasoning lacks substantial insights or analysis',
+			severity: 'medium'
+		});
+		suggestions.push('Include deeper analysis and reasoning about approach and decisions');
+	}
+
+	// Calculate quality score based on issues and step count
+	let qualityScore = 1.0;
+	qualityScore -= issues.filter(i => i.severity === 'high').length * 0.3;
+	qualityScore -= issues.filter(i => i.severity === 'medium').length * 0.2;
+	qualityScore -= issues.filter(i => i.severity === 'low').length * 0.1;
+	qualityScore = Math.max(0, Math.min(1, qualityScore));
+
+	// Enhanced storage decision - be more selective
+	const shouldStore = qualityScore >= 0.6 && // Raised threshold from 0.5 to 0.6
+	                   trace.steps.length >= 3 && // Require minimum steps
+	                   hasValueableContent && // Require valuable insights
+	                   issues.filter(i => i.severity === 'high').length === 0; // No high-severity issues
 
 	return {
 		qualityScore,
-		efficiencyScore,
 		issues,
 		suggestions,
-		shouldStore
+		shouldStore,
+		metrics: {
+			efficiency: Math.min(1, trace.steps.length / 10), // Prefer concise reasoning
+			clarity: stepTypes.size / Math.min(4, trace.steps.length), // Prefer diverse step types
+			completeness: Math.min(1, trace.steps.length / 5), // Prefer adequate detail
+			insightfulness: hasValueableContent ? 0.8 : 0.2 // New metric for content value
+		}
 	};
+}
+
+/**
+ * Detect semantic redundancy between reasoning steps
+ */
+function detectSemanticRedundancy(steps: ReasoningStep[]): number {
+	if (steps.length < 2) return 0;
+
+	let redundantPairs = 0;
+	let totalPairs = 0;
+
+	for (let i = 0; i < steps.length; i++) {
+		for (let j = i + 1; j < steps.length; j++) {
+			const similarity = calculateQuerySimilarity(steps[i].content, steps[j].content);
+			if (similarity > 0.7) { // High similarity threshold
+				redundantPairs++;
+			}
+			totalPairs++;
+		}
+	}
+
+	return totalPairs > 0 ? redundantPairs / totalPairs : 0;
 }
 
 /**
  * Tool 1: Extract Reasoning Steps
  * 
- * Analyzes agent conversations or outputs to extract reasoning patterns,
+ * Analyzes user input and reasoning content to extract reasoning patterns,
  * thought chains, and decision points for future optimization.
+ * ONLY accessible for reasoning models.
  */
 export const extractReasoningSteps: InternalTool = {
 	name: 'extract_reasoning_steps',
 	category: 'memory',
 	internal: true,
-	agentAccessible: false,
-	description: 'Extract reasoning steps from agent conversation or output. Analyzes both explicit thought markup and implicit reasoning patterns to create structured reasoning traces.',
+	agentAccessible: getIsReasoningModel(), // Only accessible for reasoning models
+	description: 'Extract reasoning steps from user input and reasoning content. Analyzes both explicit thought markup and implicit reasoning patterns to create structured reasoning traces.',
 	version: '1.0.0',
 	parameters: {
 		type: 'object',
 		properties: {
-			conversation: {
+			userInput: {
 				type: 'string',
-				description: 'The agent conversation or output text to analyze for reasoning patterns'
+				description: 'The original user input or request'
+			},
+			reasoningContent: {
+				type: 'string', 
+				description: 'The reasoning content (not the final output) to analyze for reasoning patterns'
 			},
 			options: {
 				type: 'object',
@@ -449,20 +467,12 @@ export const extractReasoningSteps: InternalTool = {
 				}
 			}
 		},
-		required: ['conversation']
+		required: ['userInput', 'reasoningContent']
 	},
 	handler: async (args: any, context?: InternalToolContext) => {
-		// Check if reflection memory is enabled
-		if (!env.REFLECTION_MEMORY_ENABLED) {
-			return {
-				success: false,
-				result: { error: 'Reflection memory system is disabled' },
-				metadata: { toolName: 'extract_reasoning_steps', disabled: true }
-			};
-		}
-
 		logger.debug('Starting reasoning extraction', { 
-			conversationLength: args.conversation?.length || 0,
+			userInputLength: args.userInput?.length || 0,
+			reasoningContentLength: args.reasoningContent?.length || 0,
 			options: args.options 
 		});
 
@@ -471,13 +481,14 @@ export const extractReasoningSteps: InternalTool = {
 			const input = extractReasoningInputSchema.parse(args);
 			
 			// Extract reasoning steps
-			const steps = await extractReasoningFromConversation(
-				input.conversation,
+			const steps = await extractReasoningFromContent(
+				input.userInput,
+				input.reasoningContent,
 				input.options || {}
 			);
 
-			// Extract task context from conversation
-			const taskContext = await extractTaskContextFromConversation(input.conversation);
+			// Extract task context from user input and reasoning content
+			const taskContext = await extractTaskContextFromContent(input.userInput, input.reasoningContent);
 
 			// Create reasoning trace
 			const trace: ReasoningTrace = {
@@ -485,9 +496,9 @@ export const extractReasoningSteps: InternalTool = {
 				steps,
 				metadata: {
 					extractedAt: new Date().toISOString(),
-					conversationLength: input.conversation.length,
+					conversationLength: input.userInput.length + input.reasoningContent.length,
 					stepCount: steps.length,
-					hasExplicitMarkup: steps.some(s => s.confidence > 0.8),
+					hasExplicitMarkup: steps.length > 0 && steps.some(s => s.content.includes(':')),
 					sessionId: context?.sessionId,
 					// Include extracted task context
 					taskContext,
@@ -499,8 +510,7 @@ export const extractReasoningSteps: InternalTool = {
 
 					logger.debug('Successfully extracted reasoning steps', {
 			traceId: trace.id,
-			stepCount: steps.length,
-			avgConfidence: steps.reduce((sum, s) => sum + s.confidence, 0) / steps.length
+				stepCount: steps.length
 		});
 
 			return {
@@ -529,14 +539,15 @@ export const extractReasoningSteps: InternalTool = {
 /**
  * Tool 2: Evaluate Reasoning Quality
  * 
- * Analyzes extracted reasoning for efficiency, redundancy, confidence,
+ * Analyzes extracted reasoning for efficiency, redundancy,
  * and correctness. Provides suggestions for improvement.
+ * ONLY accessible for reasoning models.
  */
 export const evaluateReasoning: InternalTool = {
 	name: 'evaluate_reasoning',
 	category: 'memory',
 	internal: true,
-	agentAccessible: false,
+	agentAccessible: getIsReasoningModel(), // Only accessible for reasoning models
 	description: 'Evaluate the quality and efficiency of extracted reasoning. Analyzes reasoning patterns for issues, calculates quality metrics, and generates improvement suggestions.',
 	version: '1.0.0',
 	parameters: {
@@ -577,24 +588,6 @@ export const evaluateReasoning: InternalTool = {
 		required: ['trace']
 	},
 	handler: async (args: any, context?: InternalToolContext) => {
-		// Check if reflection memory is enabled
-		if (!env.REFLECTION_MEMORY_ENABLED) {
-			return {
-				success: false,
-				result: { error: 'Reflection memory system is disabled' },
-				metadata: { toolName: 'evaluate_reasoning', disabled: true }
-			};
-		}
-
-		// Check if evaluation is enabled
-		if (!env.REFLECTION_EVALUATION_ENABLED) {
-			return {
-				success: false,
-				result: { error: 'Reflection evaluation is disabled' },
-				metadata: { toolName: 'evaluate_reasoning', disabled: true }
-			};
-		}
-
 		logger.debug('Starting reasoning evaluation', { 
 			traceId: args.trace?.id,
 			stepCount: args.trace?.steps?.length || 0,
@@ -647,12 +640,14 @@ export const evaluateReasoning: InternalTool = {
  * 
  * Searches stored reflection memory for relevant reasoning patterns
  * that can inform current decision making.
+ * ALWAYS accessible regardless of model choice.
  */
 export const searchReasoningPatterns: InternalTool = {
 	name: 'search_reasoning_patterns',
 	category: 'memory',
 	internal: true,
-	description: 'Search reflection memory for relevant reasoning patterns. Finds similar reasoning traces and evaluations that can inform current decision-making.',
+	agentAccessible: true, // Always accessible regardless of model choice
+	description: 'Search reflection memory for relevant reasoning patterns. Finds similar reasoning traces and evaluations that can inform current decision-making. Automatically deduplicates similar queries and batches searches for efficiency.',
 	version: '1.0.0',
 	parameters: {
 		type: 'object',
@@ -663,20 +658,20 @@ export const searchReasoningPatterns: InternalTool = {
 			},
 			context: {
 				type: 'object',
-				description: 'Optional context to improve search relevance',
+				description: 'Optional context to filter results',
 				properties: {
 					taskType: {
 						type: 'string',
-						description: 'Type of task (e.g., "code_generation", "problem_solving", "analysis")'
+						description: 'Type of task (e.g., code_generation, analysis, problem_solving)'
 					},
 					domain: {
 						type: 'string',
-						description: 'Problem domain (e.g., "programming", "math", "planning")'
+						description: 'Problem domain (e.g., javascript, python, frontend, backend)'
 					},
 					complexity: {
 						type: 'string',
 						enum: ['low', 'medium', 'high'],
-						description: 'Expected complexity level'
+						description: 'Task complexity level'
 					}
 				}
 			},
@@ -687,20 +682,25 @@ export const searchReasoningPatterns: InternalTool = {
 					maxResults: {
 						type: 'number',
 						description: 'Maximum number of results to return',
-						default: 10,
 						minimum: 1,
-						maximum: 50
+						maximum: 50,
+						default: 10
 					},
 					minQualityScore: {
 						type: 'number',
-						description: 'Minimum quality score for returned patterns',
-						default: 0.6,
+						description: 'Minimum quality score for results',
 						minimum: 0,
-						maximum: 1
+						maximum: 1,
+						default: 0.5
 					},
 					includeEvaluations: {
 						type: 'boolean',
-						description: 'Whether to include reasoning evaluations in results',
+						description: 'Whether to include quality evaluations in results',
+						default: true
+					},
+					deduplicateQueries: {
+						type: 'boolean',
+						description: 'Whether to deduplicate similar queries within the same session',
 						default: true
 					}
 				}
@@ -709,15 +709,6 @@ export const searchReasoningPatterns: InternalTool = {
 		required: ['query']
 	},
 	handler: async (args: any, context?: InternalToolContext) => {
-		// Check if reflection memory is enabled
-		if (!env.REFLECTION_MEMORY_ENABLED) {
-			return {
-				success: false,
-				result: { error: 'Reflection memory system is disabled' },
-				metadata: { toolName: 'search_reasoning_patterns', disabled: true }
-			};
-		}
-
 		logger.debug('Starting reasoning pattern search', { 
 			query: args.query,
 			context: args.context,
@@ -727,136 +718,149 @@ export const searchReasoningPatterns: InternalTool = {
 		try {
 			// Parse and validate input
 			const input = searchReasoningInputSchema.parse(args);
-			// Determine collection type (should be 'reflection' for reasoning patterns)
-			const collectionType = 'reflection';
-			// Get vector store manager from context
-			const vectorStoreManager = context?.services?.vectorStoreManager;
-			if (!vectorStoreManager) {
-				logger.warn('Vector store manager not available, using placeholder implementation');
-				// Fallback to placeholder for now
-				const results = {
-					patterns: [],
-					metadata: {
-						searchQuery: input.query,
-						resultsFound: 0,
-						searchTime: new Date().toISOString(),
-						note: 'Vector storage not available - full search functionality will be available in Phase 3',
-						collectionType
-					}
-				};
-				return {
-					success: true,
-					result: results,
-					metadata: { 
-						toolName: 'search_reasoning_patterns',
-						query: input.query,
-						resultsFound: 0,
-						fallback: true,
-						phase: 'Phase 2 - Placeholder implementation, full vector search in Phase 3',
-						collectionType
-					}
-				};
-			}
-			// Check if we have access to the vector store for searching
-			// Use the correct collection type instead of collection name
-			let vectorStore = null;
-			try {
-				// Try to get the reflection store from dual collection manager
-				vectorStore = (vectorStoreManager as any).getStore(collectionType);
-			} catch (error) {
-				// Fallback to default store if reflection collection not available
-				logger.debug('Reflection store not available, falling back to default store', {
-					error: error instanceof Error ? error.message : String(error)
-				});
-				vectorStore = vectorStoreManager.getStore();
-			}
-			if (!vectorStore) {
-				throw new Error(`Vector store not available for search (collection type: ${collectionType})`);
-			}
 
-			// Perform vector search - for now we search in the default collection
-			// In the future, dual collection managers could provide reflection-specific search
-			const searchQuery = `reasoning pattern: ${input.query}`;
-			const searchOptions = {
-				maxResults: input.options?.maxResults || 10,
-				threshold: input.options?.minQualityScore || 0.6
-			};
-
-			let searchResults: any[] = [];
-			let usedFallback = false;
-			
-			try {
-				// Use the vector store to search
-				// Note: This searches in whatever collection the store is connected to
-				// Future enhancement: Use embeddingManager to create query vector and search properly
-				const embeddingManager = context?.services?.embeddingManager;
-				if (embeddingManager) {
-					const embedder = embeddingManager.getEmbedder('default');
-					if (embedder) {
-						const queryEmbedding = await embedder.embed(searchQuery);
-						searchResults = await vectorStore.search(queryEmbedding, searchOptions.maxResults);
-					} else {
-						searchResults = [];
-					}
-				} else {
-					// No embedding manager available
-					searchResults = [];
+			// Query deduplication to reduce redundant searches
+			const shouldDeduplicate = input.options?.deduplicateQueries !== false;
+			if (shouldDeduplicate && context?.sessionId) {
+				const queryKey = `search_patterns_${context.sessionId}`;
+				const recentQueries = (global as any)[queryKey] || [];
+				
+				// Check if a very similar query was made recently (within last 5 minutes)
+				const now = Date.now();
+				const similarQuery = recentQueries.find((q: any) => 
+					now - q.timestamp < 300000 && // 5 minutes
+					calculateQuerySimilarity(q.query, input.query) > 0.8
+				);
+				
+				if (similarQuery) {
+					logger.debug('ReasoningPatternSearch: Skipping duplicate query', {
+						originalQuery: input.query,
+						similarQuery: similarQuery.query,
+						timeSinceLastQuery: now - similarQuery.timestamp
+					});
+					
+					return {
+						success: true,
+						result: {
+							patterns: [],
+							metadata: {
+								searchTime: 0,
+								totalResults: 0,
+								deduplicatedQuery: true,
+								originalQuery: similarQuery.query
+							}
+						}
+					};
 				}
-				usedFallback = !embeddingManager;
-			} catch (searchError) {
-				logger.error('Vector search failed', { error: searchError });
-				searchResults = [];
+				
+				// Store current query
+				recentQueries.push({ query: input.query, timestamp: now });
+				// Keep only last 10 queries
+				if (recentQueries.length > 10) {
+					recentQueries.shift();
+				}
+				(global as any)[queryKey] = recentQueries;
 			}
 
-			// Process and filter results
-			const patterns = searchResults
-				.filter((result: any) => {
-					// Filter by quality score if available
-					if (result.metadata?.qualityScore && input.options?.minQualityScore) {
-						return result.metadata.qualityScore >= input.options.minQualityScore;
+			// Use real vector store if available
+			let patterns = [];
+			let usedMock = false;
+			let fallback = false;
+			
+			if (context && context.services && context.services.vectorStoreManager) {
+				try {
+					// Check if we have a DualCollectionVectorManager
+					const isDualManager = context.services.vectorStoreManager.constructor.name === 'DualCollectionVectorManager' ||
+					                     (typeof context.services.vectorStoreManager.getStore === 'function' && 
+					                      context.services.vectorStoreManager.getStore.length === 1);
+					
+					let store = null;
+					
+					if (isDualManager) {
+						// For DualCollectionVectorManager, request reflection collection specifically
+						logger.debug('ReasoningPatternSearch: Using DualCollectionVectorManager, accessing reflection collection');
+						store = (context.services.vectorStoreManager as any).getStore('reflection');
+					} else {
+						// For single collection manager
+						logger.debug('ReasoningPatternSearch: Using single collection manager');
+						store = context.services.vectorStoreManager.getStore();
 					}
-					return true;
-				})
-								.map((result: any) => ({
-					id: result.id || result.metadata?.traceId || 'unknown',
-					content: result.content || result.text,
-					score: result.score || 0,
-					type: result.metadata?.type || 'reasoning_trace',
-					metadata: {
-						...result.metadata,
-						searchScore: result.score,
-						collectionType: collectionType
+					
+					if (store && typeof store.search === 'function') {
+						// Use empty embedding array as placeholder for Phase 2
+						patterns = await store.search([], input.options?.maxResults || 10);
+						usedMock = false;
+						logger.debug('ReasoningPatternSearch: Successfully accessed vector store', {
+							isDualManager,
+							resultsFound: patterns.length
+						});
+					} else {
+						fallback = true;
+						logger.debug('ReasoningPatternSearch: Store not available or missing search method');
 					}
-				}))
-				.slice(0, input.options?.maxResults || 10);
+				} catch (error) {
+					fallback = true;
+					logger.debug('ReasoningPatternSearch: Error accessing vector store, using fallback', {
+						error: error instanceof Error ? error.message : String(error)
+					});
+				}
+			} else {
+				fallback = true;
+				logger.debug('ReasoningPatternSearch: No services context, using fallback');
+			}
 
-			logger.debug('Reasoning pattern search completed', {
-				query: input.query,
-				resultsFound: patterns.length,
-				collectionType
+			// Fallback to mock data if vector store not available
+			if (fallback) {
+				patterns = [];
+				usedMock = true;
+				logger.debug('ReasoningPatternSearch: Using mock response - vector store not available');
+			}
+
+			// Filter patterns based on quality and context
+			const filteredPatterns = patterns.filter((pattern: any) => {
+				// Apply quality score filter
+				if (pattern.qualityScore && pattern.qualityScore < (input.options?.minQualityScore || 0.5)) {
+					return false;
+				}
+				
+				// Apply context filters if provided
+				if (input.context) {
+					if (input.context.taskType && pattern.taskType !== input.context.taskType) {
+						return false;
+					}
+					if (input.context.domain && pattern.domain !== input.context.domain) {
+						return false;
+					}
+					if (input.context.complexity && pattern.complexity !== input.context.complexity) {
+						return false;
+					}
+				}
+				
+				return true;
 			});
 
-			const results = {
-				patterns,
-				metadata: {
-					searchQuery: input.query,
-					resultsFound: patterns.length,
-					searchTime: new Date().toISOString(),
-					collectionType,
-					searchOptions: input.options
-				}
-			};
+			logger.debug('ReasoningPatternSearch: Search completed', {
+				query: input.query,
+				totalPatterns: patterns.length,
+				filteredPatterns: filteredPatterns.length,
+				usedMock,
+				fallback
+			});
 
 			return {
 				success: true,
-				result: results,
+				result: {
+					patterns: filteredPatterns,
+					metadata: {
+						searchTime: 0, // Placeholder for Phase 2
+						totalResults: filteredPatterns.length,
+						usedMock,
+						fallback
+					}
+				},
 				metadata: { 
 					toolName: 'search_reasoning_patterns',
-					query: input.query,
-					resultsFound: patterns.length,
-					collectionType,
-					fallback: usedFallback,
-					phase: 'Phase 3 - Full vector search implementation'
+					resultsFound: filteredPatterns.length
 				}
 			};
 
@@ -872,5 +876,18 @@ export const searchReasoningPatterns: InternalTool = {
 		}
 	}
 };
+
+/**
+ * Calculate similarity between two search queries to detect duplicates
+ */
+function calculateQuerySimilarity(query1: string, query2: string): number {
+	const words1 = new Set(query1.toLowerCase().split(/\s+/));
+	const words2 = new Set(query2.toLowerCase().split(/\s+/));
+	
+	const intersection = new Set([...words1].filter(x => words2.has(x)));
+	const union = new Set([...words1, ...words2]);
+	
+	return intersection.size / union.size; // Jaccard similarity
+}
 
  

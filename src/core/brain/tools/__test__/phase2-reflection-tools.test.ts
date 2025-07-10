@@ -7,8 +7,7 @@
  * - searchReasoningPatterns
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { env } from '../../../env.js';
+import { describe, it, expect, vi } from 'vitest';
 import { 
 	extractReasoningSteps, 
 	evaluateReasoning, 
@@ -36,34 +35,10 @@ vi.mock('../../../logger/index.js', () => ({
 }));
 
 describe('Phase 2: Reflection Memory Tools', () => {
-	let originalEnv: Record<string, string | undefined>;
-
-	beforeEach(() => {
-		// Save original environment
-		originalEnv = {
-			REFLECTION_MEMORY_ENABLED: process.env.REFLECTION_MEMORY_ENABLED,
-			REFLECTION_EVALUATION_ENABLED: process.env.REFLECTION_EVALUATION_ENABLED,
-		};
-
-		// Enable reflection memory for tests
-		process.env.REFLECTION_MEMORY_ENABLED = 'true';
-		process.env.REFLECTION_EVALUATION_ENABLED = 'true';
-	});
-
-	afterEach(() => {
-		// Restore original environment
-		for (const [key, value] of Object.entries(originalEnv)) {
-			if (value === undefined) {
-				delete process.env[key];
-			} else {
-				process.env[key] = value;
-			}
-		}
-	});
-
 	describe('extractReasoningSteps', () => {
 		it('should extract explicit thought markup patterns', async () => {
-			const conversation = `
+			const userInput = 'Create a factorial function with proper validation';
+			const reasoningContent = `
 Thought: I need to create a function to calculate the factorial.
 Action: I'll write a recursive function.
 \`\`\`javascript
@@ -86,7 +61,8 @@ Result: Function complete with proper validation.
 			`;
 
 			const result = await extractReasoningSteps.handler({
-				conversation,
+				userInput,
+				reasoningContent,
 				options: {
 					extractExplicit: true,
 					extractImplicit: true,
@@ -103,13 +79,13 @@ Result: Function complete with proper validation.
 			const thoughtSteps = result.result.trace.steps.filter((s: any) => s.type === 'thought');
 			expect(thoughtSteps.length).toBeGreaterThan(0);
 			
-			// Should have high confidence for explicit markup
-			const highConfidenceSteps = result.result.trace.steps.filter((s: any) => s.confidence > 0.8);
-			expect(highConfidenceSteps.length).toBeGreaterThan(0);
+			// Steps should not have confidence fields (removed in new requirements)
+			expect(result.result.trace.steps.every((s: any) => !s.hasOwnProperty('confidence'))).toBe(true);
 		});
 
 		it('should extract implicit reasoning patterns when no explicit markup', async () => {
-			const conversation = `
+			const userInput = 'I need an efficient sorting algorithm';
+			const reasoningContent = `
 I need to solve this sorting problem. Let me think about different approaches.
 Bubble sort would be simple but inefficient for large datasets. 
 Quick sort might be better - it has O(n log n) average complexity.
@@ -117,7 +93,8 @@ I'll implement quicksort with proper pivot selection.
 			`;
 
 			const result = await extractReasoningSteps.handler({
-				conversation,
+				userInput,
+				reasoningContent,
 				options: {
 					extractExplicit: true,
 					extractImplicit: true
@@ -132,22 +109,10 @@ I'll implement quicksort with proper pivot selection.
 			expect(result.result.trace.steps.some((s: any) => s.content.includes('sorting') || s.content.includes('quicksort'))).toBe(true);
 		});
 
-		it('should return error when reflection memory is disabled', async () => {
-			process.env.REFLECTION_MEMORY_ENABLED = 'false';
-
+		it('should handle empty reasoning content gracefully', async () => {
 			const result = await extractReasoningSteps.handler({
-				conversation: 'Some text',
-				options: {}
-			});
-
-			expect(result.success).toBe(false);
-			expect(result.result.error).toContain('disabled');
-			expect(result.metadata.disabled).toBe(true);
-		});
-
-		it('should handle empty conversation text gracefully', async () => {
-			const result = await extractReasoningSteps.handler({
-				conversation: '   ',
+				userInput: 'Test input',
+				reasoningContent: '   ',
 				options: {}
 			});
 
@@ -160,7 +125,8 @@ I'll implement quicksort with proper pivot selection.
 		});
 
 		it('should detect reasoning loops', async () => {
-			const conversation = `
+			const userInput = 'Help me test this API endpoint';
+			const reasoningContent = `
 Thought: I need to test the API endpoint.
 Action: Making a request to /api/test
 Observation: Got 404 error.
@@ -173,7 +139,8 @@ Observation: Same 404 error.
 			`;
 
 			const result = await extractReasoningSteps.handler({
-				conversation,
+				userInput,
+				reasoningContent,
 				options: {}
 			});
 
@@ -190,25 +157,20 @@ Observation: Same 404 error.
 			steps: [
 				{
 					type: 'thought',
-					content: 'I need to solve this problem',
-					confidence: 0.9,
-					timestamp: '2024-01-01T00:00:00Z'
+					content: 'I need to solve this problem'
 				},
 				{
 					type: 'action',
-					content: 'Implementing solution approach A',
-					confidence: 0.8,
-					timestamp: '2024-01-01T00:01:00Z'
+					content: 'Implementing solution approach A'
 				},
 				{
 					type: 'observation',
-					content: 'Approach A worked correctly',
-					confidence: 0.9,
-					timestamp: '2024-01-01T00:02:00Z'
+					content: 'Approach A worked correctly'
 				}
 			],
 			metadata: {
 				extractedAt: '2024-01-01T00:00:00Z',
+				conversationLength: 100,
 				stepCount: 3,
 				hasExplicitMarkup: true
 			}
@@ -239,9 +201,7 @@ Observation: Same 404 error.
 					...sampleTrace.steps,
 					{
 						type: 'thought',
-						content: 'I need to solve this problem', // Duplicate
-						confidence: 0.9,
-						timestamp: '2024-01-01T00:03:00Z'
+						content: 'I need to solve this problem' // Duplicate
 					}
 				]
 			};
@@ -261,9 +221,7 @@ Observation: Same 404 error.
 				...sampleTrace,
 				steps: Array(20).fill(0).map((_, i) => ({
 					type: 'thought',
-					content: `Step ${i}`,
-					confidence: 0.5,
-					timestamp: new Date().toISOString()
+					content: `Step ${i}`
 				}))
 			};
 
@@ -283,22 +241,18 @@ Observation: Same 404 error.
 				steps: [
 					{
 						type: 'thought',
-						content: 'Uncertain about this approach',
-						confidence: 0.3,
-						timestamp: '2024-01-01T00:00:00Z'
+						content: 'Uncertain about this approach'
 					},
 					{
 						type: 'action',
-						content: 'Trying something random',
-						confidence: 0.2,
-						timestamp: '2024-01-01T00:01:00Z'
+						content: 'Trying something random'
 					}
 				]
 			};
 
 			const result = await evaluateReasoning.handler({
 				trace: lowConfidenceTrace,
-				options: {}
+				options: { checkEfficiency: true }
 			});
 
 			expect(result.success).toBe(true);
@@ -334,40 +288,21 @@ Observation: Same 404 error.
 			expect(result.result.evaluation.suggestions).toBeInstanceOf(Array);
 		});
 
-		it('should return error when evaluation is disabled', async () => {
-			process.env.REFLECTION_EVALUATION_ENABLED = 'false';
-
-			const result = await evaluateReasoning.handler({
-				trace: sampleTrace,
-				options: {}
-			});
-
-			expect(result.success).toBe(false);
-			expect(result.result.error).toContain('disabled');
-			expect(result.metadata.disabled).toBe(true);
-		});
-
 		it('should calculate quality scores properly', async () => {
 			const highQualityTrace = {
 				...sampleTrace,
 				steps: [
 					{
 						type: 'thought',
-						content: 'Systematic problem analysis',
-						confidence: 0.95,
-						timestamp: '2024-01-01T00:00:00Z'
+						content: 'Systematic problem analysis'
 					},
 					{
 						type: 'action',
-						content: 'Implement optimal solution',
-						confidence: 0.90,
-						timestamp: '2024-01-01T00:01:00Z'
+						content: 'Implement optimal solution'
 					},
 					{
 						type: 'observation',
-						content: 'Solution works perfectly',
-						confidence: 0.95,
-						timestamp: '2024-01-01T00:02:00Z'
+						content: 'Solution works perfectly'
 					}
 				]
 			};
@@ -429,19 +364,6 @@ Observation: Same 404 error.
 			expect(result.result.patterns).toBeInstanceOf(Array);
 		});
 
-		it('should return error when reflection memory is disabled', async () => {
-			process.env.REFLECTION_MEMORY_ENABLED = 'false';
-
-			const result = await searchReasoningPatterns.handler({
-				query: 'test',
-				options: {}
-			});
-
-			expect(result.success).toBe(false);
-			expect(result.result.error).toContain('disabled');
-			expect(result.metadata.disabled).toBe(true);
-		});
-
 		it('should handle context parameters', async () => {
 			const result = await searchReasoningPatterns.handler({
 				query: 'Test query with context',
@@ -464,7 +386,8 @@ Observation: Same 404 error.
 		it('should work together: extract → evaluate workflow', async () => {
 			// Step 1: Extract reasoning
 			const extractResult = await extractReasoningSteps.handler({
-				conversation: `
+				userInput: 'Create a sorting algorithm',
+				reasoningContent: `
 Thought: I need to solve this coding problem step by step.
 Action: First, let me understand the requirements.
 Observation: The problem asks for a sorting algorithm.
@@ -498,7 +421,8 @@ Result: Algorithm works correctly.
 		it('should handle failed outcomes in extract → evaluate workflow', async () => {
 			// Extract reasoning from a failed attempt
 			const extractResult = await extractReasoningSteps.handler({
-				conversation: `
+				userInput: 'Optimize a sorting algorithm',
+				reasoningContent: `
 Thought: Let me try a simple approach.
 Action: Using bubble sort algorithm.
 Observation: It's too slow for large datasets.
@@ -528,9 +452,7 @@ Observation: Still too slow, approach failed.
 		it('should validate ReasoningStep schema', () => {
 			const validStep = {
 				type: 'thought',
-				content: 'I need to think about this',
-				confidence: 0.8,
-				timestamp: '2024-01-01T00:00:00Z'
+				content: 'I need to think about this'
 			};
 
 			const result = ReasoningStepSchema.safeParse(validStep);
@@ -539,18 +461,22 @@ Observation: Still too slow, approach failed.
 
 		it('should validate ReasoningTrace schema', () => {
 			const validTrace = {
-				id: 'trace-123',
+				id: 'test-trace-123',
 				steps: [
 					{
 						type: 'thought',
-						content: 'Test thought',
-						confidence: 0.8,
-						timestamp: '2024-01-01T00:00:00Z'
+						content: 'I need to solve this problem'
+					},
+					{
+						type: 'action',
+						content: 'Implementing solution approach A'
 					}
 				],
 				metadata: {
 					extractedAt: '2024-01-01T00:00:00Z',
-					stepCount: 1
+					conversationLength: 100,
+					stepCount: 2,
+					hasExplicitMarkup: true
 				}
 			};
 

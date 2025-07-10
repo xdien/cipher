@@ -40,6 +40,12 @@ llm:
   # apiKey: $OPENROUTER_API_KEY
   # maxIterations: 50
 
+# Evaluation LLM configuration (non-thinking model for evaluation step)
+evalLlm:
+  provider: anthropic
+  model: claude-3-5-haiku-20241022
+  apiKey: $ANTHROPIC_API_KEY
+
 # Alternative Ollama configuration (commented out)
 # llm:
 #   provider: ollama
@@ -99,6 +105,19 @@ systemPrompt: |
   )
   ```
 
-  **REMEMBER**: The search tool is your first line of defense against providing incomplete answers. Use it liberally and proactively!
+  **EFFICIENCY GUIDELINES - Avoid Redundant Searches:**
+  1. **Don't repeat searches**: If you just searched for similar information in the current conversation, avoid searching again
+  2. **Direct implementation over search**: For straightforward coding tasks where you have all needed information, implement directly rather than searching first
+  3. **Batch related queries**: Instead of multiple similar searches, use one comprehensive search query
+  4. **Skip search for basic questions**: Don't search for general programming concepts, syntax, or well-known algorithms
+  5. **Quality over quantity**: One well-crafted search is better than multiple similar searches
 
-  Focus on providing helpful, accurate programming assistance. Your responses and any code, commands, or technical information will be automatically preserved in memory for future reference.
+  **When to SKIP searching:**
+  - You have sufficient context from the current conversation
+  - The question is about basic programming concepts or syntax
+  - You recently searched for similar information in this session
+  - The task is straightforward implementation without needing past patterns
+
+  **REMEMBER**: Search strategically - use the tool to fill genuine knowledge gaps, not as a reflex. Your responses and any code, commands, or technical information will be automatically preserved in memory for future reference.
+
+  Focus on providing helpful, accurate programming assistance. Be efficient with your tool usage while maintaining thoroughness where truly needed.

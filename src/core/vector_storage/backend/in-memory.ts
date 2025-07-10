@@ -308,7 +308,7 @@ export class InMemoryBackend implements VectorStore {
 			payload: this.deepClone(payload),
 		});
 
-		this.logger.info(`${LOG_PREFIXES.BACKEND} Updated vector ${vectorId}`);
+		this.logger.debug(`${LOG_PREFIXES.BACKEND} Updated vector ${vectorId}`);
 	}
 
 	async delete(vectorId: number): Promise<void> {
@@ -322,7 +322,7 @@ export class InMemoryBackend implements VectorStore {
 		}
 
 		this.vectors.delete(vectorId);
-		this.logger.info(`${LOG_PREFIXES.BACKEND} Deleted vector ${vectorId}`);
+		this.logger.debug(`${LOG_PREFIXES.BACKEND} Deleted vector ${vectorId}`);
 	}
 
 	async deleteCollection(): Promise<void> {

@@ -195,15 +195,14 @@ export async function createVectorStoreFromEnv(): Promise<VectorStoreFactory> {
  * Creates dual collection vector storage from environment variables
  *
  * Creates a dual collection manager that handles both knowledge and reflection
- * memory collections. Reflection collection is only created if enabled via
- * REFLECTION_MEMORY_ENABLED environment variable.
+ * memory collections. Reflection collection is only created if REFLECTION_VECTOR_STORE_COLLECTION
+ * is set and the model supports reasoning.
  *
  * @returns Promise resolving to dual collection manager and stores
  *
  * @example
  * ```typescript
- * // Set environment variables
- * process.env.REFLECTION_MEMORY_ENABLED = 'true';
+ * // Set environment variables for reasoning model with dual collections
  * process.env.VECTOR_STORE_TYPE = 'in-memory';
  * process.env.VECTOR_STORE_COLLECTION = 'knowledge';
  * process.env.REFLECTION_VECTOR_STORE_COLLECTION = 'reflection_memory';
@@ -217,11 +216,27 @@ export async function createDualCollectionVectorStoreFromEnv(): Promise<DualColl
 	// Get base configuration from environment variables
 	const config = getVectorStoreConfigFromEnv();
 
+	// If reflection collection is not set or is empty/whitespace, treat as disabled
+	const reflectionCollection = (env.REFLECTION_VECTOR_STORE_COLLECTION || '').trim();
+	if (!reflectionCollection) {
+		logger.info(`${LOG_PREFIXES.FACTORY} Reflection collection not set, creating single collection manager only`, {
+			type: config.type,
+			knowledgeCollection: config.collectionName
+		});
+		const manager = new DualCollectionVectorManager(config);
+		await manager.connect();
+		return {
+			manager,
+			knowledgeStore: manager.getStore('knowledge'),
+			reflectionStore: null
+		};
+	}
+
 	logger.info(`${LOG_PREFIXES.FACTORY} Creating dual collection vector storage from environment`, {
 		type: config.type,
 		knowledgeCollection: config.collectionName,
-		reflectionCollection: env.REFLECTION_VECTOR_STORE_COLLECTION,
-		reflectionEnabled: env.REFLECTION_MEMORY_ENABLED,
+		reflectionCollection,
+		refectionEnabled: true,
 	});
 
 	// Create dual collection manager
@@ -242,7 +257,7 @@ export async function createDualCollectionVectorStoreFromEnv(): Promise<DualColl
 		logger.info(`${LOG_PREFIXES.FACTORY} Dual collection vector storage created successfully`, {
 			knowledgeConnected: manager.isConnected('knowledge'),
 			reflectionConnected: manager.isConnected('reflection'),
-			reflectionEnabled: env.REFLECTION_MEMORY_ENABLED,
+			reflectionEnabled: true,
 		});
 
 		return { 

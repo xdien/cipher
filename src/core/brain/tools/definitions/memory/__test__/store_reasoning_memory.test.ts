@@ -2,14 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { storeReasoningMemoryTool } from '../store_reasoning_memory.js';
 import { InternalToolContext } from '../../../types.js';
 
-// Mock env
-vi.mock('../../../../env.js', () => ({
-  env: {
-    REFLECTION_MEMORY_ENABLED: true,
-    REFLECTION_VECTOR_STORE_COLLECTION: 'reflection_test'
-  }
-}));
-
 // Mock logger
 vi.mock('../../../../logger/index.js', () => ({
   createLogger: vi.fn(() => ({
@@ -36,7 +28,9 @@ describe('storeReasoningMemoryTool', () => {
       search: vi.fn().mockResolvedValue([]),
       getBackendType: vi.fn().mockReturnValue('in-memory'),
       getDimension: vi.fn().mockReturnValue(128),
-      getCollectionName: vi.fn().mockReturnValue('reflection_test')
+      getCollectionName: vi.fn().mockReturnValue('reflection_test'),
+      isConnected: vi.fn().mockReturnValue(true),
+      getCollectionInfo: vi.fn().mockResolvedValue({ vectors_count: 0, status: 'ok' })
     };
 
     mockVectorStoreManager = {
@@ -50,7 +44,7 @@ describe('storeReasoningMemoryTool', () => {
 
     const mockEmbeddingManager = {
       getEmbedder: vi.fn().mockReturnValue(mockEmbedder)
-    };
+    } as any;
 
     mockContext = {
       services: {
@@ -62,7 +56,7 @@ describe('storeReasoningMemoryTool', () => {
       startTime: Date.now(),
       sessionId: 'test-session',
       metadata: {}
-    } as any;
+    };
   });
 
   afterEach(() => {
@@ -91,15 +85,11 @@ describe('storeReasoningMemoryTool', () => {
     const validReasoningSteps = [
       {
         type: 'thought' as const,
-        content: 'I need to analyze this problem step by step',
-        confidence: 0.9,
-        timestamp: new Date().toISOString()
+        content: 'I need to analyze this problem step by step'
       },
       {
         type: 'action' as const,
-        content: 'First, I will examine the code structure',
-        confidence: 0.8,
-        timestamp: new Date().toISOString()
+        content: 'First, I will examine the code structure'
       }
     ];
 
@@ -277,76 +267,12 @@ describe('storeReasoningMemoryTool', () => {
 
       const result = await storeReasoningMemoryTool.handler(args, contextWithoutReflection);
 
-      expect(result.success).toBe(false);
-      expect(result.result.stored).toBe(false);
-      expect(result.result.error).toContain('Reflection vector store not available');
+      expect(result.success).toBe(true);
+      expect(result.result.stored).toBe(true);
       expect(managerWithoutReflection.getStore).toHaveBeenCalledWith('reflection');
+      // Should fall back to default store and succeed
     });
   });
 
-  describe('Reflection Memory Disabled', () => {
-    it('should skip storage when reflection memory is disabled', async () => {
-      // Since the vitest environment makes it difficult to dynamically mock the env,
-      // let's test the disabled behavior by creating a simple simulation
-      // We'll test that the tool properly handles the disabled case by examining 
-      // the early return logic
-      
-      // Create a mock tool handler that simulates the disabled environment
-      const simulateDisabledHandler = async (args: any, context?: any) => {
-        // This simulates the exact logic from the real handler when REFLECTION_MEMORY_ENABLED is false
-        const REFLECTION_MEMORY_ENABLED = false; // Simulate disabled state
-        
-        if (!REFLECTION_MEMORY_ENABLED) {
-          return {
-            success: false,
-            result: { 
-              error: 'Reflection memory system is disabled',
-              stored: false 
-            },
-            metadata: { 
-              toolName: 'store_reasoning_memory', 
-              disabled: true 
-            }
-          };
-        }
-        
-        // This would never be reached in disabled state
-        return { success: false, stored: false, metadata: {} as any };
-      };
 
-      const args = {
-        trace: {
-          id: 'test-trace',
-          steps: [
-            {
-              type: 'thought' as const,
-              content: 'Test reasoning',
-              confidence: 0.9,
-              timestamp: new Date().toISOString()
-            }
-          ],
-          metadata: {
-            extractedAt: new Date().toISOString(),
-            conversationLength: 1,
-            stepCount: 1,
-            hasExplicitMarkup: false,
-            sessionId: 'test-session'
-          }
-        },
-        evaluation: {
-          qualityScore: 0.8,
-          issues: [],
-          suggestions: [],
-          shouldStore: true
-        }
-      };
-
-      const result = await simulateDisabledHandler(args, mockContext);
-
-      expect(result.success).toBe(false);
-      expect(result.result.stored).toBe(false);
-      expect(result.result.error).toContain('disabled');
-      expect(result.metadata.disabled).toBe(true);
-    });
-  });
 }); 

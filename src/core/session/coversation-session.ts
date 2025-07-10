@@ -3,10 +3,43 @@ import { ContextManager, ILLMService } from '../brain/llm/index.js';
 import { MCPManager } from '../mcp/manager.js';
 import { UnifiedToolManager } from '../brain/tools/unified-tool-manager.js';
 import { logger } from '../logger/index.js';
+import { env, getIsReasoningModel } from '../env.js';
 import { createContextManager } from '../brain/llm/messages/factory.js';
 import { createLLMService } from '../brain/llm/services/factory.js';
 import { MemAgentStateManager } from '../brain/memAgent/state-manager.js';
 import type { ZodSchema } from 'zod';
+
+// Utility to extract reasoning content blocks from model responses (Anthropic and similar models)
+function extractReasoningContentBlocks(aiResponse: any): string {
+  // If the response is an object with a content array (Anthropic API best practice)
+  if (aiResponse && Array.isArray(aiResponse.content)) {
+    // Extract all 'thinking' and 'redacted_thinking' blocks
+    const reasoningBlocks = aiResponse.content
+      .filter((block: any) => block.type === 'thinking' || block.type === 'redacted_thinking')
+      .map((block: any) => block.thinking)
+      .filter(Boolean);
+    if (reasoningBlocks.length > 0) {
+      return reasoningBlocks.join('\n\n');
+    }
+    // Fallback: join all text blocks if no thinking blocks found
+    const textBlocks = aiResponse.content
+      .filter((block: any) => block.type === 'text' && block.text)
+      .map((block: any) => block.text);
+    if (textBlocks.length > 0) {
+      return textBlocks.join('\n\n');
+    }
+    return '';
+  }
+  // Fallback: support legacy string input (regex for <thinking> tags)
+  if (typeof aiResponse === 'string') {
+    const matches = Array.from(aiResponse.matchAll(/<thinking>([\s\S]*?)<\/thinking>/gi));
+    if (matches.length > 0) {
+      return matches.map(m => m[1].trim()).join('\n\n');
+    }
+    return aiResponse;
+  }
+  return '';
+}
 
 export class ConversationSession {
 	private contextManager!: ContextManager;
@@ -206,14 +239,30 @@ export class ConversationSession {
 		// Generate response
 		const response = await this.llmService.generate(input, imageDataInput, stream);
 
-		// PROGRAMMATIC ENFORCEMENT: Memory extraction runs synchronously before returning
-		await this.enforceMemoryExtraction(input, response);
+		// PROGRAMMATIC ENFORCEMENT: Run memory extraction asynchronously in background AFTER response is returned
+		// This ensures users see the response immediately without waiting for memory operations
+		setImmediate(() => {
+			logger.debug('Starting background memory operations', { sessionId: this.id });
+			this.enforceMemoryExtraction(input, response)
+				.then(() => {
+					logger.debug('Background memory operations completed successfully', { sessionId: this.id });
+				})
+				.catch(error => {
+					logger.debug('Background memory extraction failed', {
+						sessionId: this.id,
+						error: error instanceof Error ? error.message : String(error)
+					});
+					// Silently continue - memory extraction failures shouldn't affect user experience
+				});
+		});
+
 		return response;
 	}
 
 	/**
-	 * Programmatically enforce memory extraction after each user interaction
+	 * Programmatically enforce memory extraction after each user interaction (runs in background)
 	 * This ensures the extract_and_operate_memory tool is always called, regardless of AI decisions
+	 * NOTE: This method runs asynchronously in the background to avoid delaying the user response
 	 */
 	private async enforceMemoryExtraction(
 		userInput: string,
@@ -321,35 +370,35 @@ export class ConversationSession {
 	}
 
 	/**
-	 * Programmatically enforce reflection memory processing after each interaction
+	 * Programmatically enforce reflection memory processing after each interaction (runs in background)
 	 * This automatically extracts, evaluates, and stores reasoning patterns in the background
+	 * NOTE: This method is called from enforceMemoryExtraction which already runs asynchronously
 	 */
 	private async enforceReflectionMemoryProcessing(userInput: string, aiResponse: string): Promise<void> {
 		try {
 			logger.debug('ConversationSession: Enforcing reflection memory processing');
 
-			// Check if reflection memory is enabled
-			if (!process.env.REFLECTION_MEMORY_ENABLED || process.env.REFLECTION_MEMORY_ENABLED.toLowerCase() !== 'true') {
+			// Check if reflection memory is enabled (reasoning model + not knowledge-only)
+			const reflectionEnabled = getIsReasoningModel() && env.SEARCH_MEMORY_TYPE !== 'knowledge';
+			if (!reflectionEnabled) {
 				logger.debug('ConversationSession: Reflection memory disabled, skipping processing');
 				return;
 			}
 
-			// Check if automatic reflection extraction is enabled
-			if (process.env.REFLECTION_AUTO_EXTRACT === 'false') {
-				logger.debug('ConversationSession: Automatic reflection extraction disabled, skipping processing');
-				return;
-			}
-
-			// Create full conversation context for reasoning extraction
-			const fullConversationContext = `User: ${userInput}\n\nAssistant: ${aiResponse}`;
-
 			// Step 1: Extract reasoning steps from the interaction
 			let extractionResult: any;
+			let reasoningContent = aiResponse;
+			// If using Anthropic extended thinking, extract only the <thinking>...</thinking> content
+			const llmConfig = this.services.stateManager.getLLMConfig(this.id);
+			if (llmConfig.provider?.toLowerCase() === 'anthropic') {
+				reasoningContent = extractReasoningContentBlocks(aiResponse);
+			}
 			try {
 				extractionResult = await this.services.unifiedToolManager.executeTool(
 					'cipher_extract_reasoning_steps',
 					{
-						conversation: fullConversationContext,
+						userInput: userInput,
+						reasoningContent: reasoningContent,
 						options: {
 							extractExplicit: true,
 							extractImplicit: true,
@@ -378,9 +427,24 @@ export class ConversationSession {
 
 			const reasoningTrace = extractionResult.result.trace;
 
-			// Step 2: Evaluate the reasoning quality
+			// Step 2: Evaluate the reasoning quality using a non-thinking model
 			let evaluationResult: any;
 			try {
+				// Use a non-thinking model for evaluation (e.g., claude-3-5-haiku)
+				const evalConfig = {
+					provider: 'anthropic',
+					model: 'claude-3-5-haiku-20241022', // Fast, non-thinking model
+					apiKey: process.env.ANTHROPIC_API_KEY,
+					maxIterations: 5
+				};
+				const evalContextManager = createContextManager(evalConfig, this.services.promptManager);
+				const evalLLMService = createLLMService(
+					evalConfig,
+					this.services.mcpManager,
+					evalContextManager,
+					this.services.unifiedToolManager
+				);
+				// Directly call the evaluation tool using the non-thinking model
 				evaluationResult = await this.services.unifiedToolManager.executeTool(
 					'cipher_evaluate_reasoning',
 					{
@@ -389,7 +453,8 @@ export class ConversationSession {
 							checkEfficiency: true,
 							detectLoops: true,
 							generateSuggestions: true
-						}
+						},
+						llmService: evalLLMService
 					}
 				);
 
