@@ -60,30 +60,15 @@ describe('Tool Definitions', () => {
 					// Create mock services for the tool
 					const mockEmbeddingManager = {
 						getEmbedder: vi.fn().mockReturnValue({
-<<<<<<< HEAD
-							embed: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
-						}),
-					};
-=======
 							embed: vi.fn().mockResolvedValue([0.1, 0.2, 0.3])
 						})
 					} as any;
->>>>>>> 9157ed5 (Added Reflection Memory and Enabled Reflection Memory Search)
 
 					const mockVectorStoreManager = {
 						getStore: vi.fn().mockReturnValue({
 							search: vi.fn().mockResolvedValue([]),
 							insert: vi.fn().mockResolvedValue(undefined),
 							update: vi.fn().mockResolvedValue(undefined),
-<<<<<<< HEAD
-							delete: vi.fn().mockResolvedValue(undefined),
-						}),
-					};
-
-					const mockLlmService = {
-						directGenerate: vi.fn().mockResolvedValue('ADD'),
-					};
-=======
 							delete: vi.fn().mockResolvedValue(undefined)
 						})
 					} as any;
@@ -91,7 +76,6 @@ describe('Tool Definitions', () => {
 					const mockLlmService = {
 						directGenerate: vi.fn().mockResolvedValue('ADD')
 					} as any;
->>>>>>> 9157ed5 (Added Reflection Memory and Enabled Reflection Memory Search)
 
 					const mockContext = {
 						toolName: 'extract_and_operate_memory',
@@ -130,41 +114,30 @@ describe('Tool Definitions', () => {
 		it('should load all tool definitions', async () => {
 			const tools = await getAllToolDefinitions();
 
-<<<<<<< HEAD
-			expect(Object.keys(tools)).toHaveLength(13); // 2 memory + 11 knowledge graph tools
-			expect(tools['extract_and_operate_memory']).toBeDefined();
-			expect(tools['memory_search']).toBeDefined();
+			expect(Object.keys(tools)).toHaveLength(17); // 6 memory + 11 knowledge graph tools
+			expect(tools['cipher_extract_and_operate_memory']).toBeDefined();
+			expect(tools['cipher_memory_search']).toBeDefined();
+			expect(tools['cipher_store_reasoning_memory']).toBeDefined();
+			expect(tools['cipher_extract_reasoning_steps']).toBeDefined();
+			expect(tools['cipher_evaluate_reasoning']).toBeDefined();
+			expect(tools['cipher_search_reasoning_patterns']).toBeDefined();
 			// Check that knowledge graph tools are also loaded
 			expect(tools['add_node']).toBeDefined();
 			expect(tools['search_graph']).toBeDefined();
-=======
-			expect(Object.keys(tools)).toHaveLength(6); // 6 memory + reasoning tools (3 agent-accessible + 3 internal-only)
-			expect(tools['extract_and_operate_memory']).toBeDefined();
-			expect(tools['memory_search']).toBeDefined();
-			expect(tools['store_reasoning_memory']).toBeDefined();
-			expect(tools['extract_reasoning_steps']).toBeDefined();
-			expect(tools['evaluate_reasoning']).toBeDefined();
-			expect(tools['search_reasoning_patterns']).toBeDefined();
->>>>>>> 9157ed5 (Added Reflection Memory and Enabled Reflection Memory Search)
 		});
 
 		it('should register all tools successfully', async () => {
 			const result = await registerAllTools(manager);
 
-<<<<<<< HEAD
-			expect(result.total).toBe(13);
-			expect(result.registered.length).toBe(13);
-=======
-			expect(result.total).toBe(6);
-			expect(result.registered.length).toBe(6);
->>>>>>> 9157ed5 (Added Reflection Memory and Enabled Reflection Memory Search)
+			expect(result.total).toBe(17);
+			expect(result.registered.length).toBe(17);
 			expect(result.failed.length).toBe(0);
-			expect(result.registered).toContain('extract_and_operate_memory');
-			expect(result.registered).toContain('memory_search');
-			expect(result.registered).toContain('store_reasoning_memory');
-			expect(result.registered).toContain('extract_reasoning_steps');
-			expect(result.registered).toContain('evaluate_reasoning');
-			expect(result.registered).toContain('search_reasoning_patterns');
+			expect(result.registered).toContain('cipher_extract_and_operate_memory');
+			expect(result.registered).toContain('cipher_memory_search');
+			expect(result.registered).toContain('cipher_store_reasoning_memory');
+			expect(result.registered).toContain('cipher_extract_reasoning_steps');
+			expect(result.registered).toContain('cipher_evaluate_reasoning');
+			expect(result.registered).toContain('cipher_search_reasoning_patterns');
 
 			// Verify memory search tool supports all search modes
 			const memorySearchTool = manager.getTool('cipher_memory_search');
@@ -176,7 +149,9 @@ describe('Tool Definitions', () => {
 
 		it('should validate memory search tool parameters', async () => {
 			const tools = await getAllToolDefinitions();
-			const memorySearchTool = tools['memory_search'];
+			// Debug: Log available tool names
+			console.log('Available tool names:', Object.keys(tools));
+			const memorySearchTool = tools['cipher_memory_search'];
 
 			expect(memorySearchTool).toBeDefined();
 			if (memorySearchTool) {
@@ -201,15 +176,9 @@ describe('Tool Definitions', () => {
 
 			const result = await registerAllTools(failingManager);
 
-<<<<<<< HEAD
-			expect(result.total).toBe(13);
+			expect(result.total).toBe(17);
 			expect(result.registered.length).toBe(0);
-			expect(result.failed.length).toBe(13);
-=======
-			expect(result.total).toBe(6);
-			expect(result.registered.length).toBe(0);
-			expect(result.failed.length).toBe(6);
->>>>>>> 9157ed5 (Added Reflection Memory and Enabled Reflection Memory Search)
+			expect(result.failed.length).toBe(17);
 			expect(result.failed?.[0]?.error).toBe('Simulated failure');
 		});
 	});

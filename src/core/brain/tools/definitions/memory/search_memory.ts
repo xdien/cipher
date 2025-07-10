@@ -159,24 +159,11 @@ export const searchMemoryTool: InternalTool = {
 			const embeddingManager = context.services.embeddingManager;
 			const vectorStoreManager = context.services.vectorStoreManager;
 
-<<<<<<< HEAD
 			if (!embeddingManager || !vectorStoreManager) {
 				throw new Error('EmbeddingManager and VectorStoreManager are required in context.services');
 			}
 
 			const embedder = embeddingManager.getEmbedder('default');
-			const vectorStore = vectorStoreManager.getStore();
-
-			if (!embedder || !vectorStore) {
-				throw new Error('Embedder and VectorStore must be initialized and available');
-			}
-=======
-      const embedder = embeddingManager.getEmbedder('default');
-
-      if (!embedder || !embedder.embed || typeof embedder.embed !== 'function') {
-        throw new Error('Embedder is not properly initialized or missing embed() method');
-      }
->>>>>>> 9157ed5 (Added Reflection Memory and Enabled Reflection Memory Search)
 
 			if (!embedder.embed || typeof embedder.embed !== 'function') {
 				throw new Error('Embedder is not properly initialized or missing embed() method');
@@ -192,23 +179,10 @@ export const searchMemoryTool: InternalTool = {
 			const queryEmbedding = await embedder.embed(query);
 			const embeddingTime = Date.now() - embeddingStartTime;
 
-<<<<<<< HEAD
 			logger.debug('MemorySearch: Embedding generated successfully', {
 				embeddingTime: `${embeddingTime}ms`,
 				embeddingDimensions: Array.isArray(queryEmbedding) ? queryEmbedding.length : 'unknown',
 			});
-
-			// Perform vector similarity search
-			const searchStartTime = Date.now();
-			const rawResults = await vectorStore.search(queryEmbedding, topK * 2); // Search for more to filter
-			const searchTime = Date.now() - searchStartTime;
-
-			logger.debug('MemorySearch: Vector search completed', {
-				searchTime: `${searchTime}ms`,
-				rawResultCount: rawResults.length,
-				topK: topK,
-			});
-=======
       // Detect vector store manager type and perform appropriate search
       const searchStartTime = Date.now();
       let allResults: any[] = [];
@@ -425,44 +399,17 @@ export const searchMemoryTool: InternalTool = {
             };
           }
         });
->>>>>>> 9157ed5 (Added Reflection Memory and Enabled Reflection Memory Search)
 
-			// Filter results by similarity threshold and process
-			const filteredResults = rawResults
-				.filter(result => (result.score || 0) >= similarityThreshold)
-				.slice(0, topK) // Limit to requested number of results
-				.map(result => {
-					const payload = result.payload || {};
-
-<<<<<<< HEAD
-					return {
-						id: result.id || payload.id || 'unknown',
-						text: payload.text || payload.data || 'No content available',
-						tags: payload.tags || [],
-						confidence: payload.confidence || 0,
-						reasoning: payload.reasoning || 'No reasoning available',
-						timestamp: payload.timestamp || new Date().toISOString(),
-						similarity: result.score || 0,
-						...(payload.code_pattern && { code_pattern: payload.code_pattern }),
-						...(payload.event && { event: payload.event }),
-					};
-				});
-
-			// Calculate statistics
-			const similarities = filteredResults.map(r => r.similarity);
-			const totalResults = filteredResults.length;
-			const maxSimilarity = similarities.length > 0 ? Math.max(...similarities) : 0;
-			const minSimilarity = similarities.length > 0 ? Math.min(...similarities) : 0;
-			const averageSimilarity =
-				similarities.length > 0
-					? similarities.reduce((sum, sim) => sum + sim, 0) / similarities.length
-					: 0;
-
-			const totalTime = Date.now() - startTime;
-=======
       // Calculate memory type breakdown from filtered results
       const finalKnowledgeCount = filteredResults.filter(r => r.source === 'knowledge').length;
       const finalReflectionCount = filteredResults.filter(r => r.source === 'reflection').length;
+
+      // Calculate statistics
+      const totalResults = filteredResults.length;
+      const similarities = filteredResults.map(r => r.similarity);
+      const maxSimilarity = similarities.length > 0 ? Math.max(...similarities) : 0;
+      const minSimilarity = similarities.length > 0 ? Math.min(...similarities) : 0;
+      const averageSimilarity = similarities.length > 0 ? similarities.reduce((a, b) => a + b, 0) / similarities.length : 0;
 
       const totalTime = Date.now() - startTime;
 
@@ -497,33 +444,7 @@ export const searchMemoryTool: InternalTool = {
         totalTime: `${totalTime}ms`,
         usedFallback
       });
->>>>>>> 9157ed5 (Added Reflection Memory and Enabled Reflection Memory Search)
 
-			// Prepare result
-			const result: MemorySearchResult = {
-				success: true,
-				query: query,
-				results: filteredResults,
-				metadata: {
-					totalResults,
-					searchTime: totalTime,
-					embeddingTime,
-					maxSimilarity,
-					minSimilarity,
-					averageSimilarity,
-				},
-				timestamp: new Date().toISOString(),
-			};
-
-			logger.info('MemorySearch: Search completed successfully', {
-				query: query.substring(0, 50),
-				resultsFound: totalResults,
-				maxSimilarity: maxSimilarity.toFixed(3),
-				averageSimilarity: averageSimilarity.toFixed(3),
-				totalTime: `${totalTime}ms`,
-			});
-
-<<<<<<< HEAD
 			return result;
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
@@ -546,32 +467,13 @@ export const searchMemoryTool: InternalTool = {
 					maxSimilarity: 0,
 					minSimilarity: 0,
 					averageSimilarity: 0,
+					knowledgeResults: 0,
+					reflectionResults: 0,
+					searchMode: 'knowledge',
+					usedFallback: true
 				},
 				timestamp: new Date().toISOString(),
 			};
 		}
 	},
 };
-=======
-      return {
-        success: false,
-        query: args.query || 'undefined',
-        results: [],
-        metadata: {
-          totalResults: 0,
-          searchTime: totalTime,
-          embeddingTime: 0,
-          maxSimilarity: 0,
-          minSimilarity: 0,
-          averageSimilarity: 0,
-          knowledgeResults: 0,
-          reflectionResults: 0,
-          searchMode: 'knowledge',
-          usedFallback: true
-        },
-        timestamp: new Date().toISOString()
-      };
-    }
-  }
-}; 
->>>>>>> 9157ed5 (Added Reflection Memory and Enabled Reflection Memory Search)

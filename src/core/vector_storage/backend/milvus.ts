@@ -223,15 +223,11 @@ export class MilvusBackend implements VectorStore {
 		if (!this.connected)
 			return Promise.reject(new VectorStoreError(ERROR_MESSAGES.NOT_CONNECTED, 'get'));
 		try {
-			const res = await this.client.query({
-				collection_name: this.collectionName,
-				output_fields: ['id', 'vector', 'payload'],
-<<<<<<< HEAD
-				filter: `id == "${vectorId.toString()}"`,
-=======
-				filter: `id == "${numberIdToMilvusId(vectorId)}"`,
->>>>>>> 1e21e75 (Fixes Milvus Errors)
-			});
+					const res = await this.client.query({
+			collection_name: this.collectionName,
+			output_fields: ['id', 'vector', 'payload'],
+			filter: `id == "${numberIdToMilvusId(vectorId)}"`,
+		});
 			if (!res.data.length || !res.data[0]) return null;
 			const doc = res.data[0];
 			if (!doc) return null;
@@ -252,14 +248,10 @@ export class MilvusBackend implements VectorStore {
 			return Promise.reject(new VectorStoreError(ERROR_MESSAGES.NOT_CONNECTED, 'update'));
 		this.validateDimension(vector, 'update');
 		try {
-			await this.client.upsert({
-				collection_name: this.collectionName,
-<<<<<<< HEAD
-				data: [{ id: vectorId.toString(), vector, payload }],
-=======
-				data: [{ id: numberIdToMilvusId(vectorId), vector, payload }],
->>>>>>> 1e21e75 (Fixes Milvus Errors)
-			});
+					await this.client.upsert({
+			collection_name: this.collectionName,
+			data: [{ id: numberIdToMilvusId(vectorId), vector, payload }],
+		});
 			this.logger.debug(`${LOG_PREFIXES.MILVUS} Updated vector ${vectorId}`);
 		} catch (error) {
 			this.logger.error(`Update failed`, { error });
@@ -271,14 +263,10 @@ export class MilvusBackend implements VectorStore {
 		if (!this.connected)
 			return Promise.reject(new VectorStoreError(ERROR_MESSAGES.NOT_CONNECTED, 'delete'));
 		try {
-			await this.client.deleteEntities({
-				collection_name: this.collectionName,
-<<<<<<< HEAD
-				expr: `id == "${vectorId.toString()}"`,
-=======
-				expr: `id == "${numberIdToMilvusId(vectorId)}"`,
->>>>>>> 1e21e75 (Fixes Milvus Errors)
-			});
+					await this.client.deleteEntities({
+			collection_name: this.collectionName,
+			expr: `id == "${numberIdToMilvusId(vectorId)}"`,
+		});
 			this.logger.debug(`${LOG_PREFIXES.MILVUS} Deleted vector ${vectorId}`);
 		} catch (error) {
 			this.logger.error(`Delete failed`, { error });

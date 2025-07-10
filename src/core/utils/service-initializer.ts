@@ -14,13 +14,9 @@ import { VectorStoreManager, DualCollectionVectorManager } from '../vector_stora
 import { createLLMService } from '../brain/llm/services/factory.js';
 import { createContextManager } from '../brain/llm/messages/factory.js';
 import { ILLMService } from '../brain/llm/index.js';
-<<<<<<< HEAD
-import { createVectorStoreFromEnv } from '../vector_storage/factory.js';
+import { createVectorStoreFromEnv, createDualCollectionVectorStoreFromEnv } from '../vector_storage/factory.js';
 import { KnowledgeGraphManager } from '../knowledge_graph/manager.js';
 import { createKnowledgeGraphFromEnv } from '../knowledge_graph/factory.js';
-=======
-import { createVectorStoreFromEnv, createDualCollectionVectorStoreFromEnv } from '../vector_storage/factory.js';
->>>>>>> 9157ed5 (Added Reflection Memory and Enabled Reflection Memory Search)
 
 export type AgentServices = {
 	mcpManager: MCPManager;
@@ -87,12 +83,17 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 		// Check if reflection memory is enabled to determine which manager to use
 		const { env } = await import('../env.js');
 		
-		if (env.REFLECTION_MEMORY_ENABLED) {
+		// Use dual collection manager if reflection memory is not disabled and reflection collection is configured
+		const reflectionEnabled = !env.DISABLE_REFLECTION_MEMORY && 
+			env.REFLECTION_VECTOR_STORE_COLLECTION && 
+			env.REFLECTION_VECTOR_STORE_COLLECTION.trim() !== '';
+		
+		if (reflectionEnabled) {
 			logger.debug('Reflection memory enabled, using dual collection vector manager');
 			const { manager } = await createDualCollectionVectorStoreFromEnv();
 			vectorStoreManager = manager;
 			
-			const info = vectorStoreManager.getInfo();
+			const info = (vectorStoreManager as DualCollectionVectorManager).getInfo();
 			logger.info('Dual collection vector storage manager initialized successfully', {
 				backend: info.knowledge.manager.getInfo().backend.type,
 				knowledgeCollection: info.knowledge.collectionName,

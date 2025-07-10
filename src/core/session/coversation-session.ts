@@ -378,6 +378,12 @@ export class ConversationSession {
 		try {
 			logger.debug('ConversationSession: Enforcing reflection memory processing');
 
+			// Check if reflection memory is force disabled
+			if (env.DISABLE_REFLECTION_MEMORY) {
+				logger.debug('ConversationSession: Reflection memory force disabled via DISABLE_REFLECTION_MEMORY, skipping processing');
+				return;
+			}
+
 			// Check if reflection memory is enabled (reasoning model + not knowledge-only)
 			const reflectionEnabled = getIsReasoningModel() && env.SEARCH_MEMORY_TYPE !== 'knowledge';
 			if (!reflectionEnabled) {
