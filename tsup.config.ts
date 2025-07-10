@@ -1,6 +1,5 @@
 import { defineConfig } from 'tsup';
 export default defineConfig([
-  // Core entry: bundle CJS, external ESM
   {
     entry: ['src/core/index.ts'],
     format: ['cjs', 'esm'],
@@ -8,8 +7,9 @@ export default defineConfig([
     dts: true,
     shims: true,
     bundle: true,
+    noExternal: ['chalk', 'boxen'],
+    external: ['better-sqlite3', 'pg', 'redis'],
   },
-  // App entry: only ESM, bundle all dependencies except commander
   {
     entry: ['src/app/index.ts'],
     format: ['esm'],
