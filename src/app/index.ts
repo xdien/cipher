@@ -7,7 +7,7 @@ import { DEFAULT_CONFIG_PATH, logger, MemAgent } from '@core/index.js';
 import { resolveConfigPath } from '@core/utils/path.js';
 import { handleCliOptionsError, validateCliOptions } from './cli/utils/options.js';
 import { loadAgentConfig } from '../core/brain/memAgent/loader.js';
-import { startInteractiveCli, startMcpMode } from './cli/cli.js';
+import { startInteractiveCli, startMcpMode, startHeadlessCli } from './cli/cli.js';
 import { ApiServer } from './api/server.js';
 
 const program = new Command();
@@ -16,6 +16,7 @@ program
 	.name('cipher')
 	.description('Agent that can help to remember your vibe coding agent knowledge and reinforce it')
 	.version(pkg.version, '-v, --version', 'output the current version')
+	.argument('[prompt...]', 'Natural-language prompt to run once. If not passed, cipher will start in interactive mode')
 	.option('--no-verbose', 'Disable verbose output')
 	.option('-a, --agent <path>', 'Path to agent config file', DEFAULT_CONFIG_PATH)
 	.option('-s, --strict', 'Require all MCP server connections to succeed')
@@ -26,9 +27,10 @@ program
 
 program
 	.description(
-		'Cipher CLI allows you to interact with cipher memory agent in interactive mode.\n' +
+		'Cipher CLI allows you to interact with cipher memory agent.\n' +
+			'Run cipher in interactive mode with `cipher` or run a one-shot prompt with `cipher <prompt>`\n\n' +
 			'Available modes:\n' +
-			'  - cli: Interactive command-line interface\n' +
+			'  - cli: Interactive command-line interface (default)\n' +
 			'  - mcp: Model Context Protocol server mode\n' +
 			'  - api: REST API server mode\n\n' +
 			'Options:\n' +
@@ -39,26 +41,34 @@ program
 	)
 	/**
 	 * Main CLI action handler for the Cipher agent.
-	 * 
+	 *
 	 * Strict Mode Behavior:
 	 * When the --strict flag is used, all MCP server connectionMode properties
 	 * are overridden to 'strict', requiring all server connections to succeed.
 	 * This takes precedence over individual server configuration settings.
-	 * 
+	 *
 	 * If any MCP server fails to connect in strict mode, the application will
 	 * exit with an error. Without strict mode, failed connections are logged
 	 * as warnings but don't prevent startup.
-	 * 
+	 *
 	 * New Session Behavior:
 	 * When the --new-session flag is used, a new conversation session is created
 	 * and made available for the CLI interaction. The session ID parameter is optional:
 	 * - --new-session: Creates a session with auto-generated UUID
 	 * - --new-session mySessionId: Creates a session with the specified ID
-	 * 
+	 *
 	 * Created sessions persist for the duration of the CLI session and follow
 	 * the agent's session management lifecycle and TTL settings.
+	 * 
+	 * One-Shot Mode Behavior:
+	 * When prompt arguments are provided, cipher runs in headless mode:
+	 * - Executes the prompt once and exits
+	 * - Works with all existing flags and options
+	 * - Example: cipher "help me debug this error"
 	 */
-	.action(async () => {
+	.action(async (prompt: string[] = []) => {
+		// Process prompt arguments for one-shot mode
+		const headlessInput = prompt.join(' ') || undefined;
 		if (!existsSync('.env')) {
 			logger.error('No .env file found, copy .env.example to .env and fill in the values');
 			process.exit(1);
@@ -102,15 +112,13 @@ program
 						'Please ensure the config file exists or create one based on memAgent/cipher.yml'
 					);
 				} else {
-					logger.error(
-						`Please ensure the specified config file exists at ${configPath}`
-					);
+					logger.error(`Please ensure the specified config file exists at ${configPath}`);
 				}
 				process.exit(1);
 			}
 
 			const cfg = await loadAgentConfig(configPath);
-			
+
 			// Apply --strict flag to all MCP server configs if specified
 			if (opts.strict && cfg.mcpServers) {
 				logger.info('Applying strict mode to all MCP server connections');
@@ -119,7 +127,7 @@ program
 					serverConfig.connectionMode = 'strict';
 				}
 			}
-			
+
 			agent = new MemAgent(cfg);
 
 			// Start the agent (initialize async services)
@@ -130,9 +138,7 @@ program
 				try {
 					// Use provided session ID or generate a random one
 					const sessionId =
-						typeof opts.newSession === 'string' && opts.newSession
-							? opts.newSession
-							: undefined; // Let agent generate random ID
+						typeof opts.newSession === 'string' && opts.newSession ? opts.newSession : undefined; // Let agent generate random ID
 
 					const session = await agent.createSession(sessionId);
 
@@ -153,7 +159,7 @@ program
 			}
 		} catch (err) {
 			const errorMessage = err instanceof Error ? err.message : String(err);
-			
+
 			if (opts.strict) {
 				logger.error(
 					`Failed to load agent config from ${resolveConfigPath(opts.agent)} (strict mode enabled):`,
@@ -161,7 +167,7 @@ program
 				);
 				logger.error(
 					'Strict mode requires all MCP server connections to succeed. ' +
-					'Check your MCP server configurations or run without --strict flag to allow lenient connections.'
+						'Check your MCP server configurations or run without --strict flag to allow lenient connections.'
 				);
 			} else {
 				logger.error(
@@ -170,6 +176,19 @@ program
 				);
 			}
 			process.exit(1);
+		}
+
+		// Handle one-shot mode if prompt arguments were provided
+		if (headlessInput) {
+			try {
+				await startHeadlessCli(agent, headlessInput);
+				process.exit(0);
+			} catch (err) {
+				logger.error(
+					`Failed to execute headless command: ${err instanceof Error ? err.message : String(err)}`
+				);
+				process.exit(1);
+			}
 		}
 
 		/**
@@ -186,7 +205,7 @@ program
 				host,
 				corsOrigins: ['http://localhost:3000', 'http://localhost:3001'], // Default CORS origins
 				rateLimitWindowMs: 15 * 60 * 1000, // 15 minutes
-				rateLimitMaxRequests: 100 // 100 requests per window
+				rateLimitMaxRequests: 100, // 100 requests per window
 			});
 
 			try {

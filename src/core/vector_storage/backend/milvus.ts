@@ -1,4 +1,4 @@
-// Requires: npm install @zilliz/milvus2-sdk-node
+// Import the actual Milvus client
 import { MilvusClient, DataType } from '@zilliz/milvus2-sdk-node';
 import type { VectorStore } from './vector-store.js';
 import type { SearchFilters, VectorStoreResult, MilvusBackendConfig } from './types.js';
@@ -161,7 +161,7 @@ export class MilvusBackend implements VectorStore {
 		}
 	}
 
-	async insert(vectors: number[][], ids: string[], payloads: Record<string, any>[]): Promise<void> {
+	async insert(vectors: number[][], ids: number[], payloads: Record<string, any>[]): Promise<void> {
 		if (!this.connected)
 			return Promise.reject(new VectorStoreError(ERROR_MESSAGES.NOT_CONNECTED, 'insert'));
 		if (vectors.length !== ids.length || vectors.length !== payloads.length) {
@@ -171,7 +171,7 @@ export class MilvusBackend implements VectorStore {
 		}
 		for (const vector of vectors) this.validateDimension(vector, 'insert');
 		const data = vectors.map((vector, idx) => ({
-			id: ids[idx],
+			id: ids[idx]!.toString(),
 			vector,
 			payload: payloads[idx],
 		}));
@@ -217,14 +217,14 @@ export class MilvusBackend implements VectorStore {
 		}
 	}
 
-	async get(vectorId: string): Promise<VectorStoreResult | null> {
+	async get(vectorId: number): Promise<VectorStoreResult | null> {
 		if (!this.connected)
 			return Promise.reject(new VectorStoreError(ERROR_MESSAGES.NOT_CONNECTED, 'get'));
 		try {
 			const res = await this.client.query({
 				collection_name: this.collectionName,
 				output_fields: ['id', 'vector', 'payload'],
-				filter: `id == "${vectorId}"`,
+				filter: `id == "${vectorId.toString()}"`,
 			});
 			if (!res.data.length || !res.data[0]) return null;
 			const doc = res.data[0];
@@ -241,14 +241,14 @@ export class MilvusBackend implements VectorStore {
 		}
 	}
 
-	async update(vectorId: string, vector: number[], payload: Record<string, any>): Promise<void> {
+	async update(vectorId: number, vector: number[], payload: Record<string, any>): Promise<void> {
 		if (!this.connected)
 			return Promise.reject(new VectorStoreError(ERROR_MESSAGES.NOT_CONNECTED, 'update'));
 		this.validateDimension(vector, 'update');
 		try {
 			await this.client.upsert({
 				collection_name: this.collectionName,
-				data: [{ id: vectorId, vector, payload }],
+				data: [{ id: vectorId.toString(), vector, payload }],
 			});
 			this.logger.info(`Updated vector ${vectorId}`);
 		} catch (error) {
@@ -257,13 +257,13 @@ export class MilvusBackend implements VectorStore {
 		}
 	}
 
-	async delete(vectorId: string): Promise<void> {
+	async delete(vectorId: number): Promise<void> {
 		if (!this.connected)
 			return Promise.reject(new VectorStoreError(ERROR_MESSAGES.NOT_CONNECTED, 'delete'));
 		try {
 			await this.client.deleteEntities({
 				collection_name: this.collectionName,
-				expr: `id == "${vectorId}"`,
+				expr: `id == "${vectorId.toString()}"`,
 			});
 			this.logger.info(`Deleted vector ${vectorId}`);
 		} catch (error) {

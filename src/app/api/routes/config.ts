@@ -26,7 +26,7 @@ export function createConfigRoutes(agent: MemAgent): Router {
 			const yamlConfig = yamlDump(redactedConfig, {
 				indent: 2,
 				lineWidth: 120,
-				noRefs: true
+				noRefs: true,
 			});
 
 			// Set appropriate headers for YAML response
@@ -35,12 +35,11 @@ export function createConfigRoutes(agent: MemAgent): Router {
 			res.setHeader('X-Request-ID', req.requestId);
 
 			res.send(yamlConfig);
-
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : String(error);
 			logger.error('Failed to export configuration', {
 				requestId: req.requestId,
-				error: errorMsg
+				error: errorMsg,
 			});
 
 			errorResponse(
@@ -68,16 +67,20 @@ export function createConfigRoutes(agent: MemAgent): Router {
 			// Redact sensitive information
 			const redactedConfig = redactSensitiveData(config);
 
-			successResponse(res, {
-				config: redactedConfig,
-				timestamp: new Date().toISOString()
-			}, 200, req.requestId);
-
+			successResponse(
+				res,
+				{
+					config: redactedConfig,
+					timestamp: new Date().toISOString(),
+				},
+				200,
+				req.requestId
+			);
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : String(error);
 			logger.error('Failed to get configuration', {
 				requestId: req.requestId,
-				error: errorMsg
+				error: errorMsg,
 			});
 
 			errorResponse(
@@ -98,15 +101,22 @@ export function createConfigRoutes(agent: MemAgent): Router {
 	router.get('/session/:sessionId', async (req: Request, res: Response) => {
 		try {
 			const { sessionId } = req.params;
-			
+
 			if (!sessionId) {
-				errorResponse(res, ERROR_CODES.BAD_REQUEST, 'Session ID is required', 400, undefined, req.requestId);
+				errorResponse(
+					res,
+					ERROR_CODES.BAD_REQUEST,
+					'Session ID is required',
+					400,
+					undefined,
+					req.requestId
+				);
 				return;
 			}
-			
+
 			logger.info('Getting session-specific configuration', {
 				requestId: req.requestId,
-				sessionId
+				sessionId,
 			});
 
 			// Check if session exists
@@ -129,18 +139,22 @@ export function createConfigRoutes(agent: MemAgent): Router {
 			// Redact sensitive information
 			const redactedConfig = redactSensitiveData(config);
 
-			successResponse(res, {
-				sessionId,
-				config: redactedConfig,
-				timestamp: new Date().toISOString()
-			}, 200, req.requestId);
-
+			successResponse(
+				res,
+				{
+					sessionId,
+					config: redactedConfig,
+					timestamp: new Date().toISOString(),
+				},
+				200,
+				req.requestId
+			);
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : String(error);
 			logger.error('Failed to get session configuration', {
 				requestId: req.requestId,
 				sessionId: req.params.sessionId,
-				error: errorMsg
+				error: errorMsg,
 			});
 
 			errorResponse(
@@ -155,4 +169,4 @@ export function createConfigRoutes(agent: MemAgent): Router {
 	});
 
 	return router;
-} 
+}

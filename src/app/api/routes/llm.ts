@@ -25,16 +25,20 @@ export function createLlmRoutes(agent: MemAgent): Router {
 				// Keep other configuration details
 			};
 
-			successResponse(res, {
-				llmConfig: sanitizedConfig,
-				timestamp: new Date().toISOString()
-			}, 200, req.requestId);
-
+			successResponse(
+				res,
+				{
+					llmConfig: sanitizedConfig,
+					timestamp: new Date().toISOString(),
+				},
+				200,
+				req.requestId
+			);
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : String(error);
 			logger.error('Failed to get current LLM configuration', {
 				requestId: req.requestId,
-				error: errorMsg
+				error: errorMsg,
 			});
 
 			errorResponse(
@@ -61,15 +65,9 @@ export function createLlmRoutes(agent: MemAgent): Router {
 			const providers = {
 				openai: {
 					name: 'OpenAI',
-					models: [
-						'gpt-4o',
-						'gpt-4o-mini',
-						'gpt-4-turbo',
-						'gpt-4',
-						'gpt-3.5-turbo'
-					],
+					models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'],
 					requiresApiKey: true,
-					description: 'OpenAI GPT models'
+					description: 'OpenAI GPT models',
 				},
 				anthropic: {
 					name: 'Anthropic',
@@ -78,10 +76,10 @@ export function createLlmRoutes(agent: MemAgent): Router {
 						'claude-3-5-haiku-20241022',
 						'claude-3-opus-20240229',
 						'claude-3-sonnet-20240229',
-						'claude-3-haiku-20240307'
+						'claude-3-haiku-20240307',
 					],
 					requiresApiKey: true,
-					description: 'Anthropic Claude models'
+					description: 'Anthropic Claude models',
 				},
 				openrouter: {
 					name: 'OpenRouter',
@@ -89,10 +87,10 @@ export function createLlmRoutes(agent: MemAgent): Router {
 						'openai/gpt-4o',
 						'anthropic/claude-3.5-sonnet',
 						'meta-llama/llama-3.1-405b-instruct',
-						'google/gemini-pro-1.5'
+						'google/gemini-pro-1.5',
 					],
 					requiresApiKey: true,
-					description: 'OpenRouter unified API access'
+					description: 'OpenRouter unified API access',
 				},
 				ollama: {
 					name: 'Ollama',
@@ -102,25 +100,29 @@ export function createLlmRoutes(agent: MemAgent): Router {
 						'llama3.1:70b',
 						'codellama:latest',
 						'mistral:latest',
-						'mixtral:latest'
+						'mixtral:latest',
 					],
 					requiresApiKey: false,
 					description: 'Local Ollama models',
-					note: 'Requires Ollama server running locally'
-				}
+					note: 'Requires Ollama server running locally',
+				},
 			};
 
-			successResponse(res, {
-				providers,
-				availableProviders: Object.keys(providers),
-				timestamp: new Date().toISOString()
-			}, 200, req.requestId);
-
+			successResponse(
+				res,
+				{
+					providers,
+					availableProviders: Object.keys(providers),
+					timestamp: new Date().toISOString(),
+				},
+				200,
+				req.requestId
+			);
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : String(error);
 			logger.error('Failed to get LLM providers', {
 				requestId: req.requestId,
-				error: errorMsg
+				error: errorMsg,
 			});
 
 			errorResponse(
@@ -141,42 +143,46 @@ export function createLlmRoutes(agent: MemAgent): Router {
 	router.post('/switch', validateLlmConfig, async (req: Request, res: Response) => {
 		try {
 			const { provider, model, config } = req.body;
-			
+
 			logger.info('Switching LLM configuration', {
 				requestId: req.requestId,
 				provider,
-				model
+				model,
 			});
 
 			// Note: This is a placeholder implementation
 			// The actual implementation would depend on how the MemAgent handles LLM switching
 			// For now, we'll return a success response indicating the request was received
-			
+
 			// TODO: Implement actual LLM switching logic in MemAgent
 			// This might involve:
 			// 1. Validating the provider and model combination
 			// 2. Checking if required API keys are available
 			// 3. Testing the connection to the new LLM
 			// 4. Updating the agent's configuration
-			
+
 			logger.warn('LLM switching not yet implemented in MemAgent', {
-				requestId: req.requestId
+				requestId: req.requestId,
 			});
 
-			successResponse(res, {
-				message: 'LLM switch request received (implementation pending)',
-				requestedProvider: provider,
-				requestedModel: model,
-				requestedConfig: config,
-				timestamp: new Date().toISOString(),
-				status: 'pending'
-			}, 200, req.requestId);
-
+			successResponse(
+				res,
+				{
+					message: 'LLM switch request received (implementation pending)',
+					requestedProvider: provider,
+					requestedModel: model,
+					requestedConfig: config,
+					timestamp: new Date().toISOString(),
+					status: 'pending',
+				},
+				200,
+				req.requestId
+			);
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : String(error);
 			logger.error('Failed to switch LLM configuration', {
 				requestId: req.requestId,
-				error: errorMsg
+				error: errorMsg,
 			});
 
 			errorResponse(
@@ -199,26 +205,30 @@ export function createLlmRoutes(agent: MemAgent): Router {
 			logger.info('Getting LLM status', { requestId: req.requestId });
 
 			const llmConfig = agent.getCurrentLLMConfig();
-			
+
 			// Basic status check - could be enhanced with actual health checks
 			const status = {
 				configured: Boolean(llmConfig.provider && llmConfig.model),
 				provider: llmConfig.provider,
 				model: llmConfig.model,
 				healthy: true, // Placeholder - would need actual health check
-				lastCheck: new Date().toISOString()
+				lastCheck: new Date().toISOString(),
 			};
 
-			successResponse(res, {
-				status,
-				timestamp: new Date().toISOString()
-			}, 200, req.requestId);
-
+			successResponse(
+				res,
+				{
+					status,
+					timestamp: new Date().toISOString(),
+				},
+				200,
+				req.requestId
+			);
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : String(error);
 			logger.error('Failed to get LLM status', {
 				requestId: req.requestId,
-				error: errorMsg
+				error: errorMsg,
 			});
 
 			errorResponse(
@@ -233,4 +243,4 @@ export function createLlmRoutes(agent: MemAgent): Router {
 	});
 
 	return router;
-} 
+}

@@ -143,7 +143,7 @@ export class AnthropicService implements ILLMService {
 
 		logger.debug('AnthropicService: Direct generate call (bypassing conversation context)', {
 			inputLength: userInput.length,
-			hasSystemPrompt: !!systemPrompt
+			hasSystemPrompt: !!systemPrompt,
 		});
 
 		while (attempts < MAX_ATTEMPTS) {
@@ -153,8 +153,8 @@ export class AnthropicService implements ILLMService {
 				const messages = [
 					{
 						role: 'user' as const,
-						content: userInput
-					}
+						content: userInput,
+					},
 				];
 
 				// Make direct API call without adding to conversation context
@@ -175,7 +175,7 @@ export class AnthropicService implements ILLMService {
 				}
 
 				logger.debug('AnthropicService: Direct generate completed', {
-					responseLength: textContent.length
+					responseLength: textContent.length,
 				});
 
 				return textContent;
@@ -184,21 +184,21 @@ export class AnthropicService implements ILLMService {
 				const errorStatus = apiError.status || apiError.error?.status;
 				const errorType = apiError.error?.type || 'unknown_error';
 				const errorMessage = apiError.message || apiError.error?.message || 'Unknown error';
-				
+
 				logger.error(
 					`Error in Anthropic direct generate call (Attempt ${attempts}/${MAX_ATTEMPTS}): ${errorMessage}`,
-					{ 
+					{
 						status: errorStatus,
 						type: errorType,
 						attempt: attempts,
 						maxAttempts: MAX_ATTEMPTS,
-						inputLength: userInput.length
+						inputLength: userInput.length,
 					}
 				);
 
 				// Check if this is a retryable error
 				const isRetryable = this.isRetryableError(errorStatus, errorType);
-				
+
 				if (attempts >= MAX_ATTEMPTS || !isRetryable) {
 					if (!isRetryable) {
 						logger.error(`Non-retryable error in direct generate: ${errorType} (${errorStatus})`);
@@ -210,8 +210,10 @@ export class AnthropicService implements ILLMService {
 
 				// Calculate delay with exponential backoff and jitter
 				const delay = this.calculateRetryDelay(attempts, errorStatus, errorType);
-				logger.info(`Retrying direct generate in ${delay}ms... (Attempt ${attempts + 1}/${MAX_ATTEMPTS})`);
-				
+				logger.info(
+					`Retrying direct generate in ${delay}ms... (Attempt ${attempts + 1}/${MAX_ATTEMPTS})`
+				);
+
 				await new Promise(resolve => setTimeout(resolve, delay));
 			}
 		}
@@ -275,19 +277,22 @@ export class AnthropicService implements ILLMService {
 				const errorStatus = apiError.status || apiError.error?.status;
 				const errorType = apiError.error?.type || 'unknown_error';
 				const errorMessage = apiError.message || apiError.error?.message || 'Unknown error';
-				
+
 				logger.error(
 					`Error in Anthropic API call (Attempt ${attempts}/${MAX_ATTEMPTS}): ${errorMessage}`,
-					{ 
+					{
 						status: errorStatus,
 						type: errorType,
 						attempt: attempts,
-						maxAttempts: MAX_ATTEMPTS
+						maxAttempts: MAX_ATTEMPTS,
 					}
 				);
 
 				// Handle specific error types
-				if (errorType === 'invalid_request_error' && errorMessage.includes('maximum context length')) {
+				if (
+					errorType === 'invalid_request_error' &&
+					errorMessage.includes('maximum context length')
+				) {
 					logger.warn(
 						`Context length exceeded. ContextManager compression might not be sufficient. Error details: ${JSON.stringify(apiError.error)}`
 					);
@@ -295,7 +300,7 @@ export class AnthropicService implements ILLMService {
 
 				// Check if this is a retryable error
 				const isRetryable = this.isRetryableError(errorStatus, errorType);
-				
+
 				if (attempts >= MAX_ATTEMPTS || !isRetryable) {
 					if (!isRetryable) {
 						logger.error(`Non-retryable error encountered: ${errorType} (${errorStatus})`);
@@ -308,7 +313,7 @@ export class AnthropicService implements ILLMService {
 				// Calculate delay with exponential backoff and jitter
 				const delay = this.calculateRetryDelay(attempts, errorStatus, errorType);
 				logger.info(`Retrying in ${delay}ms... (Attempt ${attempts + 1}/${MAX_ATTEMPTS})`);
-				
+
 				await new Promise(resolve => setTimeout(resolve, delay));
 			}
 		}
@@ -324,7 +329,7 @@ export class AnthropicService implements ILLMService {
 		if (status === 400 || status === 401 || status === 403 || status === 404) {
 			return false;
 		}
-		
+
 		if (errorType === 'invalid_request_error' || errorType === 'authentication_error') {
 			return false;
 		}
@@ -338,19 +343,19 @@ export class AnthropicService implements ILLMService {
 	 */
 	private calculateRetryDelay(attempt: number, status: number, errorType: string): number {
 		let baseDelay = 1000; // Base delay of 1 second
-		
+
 		// Special handling for overloaded errors (529)
 		if (status === 529 || errorType === 'overloaded_error') {
 			baseDelay = 3000; // Start with 3 seconds for overloaded errors
 		}
-		
+
 		// Exponential backoff: 2^attempt * baseDelay
 		const exponentialDelay = Math.pow(2, attempt - 1) * baseDelay;
-		
+
 		// Add jitter (random factor between 0.5 and 1.5)
 		const jitter = 0.5 + Math.random();
 		const finalDelay = Math.min(exponentialDelay * jitter, 30000); // Cap at 30 seconds
-		
+
 		return Math.round(finalDelay);
 	}
 

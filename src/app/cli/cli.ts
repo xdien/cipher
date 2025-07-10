@@ -5,6 +5,25 @@ import { executeCommand } from './commands.js';
 import { commandParser } from './parser.js';
 
 /**
+ * Start headless CLI mode for one-shot command execution
+ * @param agent - The MemAgent instance
+ * @param input - The user input/prompt to execute
+ */
+export async function startHeadlessCli(agent: MemAgent, input: string): Promise<void> {
+	await _initCli(agent);
+	
+	console.log(chalk.gray('🤔 Processing...'));
+	const response = await agent.run(input);
+	
+	if (response) {
+		// Display the AI response with nice formatting
+		logger.displayAIResponse(response);
+	} else {
+		console.log(chalk.gray('No response received.'));
+	}
+}
+
+/**
  * Start interactive CLI mode where user can continuously chat with the agent
  */
 export async function startInteractiveCli(agent: MemAgent): Promise<void> {
@@ -47,16 +66,12 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 		try {
 			// Parse input to determine if it's a command or regular prompt
 			const parsedInput = commandParser.parseInput(trimmedInput);
-			
+
 			if (parsedInput.isCommand) {
 				// Handle slash command
 				if (parsedInput.command && parsedInput.args !== undefined) {
-					const commandSuccess = await executeCommand(
-						parsedInput.command, 
-						parsedInput.args, 
-						agent
-					);
-					
+					const commandSuccess = await executeCommand(parsedInput.command, parsedInput.args, agent);
+
 					if (!commandSuccess) {
 						console.log(chalk.gray('Command execution failed or was cancelled.'));
 					}

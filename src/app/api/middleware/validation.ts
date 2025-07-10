@@ -8,7 +8,7 @@ import { sanitizeInput, isValidSessionId } from '../utils/security.js';
  */
 export function handleValidationErrors(req: Request, res: Response, next: NextFunction): void {
 	const errors = validationResult(req);
-	
+
 	if (!errors.isEmpty()) {
 		errorResponse(
 			res,
@@ -20,7 +20,7 @@ export function handleValidationErrors(req: Request, res: Response, next: NextFu
 		);
 		return;
 	}
-	
+
 	next();
 }
 
@@ -50,36 +50,29 @@ export const validateMessageRequest = [
 		.withMessage('Message must be a string between 1 and 50000 characters'),
 	body('sessionId')
 		.optional()
-		.custom((value) => {
+		.custom(value => {
 			if (value && !isValidSessionId(value)) {
 				throw new Error('Invalid session ID format');
 			}
 			return true;
 		}),
-	body('images')
-		.optional()
-		.isArray()
-		.withMessage('Images must be an array'),
-	body('images.*')
-		.optional()
-		.isString()
-		.withMessage('Each image must be a base64 string'),
+	body('images').optional().isArray().withMessage('Images must be an array'),
+	body('images.*').optional().isString().withMessage('Each image must be a base64 string'),
 	sanitizeTextInput(['message']),
-	handleValidationErrors
+	handleValidationErrors,
 ];
 
 /**
  * Session ID parameter validation
  */
 export const validateSessionId = [
-	param('sessionId')
-		.custom((value) => {
-			if (!isValidSessionId(value)) {
-				throw new Error('Invalid session ID format');
-			}
-			return true;
-		}),
-	handleValidationErrors
+	param('sessionId').custom(value => {
+		if (!isValidSessionId(value)) {
+			throw new Error('Invalid session ID format');
+		}
+		return true;
+	}),
+	handleValidationErrors,
 ];
 
 /**
@@ -88,17 +81,14 @@ export const validateSessionId = [
 export const validateCreateSession = [
 	body('sessionId')
 		.optional()
-		.custom((value) => {
+		.custom(value => {
 			if (value && !isValidSessionId(value)) {
 				throw new Error('Invalid session ID format');
 			}
 			return true;
 		}),
-	body('config')
-		.optional()
-		.isObject()
-		.withMessage('Config must be an object'),
-	handleValidationErrors
+	body('config').optional().isObject().withMessage('Config must be an object'),
+	handleValidationErrors,
 ];
 
 /**
@@ -109,18 +99,9 @@ export const validateMcpServerConfig = [
 		.isString()
 		.isLength({ min: 1, max: 100 })
 		.withMessage('Server name must be between 1 and 100 characters'),
-	body('command')
-		.optional()
-		.isString()
-		.withMessage('Command must be a string'),
-	body('args')
-		.optional()
-		.isArray()
-		.withMessage('Args must be an array'),
-	body('env')
-		.optional()
-		.isObject()
-		.withMessage('Environment must be an object'),
+	body('command').optional().isString().withMessage('Command must be a string'),
+	body('args').optional().isArray().withMessage('Args must be an array'),
+	body('env').optional().isObject().withMessage('Environment must be an object'),
 	body('transport')
 		.optional()
 		.isIn(['stdio', 'sse', 'http'])
@@ -130,7 +111,7 @@ export const validateMcpServerConfig = [
 		.isIn(['strict', 'lenient'])
 		.withMessage('Connection mode must be strict or lenient'),
 	sanitizeTextInput(['name', 'command']),
-	handleValidationErrors
+	handleValidationErrors,
 ];
 
 /**
@@ -141,7 +122,7 @@ export const validateMcpServerId = [
 		.isString()
 		.isLength({ min: 1, max: 100 })
 		.withMessage('Server ID must be between 1 and 100 characters'),
-	handleValidationErrors
+	handleValidationErrors,
 ];
 
 /**
@@ -156,11 +137,8 @@ export const validateToolExecution = [
 		.isString()
 		.isLength({ min: 1, max: 100 })
 		.withMessage('Tool name must be between 1 and 100 characters'),
-	body('arguments')
-		.optional()
-		.isObject()
-		.withMessage('Arguments must be an object'),
-	handleValidationErrors
+	body('arguments').optional().isObject().withMessage('Arguments must be an object'),
+	handleValidationErrors,
 ];
 
 /**
@@ -175,12 +153,9 @@ export const validateLlmConfig = [
 		.isString()
 		.isLength({ min: 1, max: 100 })
 		.withMessage('Model must be between 1 and 100 characters'),
-	body('config')
-		.optional()
-		.isObject()
-		.withMessage('Config must be an object'),
+	body('config').optional().isObject().withMessage('Config must be an object'),
 	sanitizeTextInput(['provider', 'model']),
-	handleValidationErrors
+	handleValidationErrors,
 ];
 
 /**
@@ -191,9 +166,6 @@ export const validateListParams = [
 		.optional()
 		.isInt({ min: 1, max: 100 })
 		.withMessage('Limit must be between 1 and 100'),
-	query('offset')
-		.optional()
-		.isInt({ min: 0 })
-		.withMessage('Offset must be a non-negative integer'),
-	handleValidationErrors
-]; 
+	query('offset').optional().isInt({ min: 0 }).withMessage('Offset must be a non-negative integer'),
+	handleValidationErrors,
+];

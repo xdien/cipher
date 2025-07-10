@@ -8,7 +8,7 @@ const SENSITIVE_PATTERNS = [
 	/password/i,
 	/auth/i,
 	/credential/i,
-	/private[_-]?key/i
+	/private[_-]?key/i,
 ];
 
 // Environment variables that should be redacted
@@ -19,7 +19,7 @@ const SENSITIVE_ENV_VARS = [
 	'DATABASE_URL',
 	'REDIS_URL',
 	'QDRANT_API_KEY',
-	'MILVUS_TOKEN'
+	'MILVUS_TOKEN',
 ];
 
 /**
@@ -35,11 +35,11 @@ export function redactSensitiveData(obj: any): any {
 	}
 
 	const redacted: any = {};
-	
+
 	for (const [key, value] of Object.entries(obj)) {
 		// Check if key matches sensitive patterns
 		const isSensitive = SENSITIVE_PATTERNS.some(pattern => pattern.test(key));
-		
+
 		if (isSensitive && typeof value === 'string') {
 			redacted[key] = maskValue(value);
 		} else if (typeof value === 'object') {
@@ -48,7 +48,7 @@ export function redactSensitiveData(obj: any): any {
 			redacted[key] = value;
 		}
 	}
-	
+
 	return redacted;
 }
 
@@ -59,20 +59,22 @@ function maskValue(value: string): string {
 	if (!value || value.length <= 8) {
 		return '***';
 	}
-	
+
 	const start = value.slice(0, 4);
 	const end = value.slice(-4);
 	const middle = '*'.repeat(Math.max(4, value.length - 8));
-	
+
 	return `${start}${middle}${end}`;
 }
 
 /**
  * Redacts sensitive environment variables
  */
-export function redactEnvironmentVars(env: Record<string, string | undefined>): Record<string, string | undefined> {
+export function redactEnvironmentVars(
+	env: Record<string, string | undefined>
+): Record<string, string | undefined> {
 	const redacted: Record<string, string | undefined> = {};
-	
+
 	for (const [key, value] of Object.entries(env)) {
 		if (SENSITIVE_ENV_VARS.includes(key) && value) {
 			redacted[key] = maskValue(value);
@@ -80,7 +82,7 @@ export function redactEnvironmentVars(env: Record<string, string | undefined>): 
 			redacted[key] = value;
 		}
 	}
-	
+
 	return redacted;
 }
 
@@ -91,7 +93,7 @@ export function sanitizeInput(input: string): string {
 	if (typeof input !== 'string') {
 		return input;
 	}
-	
+
 	// Remove null bytes and control characters except newlines and tabs
 	// eslint-disable-next-line no-control-regex
 	return input.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
@@ -111,4 +113,4 @@ export function isValidUUID(uuid: string): boolean {
 export function isValidSessionId(sessionId: string): boolean {
 	// Allow UUID format or alphanumeric with hyphens/underscores (max 50 chars)
 	return isValidUUID(sessionId) || /^[a-zA-Z0-9_-]{1,50}$/.test(sessionId);
-} 
+}

@@ -338,9 +338,7 @@ describe('InMemoryBackend', () => {
 				);
 
 				// Try to insert beyond limit
-				await expect(smallBackend.insert([[7, 8, 9]], [3], [{}])).rejects.toThrow(
-					VectorStoreError
-				);
+				await expect(smallBackend.insert([[7, 8, 9]], [3], [{}])).rejects.toThrow(VectorStoreError);
 			} finally {
 				await smallBackend.disconnect();
 			}

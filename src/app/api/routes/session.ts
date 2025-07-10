@@ -1,10 +1,10 @@
 import { Router, Request, Response } from 'express';
 import { MemAgent } from '@core/brain/memAgent/index.js';
 import { successResponse, errorResponse, ERROR_CODES } from '../utils/response.js';
-import { 
-	validateSessionId, 
-	validateCreateSession, 
-	validateListParams 
+import {
+	validateSessionId,
+	validateCreateSession,
+	validateListParams,
 } from '../middleware/validation.js';
 import { logger } from '@core/logger/index.js';
 
@@ -18,7 +18,7 @@ export function createSessionRoutes(agent: MemAgent): Router {
 	router.get('/', validateListParams, async (req: Request, res: Response) => {
 		try {
 			logger.info('Listing sessions', { requestId: req.requestId });
-			
+
 			const sessionIds = await agent.listSessions();
 			const sessions = [];
 
@@ -29,17 +29,21 @@ export function createSessionRoutes(agent: MemAgent): Router {
 				}
 			}
 
-			successResponse(res, {
-				sessions,
-				count: sessions.length,
-				currentSession: agent.getCurrentSessionId()
-			}, 200, req.requestId);
-
+			successResponse(
+				res,
+				{
+					sessions,
+					count: sessions.length,
+					currentSession: agent.getCurrentSessionId(),
+				},
+				200,
+				req.requestId
+			);
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : String(error);
 			logger.error('Failed to list sessions', {
 				requestId: req.requestId,
-				error: errorMsg
+				error: errorMsg,
 			});
 
 			errorResponse(
@@ -60,25 +64,29 @@ export function createSessionRoutes(agent: MemAgent): Router {
 	router.post('/', validateCreateSession, async (req: Request, res: Response) => {
 		try {
 			const { sessionId } = req.body;
-			
+
 			logger.info('Creating new session', {
 				requestId: req.requestId,
-				sessionId: sessionId || 'auto-generated'
+				sessionId: sessionId || 'auto-generated',
 			});
 
 			const session = await agent.createSession(sessionId);
 
-			successResponse(res, {
-				sessionId: session.id,
-				created: true,
-				timestamp: new Date().toISOString()
-			}, 201, req.requestId);
-
+			successResponse(
+				res,
+				{
+					sessionId: session.id,
+					created: true,
+					timestamp: new Date().toISOString(),
+				},
+				201,
+				req.requestId
+			);
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : String(error);
 			logger.error('Failed to create session', {
 				requestId: req.requestId,
-				error: errorMsg
+				error: errorMsg,
 			});
 
 			// Check if error is due to duplicate session ID
@@ -125,17 +133,21 @@ export function createSessionRoutes(agent: MemAgent): Router {
 				return;
 			}
 
-			successResponse(res, {
-				sessionId: currentSessionId,
-				metadata,
-				isCurrent: true
-			}, 200, req.requestId);
-
+			successResponse(
+				res,
+				{
+					sessionId: currentSessionId,
+					metadata,
+					isCurrent: true,
+				},
+				200,
+				req.requestId
+			);
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : String(error);
 			logger.error('Failed to get current session', {
 				requestId: req.requestId,
-				error: errorMsg
+				error: errorMsg,
 			});
 
 			errorResponse(
@@ -156,15 +168,22 @@ export function createSessionRoutes(agent: MemAgent): Router {
 	router.get('/:sessionId', validateSessionId, async (req: Request, res: Response) => {
 		try {
 			const { sessionId } = req.params;
-			
+
 			if (!sessionId) {
-				errorResponse(res, ERROR_CODES.BAD_REQUEST, 'Session ID is required', 400, undefined, req.requestId);
+				errorResponse(
+					res,
+					ERROR_CODES.BAD_REQUEST,
+					'Session ID is required',
+					400,
+					undefined,
+					req.requestId
+				);
 				return;
 			}
-			
+
 			logger.info('Getting session details', {
 				requestId: req.requestId,
-				sessionId
+				sessionId,
 			});
 
 			const session = await agent.getSession(sessionId);
@@ -182,18 +201,22 @@ export function createSessionRoutes(agent: MemAgent): Router {
 
 			const metadata = await agent.getSessionMetadata(sessionId);
 
-			successResponse(res, {
-				sessionId,
-				metadata,
-				isCurrent: sessionId === agent.getCurrentSessionId()
-			}, 200, req.requestId);
-
+			successResponse(
+				res,
+				{
+					sessionId,
+					metadata,
+					isCurrent: sessionId === agent.getCurrentSessionId(),
+				},
+				200,
+				req.requestId
+			);
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : String(error);
 			logger.error('Failed to get session details', {
 				requestId: req.requestId,
 				sessionId: req.params.sessionId,
-				error: errorMsg
+				error: errorMsg,
 			});
 
 			errorResponse(
@@ -214,32 +237,43 @@ export function createSessionRoutes(agent: MemAgent): Router {
 	router.post('/:sessionId/load', validateSessionId, async (req: Request, res: Response) => {
 		try {
 			const { sessionId } = req.params;
-			
+
 			if (!sessionId) {
-				errorResponse(res, ERROR_CODES.BAD_REQUEST, 'Session ID is required', 400, undefined, req.requestId);
+				errorResponse(
+					res,
+					ERROR_CODES.BAD_REQUEST,
+					'Session ID is required',
+					400,
+					undefined,
+					req.requestId
+				);
 				return;
 			}
-			
+
 			logger.info('Loading session', {
 				requestId: req.requestId,
-				sessionId
+				sessionId,
 			});
 
 			const session = await agent.loadSession(sessionId);
 
-			successResponse(res, {
-				sessionId: session.id,
-				loaded: true,
-				currentSession: agent.getCurrentSessionId(),
-				timestamp: new Date().toISOString()
-			}, 200, req.requestId);
-
+			successResponse(
+				res,
+				{
+					sessionId: session.id,
+					loaded: true,
+					currentSession: agent.getCurrentSessionId(),
+					timestamp: new Date().toISOString(),
+				},
+				200,
+				req.requestId
+			);
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : String(error);
 			logger.error('Failed to load session', {
 				requestId: req.requestId,
 				sessionId: req.params.sessionId,
-				error: errorMsg
+				error: errorMsg,
 			});
 
 			if (errorMsg.includes('not found')) {
@@ -271,15 +305,22 @@ export function createSessionRoutes(agent: MemAgent): Router {
 	router.get('/:sessionId/history', validateSessionId, async (req: Request, res: Response) => {
 		try {
 			const { sessionId } = req.params;
-			
+
 			if (!sessionId) {
-				errorResponse(res, ERROR_CODES.BAD_REQUEST, 'Session ID is required', 400, undefined, req.requestId);
+				errorResponse(
+					res,
+					ERROR_CODES.BAD_REQUEST,
+					'Session ID is required',
+					400,
+					undefined,
+					req.requestId
+				);
 				return;
 			}
-			
+
 			logger.info('Getting session history', {
 				requestId: req.requestId,
-				sessionId
+				sessionId,
 			});
 
 			const session = await agent.getSession(sessionId);
@@ -297,19 +338,23 @@ export function createSessionRoutes(agent: MemAgent): Router {
 
 			const history = await agent.getSessionHistory(sessionId);
 
-			successResponse(res, {
-				sessionId,
-				history,
-				count: history.length,
-				timestamp: new Date().toISOString()
-			}, 200, req.requestId);
-
+			successResponse(
+				res,
+				{
+					sessionId,
+					history,
+					count: history.length,
+					timestamp: new Date().toISOString(),
+				},
+				200,
+				req.requestId
+			);
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : String(error);
 			logger.error('Failed to get session history', {
 				requestId: req.requestId,
 				sessionId: req.params.sessionId,
-				error: errorMsg
+				error: errorMsg,
 			});
 
 			errorResponse(
@@ -330,15 +375,22 @@ export function createSessionRoutes(agent: MemAgent): Router {
 	router.delete('/:sessionId', validateSessionId, async (req: Request, res: Response) => {
 		try {
 			const { sessionId } = req.params;
-			
+
 			if (!sessionId) {
-				errorResponse(res, ERROR_CODES.BAD_REQUEST, 'Session ID is required', 400, undefined, req.requestId);
+				errorResponse(
+					res,
+					ERROR_CODES.BAD_REQUEST,
+					'Session ID is required',
+					400,
+					undefined,
+					req.requestId
+				);
 				return;
 			}
-			
+
 			logger.info('Deleting session', {
 				requestId: req.requestId,
-				sessionId
+				sessionId,
 			});
 
 			const success = await agent.removeSession(sessionId);
@@ -355,18 +407,22 @@ export function createSessionRoutes(agent: MemAgent): Router {
 				return;
 			}
 
-			successResponse(res, {
-				sessionId,
-				deleted: true,
-				timestamp: new Date().toISOString()
-			}, 200, req.requestId);
-
+			successResponse(
+				res,
+				{
+					sessionId,
+					deleted: true,
+					timestamp: new Date().toISOString(),
+				},
+				200,
+				req.requestId
+			);
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : String(error);
 			logger.error('Failed to delete session', {
 				requestId: req.requestId,
 				sessionId: req.params.sessionId,
-				error: errorMsg
+				error: errorMsg,
 			});
 
 			if (errorMsg.includes('Cannot remove the currently active session')) {
@@ -392,4 +448,4 @@ export function createSessionRoutes(agent: MemAgent): Router {
 	});
 
 	return router;
-} 
+}

@@ -42,7 +42,7 @@ pnpm i && pnpm run build && npm link
 
 ## Run Modes
 
-Cipher supports three operational modes to fit different usage patterns:
+Cipher supports multiple operational modes to fit different usage patterns:
 
 ### CLI Mode (Interactive)
 
@@ -64,6 +64,55 @@ cipher --mode cli
 - Session management capabilities
 - Graceful exit with `exit` or `quit` commands
 - Signal handling (Ctrl+C) for clean shutdown
+
+### One-Shot Mode (Headless)
+
+Execute a single prompt and exit without starting an interactive session:
+
+```bash
+# One-shot command execution
+cipher "what is ourn own logics of implementing the binary search tree?"
+cipher task "store this logics (logics...) to the memory"
+
+# Works with all existing flags
+cipher --strict "analyze this code"
+cipher --new-session debug-session "fix this bug"
+cipher --mode cli "remember this important detail"
+```
+
+**Key Features:**
+
+- **Quick Execution**: Run a single prompt and exit immediately
+- **Full Compatibility**: Works with all existing CLI flags (`--strict`, `--new-session`, `--mode`, etc.)
+- **Memory Integration**: All interactions are stored in memory for future reference
+- **Processing Feedback**: Shows "🤔 Processing..." indicator while working
+- **Error Handling**: Comprehensive error handling with meaningful messages
+- **Clean Exit**: Proper process termination after execution
+
+**Usage Examples:**
+
+```bash
+# Simple one-shot command
+cipher "What's the weather like?"
+
+# Store information to memory
+cipher "Remember that I'm working on the authentication module"
+
+# Quick analysis with strict mode
+cipher --strict "Analyze this error message for me"
+
+# Create a new session and execute
+cipher --new-session analysis-work "Help me understand this algorithm"
+
+# Use with custom agent configuration
+cipher --agent ./my-config.yml "Process this data"
+```
+
+The one-shot mode is perfect for:
+- Quick queries that don't need ongoing conversation
+- Storing information to memory from scripts
+- Integrating cipher into automated workflows
+- Testing prompts without starting interactive mode
 
 ### API Mode (REST Server)
 
@@ -929,7 +978,117 @@ Cipher handles all the complexity of MCP server connections and lifecycle manage
 ### Enhanced LLM Provider Support
 Cipher now supports multiple LLM providers with seamless integration and advanced capabilities:
 
+### Knowledge Graph Memory
+Cipher features a sophisticated knowledge graph system that provides structured, persistent memory for agents. This system enables agents to build and maintain complex relationships between entities, concepts, and information across conversations.
 
+#### Overview
+The knowledge graph memory system transforms unstructured conversational data into a structured graph of entities and relationships. Unlike traditional flat memory systems, knowledge graphs excel at:
+
+- **Relationship Modeling**: Capture complex relationships between entities (e.g., "John works at Google as a Software Engineer")
+- **Semantic Search**: Find related information through graph traversal and relationship patterns
+- **Knowledge Evolution**: Update and evolve understanding as new information becomes available
+- **Contextual Retrieval**: Retrieve relevant information based on entity relationships and graph structure
+
+#### Supported Backends
+
+**Neo4j**
+- Full-featured graph database with Cypher query support
+- Advanced indexing and query optimization
+- ACID transactions and data consistency
+- Suitable for production workloads and complex graph operations
+
+**In-Memory**
+- Fast local storage ideal for development and testing
+- No external dependencies required
+- Configurable memory limits and indexing
+- Automatic cleanup and garbage collection options
+
+#### Configuration
+
+**Environment Variables**
+Add these to your `.env` file to configure knowledge graph functionality:
+
+```bash
+# Enable knowledge graph functionality
+KNOWLEDGE_GRAPH_ENABLED=true
+
+# Backend configuration
+KNOWLEDGE_GRAPH_TYPE=neo4j              # or 'in-memory'
+
+# Neo4j connection mode - supports both local and cloud deployments
+KNOWLEDGE_GRAPH_CONNECTION_MODE=local   # 'local' or 'cloud'
+
+# =============================================================================
+# NEO4J LOCAL CONFIGURATION (for local development)
+# =============================================================================
+# Local Neo4j configuration (when CONNECTION_MODE=local)
+KNOWLEDGE_GRAPH_HOST=localhost
+KNOWLEDGE_GRAPH_PORT=7687
+KNOWLEDGE_GRAPH_URI=bolt://localhost:7687    # Alternative to host/port
+KNOWLEDGE_GRAPH_USERNAME=neo4j
+KNOWLEDGE_GRAPH_PASSWORD=your_local_password
+KNOWLEDGE_GRAPH_DATABASE=neo4j
+
+# =============================================================================
+# NEO4J CLOUD CONFIGURATION (for cloud deployment)
+# =============================================================================
+# Cloud Neo4j configuration (when CONNECTION_MODE=cloud) - for AuraDB
+# Example URL format: neo4j+s://your-instance.databases.neo4j.io
+NEO4J_URL=neo4j+s://xxxxx.databases.neo4j.io
+NEO4J_USERNAME=neo4j
+NEO4J_PASSWORD=your_cloud_password
+
+# In-memory configuration (if using in-memory backend)
+# No additional configuration required - uses sensible defaults
+```
+
+#### Backend Setup
+
+**Neo4j Local Setup (Development):**
+1. **Install Neo4j**: Download from [neo4j.com](https://neo4j.com/download/)
+2. **Start Neo4j**: Run Neo4j Desktop or server
+3. **Create Database**: Set up your knowledge graph database
+4. **Configure Authentication**: Set username/password
+5. **Environment Variables**: Configure connection details in `.env`
+
+```bash
+# Example Local Neo4j configuration
+KNOWLEDGE_GRAPH_ENABLED=true
+KNOWLEDGE_GRAPH_TYPE=neo4j
+KNOWLEDGE_GRAPH_CONNECTION_MODE=local
+KNOWLEDGE_GRAPH_HOST=localhost
+KNOWLEDGE_GRAPH_PORT=7687
+KNOWLEDGE_GRAPH_USERNAME=neo4j
+KNOWLEDGE_GRAPH_PASSWORD=your_secure_password
+KNOWLEDGE_GRAPH_DATABASE=knowledge
+```
+
+**Neo4j Cloud Setup (Production - AuraDB):**
+1. **Create AuraDB Instance**: Sign up at [neo4j.com/cloud/aura](https://neo4j.com/cloud/aura/)
+2. **Get Connection Details**: Copy the connection URI from your AuraDB dashboard
+3. **Download Credentials**: Save the generated username and password
+4. **Environment Variables**: Configure cloud connection details in `.env`
+
+```bash
+# Example AuraDB (Cloud) configuration
+KNOWLEDGE_GRAPH_ENABLED=true
+KNOWLEDGE_GRAPH_TYPE=neo4j
+KNOWLEDGE_GRAPH_CONNECTION_MODE=cloud
+NEO4J_URL=neo4j+s://abc123.databases.neo4j.io
+NEO4J_USERNAME=neo4j
+NEO4J_PASSWORD=your_auradb_password
+```
+
+**Connection Mode Details:**
+- **Local Mode**: Uses `KNOWLEDGE_GRAPH_*` environment variables for local Neo4j instances
+- **Cloud Mode**: Uses `NEO4J_*` environment variables for AuraDB cloud instances
+- **Auto-Detection**: Automatically detects AuraDB instances and forces secure connections
+- **Security**: Cloud connections automatically use `neo4j+s://` protocol for encryption
+
+**Neo4j Version Compatibility:**
+- Local: Neo4j 4.x and 5.x supported
+- Cloud: All AuraDB instances supported with automatic optimization
+- Driver: Compatible with Neo4j JavaScript Driver 5.x
 
 ## LLM Providers
 

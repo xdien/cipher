@@ -95,23 +95,38 @@ export class RedisBackend implements CacheBackend {
 			...this.config.options,
 		});
 
-		// Set up error handling
-		this.redis.on('error', error => {
-			console.error('Redis connection error:', error);
-			// Error is logged but not thrown to allow for reconnection attempts
+		let connectionError: Error | null = null;
+		this.redis.on('error', err => {
+			connectionError = err;
 		});
 
-		// Track connection status
-		this.redis.on('connect', () => {
-			this.connected = true;
-		});
+		await new Promise<void>((resolve, reject) => {
+			const onReady = () => {
+				this.connected = true;
+				cleanup();
+				resolve();
+			};
+			const onError = (err: Error) => {
+				cleanup();
+				reject(new Error('Redis connection failed: ' + err.message));
+			};
+			const cleanup = () => {
+				this.redis?.off('ready', onReady);
+				this.redis?.off('error', onError);
+			};
+			this.redis?.once('ready', onReady);
+			this.redis?.once('error', onError);
 
-		this.redis.on('close', () => {
-			this.connected = false;
+			// Timeout after 1s
+			setTimeout(() => {
+				cleanup();
+				if (connectionError) {
+					reject(new Error('Redis connection failed: ' + connectionError.message));
+				} else {
+					reject(new Error('Redis connection failed: timeout'));
+				}
+			}, 1000);
 		});
-
-		// Establish connection
-		await this.redis.connect();
 	}
 
 	/**

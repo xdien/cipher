@@ -5,10 +5,10 @@ import rateLimit from 'express-rate-limit';
 import { MemAgent } from '@core/brain/memAgent/index.js';
 import { logger } from '@core/logger/index.js';
 import { errorResponse, ERROR_CODES } from './utils/response.js';
-import { 
-	requestIdMiddleware, 
-	requestLoggingMiddleware, 
-	errorLoggingMiddleware 
+import {
+	requestIdMiddleware,
+	requestLoggingMiddleware,
+	errorLoggingMiddleware,
 } from './middleware/logging.js';
 
 // Import route handlers
@@ -42,18 +42,22 @@ export class ApiServer {
 
 	private setupMiddleware(): void {
 		// Security middleware
-		this.app.use(helmet({
-			contentSecurityPolicy: false, // Disable CSP for API
-			crossOriginEmbedderPolicy: false
-		}));
+		this.app.use(
+			helmet({
+				contentSecurityPolicy: false, // Disable CSP for API
+				crossOriginEmbedderPolicy: false,
+			})
+		);
 
 		// CORS configuration
-		this.app.use(cors({
-			origin: this.config.corsOrigins || ['http://localhost:3000'],
-			methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-			allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
-			credentials: true
-		}));
+		this.app.use(
+			cors({
+				origin: this.config.corsOrigins || ['http://localhost:3000'],
+				methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+				allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
+				credentials: true,
+			})
+		);
 
 		// Rate limiting
 		const limiter = rateLimit({
@@ -63,11 +67,11 @@ export class ApiServer {
 				success: false,
 				error: {
 					code: ERROR_CODES.RATE_LIMIT_EXCEEDED,
-					message: 'Too many requests from this IP, please try again later.'
-				}
+					message: 'Too many requests from this IP, please try again later.',
+				},
 			},
 			standardHeaders: true,
-			legacyHeaders: false
+			legacyHeaders: false,
 		});
 		this.app.use('/api/', limiter);
 
@@ -87,7 +91,7 @@ export class ApiServer {
 				status: 'healthy',
 				timestamp: new Date().toISOString(),
 				uptime: process.uptime(),
-				version: process.env.npm_package_version || 'unknown'
+				version: process.env.npm_package_version || 'unknown',
 			});
 		});
 
@@ -125,7 +129,7 @@ export class ApiServer {
 			// Determine error type and status code
 			let statusCode = 500;
 			let errorCode: string = ERROR_CODES.INTERNAL_ERROR;
-			
+
 			if (err.name === 'ValidationError') {
 				statusCode = 400;
 				errorCode = ERROR_CODES.VALIDATION_ERROR;
@@ -157,7 +161,7 @@ export class ApiServer {
 					resolve();
 				});
 
-				server.on('error', (err) => {
+				server.on('error', err => {
 					const errorMessage = err.message || err.toString() || 'Unknown error';
 					logger.error('Failed to start API server:', errorMessage);
 					logger.error('Error details:', err);
@@ -180,7 +184,6 @@ export class ApiServer {
 						process.exit(0);
 					});
 				});
-
 			} catch (error) {
 				reject(error);
 			}
@@ -190,4 +193,4 @@ export class ApiServer {
 	public getApp(): Application {
 		return this.app;
 	}
-} 
+}

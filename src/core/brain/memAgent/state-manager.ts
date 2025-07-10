@@ -106,7 +106,7 @@ export class MemAgentStateManager {
 			const existingOverride = this.sessionOverrides.get(sessionId) || {};
 			this.sessionOverrides.set(sessionId, {
 				...existingOverride,
-				llm: { ...existingOverride.llm, ...newConfig }
+				llm: { ...existingOverride.llm, ...newConfig },
 			});
 			logger.info(`Updated LLM config for session ${sessionId}`, { newConfig });
 		} else {

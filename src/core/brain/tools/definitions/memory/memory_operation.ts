@@ -97,6 +97,7 @@ export interface MemoryOperationArgs {
 		recentMessages?: string[];
 		sessionMetadata?: Record<string, any>;
 	};
+	memoryMetadata?: Record<string, any>;
 	options?: {
 		similarityThreshold?: number;
 		maxSimilarResults?: number;
@@ -275,7 +276,7 @@ For this knowledge fact, respond ONLY with a single JSON object in the following
   "confidence": 0.0-1.0,
   "reasoning": "Clear explanation of the decision",
   "targetMemoryId": "id-if-updating-or-deleting-or-none"
-}`
+}`,
 };
 
 /**
