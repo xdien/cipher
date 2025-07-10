@@ -110,7 +110,6 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 		logger.warn('Failed to initialize knowledge graph manager', {
 			error: error instanceof Error ? error.message : String(error),
 		});
-		console.log(error);
 	}
 
 	// 5. Initialize prompt manager

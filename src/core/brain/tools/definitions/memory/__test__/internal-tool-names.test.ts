@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { InternalToolManager } from '../../../manager.js';
 import { UnifiedToolManager } from '../../../unified-tool-manager.js';
 import { extractAndOperateMemoryTool } from '../extract_and_operate_memory.js';
-import { handler } from '../extract_and_operate_memory.js';
 import { logger } from '../../../../../logger/index.js';
 
 describe('Internal Tool Names', () => {
@@ -146,7 +145,7 @@ describe('memoryMetadata parameter and metadata merging', () => {
 				llmService: mockLlmService,
 			},
 		} as any;
-		await handler(args, mockContext);
+		await extractAndOperateMemoryTool.handler(args, mockContext);
 		expect(insertedPayloads[0].metadata).toMatchObject({
 			projectId: 'proj-override', // context.projectId overrides memoryMetadata.projectId
 			userId: 'user-override', // context.userId overrides memoryMetadata.userId
@@ -190,7 +189,7 @@ describe('memoryMetadata parameter and metadata merging', () => {
 			return origInfo.apply(logger, args);
 		};
 		try {
-			await handler(args, mockContext);
+			await extractAndOperateMemoryTool.handler(args, mockContext);
 			expect(insertedPayloads[0].metadata).toMatchObject({
 				projectId: 'proj-override', // context.projectId overrides memoryMetadata.projectId
 				userId: 'user-override', // context.userId overrides memoryMetadata.userId

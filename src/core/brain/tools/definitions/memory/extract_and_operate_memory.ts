@@ -728,7 +728,6 @@ export const extractAndOperateMemoryTool: InternalTool = {
 					}
 				}
 			}
-
 			logger.info('ExtractAndOperateMemory: Memory persistence completed', {
 				totalProcessed: memoryActions.length,
 				successfullyPersisted: persistedCount,
@@ -763,5 +762,3 @@ export const extractAndOperateMemoryTool: InternalTool = {
 		}
 	},
 };
-
-export const handler = extractAndOperateMemoryTool.handler;

@@ -11,10 +11,10 @@ import { commandParser } from './parser.js';
  */
 export async function startHeadlessCli(agent: MemAgent, input: string): Promise<void> {
 	await _initCli(agent);
-	
+
 	console.log(chalk.gray('🤔 Processing...'));
 	const response = await agent.run(input);
-	
+
 	if (response) {
 		// Display the AI response with nice formatting
 		logger.displayAIResponse(response);

@@ -80,7 +80,7 @@ describe('Storage Factory', () => {
 		it('should work with fallback backends', async () => {
 			const config: StorageConfig = {
 				cache: { type: 'redis', host: 'invalid-host', connectionTimeoutMillis: 1000 },
-				database: { type: 'sqlite', path: './invalid' },
+				database: { type: 'sqlite', path: '/root/nonexistent/readonly/test.db' },
 			};
 
 			const result = await createStorageBackends(config);
@@ -135,7 +135,7 @@ describe('Storage Factory', () => {
 
 		it('should create SQLite database from env vars', async () => {
 			process.env.STORAGE_DATABASE_TYPE = 'sqlite';
-			process.env.STORAGE_DATABASE_PATH = './test-data';
+			process.env.STORAGE_DATABASE_PATH = '/root/nonexistent/readonly';
 			process.env.STORAGE_DATABASE_NAME = 'test.db';
 
 			const result = await createStorageFromEnv();
@@ -261,7 +261,7 @@ describe('Storage Factory', () => {
 			// Create storage that will use fallbacks
 			const { manager, backends } = await createStorageBackends({
 				cache: { type: 'redis', host: 'nonexistent', connectionTimeoutMillis: 1000 },
-				database: { type: 'sqlite', path: './nonexistent' },
+				database: { type: 'sqlite', path: '/root/nonexistent/readonly/test.db' },
 			});
 
 			// Should still be usable with fallbacks

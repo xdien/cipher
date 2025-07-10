@@ -113,7 +113,7 @@ describe('StorageManager', () => {
 			// Create a manager with SQLite config (will fail and fallback)
 			const config: StorageConfig = {
 				cache: { type: 'in-memory' },
-				database: { type: 'sqlite', path: './test' },
+				database: { type: 'sqlite', path: '/root/nonexistent/readonly/test.db' },
 			};
 			manager = new StorageManager(config);
 
@@ -148,7 +148,7 @@ describe('StorageManager', () => {
 		it('should fallback to in-memory for SQLite database', async () => {
 			const config: StorageConfig = {
 				cache: { type: 'in-memory' },
-				database: { type: 'sqlite', path: './test' },
+				database: { type: 'sqlite', path: '/root/nonexistent/readonly/test2.db' },
 			};
 			manager = new StorageManager(config);
 
@@ -226,7 +226,7 @@ describe('StorageManager', () => {
 			// the manager falls back to in-memory backends
 			const config: StorageConfig = {
 				cache: { type: 'redis', host: 'invalid-host', connectionTimeoutMillis: 1000 },
-				database: { type: 'sqlite', path: './invalid-path' },
+				database: { type: 'sqlite', path: '/root/nonexistent/readonly/test.db' },
 			};
 			manager = new StorageManager(config);
 

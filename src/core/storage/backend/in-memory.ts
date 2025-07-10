@@ -212,7 +212,7 @@ export class InMemoryBackend implements CacheBackend, DatabaseBackend {
 		const keys: string[] = [];
 		const now = Date.now();
 
-		for (const [key, entry] of this.store) {
+		for (const [key, entry] of Array.from(this.store.entries())) {
 			// Skip expired entries
 			if (entry.expires && now > entry.expires) {
 				continue;
@@ -224,7 +224,7 @@ export class InMemoryBackend implements CacheBackend, DatabaseBackend {
 		}
 
 		// Also check list keys
-		for (const key of this.lists.keys()) {
+		for (const key of Array.from(this.lists.keys())) {
 			if (key.startsWith(prefix) && !keys.includes(key)) {
 				keys.push(key);
 			}
@@ -359,7 +359,7 @@ export class InMemoryBackend implements CacheBackend, DatabaseBackend {
 		const now = Date.now();
 		let cleaned = 0;
 
-		for (const [key, entry] of this.store) {
+		for (const [key, entry] of Array.from(this.store.entries())) {
 			if (entry.expires && now > entry.expires) {
 				this.store.delete(key);
 				cleaned++;

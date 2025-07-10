@@ -841,9 +841,7 @@ describe('ConversationSession Advanced Metadata Integration', () => {
 		mockLLMService.generate.mockResolvedValue('ok');
 		await session.run('input', undefined, undefined, { memoryMetadata: { foo: 'bar' } });
 		expect(hook).toHaveBeenCalled();
-		const callArgs = hook.mock.calls[0];
-		expect(callArgs).toBeDefined();
-		const [meta, context] = callArgs!;
+		const [meta, context] = hook.mock.calls[0] || [];
 		expect(meta).toMatchObject({
 			foo: 'bar',
 			sessionId: sessionId,
