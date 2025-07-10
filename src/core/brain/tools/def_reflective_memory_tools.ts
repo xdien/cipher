@@ -392,8 +392,7 @@ async function evaluateReasoningQuality(
 		metrics: {
 			efficiency: Math.min(1, trace.steps.length / 10), // Prefer concise reasoning
 			clarity: stepTypes.size / Math.min(4, trace.steps.length), // Prefer diverse step types
-			completeness: Math.min(1, trace.steps.length / 5), // Prefer adequate detail
-			insightfulness: hasValueableContent ? 0.8 : 0.2 // New metric for content value
+			completeness: Math.min(1, trace.steps.length / 5) // Prefer adequate detail
 		}
 	};
 }
@@ -720,7 +719,7 @@ export const searchReasoningPatterns: InternalTool = {
 			const input = searchReasoningInputSchema.parse(args);
 
 			// Query deduplication to reduce redundant searches
-			const shouldDeduplicate = input.options?.deduplicateQueries !== false;
+			const shouldDeduplicate = true; // Default behavior, can be made configurable later
 			if (shouldDeduplicate && context?.sessionId) {
 				const queryKey = `search_patterns_${context.sessionId}`;
 				const recentQueries = (global as any)[queryKey] || [];

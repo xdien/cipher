@@ -255,8 +255,7 @@ Conclusion: The answer is 4.
 			expect(result.result.patterns).toHaveLength(0);
 			expect(result.metadata.fallback).toBeDefined();
 
-			// Restore the original services
-			(toolManager as any).services = originalServices;
+			// No need to restore services since we're not modifying them
 		});
 	});
 
