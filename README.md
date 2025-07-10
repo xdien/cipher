@@ -138,7 +138,7 @@ cipher --mode api --host 0.0.0.0 --port 8080
 
 ### MCP Server Mode
 
-Runs cipher as a Model Context Protocol server, allowing other MCP-compatible tools to connect and utilize the agent's memory capabilities:
+Runs cipher as a Model Context Protocol server, exposing the full AI agent as an MCP server that other MCP-compatible tools can connect to and interact with:
 
 ```bash
 # Run as MCP server
@@ -147,10 +147,48 @@ cipher --mode mcp
 
 **Features:**
 
-- Exposes agent capabilities via MCP protocol
-- Enables integration with other MCP-compatible tools
-- Persistent memory across client connections
-- *Note: This mode is currently in development*
+- **Full Agent Exposure**: Exposes the complete Cipher agent as an MCP server
+- **ask_cipher Tool**: Primary tool for chatting with the agent via MCP protocol
+- **Agent Resources**: Exposes agent metadata and runtime statistics
+- **System Prompts**: Access to current system prompts used by the agent
+- **Session Management**: Maintains conversation context across MCP client connections
+- **Stdio Transport**: Uses stdio for direct process communication with MCP clients
+- **Log Redirection**: Automatically redirects logs to file to prevent stdio interference
+- **Memory Integration**: Full access to agent's memory and learning capabilities
+
+**Available MCP Capabilities:**
+
+- **Tools**:
+  - `ask_cipher`: Send messages to interact with the Cipher agent
+    - Parameters: `message` (required), `session_id` (optional), `stream` (optional)
+    - Returns: Agent response as formatted text
+
+- **Resources**:
+  - `cipher://agent/card`: Agent metadata and configuration information
+  - `cipher://agent/stats`: Runtime statistics including session count, MCP connections, uptime, and memory usage
+
+- **Prompts**:
+  - `system_prompt`: Retrieve the current system prompt used by the agent
+
+**Usage Example with MCP Client:**
+
+```bash
+# Start cipher as MCP server
+cipher --mode mcp
+
+# In another terminal, connect with an MCP client
+# The server will be available via stdio transport
+```
+
+**Integration with MCP-compatible Tools:**
+
+The MCP server mode allows Cipher to integrate with any MCP-compatible tool or client, including:
+- VS Code extensions with MCP support
+- Claude Desktop with MCP server configuration
+- Custom MCP clients and tools
+- Other AI agents that support MCP protocol
+
+This mode transforms Cipher into a reusable agent service that can be accessed by multiple tools simultaneously while maintaining persistent memory and learning capabilities.
 
 ### Prerequisites
 
