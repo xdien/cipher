@@ -7,7 +7,7 @@ import { DEFAULT_CONFIG_PATH, logger, MemAgent } from '@core/index.js';
 import { resolveConfigPath } from '@core/utils/path.js';
 import { handleCliOptionsError, validateCliOptions } from './cli/utils/options.js';
 import { loadAgentConfig } from '../core/brain/memAgent/loader.js';
-import { startInteractiveCli, startMcpMode } from './cli/cli.js';
+import { startInteractiveCli, startMcpMode, startHeadlessCli } from './cli/cli.js';
 import { ApiServer } from './api/server.js';
 
 const program = new Command();
@@ -16,6 +16,7 @@ program
 	.name('cipher')
 	.description('Agent that can help to remember your vibe coding agent knowledge and reinforce it')
 	.version(pkg.version, '-v, --version', 'output the current version')
+	.argument('[prompt...]', 'Natural-language prompt to run once. If not passed, cipher will start in interactive mode')
 	.option('--no-verbose', 'Disable verbose output')
 	.option('-a, --agent <path>', 'Path to agent config file', DEFAULT_CONFIG_PATH)
 	.option('-s, --strict', 'Require all MCP server connections to succeed')
@@ -26,9 +27,10 @@ program
 
 program
 	.description(
-		'Cipher CLI allows you to interact with cipher memory agent in interactive mode.\n' +
+		'Cipher CLI allows you to interact with cipher memory agent.\n' +
+			'Run cipher in interactive mode with `cipher` or run a one-shot prompt with `cipher <prompt>`\n\n' +
 			'Available modes:\n' +
-			'  - cli: Interactive command-line interface\n' +
+			'  - cli: Interactive command-line interface (default)\n' +
 			'  - mcp: Model Context Protocol server mode\n' +
 			'  - api: REST API server mode\n\n' +
 			'Options:\n' +
@@ -57,8 +59,16 @@ program
 	 *
 	 * Created sessions persist for the duration of the CLI session and follow
 	 * the agent's session management lifecycle and TTL settings.
+	 * 
+	 * One-Shot Mode Behavior:
+	 * When prompt arguments are provided, cipher runs in headless mode:
+	 * - Executes the prompt once and exits
+	 * - Works with all existing flags and options
+	 * - Example: cipher "help me debug this error"
 	 */
-	.action(async () => {
+	.action(async (prompt: string[] = []) => {
+		// Process prompt arguments for one-shot mode
+		const headlessInput = prompt.join(' ') || undefined;
 		if (!existsSync('.env')) {
 			logger.error('No .env file found, copy .env.example to .env and fill in the values');
 			process.exit(1);
@@ -166,6 +176,19 @@ program
 				);
 			}
 			process.exit(1);
+		}
+
+		// Handle one-shot mode if prompt arguments were provided
+		if (headlessInput) {
+			try {
+				await startHeadlessCli(agent, headlessInput);
+				process.exit(0);
+			} catch (err) {
+				logger.error(
+					`Failed to execute headless command: ${err instanceof Error ? err.message : String(err)}`
+				);
+				process.exit(1);
+			}
 		}
 
 		/**
