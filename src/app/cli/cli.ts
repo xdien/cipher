@@ -12,14 +12,32 @@ import { commandParser } from './parser.js';
 export async function startHeadlessCli(agent: MemAgent, input: string): Promise<void> {
 	await _initCli(agent);
 
-	console.log(chalk.gray('🤔 Processing...'));
-	const response = await agent.run(input);
-
-	if (response) {
-		// Display the AI response with nice formatting
-		logger.displayAIResponse(response);
+	if (input.trim().startsWith('!meta ')) {
+		const metaAndMessage = input.trim().substring(6).split(' ');
+		const metaStr = metaAndMessage[0];
+		const message = metaAndMessage.slice(1).join(' ');
+		let metadata: Record<string, any> = {};
+		try {
+			metadata = parseMetaString(metaStr);
+		} catch (err) {
+			console.log(chalk.red('❌ Invalid metadata format. Use key=value,key2=value2 ...'));
+			return;
+		}
+		console.log(chalk.gray('🤔 Processing (with metadata)...'));
+		const response = await agent.run(message, undefined, undefined, false, { memoryMetadata: metadata });
+		if (response) {
+			logger.displayAIResponse(response);
+		} else {
+			console.log(chalk.gray('No response received.'));
+		}
 	} else {
-		console.log(chalk.gray('No response received.'));
+		console.log(chalk.gray('🤔 Processing...'));
+		const response = await agent.run(input);
+		if (response) {
+			logger.displayAIResponse(response);
+		} else {
+			console.log(chalk.gray('No response received.'));
+		}
 	}
 }
 
@@ -65,30 +83,52 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 
 		try {
 			// Parse input to determine if it's a command or regular prompt
-			const parsedInput = commandParser.parseInput(trimmedInput);
-
-			if (parsedInput.isCommand) {
-				// Handle slash command
-				if (parsedInput.command && parsedInput.args !== undefined) {
-					const commandSuccess = await executeCommand(parsedInput.command, parsedInput.args, agent);
-
-					if (!commandSuccess) {
-						console.log(chalk.gray('Command execution failed or was cancelled.'));
-					}
-				} else {
-					console.log(chalk.red('❌ Invalid command format'));
-					commandParser.displayHelp();
+			if (trimmedInput.startsWith('!meta ')) {
+				// Parse metadata command: !meta key=value,key2=value2 message
+				const metaAndMessage = trimmedInput.substring(6).split(' ');
+				const metaStr = metaAndMessage[0];
+				const message = metaAndMessage.slice(1).join(' ');
+				let metadata: Record<string, any> = {};
+				try {
+					metadata = parseMetaString(metaStr);
+				} catch (err) {
+					console.log(chalk.red('❌ Invalid metadata format. Use key=value,key2=value2 ...'));
+					rl.prompt();
+					return;
 				}
-			} else {
-				// Handle regular user prompt - pass to agent
-				console.log(chalk.gray('🤔 Thinking...'));
-				const response = await agent.run(trimmedInput);
-
+				console.log(chalk.gray('🤔 Thinking (with metadata)...'));
+				const response = await agent.run(message, undefined, undefined, false, { memoryMetadata: metadata });
 				if (response) {
-					// Display the AI response with nice formatting
 					logger.displayAIResponse(response);
 				} else {
 					console.log(chalk.gray('No response received.'));
+				}
+			} else {
+				const parsedInput = commandParser.parseInput(trimmedInput);
+
+				if (parsedInput.isCommand) {
+					// Handle slash command
+					if (parsedInput.command && parsedInput.args !== undefined) {
+						const commandSuccess = await executeCommand(parsedInput.command, parsedInput.args, agent);
+
+						if (!commandSuccess) {
+							console.log(chalk.gray('Command execution failed or was cancelled.'));
+						}
+					} else {
+						console.log(chalk.red('❌ Invalid command format'));
+						commandParser.displayHelp();
+					}
+				} else {
+					// Handle regular user prompt - pass to agent
+					console.log(chalk.gray('🤔 Thinking...'));
+					const response = await agent.run(trimmedInput);
+
+					if (response) {
+						// Display the AI response with nice formatting
+						logger.displayAIResponse(response);
+					} else {
+						console.log(chalk.gray('No response received.'));
+					}
 				}
 			}
 		} catch (error) {
@@ -159,4 +199,19 @@ async function _initCli(agent: MemAgent): Promise<void> {
 	}
 
 	logger.info('CLI interface ready');
+}
+
+// Add utility for parsing metadata from CLI
+export function parseMetaString(metaStr: string): Record<string, any> {
+	const metadata: Record<string, any> = {};
+	if (!metaStr) return metadata;
+	const pairs = metaStr.split(',');
+	for (const pair of pairs) {
+		const [key, value] = pair.split('=');
+		if (!key || value === undefined || value === '') {
+			throw new Error('Invalid metadata pair');
+		}
+		metadata[key.trim()] = value.trim();
+	}
+	return metadata;
 }

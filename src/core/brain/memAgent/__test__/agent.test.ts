@@ -468,4 +468,35 @@ describe('MemAgent', () => {
 			expect(agent.services).toBeDefined();
 		});
 	});
+
+	describe('Metadata Propagation', () => {
+		it('should propagate memoryMetadata and sessionOptions to session.run', async () => {
+			const agent = new MemAgent(validConfig);
+			await agent.start();
+
+			const mockSession = {
+				id: 'test-session',
+				run: vi.fn().mockResolvedValue('Mock response'),
+			};
+			mockServices.sessionManager.getSession.mockResolvedValue(mockSession);
+
+			const memoryMetadata = { foo: 'bar' };
+			const sessionOptions = { baz: 'qux' };
+
+			await agent.run('test input', undefined, undefined, false, {
+				memoryMetadata,
+				sessionOptions,
+			});
+
+			expect(mockSession.run).toHaveBeenCalledWith(
+				'test input',
+				undefined,
+				false,
+				{
+					memoryMetadata,
+					contextOverrides: sessionOptions,
+				}
+			);
+		});
+	});
 });
