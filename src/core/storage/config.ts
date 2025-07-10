@@ -202,16 +202,24 @@ const PostgresBackendSchema = BaseBackendSchema.extend({
 	ssl: z.boolean().optional().describe('Enable SSL connection'),
 
 	/** Connection pool settings */
-	pool: z.object({
-		/** Minimum number of connections in pool */
-		min: z.number().int().nonnegative().optional().describe('Minimum pool size'),
-		/** Maximum number of connections in pool */
-		max: z.number().int().positive().optional().describe('Maximum pool size'),
-		/** Connection idle timeout in ms */
-		idleTimeoutMillis: z.number().int().positive().optional().describe('Connection idle timeout'),
-		/** Connection acquire timeout in ms */
-		acquireTimeoutMillis: z.number().int().positive().optional().describe('Connection acquire timeout'),
-	}).optional().describe('Connection pool settings'),
+	pool: z
+		.object({
+			/** Minimum number of connections in pool */
+			min: z.number().int().nonnegative().optional().describe('Minimum pool size'),
+			/** Maximum number of connections in pool */
+			max: z.number().int().positive().optional().describe('Maximum pool size'),
+			/** Connection idle timeout in ms */
+			idleTimeoutMillis: z.number().int().positive().optional().describe('Connection idle timeout'),
+			/** Connection acquire timeout in ms */
+			acquireTimeoutMillis: z
+				.number()
+				.int()
+				.positive()
+				.optional()
+				.describe('Connection acquire timeout'),
+		})
+		.optional()
+		.describe('Connection pool settings'),
 }).strict();
 
 export type PostgresBackendConfig = z.infer<typeof PostgresBackendSchema>;
@@ -225,16 +233,20 @@ export type PostgresBackendConfig = z.infer<typeof PostgresBackendSchema>;
  * Includes custom validation to ensure Redis backends have required connection info.
  */
 const BackendConfigSchema = z
-	.discriminatedUnion('type', [InMemoryBackendSchema, RedisBackendSchema, SqliteBackendSchema, PostgresBackendSchema], {
-		errorMap: (issue, ctx) => {
-			if (issue.code === z.ZodIssueCode.invalid_union_discriminator) {
-				return {
-					message: `Invalid backend type. Expected 'in-memory', 'redis', 'sqlite', or 'postgres'.`,
-				};
-			}
-			return { message: ctx.defaultError };
-		},
-	})
+	.discriminatedUnion(
+		'type',
+		[InMemoryBackendSchema, RedisBackendSchema, SqliteBackendSchema, PostgresBackendSchema],
+		{
+			errorMap: (issue, ctx) => {
+				if (issue.code === z.ZodIssueCode.invalid_union_discriminator) {
+					return {
+						message: `Invalid backend type. Expected 'in-memory', 'redis', 'sqlite', or 'postgres'.`,
+					};
+				}
+				return { message: ctx.defaultError };
+			},
+		}
+	)
 	.describe('Backend configuration for storage system')
 	.superRefine((data, ctx) => {
 		// Validate Redis backend requirements
@@ -255,7 +267,8 @@ const BackendConfigSchema = z
 			if (!data.url && (!data.host || !data.database)) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
-					message: "PostgreSQL backend requires either 'url' or both 'host' and 'database' to be specified",
+					message:
+						"PostgreSQL backend requires either 'url' or both 'host' and 'database' to be specified",
 					path: ['url'],
 				});
 			}

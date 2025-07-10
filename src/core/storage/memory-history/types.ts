@@ -123,7 +123,11 @@ export interface MemoryHistoryService {
 	getByProjectId(projectId: string, options?: QueryOptions): Promise<MemoryHistoryEntry[]>;
 	getByUserId(userId: string, options?: QueryOptions): Promise<MemoryHistoryEntry[]>;
 	getByTags(tags: string[], options?: QueryOptions): Promise<MemoryHistoryEntry[]>;
-	getByTimeRange(startTime: string, endTime: string, options?: QueryOptions): Promise<MemoryHistoryEntry[]>;
+	getByTimeRange(
+		startTime: string,
+		endTime: string,
+		options?: QueryOptions
+	): Promise<MemoryHistoryEntry[]>;
 
 	// Analytics
 	getOperationStats(projectId?: string, userId?: string): Promise<OperationStats>;

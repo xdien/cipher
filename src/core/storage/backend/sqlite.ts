@@ -60,15 +60,15 @@ export class SqliteBackend implements DatabaseBackend {
 
 	constructor(private config: SqliteBackendConfig) {
 		this.logger = createLogger({ level: process.env.LOG_LEVEL || 'info' });
-		
+
 		// Construct database path
 		const dbPath = config.path || './data';
 		const dbName = config.database || 'cipher.db';
 		this.dbPath = join(dbPath, dbName);
-		
+
 		this.logger.debug('SQLite backend initialized', {
 			path: this.dbPath,
-			config: { ...config, path: dbPath, database: dbName }
+			config: { ...config, path: dbPath, database: dbName },
 		});
 	}
 
@@ -84,14 +84,14 @@ export class SqliteBackend implements DatabaseBackend {
 				await mkdir(dir, { recursive: true });
 				this.logger.debug('Created database directory', { dir });
 			}
-		// Open database
-		this.db = new (Database as any).default(this.dbPath);
-		if (!this.db) {
-			throw new Error('Failed to create SQLite database connection');
-		}
-		this.db.pragma('journal_mode = WAL'); // Enable WAL mode for better performance
-		this.db.pragma('synchronous = NORMAL'); // Balanced performance/durability
-		this.db.pragma('foreign_keys = ON'); // Enable foreign keys
+			// Open database
+			this.db = new (Database as any).default(this.dbPath);
+			if (!this.db) {
+				throw new Error('Failed to create SQLite database connection');
+			}
+			this.db.pragma('journal_mode = WAL'); // Enable WAL mode for better performance
+			this.db.pragma('synchronous = NORMAL'); // Balanced performance/durability
+			this.db.pragma('foreign_keys = ON'); // Enable foreign keys
 
 			// Create tables
 			this.createTables();
@@ -101,11 +101,10 @@ export class SqliteBackend implements DatabaseBackend {
 
 			this.connected = true;
 			this.logger.info('SQLite backend connected', { path: this.dbPath });
-
 		} catch (error) {
 			this.logger.error('Failed to connect to SQLite database', {
 				path: this.dbPath,
-				error: error instanceof Error ? error.message : String(error)
+				error: error instanceof Error ? error.message : String(error),
 			});
 			throw new StorageConnectionError(
 				`Failed to connect to SQLite database: ${error instanceof Error ? error.message : String(error)}`,
@@ -140,7 +139,7 @@ export class SqliteBackend implements DatabaseBackend {
 			this.logger.info('SQLite backend disconnected');
 		} catch (error) {
 			this.logger.error('Error disconnecting from SQLite database', {
-				error: error instanceof Error ? error.message : String(error)
+				error: error instanceof Error ? error.message : String(error),
 			});
 			throw error;
 		}
@@ -158,7 +157,7 @@ export class SqliteBackend implements DatabaseBackend {
 
 	async get<T>(key: string): Promise<T | undefined> {
 		this.checkConnection();
-		
+
 		try {
 			const row = this.statements.get!.get(key) as { value: string } | undefined;
 			if (!row) {
@@ -169,7 +168,7 @@ export class SqliteBackend implements DatabaseBackend {
 		} catch (error) {
 			this.logger.error('Error getting value from SQLite', {
 				key,
-				error: error instanceof Error ? error.message : String(error)
+				error: error instanceof Error ? error.message : String(error),
 			});
 			throw new StorageError('Failed to get value from SQLite', 'get', error as Error);
 		}
@@ -177,7 +176,7 @@ export class SqliteBackend implements DatabaseBackend {
 
 	async set<T>(key: string, value: T): Promise<void> {
 		this.checkConnection();
-		
+
 		try {
 			const serialized = JSON.stringify(value);
 			const now = Date.now();
@@ -185,7 +184,7 @@ export class SqliteBackend implements DatabaseBackend {
 		} catch (error) {
 			this.logger.error('Error setting value in SQLite', {
 				key,
-				error: error instanceof Error ? error.message : String(error)
+				error: error instanceof Error ? error.message : String(error),
 			});
 			throw new StorageError('Failed to set value in SQLite', 'set', error as Error);
 		}
@@ -193,7 +192,7 @@ export class SqliteBackend implements DatabaseBackend {
 
 	async delete(key: string): Promise<void> {
 		this.checkConnection();
-		
+
 		try {
 			// Delete from both key-value store and lists
 			const transaction = this.db!.transaction(() => {
@@ -201,12 +200,12 @@ export class SqliteBackend implements DatabaseBackend {
 				// Also delete from lists table if it exists as a list
 				this.db!.prepare('DELETE FROM lists WHERE key = ?').run(key);
 			});
-			
+
 			transaction();
 		} catch (error) {
 			this.logger.error('Error deleting value from SQLite', {
 				key,
-				error: error instanceof Error ? error.message : String(error)
+				error: error instanceof Error ? error.message : String(error),
 			});
 			throw new StorageError('Failed to delete value from SQLite', 'delete', error as Error);
 		}
@@ -214,14 +213,14 @@ export class SqliteBackend implements DatabaseBackend {
 
 	async list(prefix: string): Promise<string[]> {
 		this.checkConnection();
-		
+
 		try {
 			const rows = this.statements.list!.all(prefix + '%') as { key: string }[];
 			return rows.map(row => row.key);
 		} catch (error) {
 			this.logger.error('Error listing keys from SQLite', {
 				prefix,
-				error: error instanceof Error ? error.message : String(error)
+				error: error instanceof Error ? error.message : String(error),
 			});
 			throw new StorageError('Failed to list keys from SQLite', 'list', error as Error);
 		}
@@ -229,22 +228,25 @@ export class SqliteBackend implements DatabaseBackend {
 
 	async append<T>(key: string, item: T): Promise<void> {
 		this.checkConnection();
-		
+
 		try {
 			const serialized = JSON.stringify(item);
 			const now = Date.now();
-			
+
 			// Get current max position for this key
-			const maxPosResult = this.db!.prepare('SELECT COALESCE(MAX(position), -1) + 1 as next_pos FROM lists WHERE key = ?').get(key) as { next_pos: number };
+			const maxPosResult = this.db!.prepare(
+				'SELECT COALESCE(MAX(position), -1) + 1 as next_pos FROM lists WHERE key = ?'
+			).get(key) as { next_pos: number };
 			const nextPosition = maxPosResult.next_pos;
-			
+
 			// Insert the new item
-			this.db!.prepare('INSERT INTO lists (key, value, position, created_at) VALUES (?, ?, ?, ?)').run(key, serialized, nextPosition, now);
-			
+			this.db!.prepare(
+				'INSERT INTO lists (key, value, position, created_at) VALUES (?, ?, ?, ?)'
+			).run(key, serialized, nextPosition, now);
 		} catch (error) {
 			this.logger.error('Error appending to list in SQLite', {
 				key,
-				error: error instanceof Error ? error.message : String(error)
+				error: error instanceof Error ? error.message : String(error),
 			});
 			throw new StorageError('Failed to append to list in SQLite', 'append', error as Error);
 		}
@@ -252,7 +254,7 @@ export class SqliteBackend implements DatabaseBackend {
 
 	async getRange<T>(key: string, start: number, count: number): Promise<T[]> {
 		this.checkConnection();
-		
+
 		try {
 			const rows = this.statements.getRange!.all(key, count, start) as { value: string }[];
 			return rows.map(row => JSON.parse(row.value) as T);
@@ -261,7 +263,7 @@ export class SqliteBackend implements DatabaseBackend {
 				key,
 				start,
 				count,
-				error: error instanceof Error ? error.message : String(error)
+				error: error instanceof Error ? error.message : String(error),
 			});
 			throw new StorageError('Failed to get range from SQLite', 'getRange', error as Error);
 		}
@@ -332,7 +334,7 @@ export class SqliteBackend implements DatabaseBackend {
 			`),
 			delete: this.db.prepare('DELETE FROM store WHERE key = ?'),
 			list: this.db.prepare('SELECT key FROM store WHERE key LIKE ? ORDER BY key'),
-			
+
 			// Range query for lists
 			getRange: this.db.prepare(`
 				SELECT value FROM lists 
@@ -340,7 +342,7 @@ export class SqliteBackend implements DatabaseBackend {
 				ORDER BY position 
 				LIMIT ? OFFSET ?
 			`),
-			listCount: this.db.prepare('SELECT COUNT(*) as count FROM lists WHERE key = ?')
+			listCount: this.db.prepare('SELECT COUNT(*) as count FROM lists WHERE key = ?'),
 		};
 
 		this.logger.debug('SQLite prepared statements created');
@@ -351,7 +353,7 @@ export class SqliteBackend implements DatabaseBackend {
 	 */
 	getDbInfo(): { path: string; size?: number; pageCount?: number; pageSize?: number } {
 		const info: any = { path: this.dbPath };
-		
+
 		if (this.connected && this.db) {
 			try {
 				const pragmaResult = this.db.pragma('page_count');
@@ -360,14 +362,14 @@ export class SqliteBackend implements DatabaseBackend {
 				if (!isNaN(numPageCount)) {
 					info.pageCount = numPageCount;
 				}
-				
+
 				const pageSizeResult = this.db.pragma('page_size');
 				const pageSize = Array.isArray(pageSizeResult) ? pageSizeResult[0] : pageSizeResult;
 				const numPageSize = typeof pageSize === 'number' ? pageSize : Number(pageSize);
 				if (!isNaN(numPageSize)) {
 					info.pageSize = numPageSize;
 				}
-				
+
 				if (info.pageCount && info.pageSize) {
 					info.size = info.pageCount * info.pageSize;
 				}
@@ -375,7 +377,7 @@ export class SqliteBackend implements DatabaseBackend {
 				this.logger.warn('Error getting database info', { error });
 			}
 		}
-		
+
 		return info;
 	}
 
@@ -384,25 +386,25 @@ export class SqliteBackend implements DatabaseBackend {
 	 */
 	async maintenance(): Promise<void> {
 		this.checkConnection();
-		
+
 		try {
 			// Analyze tables for query optimization
 			this.db!.exec('ANALYZE');
-			
+
 			// Vacuum to reclaim space (if needed)
 			const freeListResult = this.db!.pragma('freelist_count');
 			const freePages = Array.isArray(freeListResult) ? freeListResult[0] : freeListResult;
 			const freePageCount = typeof freePages === 'number' ? freePages : Number(freePages);
-			
+
 			if (freePageCount > 100) {
 				this.db!.exec('VACUUM');
 				this.logger.info('Database vacuumed', { freePages: freePageCount });
 			}
-			
+
 			this.logger.debug('Database maintenance completed');
 		} catch (error) {
 			this.logger.error('Error during database maintenance', {
-				error: error instanceof Error ? error.message : String(error)
+				error: error instanceof Error ? error.message : String(error),
 			});
 			throw new StorageError('Database maintenance failed', 'maintenance', error as Error);
 		}

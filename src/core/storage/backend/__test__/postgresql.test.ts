@@ -101,10 +101,10 @@ describe('PostgresBackend', () => {
 
 		it.skip('should store and retrieve values', async () => {
 			const testData = { name: 'John', age: 30, active: true };
-			
+
 			await backend.set('user:123', testData);
 			const retrieved = await backend.get<typeof testData>('user:123');
-			
+
 			expect(retrieved).toEqual(testData);
 		});
 
@@ -133,7 +133,7 @@ describe('PostgresBackend', () => {
 		it.skip('should update existing values', async () => {
 			await backend.set('counter', 1);
 			await backend.set('counter', 2);
-			
+
 			const result = await backend.get<number>('counter');
 			expect(result).toBe(2);
 		});
@@ -141,7 +141,7 @@ describe('PostgresBackend', () => {
 		it.skip('should delete values', async () => {
 			await backend.set('temp', 'temporary data');
 			expect(await backend.get('temp')).toBeDefined();
-			
+
 			await backend.delete('temp');
 			expect(await backend.get('temp')).toBeUndefined();
 		});
@@ -164,7 +164,7 @@ describe('PostgresBackend', () => {
 			await backend.set('user:1', { name: 'Alice' });
 			await backend.set('user:2', { name: 'Bob' });
 			await backend.set('post:1', { title: 'Hello' });
-			
+
 			const userKeys = await backend.list('user:');
 			expect(userKeys).toHaveLength(2);
 			expect(userKeys).toContain('user:1');
@@ -181,7 +181,7 @@ describe('PostgresBackend', () => {
 			await backend.set('item:c', 'C');
 			await backend.set('item:a', 'A');
 			await backend.set('item:b', 'B');
-			
+
 			const keys = await backend.list('item:');
 			expect(keys).toEqual(['item:a', 'item:b', 'item:c']);
 		});
@@ -200,7 +200,7 @@ describe('PostgresBackend', () => {
 			await backend.append('log', { event: 'login', user: 'alice' });
 			await backend.append('log', { event: 'action', user: 'alice' });
 			await backend.append('log', { event: 'logout', user: 'alice' });
-			
+
 			const items = await backend.getRange('log', 0, 10);
 			expect(items).toHaveLength(3);
 			expect(items[0]).toEqual({ event: 'login', user: 'alice' });
@@ -234,7 +234,7 @@ describe('PostgresBackend', () => {
 		it.skip('should handle out-of-bounds range queries', async () => {
 			await backend.append('small', 'item1');
 			await backend.append('small', 'item2');
-			
+
 			const items = await backend.getRange('small', 5, 10);
 			expect(items).toEqual([]);
 		});
@@ -269,7 +269,7 @@ describe('PostgresBackend', () => {
 
 		it.skip('should handle query errors gracefully', async () => {
 			await backend.connect();
-			
+
 			// This would cause a query error if PostgreSQL is configured to be strict
 			// The exact test depends on PostgreSQL configuration
 		});
@@ -285,7 +285,7 @@ describe('PostgresBackend', () => {
 		it.skip('should provide detailed info when connected', async () => {
 			await backend.connect();
 			const info = backend.getInfo();
-			
+
 			expect(info.type).toBe('postgres');
 			expect(info.connected).toBe(true);
 			expect(info.pool).toBeDefined();

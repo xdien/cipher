@@ -16,7 +16,10 @@ program
 	.name('cipher')
 	.description('Agent that can help to remember your vibe coding agent knowledge and reinforce it')
 	.version(pkg.version, '-v, --version', 'output the current version')
-	.argument('[prompt...]', 'Natural-language prompt to run once. If not passed, cipher will start in interactive mode')
+	.argument(
+		'[prompt...]',
+		'Natural-language prompt to run once. If not passed, cipher will start in interactive mode'
+	)
 	.option('--no-verbose', 'Disable verbose output')
 	.option('-a, --agent <path>', 'Path to agent config file', DEFAULT_CONFIG_PATH)
 	.option('-s, --strict', 'Require all MCP server connections to succeed')
@@ -59,7 +62,7 @@ program
 	 *
 	 * Created sessions persist for the duration of the CLI session and follow
 	 * the agent's session management lifecycle and TTL settings.
-	 * 
+	 *
 	 * One-Shot Mode Behavior:
 	 * When prompt arguments are provided, cipher runs in headless mode:
 	 * - Executes the prompt once and exits

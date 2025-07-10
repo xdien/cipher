@@ -25,8 +25,8 @@ vi.mock('../../../env.js', () => ({
 	env: {
 		CIPHER_LOG_LEVEL: 'info',
 		STORAGE_CACHE_TYPE: 'in-memory',
-		STORAGE_DATABASE_TYPE: 'in-memory'
-	}
+		STORAGE_DATABASE_TYPE: 'in-memory',
+	},
 }));
 
 describe('MemoryHistoryStorageService', () => {
@@ -82,7 +82,7 @@ describe('MemoryHistoryStorageService', () => {
 				operation: 'ADD',
 				tags: ['test', 'memory'],
 				success: true,
-				metadata: { source: 'test' }
+				metadata: { source: 'test' },
 			});
 
 			await expect(service.recordOperation(entry)).resolves.not.toThrow();
@@ -90,7 +90,7 @@ describe('MemoryHistoryStorageService', () => {
 
 		it('should throw error when not connected', async () => {
 			await service.disconnect();
-			
+
 			const entry = createMemoryHistoryEntry({
 				projectId: 'test-project',
 				memoryId: 'mem-123',
@@ -98,7 +98,7 @@ describe('MemoryHistoryStorageService', () => {
 				operation: 'ADD',
 				tags: ['test'],
 				success: true,
-				metadata: {}
+				metadata: {},
 			});
 
 			await expect(service.recordOperation(entry)).rejects.toThrow('not connected');
@@ -121,7 +121,7 @@ describe('MemoryHistoryStorageService', () => {
 				operation: 'INVALID' as any,
 				tags: ['test'],
 				success: true,
-				metadata: {}
+				metadata: {},
 			});
 
 			await expect(service.recordOperation(entry)).rejects.toThrow('Invalid operation type');
@@ -136,7 +136,7 @@ describe('MemoryHistoryStorageService', () => {
 				tags: ['test'],
 				success: true,
 				metadata: {},
-				timestamp: 'invalid-timestamp'
+				timestamp: 'invalid-timestamp',
 			});
 
 			await expect(service.recordOperation(entry)).rejects.toThrow('Invalid timestamp format');
@@ -160,7 +160,7 @@ describe('MemoryHistoryStorageService', () => {
 					userId: 'user-1',
 					success: true,
 					metadata: { source: 'cli' },
-					sessionId: 'session-1'
+					sessionId: 'session-1',
 				}),
 				createMemoryHistoryEntry({
 					projectId: 'project-1',
@@ -172,7 +172,7 @@ describe('MemoryHistoryStorageService', () => {
 					success: false,
 					error: 'Validation failed',
 					metadata: { source: 'api' },
-					sessionId: 'session-2'
+					sessionId: 'session-2',
 				}),
 				createMemoryHistoryEntry({
 					projectId: 'project-2',
@@ -183,8 +183,8 @@ describe('MemoryHistoryStorageService', () => {
 					userId: 'user-1',
 					success: true,
 					metadata: { query: 'design patterns' },
-					sessionId: 'session-1'
-				})
+					sessionId: 'session-1',
+				}),
 			];
 
 			// Record test entries
@@ -239,7 +239,7 @@ describe('MemoryHistoryStorageService', () => {
 
 		it('should apply pagination', async () => {
 			const filters: HistoryFilters = {
-				options: { limit: 2, offset: 1 }
+				options: { limit: 2, offset: 1 },
 			};
 			const history = await service.getHistory(filters);
 			expect(history).toHaveLength(2);
@@ -247,7 +247,7 @@ describe('MemoryHistoryStorageService', () => {
 
 		it('should sort results', async () => {
 			const filters: HistoryFilters = {
-				options: { sortBy: 'name', sortOrder: 'asc' }
+				options: { sortBy: 'name', sortOrder: 'asc' },
 			};
 			const history = await service.getHistory(filters);
 			expect(history[0]?.name).toBe('Add React knowledge');
@@ -273,7 +273,7 @@ describe('MemoryHistoryStorageService', () => {
 					tags: ['react', 'javascript'],
 					success: true,
 					duration: 100,
-					metadata: {}
+					metadata: {},
 				}),
 				createMemoryHistoryEntry({
 					projectId: 'project-1',
@@ -283,7 +283,7 @@ describe('MemoryHistoryStorageService', () => {
 					tags: ['react', 'hooks'],
 					success: false,
 					duration: 200,
-					metadata: {}
+					metadata: {},
 				}),
 				createMemoryHistoryEntry({
 					projectId: 'project-2',
@@ -293,8 +293,8 @@ describe('MemoryHistoryStorageService', () => {
 					tags: ['python'],
 					success: true,
 					duration: 150,
-					metadata: {}
-				})
+					metadata: {},
+				}),
 			];
 
 			for (const entry of entries) {
@@ -304,7 +304,7 @@ describe('MemoryHistoryStorageService', () => {
 
 		it('should calculate operation statistics', async () => {
 			const stats = await service.getOperationStats();
-			
+
 			expect(stats.totalOperations).toBe(3);
 			expect(stats.successCount).toBe(2);
 			expect(stats.errorCount).toBe(1);
@@ -316,7 +316,7 @@ describe('MemoryHistoryStorageService', () => {
 
 		it('should filter statistics by project', async () => {
 			const stats = await service.getOperationStats('project-1');
-			
+
 			expect(stats.totalOperations).toBe(2);
 			expect(stats.operationCounts.ADD).toBe(2);
 			expect(stats.operationCounts.SEARCH).toBe(0);
@@ -324,7 +324,7 @@ describe('MemoryHistoryStorageService', () => {
 
 		it('should calculate success rate', async () => {
 			const successRate = await service.getSuccessRate();
-			expect(successRate).toBeCloseTo(2/3, 2);
+			expect(successRate).toBeCloseTo(2 / 3, 2);
 		});
 
 		it('should return 0 success rate for no operations', async () => {
@@ -347,7 +347,7 @@ describe('MemoryHistoryStorageService', () => {
 				operation: 'ADD',
 				tags: ['test'],
 				success: true,
-				metadata: {}
+				metadata: {},
 			});
 
 			expect(entry.id).toBeDefined();
@@ -369,7 +369,7 @@ describe('MemoryHistoryStorageService', () => {
 				operation: 'ADD',
 				tags: ['test'],
 				success: true,
-				metadata: {}
+				metadata: {},
 			});
 
 			expect(entry.id).toBe(customId);

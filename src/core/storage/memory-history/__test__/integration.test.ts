@@ -8,7 +8,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { MemoryHistoryStorageService } from '../service.js';
 import { createMemoryHistoryEntry, createMemoryHistoryService } from '../index.js';
-import type { MemoryHistoryEntry, HistoryFilters, MemoryOperation, OperationStats } from '../types.js';
+import type {
+	MemoryHistoryEntry,
+	HistoryFilters,
+	MemoryOperation,
+	OperationStats,
+} from '../types.js';
 import { StorageManager } from '../../manager.js';
 import type { StorageConfig } from '../../config.js';
 
@@ -27,34 +32,33 @@ const mockConfigs = {
 	inMemory: {
 		CIPHER_LOG_LEVEL: 'info',
 		STORAGE_CACHE_TYPE: 'in-memory',
-		STORAGE_DATABASE_TYPE: 'in-memory'
+		STORAGE_DATABASE_TYPE: 'in-memory',
 	},
 	sqlite: {
 		CIPHER_LOG_LEVEL: 'info',
 		STORAGE_CACHE_TYPE: 'in-memory',
 		STORAGE_DATABASE_TYPE: 'sqlite',
-		STORAGE_SQLITE_PATH: ':memory:'
+		STORAGE_SQLITE_PATH: ':memory:',
 	},
 	postgres: {
 		CIPHER_LOG_LEVEL: 'info',
 		STORAGE_CACHE_TYPE: 'in-memory',
 		STORAGE_DATABASE_TYPE: 'postgresql',
-		STORAGE_POSTGRESQL_URL: 'postgresql://test:test@localhost:5432/cipher_test'
-	}
+		STORAGE_POSTGRESQL_URL: 'postgresql://test:test@localhost:5432/cipher_test',
+	},
 };
 
 /**
  * Test suite for each backend type
  */
 describe('Memory History Service Integration Tests', () => {
-	
 	describe('In-Memory Backend Integration', () => {
 		let service: MemoryHistoryStorageService;
 
 		beforeEach(async () => {
 			// Mock env for in-memory backend
 			vi.doMock('../../../env.js', () => ({
-				env: mockConfigs.inMemory
+				env: mockConfigs.inMemory,
 			}));
 
 			service = new MemoryHistoryStorageService();
@@ -83,7 +87,7 @@ describe('Memory History Service Integration Tests', () => {
 					tags: ['performance', 'test'],
 					sessionId: 'perf-test-session',
 					metadata: { index: i },
-					success: true
+					success: true,
 				});
 				entries.push(entry);
 				await service.recordOperation(entry);
@@ -103,7 +107,7 @@ describe('Memory History Service Integration Tests', () => {
 			const filterStart = Date.now();
 			const filteredEntries = await service.getHistory({
 				operation: 'ADD',
-				sessionId: 'perf-test-session'
+				sessionId: 'perf-test-session',
 			});
 			const filterTime = Date.now() - filterStart;
 
@@ -129,7 +133,7 @@ describe('Memory History Service Integration Tests', () => {
 						tags: ['concurrent', 'test'],
 						sessionId,
 						metadata: { batchIndex: index, itemIndex: i },
-						success: true
+						success: true,
 					});
 					entries.push(entry);
 				}
@@ -153,7 +157,7 @@ describe('Memory History Service Integration Tests', () => {
 			// Verify data integrity - each session should have correct number of entries
 			for (let i = 0; i < concurrentOperations; i++) {
 				const sessionEntries = await service.getHistory({
-					sessionId: `concurrent-session-${i}`
+					sessionId: `concurrent-session-${i}`,
 				});
 				expect(sessionEntries).toHaveLength(operationsPerConcurrent);
 			}
@@ -170,9 +174,9 @@ describe('Memory History Service Integration Tests', () => {
 					tags: ['error', 'test'],
 					sessionId: 'test-session',
 					metadata: { test: 'error' },
-					success: true
+					success: true,
 				}),
-				operation: 'INVALID_OPERATION' as MemoryOperation
+				operation: 'INVALID_OPERATION' as MemoryOperation,
 			};
 
 			await expect(service.recordOperation(invalidEntry)).rejects.toThrow();
@@ -200,7 +204,7 @@ describe('Memory History Service Integration Tests', () => {
 							tags: [operation.toLowerCase(), 'analytics'],
 							sessionId,
 							metadata: { operation, session: sessionId, index: i },
-							success: true
+							success: true,
 						});
 						await service.recordOperation(entry);
 					}
@@ -209,19 +213,23 @@ describe('Memory History Service Integration Tests', () => {
 
 			// Test overall analytics
 			const analytics = await service.getOperationStats();
-			expect(analytics.totalOperations).toBe(operations.length * sessions.length * entriesPerCombination);
+			expect(analytics.totalOperations).toBe(
+				operations.length * sessions.length * entriesPerCombination
+			);
 			expect(analytics.operationCounts.ADD).toBe(sessions.length * entriesPerCombination);
 			expect(analytics.operationCounts.UPDATE).toBe(sessions.length * entriesPerCombination);
 
 			// Test project-specific analytics
 			const projectAnalytics = await service.getOperationStats('analytics-project');
-			expect(projectAnalytics.totalOperations).toBe(operations.length * sessions.length * entriesPerCombination);
+			expect(projectAnalytics.totalOperations).toBe(
+				operations.length * sessions.length * entriesPerCombination
+			);
 		});
 
 		it('should integrate properly with StorageManager', async () => {
 			const config: StorageConfig = {
 				cache: { type: 'in-memory' },
-				database: { type: 'in-memory' }
+				database: { type: 'in-memory' },
 			};
 
 			const storageManager = new StorageManager(config);
@@ -240,12 +248,12 @@ describe('Memory History Service Integration Tests', () => {
 				tags: ['integration', 'test'],
 				sessionId: 'integration-session',
 				metadata: { source: 'StorageManager integration test' },
-				success: true
+				success: true,
 			});
 
 			await historyService.recordOperation(entry);
 			const entries = await historyService.getHistory({
-				sessionId: 'integration-session'
+				sessionId: 'integration-session',
 			});
 
 			expect(entries).toHaveLength(1);
@@ -263,7 +271,7 @@ describe('Memory History Service Integration Tests', () => {
 		beforeEach(async () => {
 			// Mock env for SQLite backend
 			vi.doMock('../../../env.js', () => ({
-				env: mockConfigs.sqlite
+				env: mockConfigs.sqlite,
 			}));
 
 			service = new MemoryHistoryStorageService();
@@ -292,7 +300,7 @@ describe('Memory History Service Integration Tests', () => {
 				tags: ['persistence', 'test'],
 				sessionId: 'persistence-session',
 				metadata: { test: 'persistence' },
-				success: true
+				success: true,
 			});
 
 			await service.recordOperation(entry);
@@ -301,7 +309,7 @@ describe('Memory History Service Integration Tests', () => {
 			// Reconnect and verify data is still there
 			await service.connect();
 			const entries = await service.getHistory({
-				memoryId: 'persistence-memory'
+				memoryId: 'persistence-memory',
 			});
 
 			expect(entries).toHaveLength(1);
@@ -324,7 +332,7 @@ describe('Memory History Service Integration Tests', () => {
 		beforeEach(async () => {
 			// Mock env for PostgreSQL backend
 			vi.doMock('../../../env.js', () => ({
-				env: mockConfigs.postgres
+				env: mockConfigs.postgres,
 			}));
 
 			service = new MemoryHistoryStorageService();
@@ -371,7 +379,7 @@ describe('Memory History Service Integration Tests', () => {
 		it('should maintain consistent data format across backends', async () => {
 			// This test ensures that data serialized by one backend
 			// can be read by another backend (important for migrations)
-			
+
 			const testEntry = createMemoryHistoryEntry({
 				operation: 'ADD' as MemoryOperation,
 				projectId: 'compatibility-project',
@@ -382,14 +390,14 @@ describe('Memory History Service Integration Tests', () => {
 				metadata: {
 					complex: { nested: { data: [1, 2, 3] } },
 					timestamp: new Date().toISOString(),
-					numbers: [1.5, 2.7, 3.14159]
+					numbers: [1.5, 2.7, 3.14159],
 				},
-				success: true
+				success: true,
 			});
 
 			// Test with in-memory backend (only available backend currently)
 			vi.doMock('../../../env.js', () => ({
-				env: mockConfigs.inMemory
+				env: mockConfigs.inMemory,
 			}));
 
 			const inMemoryService = new MemoryHistoryStorageService();
@@ -397,7 +405,7 @@ describe('Memory History Service Integration Tests', () => {
 			await inMemoryService.recordOperation(testEntry);
 
 			const retrieved = await inMemoryService.getHistory({
-				memoryId: 'compatibility-memory'
+				memoryId: 'compatibility-memory',
 			});
 
 			expect(retrieved).toHaveLength(1);
@@ -405,7 +413,7 @@ describe('Memory History Service Integration Tests', () => {
 				operation: 'ADD',
 				projectId: 'compatibility-project',
 				memoryId: 'compatibility-memory',
-				sessionId: 'compatibility-session'
+				sessionId: 'compatibility-session',
 			});
 			expect(retrieved[0]?.metadata).toEqual(testEntry.metadata);
 
@@ -419,7 +427,7 @@ describe('Memory History Service Integration Tests', () => {
 
 		beforeEach(async () => {
 			vi.doMock('../../../env.js', () => ({
-				env: mockConfigs.inMemory
+				env: mockConfigs.inMemory,
 			}));
 
 			service = new MemoryHistoryStorageService();
@@ -439,37 +447,41 @@ describe('Memory History Service Integration Tests', () => {
 				batchInsert100: 500, // ms
 				simpleQuery: 50, // ms
 				complexQuery: 200, // ms
-				analytics: 300 // ms
+				analytics: 300, // ms
 			};
 
 			// Single insert benchmark
 			const singleStart = Date.now();
-			await service.recordOperation(createMemoryHistoryEntry({
-				operation: 'ADD' as MemoryOperation,
-				projectId: 'benchmark-project',
-				memoryId: 'benchmark-single',
-				name: 'Single benchmark operation',
-				tags: ['benchmark', 'single'],
-				sessionId: 'benchmark-session',
-				metadata: { test: 'single' },
-				success: true
-			}));
+			await service.recordOperation(
+				createMemoryHistoryEntry({
+					operation: 'ADD' as MemoryOperation,
+					projectId: 'benchmark-project',
+					memoryId: 'benchmark-single',
+					name: 'Single benchmark operation',
+					tags: ['benchmark', 'single'],
+					sessionId: 'benchmark-session',
+					metadata: { test: 'single' },
+					success: true,
+				})
+			);
 			const singleTime = Date.now() - singleStart;
 			expect(singleTime).toBeLessThan(benchmarks.singleInsert);
 
 			// Batch insert benchmark
 			const batchStart = Date.now();
 			const batchPromises = Array.from({ length: 100 }, (_, i) =>
-				service.recordOperation(createMemoryHistoryEntry({
-					operation: 'ADD' as MemoryOperation,
-					projectId: 'benchmark-project',
-					memoryId: `benchmark-batch-${i}`,
-					name: `Batch benchmark operation ${i}`,
-					tags: ['benchmark', 'batch'],
-					sessionId: 'benchmark-session',
-					metadata: { test: 'batch', index: i },
-					success: true
-				}))
+				service.recordOperation(
+					createMemoryHistoryEntry({
+						operation: 'ADD' as MemoryOperation,
+						projectId: 'benchmark-project',
+						memoryId: `benchmark-batch-${i}`,
+						name: `Batch benchmark operation ${i}`,
+						tags: ['benchmark', 'batch'],
+						sessionId: 'benchmark-session',
+						metadata: { test: 'batch', index: i },
+						success: true,
+					})
+				)
 			);
 			await Promise.all(batchPromises);
 			const batchTime = Date.now() - batchStart;
@@ -488,8 +500,8 @@ describe('Memory History Service Integration Tests', () => {
 				sessionId: 'benchmark-session',
 				options: {
 					limit: 50,
-					offset: 10
-				}
+					offset: 10,
+				},
 			});
 			const complexQueryTime = Date.now() - complexQueryStart;
 			expect(complexQueryTime).toBeLessThan(benchmarks.complexQuery);
@@ -501,45 +513,49 @@ describe('Memory History Service Integration Tests', () => {
 			expect(analyticsTime).toBeLessThan(benchmarks.analytics);
 		});
 
-	it('should handle memory usage efficiently', async () => {
-		// This test verifies logical memory efficiency through operations
-		// Using a smaller dataset to avoid timeouts
-		
-		const operationCount = 500; // Reduced from 5000
-		let maxMemoryEntries = 0;
+		it('should handle memory usage efficiently', async () => {
+			// This test verifies logical memory efficiency through operations
+			// Using a smaller dataset to avoid timeouts
 
-		// Batch operations for better performance
-		const batchSize = 50;
-		for (let batch = 0; batch < operationCount / batchSize; batch++) {
-			const operations = [];
-			for (let i = 0; i < batchSize; i++) {
-				const index = batch * batchSize + i;
-				operations.push(service.recordOperation(createMemoryHistoryEntry({
-					operation: 'ADD' as MemoryOperation,
-					projectId: 'memory-test-project',
-					memoryId: `memory-test-${index}`,
-					name: `Memory test operation ${index}`,
-					tags: ['memory', 'test'],
-					sessionId: 'memory-test-session',
-					metadata: {
-						largeData: new Array(10).fill(`data-${index}`).join('-'), // Smaller data
-						index
-					},
-					success: true
-				})));
+			const operationCount = 500; // Reduced from 5000
+			let maxMemoryEntries = 0;
+
+			// Batch operations for better performance
+			const batchSize = 50;
+			for (let batch = 0; batch < operationCount / batchSize; batch++) {
+				const operations = [];
+				for (let i = 0; i < batchSize; i++) {
+					const index = batch * batchSize + i;
+					operations.push(
+						service.recordOperation(
+							createMemoryHistoryEntry({
+								operation: 'ADD' as MemoryOperation,
+								projectId: 'memory-test-project',
+								memoryId: `memory-test-${index}`,
+								name: `Memory test operation ${index}`,
+								tags: ['memory', 'test'],
+								sessionId: 'memory-test-session',
+								metadata: {
+									largeData: new Array(10).fill(`data-${index}`).join('-'), // Smaller data
+									index,
+								},
+								success: true,
+							})
+						)
+					);
+				}
+
+				// Execute batch
+				await Promise.all(operations);
+
+				// Check stored entry count
+				const currentEntries = await service.getHistory({ sessionId: 'memory-test-session' });
+				maxMemoryEntries = Math.max(maxMemoryEntries, currentEntries.length);
 			}
-			
-			// Execute batch
-			await Promise.all(operations);
 
-			// Check stored entry count
-			const currentEntries = await service.getHistory({ sessionId: 'memory-test-session' });
-			maxMemoryEntries = Math.max(maxMemoryEntries, currentEntries.length);
-		}
-
-		// Verify all operations were stored
-		const finalEntries = await service.getHistory({ sessionId: 'memory-test-session' });
-		expect(finalEntries).toHaveLength(operationCount);
-	}, 10000); // Increase timeout to 10 seconds
+			// Verify all operations were stored
+			const finalEntries = await service.getHistory({ sessionId: 'memory-test-session' });
+			expect(finalEntries).toHaveLength(operationCount);
+		}, 10000); // Increase timeout to 10 seconds
 	});
 });

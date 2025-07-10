@@ -121,6 +121,10 @@ export class Neo4jBackend implements KnowledgeGraph {
 				maxTransactionRetryTime: this.config.maxTransactionRetryTime,
 				maxConnectionLifetime: this.config.maxConnectionLifetime,
 				connectionLivenessCheckTimeout: this.config.connectionLivenessCheckTimeout,
+				encrypted: this.config.encrypted,
+				trust: this.config.trustServerCertificate
+					? 'TRUST_ALL_CERTIFICATES'
+					: 'TRUST_SYSTEM_CA_SIGNED_CERTIFICATES',
 			};
 
 			this.logger.debug(`${LOG_PREFIXES.NEO4J} Creating driver for ${uri}`);

@@ -17,7 +17,7 @@ export type {
 	HistoryFilters,
 	QueryOptions,
 	OperationStats,
-	MemoryOperation
+	MemoryOperation,
 } from './types.js';
 
 // Import types for internal use
@@ -25,16 +25,8 @@ import type { MemoryHistoryEntry } from './types.js';
 import { MemoryHistoryStorageService } from './service.js';
 
 // Schema exports
-export {
-	SQLITE_SCHEMA,
-	POSTGRESQL_SCHEMA,
-	MIGRATIONS,
-	QueryBuilder
-} from './schema.js';
-export type {
-	SchemaManager,
-	SchemaMigration
-} from './schema.js';
+export { SQLITE_SCHEMA, POSTGRESQL_SCHEMA, MIGRATIONS, QueryBuilder } from './schema.js';
+export type { SchemaManager, SchemaMigration } from './schema.js';
 
 /**
  * Create a new memory history service instance
@@ -44,10 +36,10 @@ export type {
  * @example
  * ```typescript
  * import { createMemoryHistoryService } from './storage/memory-history';
- * 
+ *
  * const historyService = createMemoryHistoryService();
  * await historyService.connect();
- * 
+ *
  * await historyService.recordOperation({
  *   id: 'op-123',
  *   projectId: 'project-1',
@@ -74,7 +66,7 @@ export function createMemoryHistoryService(): MemoryHistoryStorageService {
  * @example
  * ```typescript
  * import { createMemoryHistoryEntry } from './storage/memory-history';
- * 
+ *
  * const entry = createMemoryHistoryEntry({
  *   projectId: 'project-1',
  *   memoryId: 'mem-456',
@@ -95,6 +87,6 @@ export function createMemoryHistoryEntry(
 	return {
 		id: params.id || `mh_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
 		timestamp: params.timestamp || new Date().toISOString(),
-		...params
+		...params,
 	} as MemoryHistoryEntry;
 }

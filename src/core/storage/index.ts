@@ -29,7 +29,12 @@ export type {
 
 // Configuration exports
 export { StorageSchema } from './config.js';
-export type { InMemoryBackendConfig, RedisBackendConfig, SqliteBackendConfig, PostgresBackendConfig } from './config.js';
+export type {
+	InMemoryBackendConfig,
+	RedisBackendConfig,
+	SqliteBackendConfig,
+	PostgresBackendConfig,
+} from './config.js';
 
 // Error exports
 export { StorageError, StorageConnectionError, StorageNotFoundError } from './backend/types.js';
@@ -49,10 +54,10 @@ export { InMemoryBackend } from './backend/in-memory.js';
 // Redis and SQLite backends will be loaded lazily
 
 // Memory History Service exports
-export { 
+export {
 	MemoryHistoryStorageService,
 	createMemoryHistoryService,
-	createMemoryHistoryEntry
+	createMemoryHistoryEntry,
 } from './memory-history/index.js';
 export type {
 	MemoryHistoryEntry,
@@ -60,7 +65,7 @@ export type {
 	HistoryFilters,
 	QueryOptions,
 	OperationStats,
-	MemoryOperation
+	MemoryOperation,
 } from './memory-history/index.js';
 
 // Factory functions

@@ -119,8 +119,8 @@ export const MIGRATIONS: SchemaMigration[] = [
 		version: '1.0.0',
 		description: 'Initial memory history schema',
 		up: SQLITE_SCHEMA,
-		down: 'DROP TABLE IF EXISTS memory_history;'
-	}
+		down: 'DROP TABLE IF EXISTS memory_history;',
+	},
 ];
 
 /**
@@ -260,7 +260,7 @@ export class QueryBuilder {
 						timestamp, metadata, success, error, session_id, duration
 					) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 				`,
-				paramCount: 13
+				paramCount: 13,
 			};
 		} else {
 			return {
@@ -270,7 +270,7 @@ export class QueryBuilder {
 						timestamp, metadata, success, error, session_id, duration
 					) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 				`,
-				paramCount: 13
+				paramCount: 13,
 			};
 		}
 	}

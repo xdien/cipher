@@ -71,33 +71,45 @@ export class PostgresBackend implements DatabaseBackend {
 	 */
 	private initializeStatements(): void {
 		this.statements.set('get', 'SELECT value FROM cipher_store WHERE key = $1');
-		this.statements.set('set', `
+		this.statements.set(
+			'set',
+			`
 			INSERT INTO cipher_store (key, value, created_at, updated_at)
 			VALUES ($1, $2, $3, $4)
 			ON CONFLICT (key) DO UPDATE SET
 				value = EXCLUDED.value,
 				updated_at = EXCLUDED.updated_at
-		`);
+		`
+		);
 		this.statements.set('delete', 'DELETE FROM cipher_store WHERE key = $1');
 		this.statements.set('list', 'SELECT key FROM cipher_store WHERE key LIKE $1 ORDER BY key');
-		this.statements.set('listAppend', `
+		this.statements.set(
+			'listAppend',
+			`
 			INSERT INTO cipher_lists (key, value, position, created_at)
 			VALUES ($1, $2, COALESCE((SELECT MAX(position) + 1 FROM cipher_lists WHERE key = $1), 0), $3)
-		`);
-		this.statements.set('getRange', `
+		`
+		);
+		this.statements.set(
+			'getRange',
+			`
 			SELECT value FROM cipher_lists
 			WHERE key = $1
 			ORDER BY position
 			LIMIT $2 OFFSET $3
-		`);
+		`
+		);
 		this.statements.set('deleteList', 'DELETE FROM cipher_lists WHERE key = $1');
-		this.statements.set('updateListMetadata', `
+		this.statements.set(
+			'updateListMetadata',
+			`
 			INSERT INTO cipher_list_metadata (key, count, created_at, updated_at)
 			VALUES ($1, (SELECT COUNT(*) FROM cipher_lists WHERE key = $1), $2, $3)
 			ON CONFLICT (key) DO UPDATE SET
 				count = (SELECT COUNT(*) FROM cipher_lists WHERE key = $1),
 				updated_at = EXCLUDED.updated_at
-		`);
+		`
+		);
 	}
 
 	/**
@@ -393,8 +405,10 @@ export class PostgresBackend implements DatabaseBackend {
 				connectionString: this.config.url,
 				max: this.config.pool?.max || this.config.maxConnections || 10,
 				min: this.config.pool?.min || 2,
-				idleTimeoutMillis: this.config.pool?.idleTimeoutMillis || this.config.idleTimeoutMillis || 30000,
-				connectionTimeoutMillis: this.config.pool?.acquireTimeoutMillis || this.config.connectionTimeoutMillis || 10000,
+				idleTimeoutMillis:
+					this.config.pool?.idleTimeoutMillis || this.config.idleTimeoutMillis || 30000,
+				connectionTimeoutMillis:
+					this.config.pool?.acquireTimeoutMillis || this.config.connectionTimeoutMillis || 10000,
 				ssl: this.config.ssl,
 			};
 		}
@@ -408,8 +422,10 @@ export class PostgresBackend implements DatabaseBackend {
 			password: this.config.password,
 			max: this.config.pool?.max || this.config.maxConnections || 10,
 			min: this.config.pool?.min || 2,
-			idleTimeoutMillis: this.config.pool?.idleTimeoutMillis || this.config.idleTimeoutMillis || 30000,
-			connectionTimeoutMillis: this.config.pool?.acquireTimeoutMillis || this.config.connectionTimeoutMillis || 10000,
+			idleTimeoutMillis:
+				this.config.pool?.idleTimeoutMillis || this.config.idleTimeoutMillis || 30000,
+			connectionTimeoutMillis:
+				this.config.pool?.acquireTimeoutMillis || this.config.connectionTimeoutMillis || 10000,
 			ssl: this.config.ssl,
 		};
 	}
@@ -454,9 +470,13 @@ export class PostgresBackend implements DatabaseBackend {
 		`);
 
 		// Create indexes for performance
-		await this.pool.query('CREATE INDEX IF NOT EXISTS idx_cipher_store_updated_at ON cipher_store(updated_at)');
+		await this.pool.query(
+			'CREATE INDEX IF NOT EXISTS idx_cipher_store_updated_at ON cipher_store(updated_at)'
+		);
 		await this.pool.query('CREATE INDEX IF NOT EXISTS idx_cipher_lists_key ON cipher_lists(key)');
-		await this.pool.query('CREATE INDEX IF NOT EXISTS idx_cipher_lists_created_at ON cipher_lists(created_at)');
+		await this.pool.query(
+			'CREATE INDEX IF NOT EXISTS idx_cipher_lists_created_at ON cipher_lists(created_at)'
+		);
 
 		this.logger.debug('PostgreSQL tables and indexes created');
 	}

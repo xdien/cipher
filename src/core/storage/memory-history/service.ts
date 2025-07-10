@@ -18,7 +18,7 @@ import {
 	HistoryFilters,
 	QueryOptions,
 	OperationStats,
-	MemoryOperation
+	MemoryOperation,
 } from './types.js';
 import { SQLITE_SCHEMA, POSTGRESQL_SCHEMA, QueryBuilder } from './schema.js';
 
@@ -62,7 +62,7 @@ export class MemoryHistoryStorageService implements MemoryHistoryService {
 			this.logger.info(`${LOG_PREFIXES.BACKEND} Memory history service connected successfully`);
 		} catch (error) {
 			this.logger.error(`${LOG_PREFIXES.BACKEND} Failed to connect memory history service`, {
-				error: error instanceof Error ? error.message : String(error)
+				error: error instanceof Error ? error.message : String(error),
 			});
 			throw new StorageConnectionError(
 				`Failed to connect memory history service: ${error instanceof Error ? error.message : String(error)}`,
@@ -89,7 +89,7 @@ export class MemoryHistoryStorageService implements MemoryHistoryService {
 			this.logger.info(`${LOG_PREFIXES.BACKEND} Memory history service disconnected`);
 		} catch (error) {
 			this.logger.error(`${LOG_PREFIXES.BACKEND} Error disconnecting memory history service`, {
-				error: error instanceof Error ? error.message : String(error)
+				error: error instanceof Error ? error.message : String(error),
 			});
 			throw error;
 		}
@@ -116,16 +116,16 @@ export class MemoryHistoryStorageService implements MemoryHistoryService {
 
 			// Validate entry
 			this.validateEntry(entry);
-		// Store in database backend for persistence
-		const key = `memory_history:${entry.id}`;
-		const backends = await this.storageManager!.getBackends();
-		
-		if (!backends) {
-			throw new Error('Storage backends not available');
-		}
-		
-		// Use database backend for persistent storage
-		await backends.database.set(key, entry);
+			// Store in database backend for persistence
+			const key = `memory_history:${entry.id}`;
+			const backends = await this.storageManager!.getBackends();
+
+			if (!backends) {
+				throw new Error('Storage backends not available');
+			}
+
+			// Use database backend for persistent storage
+			await backends.database.set(key, entry);
 
 			// Also store in recent history cache (last 1000 entries)
 			await this.updateRecentHistoryCache(entry);
@@ -136,14 +136,13 @@ export class MemoryHistoryStorageService implements MemoryHistoryService {
 				operation: entry.operation,
 				projectId: entry.projectId,
 				success: entry.success,
-				duration: `${duration}ms`
+				duration: `${duration}ms`,
 			});
-
 		} catch (error) {
 			this.logger.error(`${LOG_PREFIXES.BACKEND} Failed to record memory operation`, {
 				id: entry.id,
 				operation: entry.operation,
-				error: error instanceof Error ? error.message : String(error)
+				error: error instanceof Error ? error.message : String(error),
 			});
 			throw new StorageError(
 				`Failed to record memory operation: ${error instanceof Error ? error.message : String(error)}`,
@@ -168,14 +167,14 @@ export class MemoryHistoryStorageService implements MemoryHistoryService {
 
 			this.logger.debug(`${LOG_PREFIXES.BACKEND} Retrieved memory history`, {
 				count: results.length,
-				filters: this.sanitizeFilters(filters)
+				filters: this.sanitizeFilters(filters),
 			});
 
 			return results;
 		} catch (error) {
 			this.logger.error(`${LOG_PREFIXES.BACKEND} Failed to get memory history`, {
 				filters: this.sanitizeFilters(filters),
-				error: error instanceof Error ? error.message : String(error)
+				error: error instanceof Error ? error.message : String(error),
 			});
 			throw new StorageError(
 				`Failed to get memory history: ${error instanceof Error ? error.message : String(error)}`,
@@ -187,7 +186,10 @@ export class MemoryHistoryStorageService implements MemoryHistoryService {
 	/**
 	 * Get history by project ID
 	 */
-	async getByProjectId(projectId: string, options: QueryOptions = {}): Promise<MemoryHistoryEntry[]> {
+	async getByProjectId(
+		projectId: string,
+		options: QueryOptions = {}
+	): Promise<MemoryHistoryEntry[]> {
 		return this.getHistory({ projectId, options });
 	}
 
@@ -208,7 +210,11 @@ export class MemoryHistoryStorageService implements MemoryHistoryService {
 	/**
 	 * Get history by time range
 	 */
-	async getByTimeRange(startTime: string, endTime: string, options: QueryOptions = {}): Promise<MemoryHistoryEntry[]> {
+	async getByTimeRange(
+		startTime: string,
+		endTime: string,
+		options: QueryOptions = {}
+	): Promise<MemoryHistoryEntry[]> {
 		return this.getHistory({ startTime, endTime, options });
 	}
 
@@ -224,12 +230,12 @@ export class MemoryHistoryStorageService implements MemoryHistoryService {
 			await this.ensureSchemaInitialized();
 
 			const backends = await this.storageManager!.getBackends();
-			
+
 			// Get all matching entries
 			const filters: HistoryFilters = {};
 			if (projectId) filters.projectId = projectId;
 			if (userId) filters.userId = userId;
-			
+
 			const entries = await this.queryHistory(filters);
 
 			// Calculate statistics
@@ -238,7 +244,7 @@ export class MemoryHistoryStorageService implements MemoryHistoryService {
 			this.logger.debug(`${LOG_PREFIXES.BACKEND} Retrieved operation statistics`, {
 				projectId,
 				userId,
-				totalOperations: stats.totalOperations
+				totalOperations: stats.totalOperations,
 			});
 
 			return stats;
@@ -246,7 +252,7 @@ export class MemoryHistoryStorageService implements MemoryHistoryService {
 			this.logger.error(`${LOG_PREFIXES.BACKEND} Failed to get operation statistics`, {
 				projectId,
 				userId,
-				error: error instanceof Error ? error.message : String(error)
+				error: error instanceof Error ? error.message : String(error),
 			});
 			throw new StorageError(
 				`Failed to get operation statistics: ${error instanceof Error ? error.message : String(error)}`,
@@ -260,7 +266,7 @@ export class MemoryHistoryStorageService implements MemoryHistoryService {
 	 */
 	async getSuccessRate(projectId?: string, userId?: string): Promise<number> {
 		const stats = await this.getOperationStats(projectId, userId);
-		
+
 		if (stats.totalOperations === 0) {
 			return 0;
 		}
@@ -285,7 +291,7 @@ export class MemoryHistoryStorageService implements MemoryHistoryService {
 				throw new Error('Storage backends not available');
 			}
 			const backendType = backends.database.getBackendType();
-			
+
 			if (backendType === 'in-memory') {
 				// In-memory storage doesn't need schema initialization
 				this.schemaInitialized = true;
@@ -295,11 +301,13 @@ export class MemoryHistoryStorageService implements MemoryHistoryService {
 			// For SQLite/PostgreSQL, we would initialize the schema here
 			// For now, we'll use the key-value storage pattern
 			this.schemaInitialized = true;
-			
-			this.logger.info(`${LOG_PREFIXES.BACKEND} Memory history schema initialized for ${backendType}`);
+
+			this.logger.info(
+				`${LOG_PREFIXES.BACKEND} Memory history schema initialized for ${backendType}`
+			);
 		} catch (error) {
 			this.logger.error(`${LOG_PREFIXES.BACKEND} Failed to initialize schema`, {
-				error: error instanceof Error ? error.message : String(error)
+				error: error instanceof Error ? error.message : String(error),
 			});
 			throw error;
 		}
@@ -350,11 +358,11 @@ export class MemoryHistoryStorageService implements MemoryHistoryService {
 		if (!backends) {
 			throw new Error('Storage backends not available');
 		}
-		
+
 		// Get all history entries matching the project pattern
 		const keyPrefix = 'memory_history:';
 		const keys = await backends.database.list(keyPrefix);
-		
+
 		// Fetch all entries
 		const entries: MemoryHistoryEntry[] = [];
 		for (const key of keys) {
@@ -385,7 +393,7 @@ export class MemoryHistoryStorageService implements MemoryHistoryService {
 		}
 
 		if (filters.tags && filters.tags.length > 0) {
-			filteredEntries = filteredEntries.filter(entry => 
+			filteredEntries = filteredEntries.filter(entry =>
 				filters.tags!.every(tag => entry.tags.includes(tag))
 			);
 		}
@@ -409,26 +417,26 @@ export class MemoryHistoryStorageService implements MemoryHistoryService {
 		// Apply sorting
 		const sortBy = filters.options?.sortBy || 'timestamp';
 		const sortOrder = filters.options?.sortOrder || 'desc';
-		
+
 		filteredEntries.sort((a, b) => {
 			const aValue = a[sortBy as keyof MemoryHistoryEntry];
 			const bValue = b[sortBy as keyof MemoryHistoryEntry];
-			
+
 			if (aValue === undefined && bValue === undefined) return 0;
 			if (aValue === undefined) return sortOrder === 'asc' ? -1 : 1;
 			if (bValue === undefined) return sortOrder === 'asc' ? 1 : -1;
-			
+
 			let comparison = 0;
 			if (aValue < bValue) comparison = -1;
 			if (aValue > bValue) comparison = 1;
-			
+
 			return sortOrder === 'asc' ? comparison : -comparison;
 		});
 
 		// Apply pagination
 		const offset = filters.options?.offset || 0;
 		const limit = filters.options?.limit;
-		
+
 		if (limit) {
 			filteredEntries = filteredEntries.slice(offset, offset + limit);
 		} else if (offset > 0) {
@@ -447,23 +455,23 @@ export class MemoryHistoryStorageService implements MemoryHistoryService {
 			if (!backends) {
 				throw new Error('Storage backends not available');
 			}
-			
+
 			// Get current recent history
 			const recentKey = 'memory_history:recent';
-			const recentEntries = await backends.cache.get<MemoryHistoryEntry[]>(recentKey) || [];
-			
+			const recentEntries = (await backends.cache.get<MemoryHistoryEntry[]>(recentKey)) || [];
+
 			// Add new entry at the beginning
 			recentEntries.unshift(entry);
-			
+
 			// Keep only last 1000 entries
 			const trimmedEntries = recentEntries.slice(0, 1000);
-			
+
 			// Store back in cache with 1 hour TTL
 			await backends.cache.set(recentKey, trimmedEntries, 3600);
 		} catch (error) {
 			// Log error but don't throw - cache update failure shouldn't fail the operation
 			this.logger.warn(`${LOG_PREFIXES.BACKEND} Failed to update recent history cache`, {
-				error: error instanceof Error ? error.message : String(error)
+				error: error instanceof Error ? error.message : String(error),
 			});
 		}
 	}
@@ -477,7 +485,7 @@ export class MemoryHistoryStorageService implements MemoryHistoryService {
 			UPDATE: 0,
 			DELETE: 0,
 			SEARCH: 0,
-			RETRIEVE: 0
+			RETRIEVE: 0,
 		};
 
 		let successCount = 0;
@@ -531,8 +539,8 @@ export class MemoryHistoryStorageService implements MemoryHistoryService {
 			topTags,
 			dateRange: {
 				earliest: earliest || new Date().toISOString(),
-				latest: latest || new Date().toISOString()
-			}
+				latest: latest || new Date().toISOString(),
+			},
 		};
 	}
 

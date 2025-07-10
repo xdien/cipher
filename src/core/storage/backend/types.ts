@@ -66,7 +66,7 @@ export class StorageError extends Error {
 		/** The operation that failed (e.g., 'get', 'set', 'delete', 'connection') */
 		public readonly operation: string,
 		/** The underlying error that caused this error, if any */
-		public readonly cause?: Error
+		public override readonly cause?: Error
 	) {
 		super(message);
 		this.name = 'StorageError';

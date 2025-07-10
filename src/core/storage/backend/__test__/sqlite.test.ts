@@ -27,7 +27,7 @@ describe('SqliteBackend', () => {
 		backend = new SqliteBackend({
 			type: 'sqlite',
 			path: testDbPath,
-			database: testDbName
+			database: testDbName,
 		});
 	});
 
@@ -75,7 +75,7 @@ describe('SqliteBackend', () => {
 			const invalidBackend = new SqliteBackend({
 				type: 'sqlite',
 				path: '/invalid/read-only/path',
-				database: 'test.db'
+				database: 'test.db',
 			});
 
 			await expect(invalidBackend.connect()).rejects.toThrow(StorageConnectionError);
@@ -109,7 +109,7 @@ describe('SqliteBackend', () => {
 				{ key: 'boolean', value: true },
 				{ key: 'object', value: { nested: { data: 'test' } } },
 				{ key: 'array', value: [1, 2, 3, 'four'] },
-				{ key: 'null', value: null }
+				{ key: 'null', value: null },
 			];
 
 			for (const { key, value } of testCases) {
@@ -247,11 +247,11 @@ describe('SqliteBackend', () => {
 			const newBackend = new SqliteBackend({
 				type: 'sqlite',
 				path: testDbPath,
-				database: testDbName
+				database: testDbName,
 			});
 
 			await newBackend.connect();
-			
+
 			const persistentData = await newBackend.get('persistent');
 			expect(persistentData).toEqual({ data: 'should persist' });
 
@@ -288,10 +288,10 @@ describe('SqliteBackend', () => {
 	describe('Database Information', () => {
 		it('should provide database info when connected', async () => {
 			await backend.connect();
-			
+
 			const info = backend.getDbInfo();
 			expect(info.path).toBe(fullDbPath);
-			
+
 			// Database info might not always be available depending on how data is stored
 			// So just check that the fields are either numbers or undefined
 			if (info.size !== undefined) {
