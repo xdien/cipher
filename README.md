@@ -114,6 +114,29 @@ The one-shot mode is perfect for:
 - Integrating cipher into automated workflows
 - Testing prompts without starting interactive mode
 
+## Using Custom Metadata in Cipher CLI
+Firstly, start the interactive CLI
+```sh
+# Start with node command
+node dist/cli.js
+```
+or
+```sh
+# Start with pnpm command
+pnpm cli
+```
+Then, to send custom metadata with your message, use the `!meta` command:
+
+```bash
+# Command:
+cipher> !meta key1=value1,key2=value2 Your message here
+
+# Example:
+cipher> !meta foo=bar,baz=qux The capital of France is Paris.
+```
+
+This attaches `{ foo: "bar", baz: "qux" }` as metadata to the message.
+
 ### API Mode (REST Server)
 
 Runs cipher as a REST API server, allowing HTTP clients to interact with the agent programmatically:

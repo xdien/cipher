@@ -149,7 +149,11 @@ export class MemAgent {
 		userInput: string,
 		imageDataInput?: { image: string; mimeType: string },
 		sessionId?: string,
-		stream: boolean = false
+		stream: boolean = false,
+		options?: {
+			memoryMetadata?: Record<string, any>;
+			sessionOptions?: Record<string, any>;
+		}
 	): Promise<string | null> {
 		this.ensureStarted();
 		try {
@@ -166,7 +170,15 @@ export class MemAgent {
 					(await this.sessionManager.createSession(this.currentActiveSessionId));
 			}
 			logger.debug(`MemAgent.run: using session ${session.id}`);
-			const response = await session.run(userInput, imageDataInput, stream);
+			const response = await session.run(
+				userInput,
+				imageDataInput,
+				stream,
+				{
+					memoryMetadata: options?.memoryMetadata,
+					contextOverrides: options?.sessionOptions,
+				}
+			);
 
 			if (response && response.trim() !== '') {
 				return response;

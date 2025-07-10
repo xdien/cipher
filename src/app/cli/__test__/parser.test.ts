@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { CommandParser } from '../parser.js';
 import { MemAgent } from '@core/index.js';
+import { describe as describeMeta, it as itMeta, expect as expectMeta } from 'vitest';
+import { parseMetaString } from '../cli.js';
 
 describe('CommandParser', () => {
 	let parser: CommandParser;
@@ -176,5 +178,39 @@ describe('CommandParser', () => {
 		it('should have clear command aliases', () => {
 			expect(parser.hasCommand('reset')).toBe(true);
 		});
+	});
+});
+
+describeMeta('parseMetaString', () => {
+	itMeta('parses single key-value pair', () => {
+		const result = parseMetaString('foo=bar');
+		expectMeta(result).toEqual({ foo: 'bar' });
+	});
+
+	itMeta('parses multiple key-value pairs', () => {
+		const result = parseMetaString('foo=bar,baz=qux');
+		expectMeta(result).toEqual({ foo: 'bar', baz: 'qux' });
+	});
+
+	itMeta('trims spaces around keys and values', () => {
+		const result = parseMetaString(' foo = bar , baz = qux ');
+		expectMeta(result).toEqual({ foo: 'bar', baz: 'qux' });
+	});
+
+	itMeta('returns empty object for empty string', () => {
+		const result = parseMetaString('');
+		expectMeta(result).toEqual({});
+	});
+
+	itMeta('throws error for missing value', () => {
+		expectMeta(() => parseMetaString('foo=')).toThrow();
+	});
+
+	itMeta('throws error for missing key', () => {
+		expectMeta(() => parseMetaString('=bar')).toThrow();
+	});
+
+	itMeta('throws error for missing =', () => {
+		expectMeta(() => parseMetaString('foobar')).toThrow();
 	});
 });
