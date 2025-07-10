@@ -115,13 +115,36 @@ export async function startMcpMode(agent: MemAgent): Promise<void> {
 	console.log(chalk.cyan('🔗 Starting Cipher in MCP Server Mode...'));
 	console.log(chalk.gray('Ready to accept MCP client connections.'));
 
-	// TODO: Implement MCP server functionality
-	// This would start an MCP server that other tools can connect to
-	logger.info('MCP mode is not yet fully implemented');
-	logger.info('This would start a server that accepts MCP client connections');
+	try {
+		// Import MCP handler functions
+		const { createMcpTransport, initializeMcpServer, initializeAgentCardResource } = await import('../mcp/mcp_handler.js');
 
-	// Keep the process alive
-	process.stdin.resume();
+		// Get agent configuration for agent card
+		const config = agent.getEffectiveConfig();
+		const agentCardData = initializeAgentCardResource(config.agentCard || {});
+
+		// Create stdio transport (primary transport for MCP mode)
+		logger.info('[MCP Mode] Creating stdio transport for MCP server');
+		const mcpTransport = await createMcpTransport('stdio');
+
+		// Initialize MCP server with agent capabilities
+		logger.info('[MCP Mode] Initializing MCP server with agent capabilities');
+		await initializeMcpServer(agent, agentCardData, mcpTransport);
+
+		// Server is now running - the initializeMcpServer function keeps process alive
+		logger.info('[MCP Mode] Cipher agent is now running as MCP server');
+		console.log(chalk.green('✅ MCP server initialized successfully!'));
+		console.log(chalk.gray('🔧 Available tools: ask_cipher'));
+		console.log(chalk.gray('📊 Available resources: cipher://agent/card, cipher://agent/stats'));
+		console.log(chalk.gray('📝 Available prompts: system_prompt'));
+		console.log(chalk.gray('💡 Connect MCP clients to interact with the Cipher agent'));
+		
+	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		logger.error(`[MCP Mode] Failed to start MCP server: ${errorMessage}`);
+		console.log(chalk.red(`❌ Failed to start MCP server: ${errorMessage}`));
+		process.exit(1);
+	}
 }
 
 /**
