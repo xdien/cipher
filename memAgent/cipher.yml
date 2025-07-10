@@ -32,7 +32,7 @@ llm:
   # apiKey: $OPENAI_API_KEY
   # maxIterations: 50
   provider: anthropic
-  model: claude-3-7-sonnet-20250219
+  model: claude-3-5-haiku-20241022
   apiKey: $ANTHROPIC_API_KEY
   maxIterations: 50
   # provider: openrouter
