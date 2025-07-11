@@ -43,7 +43,7 @@ llm:
 # Evaluation LLM configuration (non-thinking model for evaluation step)
 evalLlm:
   provider: anthropic
-  model: claude-3-5-haiku-20241022
+  model: claude-3-7-sonnet-20250219
   apiKey: $ANTHROPIC_API_KEY
 
 # Alternative Ollama configuration (commented out)
