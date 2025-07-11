@@ -3,6 +3,7 @@ import * as readline from 'readline';
 import chalk from 'chalk';
 import { executeCommand } from './commands.js';
 import { commandParser } from './parser.js';
+import type { AgentCard } from '../mcp/mcp_handler.js';
 
 /**
  * Start headless CLI mode for one-shot command execution
@@ -18,13 +19,18 @@ export async function startHeadlessCli(agent: MemAgent, input: string): Promise<
 		const message = metaAndMessage.slice(1).join(' ');
 		let metadata: Record<string, any> = {};
 		try {
-			metadata = parseMetaString(metaStr);
+			// Add null check for metaStr before passing to parseMetaString
+			if (metaStr) {
+				metadata = parseMetaString(metaStr);
+			}
 		} catch (err) {
 			console.log(chalk.red('❌ Invalid metadata format. Use key=value,key2=value2 ...'));
 			return;
 		}
 		console.log(chalk.gray('🤔 Processing (with metadata)...'));
-		const response = await agent.run(message, undefined, undefined, false, { memoryMetadata: metadata });
+		const response = await agent.run(message, undefined, undefined, false, {
+			memoryMetadata: metadata,
+		});
 		if (response) {
 			logger.displayAIResponse(response);
 		} else {
@@ -90,14 +96,19 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 				const message = metaAndMessage.slice(1).join(' ');
 				let metadata: Record<string, any> = {};
 				try {
-					metadata = parseMetaString(metaStr);
+					// Add null check for metaStr before passing to parseMetaString
+					if (metaStr) {
+						metadata = parseMetaString(metaStr);
+					}
 				} catch (err) {
 					console.log(chalk.red('❌ Invalid metadata format. Use key=value,key2=value2 ...'));
 					rl.prompt();
 					return;
 				}
 				console.log(chalk.gray('🤔 Thinking (with metadata)...'));
-				const response = await agent.run(message, undefined, undefined, false, { memoryMetadata: metadata });
+				const response = await agent.run(message, undefined, undefined, false, {
+					memoryMetadata: metadata,
+				});
 				if (response) {
 					logger.displayAIResponse(response);
 				} else {
@@ -109,7 +120,11 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 				if (parsedInput.isCommand) {
 					// Handle slash command
 					if (parsedInput.command && parsedInput.args !== undefined) {
-						const commandSuccess = await executeCommand(parsedInput.command, parsedInput.args, agent);
+						const commandSuccess = await executeCommand(
+							parsedInput.command,
+							parsedInput.args,
+							agent
+						);
 
 						if (!commandSuccess) {
 							console.log(chalk.gray('Command execution failed or was cancelled.'));
@@ -157,11 +172,19 @@ export async function startMcpMode(agent: MemAgent): Promise<void> {
 
 	try {
 		// Import MCP handler functions
-		const { createMcpTransport, initializeMcpServer, initializeAgentCardResource } = await import('../mcp/mcp_handler.js');
+		const { createMcpTransport, initializeMcpServer, initializeAgentCardResource } = await import(
+			'../mcp/mcp_handler.js'
+		);
 
 		// Get agent configuration for agent card
 		const config = agent.getEffectiveConfig();
-		const agentCardData = initializeAgentCardResource(config.agentCard || {});
+		// Filter out undefined properties to comply with exactOptionalPropertyTypes
+		const agentCardInput = config.agentCard
+			? Object.fromEntries(
+					Object.entries(config.agentCard).filter(([, value]) => value !== undefined)
+				)
+			: {};
+		const agentCardData = initializeAgentCardResource(agentCardInput);
 
 		// Create stdio transport (primary transport for MCP mode)
 		logger.info('[MCP Mode] Creating stdio transport for MCP server');
@@ -178,7 +201,6 @@ export async function startMcpMode(agent: MemAgent): Promise<void> {
 		console.log(chalk.gray('📊 Available resources: cipher://agent/card, cipher://agent/stats'));
 		console.log(chalk.gray('📝 Available prompts: system_prompt'));
 		console.log(chalk.gray('💡 Connect MCP clients to interact with the Cipher agent'));
-		
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		logger.error(`[MCP Mode] Failed to start MCP server: ${errorMessage}`);

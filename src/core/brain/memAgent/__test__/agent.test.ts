@@ -488,15 +488,10 @@ describe('MemAgent', () => {
 				sessionOptions,
 			});
 
-			expect(mockSession.run).toHaveBeenCalledWith(
-				'test input',
-				undefined,
-				false,
-				{
-					memoryMetadata,
-					contextOverrides: sessionOptions,
-				}
-			);
+			expect(mockSession.run).toHaveBeenCalledWith('test input', undefined, false, {
+				memoryMetadata,
+				contextOverrides: sessionOptions,
+			});
 		});
 	});
 });

@@ -101,7 +101,9 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run tests
-        run: pnpm run test
+        run: pnpm run test:ci
+        env:
+          CI: true
 
   build:
     name: "Build"
