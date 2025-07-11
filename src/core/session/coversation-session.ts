@@ -3,10 +3,12 @@ import { ContextManager, ILLMService } from '../brain/llm/index.js';
 import { MCPManager } from '../mcp/manager.js';
 import { UnifiedToolManager } from '../brain/tools/unified-tool-manager.js';
 import { logger } from '../logger/index.js';
-import { env, getIsReasoningModel } from '../env.js';
+import { env } from '../env.js';
 import { createContextManager } from '../brain/llm/messages/factory.js';
 import { createLLMService } from '../brain/llm/services/factory.js';
 import { MemAgentStateManager } from '../brain/memAgent/state-manager.js';
+import { ReasoningContentDetector } from '../brain/reasoning/content-detector.js';
+import { SearchContextManager } from '../brain/reasoning/search-context-manager.js';
 import type { ZodSchema } from 'zod';
 
 // Utility to extract reasoning content blocks from model responses (Anthropic and similar models)
@@ -44,6 +46,8 @@ function extractReasoningContentBlocks(aiResponse: any): string {
 export class ConversationSession {
 	private contextManager!: ContextManager;
 	private llmService!: ILLMService;
+	private reasoningDetector?: ReasoningContentDetector;
+	private searchContextManager?: SearchContextManager;
 
 	private sessionMemoryMetadata?: Record<string, any>;
 	private mergeMetadata?: (
@@ -236,6 +240,9 @@ export class ConversationSession {
 			`Running session ${this.id} with input: ${input} and imageDataInput: ${imageDataInput} and stream: ${stream}`
 		);
 
+		// Initialize reasoning detector and search context manager if not already done
+		await this.initializeReasoningServices();
+
 		// Generate response
 		const response = await this.llmService.generate(input, imageDataInput, stream);
 
@@ -370,6 +377,34 @@ export class ConversationSession {
 	}
 
 	/**
+	 * Initialize reasoning services (content detector and search context manager)
+	 */
+	private async initializeReasoningServices(): Promise<void> {
+		if (this.reasoningDetector && this.searchContextManager) {
+			return; // Already initialized
+		}
+
+		try {
+			// Initialize reasoning content detector
+			this.reasoningDetector = new ReasoningContentDetector(
+				this.services.promptManager,
+				this.services.mcpManager,
+				this.services.unifiedToolManager
+			);
+
+			// Initialize search context manager
+			this.searchContextManager = new SearchContextManager();
+
+			logger.debug('ConversationSession: Reasoning services initialized', { sessionId: this.id });
+		} catch (error) {
+			logger.warn('ConversationSession: Failed to initialize reasoning services', {
+				sessionId: this.id,
+				error: error instanceof Error ? error.message : String(error)
+			});
+		}
+	}
+
+	/**
 	 * Programmatically enforce reflection memory processing after each interaction (runs in background)
 	 * This automatically extracts, evaluates, and stores reasoning patterns in the background
 	 * NOTE: This method is called from enforceMemoryExtraction which already runs asynchronously
@@ -384,12 +419,33 @@ export class ConversationSession {
 				return;
 			}
 
-			// Check if reflection memory is enabled (reasoning model + not knowledge-only)
-			const reflectionEnabled = getIsReasoningModel() && env.SEARCH_MEMORY_TYPE !== 'knowledge';
-			if (!reflectionEnabled) {
-				logger.debug('ConversationSession: Reflection memory disabled, skipping processing');
+			// Initialize reasoning services if not already done
+			await this.initializeReasoningServices();
+
+			// Check if reasoning content is detected in user input
+			if (!this.reasoningDetector) {
+				logger.debug('ConversationSession: Reasoning detector not available, skipping reflection processing');
 				return;
 			}
+
+			const reasoningDetection = await this.reasoningDetector.detectReasoningContent(userInput, {
+				sessionId: this.id,
+				taskType: 'conversation'
+			});
+
+			// Only proceed if reasoning content is detected
+			if (!reasoningDetection.containsReasoning) {
+				logger.debug('ConversationSession: No reasoning content detected in user input, skipping reflection processing', {
+					confidence: reasoningDetection.confidence,
+					detectedPatterns: reasoningDetection.detectedPatterns
+				});
+				return;
+			}
+
+			logger.debug('ConversationSession: Reasoning content detected, proceeding with reflection processing', {
+				confidence: reasoningDetection.confidence,
+				detectedPatterns: reasoningDetection.detectedPatterns
+			});
 
 			// Step 1: Extract reasoning steps from the interaction
 			let extractionResult: any;

@@ -83,6 +83,12 @@ systemPrompt: |
   4. **Incorporate** found information into your response
   5. **Respond** with both searched knowledge and direct assistance
 
+  **How reflection memory tools are triggered:**
+  - The system uses LLM-based analysis to determine if the user's input contains reasoning content (such as step-by-step thinking, problem-solving, or analytical reasoning).
+  - If the LLM determines the input contains reasoning content, the reflection memory tools (`cipher_extract_reasoning_steps`, `cipher_evaluate_reasoning`, `cipher_store_reasoning_memory`) are automatically activated at the end of the interaction.
+  - If the input does not contain reasoning content, these tools are not triggered.
+  - There is no keyword or hybrid detection—only LLM-based analysis is used for this decision.
+
   **How to use the memory search tool:**
   - `query`: Use natural language to describe what you're looking for
   - `top_k`: Number of results to return (default: 5, max: 50)  
@@ -119,5 +125,4 @@ systemPrompt: |
   - The task is straightforward implementation without needing past patterns
 
   **REMEMBER**: Search strategically - use the tool to fill genuine knowledge gaps, not as a reflex. Your responses and any code, commands, or technical information will be automatically preserved in memory for future reference.
-
   Focus on providing helpful, accurate programming assistance. Be efficient with your tool usage while maintaining thoroughness where truly needed.

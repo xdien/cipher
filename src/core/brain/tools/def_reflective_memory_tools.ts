@@ -11,7 +11,7 @@
 
 import { z } from 'zod';
 import { logger } from '../../logger/index.js';
-import { env, getIsReasoningModel } from '../../env.js';
+import { env } from '../../env.js';
 import type { InternalTool, InternalToolContext } from './types.js';
 
 /**
@@ -430,7 +430,7 @@ export const extractReasoningSteps: InternalTool = {
 	name: 'extract_reasoning_steps',
 	category: 'memory',
 	internal: true,
-	agentAccessible: getIsReasoningModel() && !env.DISABLE_REFLECTION_MEMORY, // Only accessible for reasoning models and when not force disabled
+	agentAccessible: !env.DISABLE_REFLECTION_MEMORY, // Accessible when reflection memory is not force disabled (content-based activation)
 	description: 'Extract reasoning steps from user input and reasoning content. Analyzes both explicit thought markup and implicit reasoning patterns to create structured reasoning traces.',
 	version: '1.0.0',
 	parameters: {
@@ -546,7 +546,7 @@ export const evaluateReasoning: InternalTool = {
 	name: 'evaluate_reasoning',
 	category: 'memory',
 	internal: true,
-	agentAccessible: getIsReasoningModel() && !env.DISABLE_REFLECTION_MEMORY, // Only accessible for reasoning models and when not force disabled
+	agentAccessible: !env.DISABLE_REFLECTION_MEMORY, // Accessible when reflection memory is not force disabled (content-based activation)
 	description: 'Evaluate the quality and efficiency of extracted reasoning. Analyzes reasoning patterns for issues, calculates quality metrics, and generates improvement suggestions.',
 	version: '1.0.0',
 	parameters: {

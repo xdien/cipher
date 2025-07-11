@@ -1,6 +1,6 @@
 import { InternalTool, InternalToolContext } from '../../types.js';
 import { logger } from '../../../../logger/index.js';
-import { env, getIsReasoningModel } from '../../../../env.js';
+import { env } from '../../../../env.js';
 // Import payload migration utilities
 import { createReasoningPayload } from './payloads.js';
 
@@ -37,7 +37,7 @@ export const storeReasoningMemoryTool: InternalTool = {
   name: 'store_reasoning_memory',
   category: 'memory',
   internal: true,
-  agentAccessible: getIsReasoningModel() && !env.DISABLE_REFLECTION_MEMORY, // Only accessible for reasoning models and when not force disabled
+  agentAccessible: !env.DISABLE_REFLECTION_MEMORY, // Accessible when reflection memory is not force disabled (content-based activation)
   description: 'Store complete reasoning traces with task context and evaluations in reflection memory. Takes trace with auto-extracted context from cipher_extract_reasoning_steps and evaluation from cipher_evaluate_reasoning. Append-only operation.',
   version: '2.1.0',
   parameters: {

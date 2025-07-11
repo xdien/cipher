@@ -4,32 +4,6 @@ import { z } from 'zod';
 // Load environment variables from .env file
 config();
 
-/**
- * Flag to indicate if the current model is a reasoning model
- * This is set once during early initialization and never overwritten
- * Based on the LLM model configuration before any services are initialized
- */
-let _isReasoningModel: boolean | null = null;
-
-/**
- * Set the reasoning model flag - can only be set once
- * This should be called BEFORE any service initialization
- */
-export function setIsReasoningModel(isReasoning: boolean): void {
-  if (_isReasoningModel !== null) {
-    // Already set, don't allow overwriting
-    return;
-  }
-  _isReasoningModel = isReasoning;
-}
-
-/**
- * Get the reasoning model flag
- */
-export function getIsReasoningModel(): boolean {
-  return _isReasoningModel || false;
-}
-
 const envSchema = z.object({
 	NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 	CIPHER_LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug', 'silly']).default('info'),
