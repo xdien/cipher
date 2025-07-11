@@ -430,7 +430,7 @@ export const extractReasoningSteps: InternalTool = {
 	name: 'extract_reasoning_steps',
 	category: 'memory',
 	internal: true,
-	agentAccessible: !env.DISABLE_REFLECTION_MEMORY, // Accessible when reflection memory is not force disabled (content-based activation)
+	agentAccessible: false, // Internal-only: programmatically called when reasoning content is detected
 	description: 'Extract reasoning steps from user input and reasoning content. Analyzes both explicit thought markup and implicit reasoning patterns to create structured reasoning traces.',
 	version: '1.0.0',
 	parameters: {
@@ -546,7 +546,7 @@ export const evaluateReasoning: InternalTool = {
 	name: 'evaluate_reasoning',
 	category: 'memory',
 	internal: true,
-	agentAccessible: !env.DISABLE_REFLECTION_MEMORY, // Accessible when reflection memory is not force disabled (content-based activation)
+	agentAccessible: false, // Internal-only: programmatically called when reasoning content is detected
 	description: 'Evaluate the quality and efficiency of extracted reasoning. Analyzes reasoning patterns for issues, calculates quality metrics, and generates improvement suggestions.',
 	version: '1.0.0',
 	parameters: {
@@ -645,7 +645,7 @@ export const searchReasoningPatterns: InternalTool = {
 	name: 'search_reasoning_patterns',
 	category: 'memory',
 	internal: true,
-	agentAccessible: true, // Always accessible regardless of model choice
+	agentAccessible: true, // Agent-accessible: one of two search tools available to agent
 	description: 'Search reflection memory for relevant reasoning patterns. Finds similar reasoning traces and evaluations that can inform current decision-making. Automatically deduplicates similar queries and batches searches for efficiency.',
 	version: '1.0.0',
 	parameters: {

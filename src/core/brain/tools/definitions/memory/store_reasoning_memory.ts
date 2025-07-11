@@ -37,7 +37,7 @@ export const storeReasoningMemoryTool: InternalTool = {
   name: 'store_reasoning_memory',
   category: 'memory',
   internal: true,
-  agentAccessible: !env.DISABLE_REFLECTION_MEMORY, // Accessible when reflection memory is not force disabled (content-based activation)
+  agentAccessible: false, // Internal-only: programmatically called when reasoning content is detected
   description: 'Store complete reasoning traces with task context and evaluations in reflection memory. Takes trace with auto-extracted context from cipher_extract_reasoning_steps and evaluation from cipher_evaluate_reasoning. Append-only operation.',
   version: '2.1.0',
   parameters: {

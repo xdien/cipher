@@ -203,8 +203,8 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 		it('should load internal tools when enabled', async () => {
 			const tools = await unifiedToolManager.getAllTools();
 
-			// Should have 14 agent-accessible memory tools (current implementation)
-			expect(Object.keys(tools)).toHaveLength(14);
+			// Should have 13 agent-accessible tools total (2 memory search tools + 11 knowledge graph tools)
+			expect(Object.keys(tools)).toHaveLength(13);
 			expect(tools['cipher_memory_search']).toBeDefined();
 			expect(tools['cipher_search_reasoning_patterns']).toBeDefined();
 
@@ -212,7 +212,7 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 			expect(tools['cipher_store_reasoning_memory']).toBeUndefined();
 			expect(tools['cipher_extract_reasoning_steps']).toBeUndefined();
 			expect(tools['cipher_evaluate_reasoning']).toBeUndefined();
-			expect(tools['cipher_extract_and_operate_memory']).toBeDefined(); // This tool is actually available
+			expect(tools['cipher_extract_and_operate_memory']).toBeUndefined(); // Internal-only tool
 
 			// Should NOT have old deprecated tools
 			expect(tools['cipher_extract_knowledge']).toBeUndefined();
@@ -245,9 +245,9 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 			);
 			expect(internalResult.success).toBe(true);
 
-			// Test that internal tools are accessible (current implementation allows this)
+			// Test that internal-only tools are not accessible to agents
 			const isInternal = await unifiedToolManager.getToolSource('cipher_extract_and_operate_memory');
-			expect(isInternal).toBe('internal');
+			expect(isInternal).toBe(null); // Not accessible to agents
 		});
 
 		it('should NOT find old deprecated tools', async () => {
@@ -270,7 +270,7 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 
 			// Internal-only tools should not be available to agents
 			const isExtractAvailable = await unifiedToolManager.isToolAvailable('cipher_extract_and_operate_memory');
-			expect(isExtractAvailable).toBe(true);
+			expect(isExtractAvailable).toBe(false);
 
 			const isStoreAvailable = await unifiedToolManager.isToolAvailable('cipher_store_reasoning_memory');
 			expect(isStoreAvailable).toBe(false);
@@ -308,7 +308,7 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 
 			// Internal-only tools should return null (not accessible to agents)
 			const extractSource = await unifiedToolManager.getToolSource('cipher_extract_and_operate_memory');
-			expect(extractSource).toBe('internal');
+			expect(extractSource).toBe(null);
 		});
 
 		it('should return null for old deprecated tools', async () => {
@@ -329,11 +329,11 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 		it('should work with real tool execution flow using new tools', async () => {
 			// 1. Get all available tools (current implementation)
 			const allTools = await unifiedToolManager.getAllTools();
-			expect(Object.keys(allTools).length).toBe(14);
+			expect(Object.keys(allTools).length).toBe(13);
 
 			// 2. Format tools for OpenAI (current implementation)
 			const openaiTools = await unifiedToolManager.getToolsForProvider('openai');
-			expect(openaiTools.length).toBe(14);
+			expect(openaiTools.length).toBe(13);
 
 			// 3. Execute a tool with new name (this will use the real manager now)
 			const searchResult = await unifiedToolManager.executeTool('cipher_memory_search', {

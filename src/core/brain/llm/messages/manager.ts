@@ -13,7 +13,7 @@ export class ContextManager {
 		if (!formatter) throw new Error('formatter is required');
 		this.formatter = formatter;
 		this.promptManager = promptManager;
-		logger.info('ContextManager initialized with formatter', { formatter });
+		logger.debug('ContextManager initialized with formatter', { formatter });
 	}
 
 	async getSystemPrompt(): Promise<string> {

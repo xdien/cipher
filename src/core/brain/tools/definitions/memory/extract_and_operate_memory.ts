@@ -216,6 +216,7 @@ export const extractAndOperateMemoryTool: InternalTool = {
 	name: 'extract_and_operate_memory',
 	category: 'memory',
 	internal: true,
+	agentAccessible: false, // Internal-only: programmatically called after each interaction
 	description:
 		'Extract knowledge facts from raw interaction(s) and immediately process them to determine memory operations (ADD, UPDATE, DELETE, NONE) in a single atomic step. This guarantees extraction always precedes operation.',
 	version: '1.0.0',
@@ -342,10 +343,10 @@ export const extractAndOperateMemoryTool: InternalTool = {
 			});
       
 			if (significantFacts.length === 0) {
-				logger.info('ExtractAndOperateMemory: No significant facts found after filtering', {
-					totalFacts: knowledgeArray.length,
-					validFacts: validFacts.length,
-					filteredOut: validFacts.length,
+				logger.debug('ExtractAndOperateMemory: No significant facts found after filtering', {
+					originalFacts: validFacts.length,
+					filteredFacts: significantFacts.length,
+					interactionLength: args.interaction.length,
 				});
 				return {
 					success: true,

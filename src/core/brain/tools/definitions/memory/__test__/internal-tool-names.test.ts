@@ -80,8 +80,8 @@ describe('Internal Tool Names', () => {
 		});
 
 		const allTools = await unifiedToolManager.getAllTools();
-		// Internal tools are now accessible (current implementation)
-		expect(Object.keys(allTools)).toContain('cipher_extract_and_operate_memory');
+		// Internal-only tools should not be accessible to agents
+		expect(Object.keys(allTools)).not.toContain('cipher_extract_and_operate_memory');
 	});
 
 	it('should check tool availability correctly', async () => {
@@ -90,8 +90,8 @@ describe('Internal Tool Names', () => {
 			enableMcpTools: false,
 		});
 
-		// Internal tools are now available (current implementation)
-		expect(await unifiedToolManager.isToolAvailable('cipher_extract_and_operate_memory')).toBe(true);
+		// Internal-only tools should not be available to agents
+		expect(await unifiedToolManager.isToolAvailable('cipher_extract_and_operate_memory')).toBe(false);
 		expect(await unifiedToolManager.isToolAvailable('nonexistent_tool')).toBe(false);
 	});
 });

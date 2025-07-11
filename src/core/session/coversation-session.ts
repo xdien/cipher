@@ -235,7 +235,7 @@ export class ConversationSession {
 			}
 		}
 
-		console.log('ConversationSession.run called');
+		logger.debug('ConversationSession.run called');
 		logger.debug(
 			`Running session ${this.id} with input: ${input} and imageDataInput: ${imageDataInput} and stream: ${stream}`
 		);
@@ -280,12 +280,11 @@ export class ConversationSession {
 			historyTracking?: boolean;
 		}
 	): Promise<void> {
-		console.log('ConversationSession.enforceMemoryExtraction called');
-		console.log(
-			'enforceMemoryExtraction: unifiedToolManager at entry',
-			this.services.unifiedToolManager,
-			typeof this.services.unifiedToolManager
-		);
+		logger.debug('ConversationSession.enforceMemoryExtraction called');
+		logger.debug('enforceMemoryExtraction: unifiedToolManager at entry', {
+			unifiedToolManager: this.services.unifiedToolManager,
+			type: typeof this.services.unifiedToolManager
+		});
 		try {
 			logger.debug('ConversationSession: Enforcing memory extraction for interaction');
 

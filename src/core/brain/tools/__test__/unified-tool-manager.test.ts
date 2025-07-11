@@ -79,14 +79,16 @@ describe('UnifiedToolManager', () => {
 		it('should load internal tools when enabled', async () => {
 			const tools = await unifiedManager.getAllTools();
 
-			// Should have 14 agent-accessible memory tools (current implementation)
-			expect(Object.keys(tools)).toHaveLength(14);
+			// Should have 13 agent-accessible tools total (2 memory search tools + 11 knowledge graph tools)
+			expect(Object.keys(tools)).toHaveLength(13);
 			expect(tools['cipher_memory_search']).toBeDefined();
 			expect(tools['cipher_search_reasoning_patterns']).toBeDefined();
 
 			// Internal-only tools should not be accessible to agents
 			expect(tools['cipher_store_reasoning_memory']).toBeUndefined();
-			expect(tools['cipher_extract_and_operate_memory']).toBeDefined();
+			expect(tools['cipher_extract_and_operate_memory']).toBeUndefined();
+			expect(tools['cipher_extract_reasoning_steps']).toBeUndefined();
+			expect(tools['cipher_evaluate_reasoning']).toBeUndefined();
 
 			// All accessible tools should be marked as internal
 			for (const tool of Object.values(tools)) {
@@ -127,12 +129,12 @@ describe('UnifiedToolManager', () => {
 			// Internal-only tools should not be in getAllTools() (not agent-accessible)
 			const tools = await unifiedManager.getAllTools();
 			expect(tools['cipher_store_reasoning_memory']).toBeUndefined();
-			expect(tools['cipher_extract_and_operate_memory']).toBeDefined();
+			expect(tools['cipher_extract_and_operate_memory']).toBeUndefined();
 
 			// But they should still be executable by the system for background processing
 			const extractTool = internalToolManager.getTool('cipher_extract_and_operate_memory');
 			expect(extractTool).toBeDefined();
-			expect(extractTool?.agentAccessible).toBeUndefined(); // Current implementation doesn't have this property
+			expect(extractTool?.agentAccessible).toBe(false); // Internal-only tool
 
 			const reasoningTool = internalToolManager.getTool('cipher_store_reasoning_memory');
 			expect(reasoningTool).toBeDefined();
@@ -161,9 +163,9 @@ describe('UnifiedToolManager', () => {
 			});
 			expect(internalResult.success).toBe(true);
 
-			// Test that internal tools are accessible (current implementation)
+			// Test that internal-only tools are not accessible to agents
 			const isInternal = await unifiedManager.getToolSource('cipher_extract_and_operate_memory');
-			expect(isInternal).toBe('internal');
+			expect(isInternal).toBe(null); // Not accessible to agents
 		});
 
 		it('should handle tool execution errors gracefully', async () => {
@@ -171,12 +173,16 @@ describe('UnifiedToolManager', () => {
 		});
 
 		it('should check tool availability correctly', async () => {
-			// Internal tools are now available (current implementation)
-			const isAvailable = await unifiedManager.isToolAvailable('cipher_extract_and_operate_memory');
+			// Agent-accessible tools should be available
+			const isAvailable = await unifiedManager.isToolAvailable('cipher_memory_search');
 			expect(isAvailable).toBe(true);
 
-			const notAvailable = await unifiedManager.isToolAvailable('nonexistent_tool');
+			// Internal-only tools should not be available to agents
+			const notAvailable = await unifiedManager.isToolAvailable('cipher_extract_and_operate_memory');
 			expect(notAvailable).toBe(false);
+
+			const notAvailable2 = await unifiedManager.isToolAvailable('nonexistent_tool');
+			expect(notAvailable2).toBe(false);
 		});
 	});
 
@@ -185,8 +191,8 @@ describe('UnifiedToolManager', () => {
 			const formattedTools = await unifiedManager.getToolsForProvider('openai');
 
 			expect(Array.isArray(formattedTools)).toBe(true);
-			// All tools are accessible in current implementation
-			expect(formattedTools.length).toBe(14);
+			// Should have 13 agent-accessible tools total (2 memory search tools + 11 knowledge graph tools)
+			expect(formattedTools.length).toBe(13);
 
 			// Check OpenAI format
 			const tool = formattedTools[0];
@@ -201,8 +207,8 @@ describe('UnifiedToolManager', () => {
 			const formattedTools = await unifiedManager.getToolsForProvider('anthropic');
 
 			expect(Array.isArray(formattedTools)).toBe(true);
-			// All tools are accessible in current implementation
-			expect(formattedTools.length).toBe(14);
+			// Should have 13 agent-accessible tools total (2 memory search tools + 11 knowledge graph tools)
+			expect(formattedTools.length).toBe(13);
 
 			// Check Anthropic format
 			const tool = formattedTools[0];
@@ -215,8 +221,8 @@ describe('UnifiedToolManager', () => {
 			const formattedTools = await unifiedManager.getToolsForProvider('openrouter');
 
 			expect(Array.isArray(formattedTools)).toBe(true);
-			// OpenRouter uses OpenAI format
-			expect(formattedTools.length).toBe(14);
+			// OpenRouter uses OpenAI format - should have 13 agent-accessible tools total
+			expect(formattedTools.length).toBe(13);
 
 			const tool = formattedTools[0];
 			expect(tool.type).toBe('function');
@@ -294,9 +300,13 @@ describe('UnifiedToolManager', () => {
 
 	describe('Tool Source Detection', () => {
 		it('should correctly identify internal tool sources', async () => {
-			// Internal tools now return 'internal' (current implementation)
-			const source = await unifiedManager.getToolSource('cipher_extract_and_operate_memory');
+			// Agent-accessible tools should return 'internal'
+			const source = await unifiedManager.getToolSource('cipher_memory_search');
 			expect(source).toBe('internal');
+
+			// Internal-only tools should return null (not accessible to agents)
+			const internalSource = await unifiedManager.getToolSource('cipher_extract_and_operate_memory');
+			expect(internalSource).toBe(null);
 		});
 
 		it('should return null for unknown tools', async () => {

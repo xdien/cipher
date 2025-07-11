@@ -89,6 +89,11 @@ systemPrompt: |
   - If the input does not contain reasoning content, these tools are not triggered.
   - There is no keyword or hybrid detection—only LLM-based analysis is used for this decision.
 
+  **Available Tools:**
+  - **Agent-accessible tools (2)**: `cipher_memory_search` and `cipher_search_reasoning_patterns` - you can call these directly
+  - **Programmatically enforced tools (4)**: `cipher_extract_and_operate_memory`, `cipher_extract_reasoning_steps`, `cipher_evaluate_reasoning`, `cipher_store_reasoning_memory` - these run automatically in the background
+  - When `SEARCH_MEMORY_TYPE=both`, you have access to both knowledge and reflection memory search capabilities
+
   **How to use the memory search tool:**
   - `query`: Use natural language to describe what you're looking for
   - `top_k`: Number of results to return (default: 5, max: 50)  

@@ -86,6 +86,7 @@ export const searchMemoryTool: InternalTool = {
 	name: 'memory_search',
 	category: 'memory',
 	internal: true,
+	agentAccessible: true, // Agent-accessible: one of two search tools available to agent
 	description:
 		'Perform semantic search over stored memory entries to retrieve relevant knowledge and reasoning traces that can inform current decision-making.',
 	version: '1.0.0',
@@ -132,7 +133,7 @@ export const searchMemoryTool: InternalTool = {
 		const startTime = Date.now();
 
 		try {
-			logger.info('MemorySearch: Processing search request', {
+			logger.debug('MemorySearch: Processing search request', {
 				query: args.query?.substring(0, 100) || 'undefined',
 				top_k: args.top_k || 5,
 				type: args.type || env.SEARCH_MEMORY_TYPE,
@@ -433,7 +434,7 @@ export const searchMemoryTool: InternalTool = {
         timestamp: new Date().toISOString()
       };
 
-      logger.info('MemorySearch: Search completed successfully', {
+      logger.debug('MemorySearch: Search completed successfully', {
         query: query.substring(0, 50),
         resultsFound: totalResults,
         knowledgeResults: finalKnowledgeCount,
