@@ -48,7 +48,6 @@ test-temp/
 # Byterover Extensions
 .clinerules/
 .cursor/
-.github/
 .roo/
 .windsurf/
 CONTRIBUTING.md
