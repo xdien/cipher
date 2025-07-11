@@ -61,9 +61,9 @@ export async function createMcpTransport(
  */
 async function createStdioTransport(): Promise<McpTransport> {
 	logger.debug('[MCP Handler] Creating stdio transport for server mode');
-	
+
 	const transport = new StdioServerTransport();
-	
+
 	return {
 		type: 'stdio',
 		server: transport,
@@ -73,20 +73,26 @@ async function createStdioTransport(): Promise<McpTransport> {
 /**
  * Create SSE transport for MCP server
  */
-async function createSseTransport(options: { port?: number; host?: string } = {}): Promise<McpTransport> {
+async function createSseTransport(
+	options: { port?: number; host?: string } = {}
+): Promise<McpTransport> {
 	const { port = 3001, host = 'localhost' } = options;
-	
+
 	logger.debug(`[MCP Handler] Creating SSE transport for server mode on ${host}:${port}`);
-	
+
 	// TODO: Implement proper SSE server transport
 	// SSE transport requires HTTP server setup and proper endpoint configuration
-	throw new Error('SSE transport not yet fully implemented for MCP server mode. Use stdio transport instead.');
+	throw new Error(
+		'SSE transport not yet fully implemented for MCP server mode. Use stdio transport instead.'
+	);
 }
 
 /**
  * Create HTTP transport for MCP server
  */
-async function createHttpTransport(options: { port?: number; host?: string } = {}): Promise<McpTransport> {
+async function createHttpTransport(
+	options: { port?: number; host?: string } = {}
+): Promise<McpTransport> {
 	// Note: HTTP transport may not be available in all MCP SDK versions
 	// This is a placeholder for future implementation
 	throw new Error('HTTP transport not yet implemented for MCP server mode');
@@ -180,7 +186,7 @@ async function registerAgentTools(server: Server, agent: MemAgent): Promise<void
 	});
 
 	// Register call tool handler
-	server.setRequestHandler(CallToolRequestSchema, async (request) => {
+	server.setRequestHandler(CallToolRequestSchema, async request => {
 		const { name, arguments: args } = request.params;
 
 		logger.info(`[MCP Handler] Tool called: ${name}`, { toolName: name, args });
@@ -204,9 +210,9 @@ async function handleAskCipherTool(agent: MemAgent, args: any): Promise<any> {
 		throw new Error('Message parameter is required and must be a string');
 	}
 
-	logger.info('[MCP Handler] Processing ask_cipher request', { 
-		sessionId: session_id, 
-		messageLength: message.length 
+	logger.info('[MCP Handler] Processing ask_cipher request', {
+		sessionId: session_id,
+		messageLength: message.length,
 	});
 
 	try {
@@ -224,7 +230,7 @@ async function handleAskCipherTool(agent: MemAgent, args: any): Promise<any> {
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		logger.error('[MCP Handler] Error in ask_cipher tool', { error: errorMessage });
-		
+
 		throw new Error(`Agent execution failed: ${errorMessage}`);
 	}
 }
@@ -232,7 +238,11 @@ async function handleAskCipherTool(agent: MemAgent, args: any): Promise<any> {
 /**
  * Register agent resources as MCP resources
  */
-async function registerAgentResources(server: Server, agent: MemAgent, agentCard: AgentCard): Promise<void> {
+async function registerAgentResources(
+	server: Server,
+	agent: MemAgent,
+	agentCard: AgentCard
+): Promise<void> {
 	logger.debug('[MCP Handler] Registering agent resources');
 
 	// Register list resources handler
@@ -256,7 +266,7 @@ async function registerAgentResources(server: Server, agent: MemAgent, agentCard
 	});
 
 	// Register read resource handler
-	server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+	server.setRequestHandler(ReadResourceRequestSchema, async request => {
 		const { uri } = request.params;
 
 		logger.info(`[MCP Handler] Resource requested: ${uri}`);
@@ -325,7 +335,7 @@ async function getAgentStatsResource(agent: MemAgent): Promise<any> {
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		logger.error('[MCP Handler] Error getting agent stats', { error: errorMessage });
-		
+
 		const errorStats = {
 			error: `Failed to retrieve stats: ${errorMessage}`,
 			timestamp: new Date().toISOString(),
@@ -362,7 +372,7 @@ async function registerAgentPrompts(server: Server, agent: MemAgent): Promise<vo
 	});
 
 	// Register get prompt handler
-	server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+	server.setRequestHandler(GetPromptRequestSchema, async request => {
 		const { name, arguments: args } = request.params;
 
 		logger.info(`[MCP Handler] Prompt requested: ${name}`);
@@ -382,7 +392,7 @@ async function registerAgentPrompts(server: Server, agent: MemAgent): Promise<vo
 async function getSystemPrompt(agent: MemAgent): Promise<any> {
 	try {
 		const systemPrompt = agent.promptManager.getInstruction();
-		
+
 		return {
 			messages: [
 				{
@@ -397,7 +407,7 @@ async function getSystemPrompt(agent: MemAgent): Promise<any> {
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		logger.error('[MCP Handler] Error getting system prompt', { error: errorMessage });
-		
+
 		throw new Error(`Failed to get system prompt: ${errorMessage}`);
 	}
 }
@@ -407,9 +417,9 @@ async function getSystemPrompt(agent: MemAgent): Promise<any> {
  * @param agentCard - Agent card configuration
  * @returns Processed agent card data
  */
-export function initializeAgentCardResource(agentCard: AgentCard): AgentCard {
+export function initializeAgentCardResource(agentCard: Partial<AgentCard>): AgentCard {
 	logger.debug('[MCP Handler] Initializing agent card resource');
-	
+
 	// Ensure required fields have defaults
 	const processedCard: AgentCard = {
 		name: agentCard.name || 'cipher',
@@ -420,13 +430,19 @@ export function initializeAgentCardResource(agentCard: AgentCard): AgentCard {
 			url: 'https://byterover.dev',
 		},
 		defaultInputModes: agentCard.defaultInputModes || ['application/json', 'text/plain'],
-		defaultOutputModes: agentCard.defaultOutputModes || ['application/json', 'text/event-stream', 'text/plain'],
+		defaultOutputModes: agentCard.defaultOutputModes || [
+			'application/json',
+			'text/event-stream',
+			'text/plain',
+		],
 		skills: agentCard.skills || [
 			{
 				id: 'chat_with_agent',
 				name: 'chat_with_agent',
 				description: 'Allows you to chat with an AI agent. Send a message to interact.',
 				tags: ['chat', 'AI', 'assistant', 'mcp', 'natural language'],
+				inputModes: ['application/json', 'text/plain'],
+				outputModes: ['application/json', 'text/plain'],
 				examples: [
 					`Send a JSON-RPC request to /mcp with method: "chat_with_agent" and params: {"message":"Your query..."}`,
 					'Alternatively, use a compatible MCP client library.',
@@ -443,42 +459,44 @@ export function initializeAgentCardResource(agentCard: AgentCard): AgentCard {
  */
 function redirectLogsForStdio(): void {
 	logger.info('[MCP Handler] Redirecting logs to prevent stdio interference');
-	
+
 	// In stdio mode, we need to redirect console output to prevent interference with MCP protocol
 	// The MCP protocol uses stdio for communication, so any console.log will break the protocol
-	
+
 	// Create a log file path
 	const logPath = './logs/mcp-server.log';
-	
+
 	// Ensure logs directory exists
 	const logDir = path.dirname(logPath);
-	
+
 	if (!fs.existsSync(logDir)) {
 		fs.mkdirSync(logDir, { recursive: true });
 	}
 
 	// Redirect console output to log file
 	const logStream = fs.createWriteStream(logPath, { flags: 'a' });
-	
+
 	// Override console methods to write to log file instead of stdout/stderr
 	// Note: originalConsole could be used for restoration if needed in the future
-	
+
 	console.log = (...args: any[]) => {
 		logStream.write(`[LOG] ${new Date().toISOString()} ${args.join(' ')}\n`);
 	};
-	
+
 	console.error = (...args: any[]) => {
 		logStream.write(`[ERROR] ${new Date().toISOString()} ${args.join(' ')}\n`);
 	};
-	
+
 	console.warn = (...args: any[]) => {
 		logStream.write(`[WARN] ${new Date().toISOString()} ${args.join(' ')}\n`);
 	};
-	
+
 	console.info = (...args: any[]) => {
 		logStream.write(`[INFO] ${new Date().toISOString()} ${args.join(' ')}\n`);
 	};
-	
+
 	// Log the redirection
-	logStream.write(`[INFO] ${new Date().toISOString()} Log redirection activated for MCP stdio mode\n`);
+	logStream.write(
+		`[INFO] ${new Date().toISOString()} Log redirection activated for MCP stdio mode\n`
+	);
 }

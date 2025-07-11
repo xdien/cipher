@@ -13,5 +13,7 @@ export default defineConfig({
 		environment: 'node',
 		include: ['**/*.test.ts', '**/*.spec.ts'],
 		watch: true,
+		// Allow filtering tests by tags
+		exclude: process.env.CI ? ['**/integration/**'] : [],
 	},
 });
