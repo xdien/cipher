@@ -12,11 +12,12 @@ export default defineConfig([
   },
   {
     entry: ['src/app/index.ts'],
-    format: ['esm'],
+    format: ['cjs'],
     outDir: 'dist/src/app',
     shims: true,
     bundle: true,
     platform: 'node',
-    external: ['events', 'fs', 'path', 'child_process', 'process', 'commander'],
+    external: ['better-sqlite3', 'pg', 'neo4j-driver', 'ioredis'],
+    noExternal: ['chalk', 'boxen'],
   },
 ]);

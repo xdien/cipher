@@ -35,9 +35,55 @@ We welcome all kinds of [contributions](/CONTRIBUTING.md), feedbacks, and sugges
 
 ## Get Started
 
+### Quick Start with Docker (Recommended)
+
+The fastest way to get Cipher running is with Docker:
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/your-repo/cipher.git
+cd cipher
+
+# 2. Copy and configure environment variables
+cp .env.example .env
+# Edit .env with your API keys (see Environment Setup below)
+
+# 3. Start with Docker Compose
+docker-compose up -d
+
+# 4. Test the API
+curl http://localhost:3000/health
+```
+
+### Build from Source
+
 ```bash
 # build from source
 pnpm i && pnpm run build && npm link
+```
+
+### Environment Setup
+
+Before running Cipher, you need to configure your environment variables. Copy the example file and add your API keys:
+
+```bash
+cp .env.example .env
+```
+
+Edit the `.env` file and add at least one API key:
+
+```bash
+# Required: At least one API key
+OPENAI_API_KEY=your_openai_api_key_here
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+OPENROUTER_API_KEY=your_openrouter_api_key_here
+
+# Optional: For local models (no API key needed)
+OLLAMA_BASE_URL=http://localhost:11434/v1
+
+# Optional: Additional configuration
+CIPHER_LOG_LEVEL=info
+NODE_ENV=production
 ```
 
 ## Run Modes
@@ -774,6 +820,494 @@ cipher --mode api --agent ./my-config.yml --port 5000
 
 # Combined with other options
 cipher --mode api --host 0.0.0.0 --port 8080 --agent ./config.yml --strict
+```
+
+## Docker Deployment
+
+Cipher can be easily deployed as a Docker container for production use. The Docker setup provides a secure, optimized environment for running Cipher in API mode.
+
+### Quick Start with Docker
+
+**Prerequisites:**
+- Docker and Docker Compose installed on your system
+- A configured `.env` file with your API keys
+
+**Step 1: Prepare Environment**
+```bash
+# Copy and configure environment variables
+cp .env.example .env
+
+# Edit .env with your API keys
+nano .env  # or use your preferred editor
+```
+
+**Step 2: Start with Docker Compose (Recommended)**
+```bash
+# Start the service
+docker-compose up -d
+
+# Check if it's running
+docker-compose ps
+```
+
+**Step 3: Test the API**
+```bash
+# Health check
+curl http://localhost:3000/health
+
+# Should return: {"status":"healthy","timestamp":"...","uptime":...}
+```
+
+### Manual Docker Commands
+
+If you prefer to use Docker directly without Docker Compose:
+
+**Build the image:**
+```bash
+docker build -t cipher-api .
+```
+
+**Run with environment file:**
+```bash
+docker run -d -p 3000:3000 --name cipher-api --env-file .env cipher-api
+```
+
+**Run with individual environment variables:**
+```bash
+docker run -d -p 3000:3000 --name cipher-api \
+  -e OPENAI_API_KEY="your_openai_api_key" \
+  -e NODE_ENV=production \
+  cipher-api
+```
+
+### Testing Your Docker Setup
+
+Once your container is running, test all the key functionalities:
+
+**1. Health Check**
+```bash
+curl http://localhost:3000/health
+# Expected: {"status":"healthy","timestamp":"...","uptime":...}
+```
+
+**2. Send a Message**
+```bash
+curl -X POST http://localhost:3000/api/message/sync \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Hello, how are you?"}'
+```
+
+**3. Session Management**
+```bash
+# Create a new session
+curl -X POST http://localhost:3000/api/sessions \
+  -H "Content-Type: application/json" \
+  -d '{"sessionId": "my-test-session"}'
+
+# List all sessions
+curl http://localhost:3000/api/sessions
+
+# Send message to specific session
+curl -X POST http://localhost:3000/api/message/sync \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Tell me about Docker", "sessionId": "my-test-session"}'
+
+# Get conversation history
+curl http://localhost:3000/api/sessions/my-test-session/history
+```
+
+**4. Validate Container Health**
+```bash
+# Check container status
+docker ps
+
+# View logs
+docker logs cipher-api  # or docker-compose logs cipher-api
+
+# Check container stats
+docker stats cipher-api
+```
+
+### Troubleshooting Docker Setup
+
+**Container won't start:**
+```bash
+# Check logs for errors
+docker logs cipher-api
+
+# Common issues:
+# 1. Missing API keys - check your .env file
+# 2. Port already in use - change port mapping
+# 3. Invalid environment variables
+```
+
+**API not responding:**
+```bash
+# Check if container is running
+docker ps
+
+# Test from inside container
+docker exec cipher-api wget -qO- http://localhost:3000/health
+
+# Check port binding
+docker port cipher-api
+```
+
+**Environment Variables not working:**
+```bash
+# Verify .env file exists and has proper format
+cat .env
+
+# Check if variables are loaded in container
+docker exec cipher-api env | grep -E "(OPENAI|ANTHROPIC|OPENROUTER)"
+```
+
+### Docker Management Commands
+
+```bash
+# View running containers
+docker-compose ps
+
+# Stop the service
+docker-compose stop
+
+# Start the service
+docker-compose start
+
+# Restart the service
+docker-compose restart
+
+# View logs
+docker-compose logs -f cipher-api
+
+# Stop and remove containers
+docker-compose down
+
+# Stop and remove containers + volumes
+docker-compose down -v
+```
+
+### Simple Test Script
+
+For convenience, here's a simple test script you can save as `test-docker.sh`:
+
+```bash
+#!/bin/bash
+# test-docker.sh - Simple Docker test script
+
+echo "🐳 Testing Cipher Docker API..."
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Test function
+test_endpoint() {
+    local url=$1
+    local description=$2
+    local expected_status=${3:-200}
+    
+    echo -n "Testing $description... "
+    
+    response=$(curl -s -w "%{http_code}" -o /tmp/response.json "$url")
+    status_code="${response: -3}"
+    
+    if [ "$status_code" -eq "$expected_status" ]; then
+        echo -e "${GREEN}✓ PASS${NC}"
+        return 0
+    else
+        echo -e "${RED}✗ FAIL (HTTP $status_code)${NC}"
+        echo "Response: $(cat /tmp/response.json)"
+        return 1
+    fi
+}
+
+# Test POST function
+test_post() {
+    local url=$1
+    local data=$2
+    local description=$3
+    
+    echo -n "Testing $description... "
+    
+    response=$(curl -s -w "%{http_code}" -X POST -H "Content-Type: application/json" -d "$data" -o /tmp/response.json "$url")
+    status_code="${response: -3}"
+    
+    if [ "$status_code" -eq 200 ]; then
+        echo -e "${GREEN}✓ PASS${NC}"
+        return 0
+    else
+        echo -e "${RED}✗ FAIL (HTTP $status_code)${NC}"
+        echo "Response: $(cat /tmp/response.json)"
+        return 1
+    fi
+}
+
+# Wait for container to be ready
+echo "Waiting for container to be ready..."
+sleep 5
+
+# Run tests
+echo -e "${YELLOW}🧪 Running API Tests...${NC}"
+echo
+
+# Test 1: Health check
+test_endpoint "http://localhost:3000/health" "Health Check"
+
+# Test 2: Session list
+test_endpoint "http://localhost:3000/api/sessions" "Session List"
+
+# Test 3: Create session
+test_post "http://localhost:3000/api/sessions" '{"sessionId": "test-session"}' "Create Session"
+
+# Test 4: Send message
+test_post "http://localhost:3000/api/message/sync" '{"message": "Hello Docker!"}' "Send Message"
+
+# Test 5: Session history
+test_endpoint "http://localhost:3000/api/sessions/test-session/history" "Session History"
+
+echo
+echo -e "${GREEN}🎉 All tests completed!${NC}"
+echo "Container is ready to use at http://localhost:3000"
+```
+
+**Usage:**
+```bash
+# Make the script executable
+chmod +x test-docker.sh
+
+# Run the tests
+./test-docker.sh
+```
+
+### Advanced Docker Configuration
+
+#### Building the Docker Image
+
+```bash
+# Build the Docker image
+docker build -t cipher-api .
+
+# Build with custom build arguments
+docker build --build-arg NODE_VERSION=20.18.1 -t cipher-api .
+```
+
+#### Running the Container
+
+**Basic Usage:**
+```bash
+# Run with default configuration
+docker run -p 3000:3000 --env-file .env cipher-api
+
+# Run with custom port
+docker run -p 8080:8080 --env-file .env -e PORT=8080 cipher-api
+
+# Run in detached mode
+docker run -d -p 3000:3000 --env-file .env --name cipher-api cipher-api
+```
+
+**With Custom Configuration:**
+```bash
+# Mount custom agent configuration
+docker run -p 3000:3000 \
+  --env-file .env \
+  -v $(pwd)/my-config.yml:/app/memAgent/cipher.yml \
+  cipher-api
+
+# Mount custom agent directory
+docker run -p 3000:3000 \
+  --env-file .env \
+  -v $(pwd)/my-agent:/app/memAgent \
+  cipher-api
+```
+
+**Production Deployment:**
+```bash
+# Run with health checks and restart policy
+docker run -d \
+  --name cipher-api \
+  --restart unless-stopped \
+  -p 3000:3000 \
+  --env-file .env \
+  --health-cmd="curl -f http://localhost:3000/health || exit 1" \
+  --health-interval=30s \
+  --health-timeout=10s \
+  --health-retries=3 \
+  cipher-api
+```
+
+#### Docker Compose
+
+For easier deployment and management, use Docker Compose:
+
+```yaml
+# docker-compose.yml
+version: '3.8'
+
+services:
+  cipher-api:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+    env_file:
+      - .env
+    volumes:
+      - ./memAgent:/app/memAgent:ro  # Mount custom agent config
+      - cipher-data:/app/.cipher     # Persist application data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  cipher-data:
+```
+
+**Deploy with Docker Compose:**
+```bash
+# Start the service
+docker-compose up -d
+
+# View logs
+docker-compose logs -f cipher-api
+
+# Stop the service
+docker-compose down
+```
+
+### Docker Configuration
+
+#### Environment Variables
+
+The Docker container supports all standard Cipher environment variables:
+
+```bash
+# Required: At least one API key
+OPENAI_API_KEY=your_openai_api_key
+ANTHROPIC_API_KEY=your_anthropic_api_key
+OPENROUTER_API_KEY=your_openrouter_api_key
+OLLAMA_BASE_URL=http://localhost:11434/v1
+
+# Container-specific
+PORT=3000                    # API server port
+NODE_ENV=production          # Node.js environment
+CONFIG_FILE=/app/memAgent/cipher.yml  # Agent configuration path
+
+# Optional: Storage and logging
+CIPHER_LOG_LEVEL=info
+STORAGE_DATABASE_TYPE=sqlite
+STORAGE_DATABASE_PATH=/app/.cipher/database
+```
+
+#### Volume Mounts
+
+**Configuration Volume:**
+```bash
+# Mount custom agent configuration
+-v $(pwd)/my-config.yml:/app/memAgent/cipher.yml:ro
+```
+
+**Data Persistence:**
+```bash
+# Persist application data (database, logs, etc.)
+-v cipher-data:/app/.cipher
+```
+
+**Development Mode:**
+```bash
+# Mount entire memAgent directory for development
+-v $(pwd)/memAgent:/app/memAgent:ro
+```
+
+#### Health Checks
+
+The Docker container includes built-in health checks:
+
+```bash
+# Check container health
+docker exec cipher-api curl -f http://localhost:3000/health
+
+# View health status
+docker inspect cipher-api --format='{{.State.Health.Status}}'
+```
+
+### Production Considerations
+
+#### Security
+- Container runs as non-root user `cipher` (UID 1001)
+- Minimal Alpine Linux base image
+- Only essential production dependencies included
+- Secrets should be passed via environment variables or Docker secrets
+
+#### Scaling
+```bash
+# Run multiple instances with load balancer
+docker run -d -p 3001:3000 --env-file .env --name cipher-api-1 cipher-api
+docker run -d -p 3002:3000 --env-file .env --name cipher-api-2 cipher-api
+docker run -d -p 3003:3000 --env-file .env --name cipher-api-3 cipher-api
+```
+
+#### Monitoring
+```bash
+# View container logs
+docker logs -f cipher-api
+
+# Monitor resource usage
+docker stats cipher-api
+
+# Execute commands in running container
+docker exec -it cipher-api sh
+```
+
+### Troubleshooting
+
+**Common Issues:**
+
+1. **Port Already in Use:**
+   ```bash
+   # Use different port
+   docker run -p 8080:3000 --env-file .env cipher-api
+   ```
+
+2. **Missing API Keys:**
+   ```bash
+   # Check environment variables
+   docker exec cipher-api env | grep -E "(OPENAI|ANTHROPIC|OPENROUTER)"
+   ```
+
+3. **Configuration File Not Found:**
+   ```bash
+   # Verify mount and file exists
+   docker exec cipher-api ls -la /app/memAgent/
+   ```
+
+4. **Container Won't Start:**
+   ```bash
+   # Check logs for startup errors
+   docker logs cipher-api
+   ```
+
+### Development with Docker
+
+For development, you can mount the source code and run in development mode:
+
+```bash
+# Development setup with source code mounting
+docker run -it --rm \
+  -p 3000:3000 \
+  --env-file .env \
+  -v $(pwd):/app \
+  -w /app \
+  node:20.18.1-alpine \
+  sh -c "npm install && npm run dev"
 ```
 
 ## Configuration
