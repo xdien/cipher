@@ -12,7 +12,7 @@ export default defineConfig([
   },
   {
     entry: ['src/app/index.ts'],
-    format: ['cjs'],
+    format: ['cjs', 'esm'],
     outDir: 'dist/src/app',
     shims: true,
     bundle: true,
