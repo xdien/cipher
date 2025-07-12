@@ -817,7 +817,7 @@ export const extractAndOperateMemoryTool: InternalTool = {
 						const options: any = {
 							qualitySource,
 						};
-						
+
 						if (context?.sessionId) {
 							options.sourceSessionId = context.sessionId;
 						}
@@ -830,7 +830,7 @@ export const extractAndOperateMemoryTool: InternalTool = {
 						if ('old_memory' in action && action.old_memory) {
 							options.old_memory = action.old_memory;
 						}
-						
+
 						const payload = createKnowledgePayload(
 							action.id,
 							action.text,
