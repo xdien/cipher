@@ -813,6 +813,24 @@ export const extractAndOperateMemoryTool: InternalTool = {
 						}
 
 						// Create V2 payload with enhanced metadata
+						const domain = inferDomainFromTags(action.tags);
+						const options: any = {
+							qualitySource,
+						};
+						
+						if (context?.sessionId) {
+							options.sourceSessionId = context.sessionId;
+						}
+						if (domain) {
+							options.domain = domain;
+						}
+						if ('code_pattern' in action && action.code_pattern) {
+							options.code_pattern = action.code_pattern;
+						}
+						if ('old_memory' in action && action.old_memory) {
+							options.old_memory = action.old_memory;
+						}
+						
 						const payload = createKnowledgePayload(
 							action.id,
 							action.text,
@@ -820,13 +838,7 @@ export const extractAndOperateMemoryTool: InternalTool = {
 							action.confidence,
 							action.reasoning,
 							action.event as 'ADD' | 'UPDATE' | 'DELETE' | 'NONE',
-							{
-								qualitySource,
-								sourceSessionId: context?.sessionId,
-								domain: inferDomainFromTags(action.tags),
-								...(action.code_pattern && { code_pattern: action.code_pattern }),
-								...(action.old_memory && { old_memory: action.old_memory }),
-							}
+							options
 						);
 
 						if (action.event === 'ADD') {

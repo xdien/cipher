@@ -173,7 +173,7 @@ export class MilvusBackend implements VectorStore {
 		}
 		for (const vector of vectors) this.validateDimension(vector, 'insert');
 		const data = vectors.map((vector, idx) => ({
-			id: numberIdToMilvusId(ids[idx]),
+			id: numberIdToMilvusId(ids[idx]!),
 			vector,
 			payload: payloads[idx],
 		}));

@@ -155,10 +155,10 @@ export function createReasoningPayload(
 		tags: ['reasoning'],
 		reasoningSteps,
 		evaluation,
-		taskContext: options.taskContext,
+		...(options.taskContext && { taskContext: options.taskContext }),
 		stepCount,
 		stepTypes,
 		issueCount,
-		sourceSessionId: options.sourceSessionId,
+		...(options.sourceSessionId && { sourceSessionId: options.sourceSessionId }),
 	};
 }

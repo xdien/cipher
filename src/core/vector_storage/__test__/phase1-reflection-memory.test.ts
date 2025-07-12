@@ -56,6 +56,7 @@ describe('Phase 1: Reflection Memory Infrastructure', () => {
 				type: 'in-memory',
 				collectionName: 'test_knowledge',
 				dimension: 1536,
+				maxVectors: 10000,
 			};
 
 			manager = new DualCollectionVectorManager(config);

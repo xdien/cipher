@@ -37,7 +37,7 @@ function extractReasoningContentBlocks(aiResponse: any): string {
 	if (typeof aiResponse === 'string') {
 		const matches = Array.from(aiResponse.matchAll(/<thinking>([\s\S]*?)<\/thinking>/gi));
 		if (matches.length > 0) {
-			return matches.map(m => m[1].trim()).join('\n\n');
+			return matches.map(m => m[1]?.trim() || '').join('\n\n');
 		}
 		return aiResponse;
 	}

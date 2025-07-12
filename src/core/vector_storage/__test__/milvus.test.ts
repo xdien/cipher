@@ -245,8 +245,8 @@ describe('MilvusBackend', () => {
 
 		it('should throw if payloads are null or undefined', async () => {
 			await backend.connect();
-			await expect(backend.insert([[1, 2, 3]], [1], null)).rejects.toThrow();
-			await expect(backend.insert([[1, 2, 3]], [1], undefined)).rejects.toThrow();
+			await expect(backend.insert([[1, 2, 3]], [1], null as any)).rejects.toThrow();
+			await expect(backend.insert([[1, 2, 3]], [1], undefined as any)).rejects.toThrow();
 		});
 
 		it('should throw VectorDimensionError if search vector has wrong dimension', async () => {

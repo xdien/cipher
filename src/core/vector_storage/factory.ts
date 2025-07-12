@@ -228,9 +228,13 @@ export async function createDualCollectionVectorStoreFromEnv(): Promise<DualColl
 		);
 		const manager = new DualCollectionVectorManager(config);
 		await manager.connect();
+		const knowledgeStore = manager.getStore('knowledge');
+		if (!knowledgeStore) {
+			throw new Error('Failed to get knowledge store from dual collection manager');
+		}
 		return {
 			manager,
-			knowledgeStore: manager.getStore('knowledge'),
+			knowledgeStore,
 			reflectionStore: null,
 		};
 	}
@@ -265,7 +269,7 @@ export async function createDualCollectionVectorStoreFromEnv(): Promise<DualColl
 
 		return {
 			manager,
-			knowledgeStore,
+			knowledgeStore: knowledgeStore!,
 			reflectionStore,
 		};
 	} catch (error) {
