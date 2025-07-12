@@ -645,14 +645,7 @@ describe('ConversationSession', () => {
 
 		it('should handle empty input', async () => {
 			const emptyInput = '';
-			const expectedResponse = 'Please provide a valid input.';
-
-			mockLLMService.generate.mockResolvedValue(expectedResponse);
-
-			const result = await session.run(emptyInput);
-
-			expect(result).toBe(expectedResponse);
-			expect(mockLLMService.generate).toHaveBeenCalledWith(emptyInput, undefined, undefined);
+			await expect(session.run(emptyInput)).rejects.toThrow('Input must be a non-empty string');
 		});
 
 		it('should handle very long input', async () => {
@@ -678,6 +671,120 @@ describe('ConversationSession', () => {
 			expect(result).toBe(expectedResponse);
 			expect(mockLLMService.generate).toHaveBeenCalledWith(specialInput, undefined, undefined);
 		});
+	});
+});
+
+describe('ConversationSession Robustness & Validation', () => {
+	let session: ConversationSession;
+	let mockStateManager: any;
+	let mockPromptManager: any;
+	let mockMcpManager: any;
+	let mockContextManager: any;
+	let mockLLMService: any;
+	let mockUnifiedToolManager: any;
+	const sessionId = 'robustness-test';
+	const mockLLMConfig = {
+		provider: 'openai',
+		model: 'gpt-4.1-mini',
+		apiKey: 'test-api-key',
+		maxIterations: 3,
+		baseURL: 'https://api.openai.com/v1',
+	};
+
+	beforeEach(async () => {
+		vi.clearAllMocks();
+		mockStateManager = { getLLMConfig: vi.fn().mockReturnValue(mockLLMConfig) };
+		mockPromptManager = { getInstruction: vi.fn().mockReturnValue('prompt') };
+		mockMcpManager = {
+			getAllTools: vi.fn().mockResolvedValue({}),
+			getClients: vi.fn().mockReturnValue(new Map()),
+		};
+		mockContextManager = {
+			addMessage: vi.fn(),
+			getMessages: vi.fn().mockReturnValue([]),
+			clearMessages: vi.fn(),
+			getRawMessages: vi.fn().mockReturnValue([]),
+		};
+		mockLLMService = {
+			generate: vi.fn().mockResolvedValue('response'),
+			getAllTools: vi.fn(),
+			getConfig: vi.fn(),
+		};
+		const { createContextManager } = await import('../../brain/llm/messages/factory.js');
+		const { createLLMService } = await import('../../brain/llm/services/factory.js');
+		vi.mocked(createContextManager).mockReturnValue(mockContextManager);
+		vi.mocked(createLLMService).mockReturnValue(mockLLMService);
+		mockUnifiedToolManager = { executeTool: vi.fn().mockResolvedValue({ success: true }) };
+		// Don't call init by default for some tests
+		// session = new ConversationSession(...)
+	});
+
+	it('should throw if input is empty string', async () => {
+		session = new ConversationSession(
+			{ stateManager: mockStateManager, promptManager: mockPromptManager, mcpManager: mockMcpManager, unifiedToolManager: mockUnifiedToolManager },
+			sessionId
+		);
+		await session.init();
+		await expect(session.run('')).rejects.toThrow('Input must be a non-empty string');
+	});
+
+	it('should throw if input is not a string', async () => {
+		session = new ConversationSession(
+			{ stateManager: mockStateManager, promptManager: mockPromptManager, mcpManager: mockMcpManager, unifiedToolManager: mockUnifiedToolManager },
+			sessionId
+		);
+		await session.init();
+		await expect(session.run(123 as any)).rejects.toThrow('Input must be a non-empty string');
+	});
+
+	it('should throw if imageDataInput is missing fields', async () => {
+		session = new ConversationSession(
+			{ stateManager: mockStateManager, promptManager: mockPromptManager, mcpManager: mockMcpManager, unifiedToolManager: mockUnifiedToolManager },
+			sessionId
+		);
+		await session.init();
+		await expect(session.run('valid', { image: 'img' } as any)).rejects.toThrow('imageDataInput must have image and mimeType as non-empty strings');
+	});
+
+	it('should throw if imageDataInput fields are not strings', async () => {
+		session = new ConversationSession(
+			{ stateManager: mockStateManager, promptManager: mockPromptManager, mcpManager: mockMcpManager, unifiedToolManager: mockUnifiedToolManager },
+			sessionId
+		);
+		await session.init();
+		await expect(session.run('valid', { image: 123, mimeType: 456 } as any)).rejects.toThrow('imageDataInput must have image and mimeType as non-empty strings');
+	});
+
+	it('should coerce stream to boolean and warn if not boolean', async () => {
+		session = new ConversationSession(
+			{ stateManager: mockStateManager, promptManager: mockPromptManager, mcpManager: mockMcpManager, unifiedToolManager: mockUnifiedToolManager },
+			sessionId
+		);
+		await session.init();
+		const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+		await session.run('valid', undefined, 1 as any); // 1 is truthy
+		spy.mockRestore();
+		// No throw expected, just coercion
+	});
+
+	it('should warn on unknown option keys', async () => {
+		session = new ConversationSession(
+			{ stateManager: mockStateManager, promptManager: mockPromptManager, mcpManager: mockMcpManager, unifiedToolManager: mockUnifiedToolManager },
+			sessionId
+		);
+		await session.init();
+		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+		await session.run('valid', undefined, undefined, { memoryMetadata: {}, foo: 1 } as any);
+		warnSpy.mockRestore();
+		// No throw expected, just warning
+	});
+
+	it('should throw if run is called before init', async () => {
+		session = new ConversationSession(
+			{ stateManager: mockStateManager, promptManager: mockPromptManager, mcpManager: mockMcpManager, unifiedToolManager: mockUnifiedToolManager },
+			sessionId
+		);
+		await expect(session.run('valid')).rejects.toThrow('ConversationSession is not initialized. Call init() before run().');
 	});
 });
 

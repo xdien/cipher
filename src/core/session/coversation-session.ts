@@ -98,16 +98,21 @@ export class ConversationSession {
 	/**
 	 * Extract session-level metadata, merging defaults, session, and per-run metadata.
 	 * Uses custom merge and validation if provided.
+	 * Now supports environment and extensible context.
 	 */
-	private getSessionMetadata(runMeta?: Record<string, any>): Record<string, any> {
+	private getSessionMetadata(customMetadata?: Record<string, any>): Record<string, any> {
 		const base = {
 			sessionId: this.id,
 			source: 'conversation-session',
 			timestamp: new Date().toISOString(),
+			environment: process.env.NODE_ENV || 'development',
+			...this.getSessionContext(),
 		};
 		const sessionMeta = this.sessionMemoryMetadata || {};
 		const customMeta =
-			runMeta && typeof runMeta === 'object' && !Array.isArray(runMeta) ? runMeta : {};
+			customMetadata && typeof customMetadata === 'object' && !Array.isArray(customMetadata)
+				? customMetadata
+				: {};
 		let merged = this.mergeMetadata
 			? this.mergeMetadata(sessionMeta, customMeta)
 			: { ...base, ...sessionMeta, ...customMeta };
@@ -121,6 +126,13 @@ export class ConversationSession {
 	}
 
 	/**
+	 * Optionally override to provide additional session context for metadata.
+	 */
+	protected getSessionContext(): Record<string, any> {
+		return {};
+	}
+
+	/**
 	 * Run a conversation session with input, optional image data, streaming, and custom options.
 	 * @param input - User input string
 	 * @param imageDataInput - Optional image data
@@ -128,6 +140,7 @@ export class ConversationSession {
 	 * @param options - Optional parameters for memory extraction:
 	 *   - memoryMetadata: Custom metadata to attach to memory extraction (merged with session defaults)
 	 *   - contextOverrides: Overrides for context fields passed to memory extraction
+	 *   - historyTracking: Enable/disable history tracking
 	 * @returns The generated assistant response as a string
 	 */
 	public async run(
@@ -137,8 +150,50 @@ export class ConversationSession {
 		options?: {
 			memoryMetadata?: Record<string, any>;
 			contextOverrides?: Record<string, any>;
+			historyTracking?: boolean;
 		}
 	): Promise<string> {
+		// --- Input validation ---
+		if (typeof input !== 'string' || input.trim() === '') {
+			logger.error('ConversationSession.run: input must be a non-empty string');
+			throw new Error('Input must be a non-empty string');
+		}
+
+		// --- Session initialization check ---
+		if (!this.llmService || !this.contextManager) {
+			logger.error('ConversationSession.run: Session not initialized. Call init() before run().');
+			throw new Error('ConversationSession is not initialized. Call init() before run().');
+		}
+
+		// --- imageDataInput validation ---
+		if (imageDataInput !== undefined) {
+			if (
+				typeof imageDataInput !== 'object' ||
+				!imageDataInput.image ||
+				typeof imageDataInput.image !== 'string' ||
+				!imageDataInput.mimeType ||
+				typeof imageDataInput.mimeType !== 'string'
+			) {
+				logger.error('ConversationSession.run: imageDataInput must have image and mimeType as non-empty strings');
+				throw new Error('imageDataInput must have image and mimeType as non-empty strings');
+			}
+		}
+
+		// --- stream validation ---
+		if (stream !== undefined && typeof stream !== 'boolean') {
+			logger.warn('ConversationSession.run: stream should be a boolean. Coercing to boolean.');
+			stream = Boolean(stream);
+		}
+
+		// --- options validation ---
+		if (options && typeof options === 'object') {
+			const allowedKeys = ['memoryMetadata', 'contextOverrides', 'historyTracking'];
+			const unknownKeys = Object.keys(options).filter(k => !allowedKeys.includes(k));
+			if (unknownKeys.length > 0) {
+				logger.warn(`ConversationSession.run: Unknown option keys provided: ${unknownKeys.join(', ')}`);
+			}
+		}
+
 		console.log('ConversationSession.run called');
 		logger.debug(
 			`Running session ${this.id} with input: ${input} and imageDataInput: ${imageDataInput} and stream: ${stream}`
@@ -157,10 +212,10 @@ export class ConversationSession {
 		const mergedContext = {
 			...defaultContext,
 			...(options?.contextOverrides &&
-			typeof options.contextOverrides === 'object' &&
-			!Array.isArray(options.contextOverrides)
-				? options.contextOverrides
-				: {}),
+				typeof options.contextOverrides === 'object' &&
+				!Array.isArray(options.contextOverrides)
+					? options.contextOverrides
+					: {}),
 		};
 		if (this.beforeMemoryExtraction) {
 			this.beforeMemoryExtraction(mergedMeta, mergedContext);
@@ -182,6 +237,7 @@ export class ConversationSession {
 		options?: {
 			memoryMetadata?: Record<string, any>;
 			contextOverrides?: Record<string, any>;
+			historyTracking?: boolean;
 		}
 	): Promise<void> {
 		console.log('ConversationSession.enforceMemoryExtraction called');
@@ -201,8 +257,6 @@ export class ConversationSession {
 				return;
 			}
 
-			// unifiedToolManager is now always required and injected; no global mock debug needed
-
 			// Extract comprehensive interaction data including tool usage
 			const comprehensiveInteractionData = this.extractComprehensiveInteractionData(
 				userInput,
@@ -218,10 +272,10 @@ export class ConversationSession {
 			const mergedContext = {
 				...defaultContext,
 				...(options?.contextOverrides &&
-				typeof options.contextOverrides === 'object' &&
-				!Array.isArray(options.contextOverrides)
-					? options.contextOverrides
-					: {}),
+					typeof options.contextOverrides === 'object' &&
+					!Array.isArray(options.contextOverrides)
+						? options.contextOverrides
+						: {}),
 			};
 
 			// Prepare memory metadata (merge session-level and per-run, per-run takes precedence)
@@ -252,6 +306,7 @@ export class ConversationSession {
 						useLLMDecisions: true,
 						confidenceThreshold: 0.4,
 						enableDeleteOperations: true,
+						historyTracking: options?.historyTracking ?? true,
 					},
 				}
 			);
@@ -262,11 +317,11 @@ export class ConversationSession {
 				totalMemoryActions: memoryResult.memory?.length || 0,
 				actionBreakdown: memoryResult.memory
 					? {
-							ADD: memoryResult.memory.filter((a: any) => a.event === 'ADD').length,
-							UPDATE: memoryResult.memory.filter((a: any) => a.event === 'UPDATE').length,
-							DELETE: memoryResult.memory.filter((a: any) => a.event === 'DELETE').length,
-							NONE: memoryResult.memory.filter((a: any) => a.event === 'NONE').length,
-						}
+						ADD: memoryResult.memory.filter((a: any) => a.event === 'ADD').length,
+						UPDATE: memoryResult.memory.filter((a: any) => a.event === 'UPDATE').length,
+						DELETE: memoryResult.memory.filter((a: any) => a.event === 'DELETE').length,
+						NONE: memoryResult.memory.filter((a: any) => a.event === 'NONE').length,
+					}
 					: {},
 			});
 		} catch (error) {
