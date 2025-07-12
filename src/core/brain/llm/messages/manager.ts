@@ -186,8 +186,8 @@ export class ContextManager {
 			// Format all messages in conversation history
 			const formattedMessages: any[] = [];
 
-			// Add system prompt as first message if using formatters that expect it in messages array
-			if (prompt && this.formatter.constructor.name === 'OpenAIMessageFormatter') {
+			// Add system prompt as first message - for both OpenAI and Anthropic
+			if (prompt) {
 				formattedMessages.push({ role: 'system', content: prompt });
 			}
 

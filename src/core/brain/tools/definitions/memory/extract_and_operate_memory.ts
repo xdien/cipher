@@ -327,7 +327,19 @@ export const extractAndOperateMemoryTool: InternalTool = {
 		type: 'object',
 		properties: {
 			interaction: {
-				type: ['string', 'array'],
+				oneOf: [
+					{
+						type: 'string',
+						description: 'Single raw user interaction or conversation text to extract knowledge from.'
+					},
+					{
+						type: 'array',
+						items: {
+							type: 'string'
+						},
+						description: 'Array of raw user interactions or conversation texts to extract knowledge from.'
+					}
+				],
 				description: 'Raw user interaction(s) or conversation text(s) to extract knowledge from.',
 			},
 			existingMemories: {
