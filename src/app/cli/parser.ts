@@ -595,7 +595,7 @@ export class CommandParser {
 			category: 'system',
 			handler: async (args: string[], agent: MemAgent) => {
 				try {
-					const systemPrompt = agent.promptManager.getInstruction();
+					const systemPrompt = agent.promptManager.getCompleteSystemPrompt();
 
 					console.log(chalk.cyan('📝 Current System Prompt:'));
 					console.log('');
@@ -643,12 +643,8 @@ export class CommandParser {
 
 					return true;
 				} catch (error) {
-					console.log(
-						chalk.red(
-							`❌ Failed to get system prompt: ${error instanceof Error ? error.message : String(error)}`
-						)
-					);
-					return true;
+					console.error(chalk.red('❌ Error displaying system prompt:'), error);
+					return false;
 				}
 			},
 		});

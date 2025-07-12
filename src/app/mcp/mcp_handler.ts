@@ -390,7 +390,7 @@ async function registerAgentPrompts(server: Server, agent: MemAgent): Promise<vo
  */
 async function getSystemPrompt(agent: MemAgent): Promise<any> {
 	try {
-		const systemPrompt = agent.promptManager.getInstruction();
+		const systemPrompt = agent.promptManager.getCompleteSystemPrompt();
 
 		return {
 			messages: [
