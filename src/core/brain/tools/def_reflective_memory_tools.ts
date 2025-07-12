@@ -333,11 +333,11 @@ async function extractTaskContextFromContent(
 	}
 
 	return {
-		goal,
-		input: userInput,
-		taskType,
-		domain,
-		complexity,
+		...(goal && { goal }),
+		...(userInput && { input: userInput }),
+		...(taskType && { taskType }),
+		...(domain && { domain }),
+		...(complexity && { complexity }),
 	};
 }
 
@@ -467,7 +467,7 @@ function detectSemanticRedundancy(steps: ReasoningStep[]): number {
 
 	for (let i = 0; i < steps.length; i++) {
 		for (let j = i + 1; j < steps.length; j++) {
-			const similarity = calculateQuerySimilarity(steps[i].content, steps[j].content);
+			const similarity = calculateQuerySimilarity(steps[i]?.content || '', steps[j]?.content || '');
 			if (similarity > 0.7) {
 				// High similarity threshold
 				redundantPairs++;

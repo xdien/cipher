@@ -155,12 +155,14 @@ export class SearchContextManager {
 						content !== 'Invalid result object' &&
 						content !== 'No content available'
 					) {
+						const metadata = this.extractMetadata(result, 'graph');
+						const timestamp = this.extractTimestamp(result, 'graph');
 						normalized.push({
 							source: 'graph',
 							content,
 							relevance: this.extractRelevance(result, 'graph'),
-							metadata: this.extractMetadata(result, 'graph'),
-							timestamp: this.extractTimestamp(result, 'graph'),
+							...(metadata && { metadata }),
+							...(timestamp && { timestamp }),
 						});
 					}
 				}
@@ -177,12 +179,14 @@ export class SearchContextManager {
 						content !== 'Invalid result object' &&
 						content !== 'No content available'
 					) {
+						const metadata = this.extractMetadata(result, 'memory');
+						const timestamp = this.extractTimestamp(result, 'memory');
 						normalized.push({
 							source: 'memory',
 							content,
 							relevance: this.extractRelevance(result, 'memory'),
-							metadata: this.extractMetadata(result, 'memory'),
-							timestamp: this.extractTimestamp(result, 'memory'),
+							...(metadata && { metadata }),
+							...(timestamp && { timestamp }),
 						});
 					}
 				}
@@ -199,12 +203,14 @@ export class SearchContextManager {
 						content !== 'Invalid result object' &&
 						content !== 'No content available'
 					) {
+						const metadata = this.extractMetadata(result, 'reasoning_patterns');
+						const timestamp = this.extractTimestamp(result, 'reasoning_patterns');
 						normalized.push({
 							source: 'reasoning_patterns',
 							content,
 							relevance: this.extractRelevance(result, 'reasoning_patterns'),
-							metadata: this.extractMetadata(result, 'reasoning_patterns'),
-							timestamp: this.extractTimestamp(result, 'reasoning_patterns'),
+							...(metadata && { metadata }),
+							...(timestamp && { timestamp }),
 						});
 					}
 				}
@@ -323,7 +329,7 @@ export class SearchContextManager {
 					return existingHash === contentHash;
 				});
 
-				if (existingIndex >= 0 && result.relevance > unique[existingIndex].relevance) {
+				if (existingIndex >= 0 && unique[existingIndex] && result.relevance > unique[existingIndex].relevance) {
 					unique[existingIndex] = result;
 				}
 			}
@@ -374,11 +380,11 @@ export class SearchContextManager {
 		const topResults = primaryResults.slice(0, 3);
 
 		let summary = `Found ${primaryResults.length} relevant results`;
-		if (resultCounts.graph > 0) summary += ` (${resultCounts.graph} from knowledge graph`;
-		if (resultCounts.memory > 0)
-			summary += `${resultCounts.graph > 0 ? ', ' : ' ('}${resultCounts.memory} from memory`;
-		if (resultCounts.reasoning_patterns > 0)
-			summary += `${resultCounts.graph > 0 || resultCounts.memory > 0 ? ', ' : ' ('}${resultCounts.reasoning_patterns} reasoning patterns`;
+		if ((resultCounts.graph || 0) > 0) summary += ` (${resultCounts.graph || 0} from knowledge graph`;
+		if ((resultCounts.memory || 0) > 0)
+			summary += `${(resultCounts.graph || 0) > 0 ? ', ' : ' ('}${resultCounts.memory || 0} from memory`;
+		if ((resultCounts.reasoning_patterns || 0) > 0)
+			summary += `${(resultCounts.graph || 0) > 0 || (resultCounts.memory || 0) > 0 ? ', ' : ' ('}${resultCounts.reasoning_patterns || 0} reasoning patterns`;
 		summary += ')';
 
 		if (topResults.length > 0) {
@@ -406,10 +412,10 @@ export class SearchContextManager {
 		let summary = `Found ${primaryResults.length} relevant results`;
 
 		const sources = [];
-		if (resultCounts.graph > 0) sources.push(`${resultCounts.graph} from knowledge graph`);
-		if (resultCounts.memory > 0) sources.push(`${resultCounts.memory} from memory`);
-		if (resultCounts.reasoning_patterns > 0)
-			sources.push(`${resultCounts.reasoning_patterns} reasoning patterns`);
+		if ((resultCounts.graph || 0) > 0) sources.push(`${resultCounts.graph || 0} from knowledge graph`);
+		if ((resultCounts.memory || 0) > 0) sources.push(`${resultCounts.memory || 0} from memory`);
+		if ((resultCounts.reasoning_patterns || 0) > 0)
+			sources.push(`${resultCounts.reasoning_patterns || 0} reasoning patterns`);
 
 		if (sources.length > 0) {
 			summary += ` (${sources.join(', ')})`;

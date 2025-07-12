@@ -166,7 +166,7 @@ export const searchMemoryTool: InternalTool = {
 
 			const embedder = embeddingManager.getEmbedder('default');
 
-			if (!embedder.embed || typeof embedder.embed !== 'function') {
+			if (!embedder?.embed || typeof embedder.embed !== 'function') {
 				throw new Error('Embedder is not properly initialized or missing embed() method');
 			}
 
@@ -177,7 +177,7 @@ export const searchMemoryTool: InternalTool = {
 				queryPreview: query.substring(0, 50),
 			});
 
-			const queryEmbedding = await embedder.embed(query);
+			const queryEmbedding = await embedder?.embed(query);
 			const embeddingTime = Date.now() - embeddingStartTime;
 
 			logger.debug('MemorySearch: Embedding generated successfully', {

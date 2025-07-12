@@ -281,10 +281,10 @@ export function validateEmbeddingConfig(config: unknown): {
 	try {
 		const data = parseEmbeddingConfig(config);
 		return { success: true, data };
-	} catch (_error) {
-		if (_error instanceof z.ZodError) {
-			return { success: false, errors: _error };
+	} catch (error) {
+		if (error instanceof z.ZodError) {
+			return { success: false, errors: error };
 		}
-		return { success: false, errors: _error };
+		return { success: false, errors: error as z.ZodError };
 	}
 }

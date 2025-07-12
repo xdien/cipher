@@ -456,14 +456,14 @@ export const storeReasoningMemoryTool: InternalTool = {
 					// Extract task context from trace metadata - now automatically extracted from conversation
 					taskContext: trace.metadata.taskContext
 						? {
-								goal: trace.metadata.taskContext.goal,
-								input: trace.metadata.taskContext.input,
-								taskType: trace.metadata.taskContext.taskType,
-								domain: trace.metadata.taskContext.domain,
-								complexity: trace.metadata.taskContext.complexity,
-								conversationLength: trace.metadata.conversationLength,
-								hasExplicitMarkup: trace.metadata.hasExplicitMarkup,
-							}
+							...(trace.metadata.taskContext.goal !== undefined && { goal: trace.metadata.taskContext.goal }),
+							...(trace.metadata.taskContext.input !== undefined && { input: trace.metadata.taskContext.input }),
+							...(trace.metadata.taskContext.taskType !== undefined && { taskType: trace.metadata.taskContext.taskType }),
+							...(trace.metadata.taskContext.domain !== undefined && { domain: trace.metadata.taskContext.domain }),
+							...(trace.metadata.taskContext.complexity !== undefined && { complexity: trace.metadata.taskContext.complexity }),
+							...(trace.metadata.conversationLength !== undefined && { conversationLength: trace.metadata.conversationLength }),
+							...(trace.metadata.hasExplicitMarkup !== undefined && { hasExplicitMarkup: trace.metadata.hasExplicitMarkup }),
+						}
 						: undefined,
 				}
 			);

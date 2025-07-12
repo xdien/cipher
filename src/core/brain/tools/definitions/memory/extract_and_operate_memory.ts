@@ -623,7 +623,7 @@ export const extractAndOperateMemoryTool: InternalTool = {
 					logger.debug(`ExtractAndOperateMemory: Similarity search completed for fact ${i + 1}`, {
 						similarMemoriesFound: similar.length,
 						topSimilarity: similar.length > 0 ? similar[0]?.score?.toFixed(3) : 'N/A',
-						similarities: similar.slice(0, 3).map(s => ({
+						similarities: similar.slice(0, 3).map((s: any) => ({
 							id: s.id,
 							score: s.score?.toFixed(3),
 							preview: (s.payload?.text || '').substring(0, 50) + '...',
@@ -640,9 +640,9 @@ export const extractAndOperateMemoryTool: InternalTool = {
 					if (options.useLLMDecisions && llmService) {
 						try {
 							// Format similar memories for prompt
-							const similarMemoriesStr = similar
+							const similarMemoriesStr = 							similar
 								.map(
-									(mem, idx) =>
+									(mem: any, idx: any) =>
 										`  ${idx + 1}. ID: ${mem.id} (similarity: ${mem.score?.toFixed(2) ?? 'N/A'})\n     Content: ${(mem.payload?.text || '').substring(0, 200)}`
 								)
 								.join('\n');
@@ -668,7 +668,7 @@ export const extractAndOperateMemoryTool: InternalTool = {
 								);
 							}
 
-							const decision = parseLLMDecision(llmResponse);
+							const decision = parseLLMDecision(String(llmResponse));
 							if (decision && ['ADD', 'UPDATE', 'DELETE', 'NONE'].includes(decision.operation)) {
 								action = decision.operation;
 								confidence = Math.max(0, Math.min(1, decision.confidence ?? 0.7));
@@ -819,7 +819,7 @@ export const extractAndOperateMemoryTool: InternalTool = {
 							action.tags,
 							action.confidence,
 							action.reasoning,
-							action.event,
+							action.event as 'ADD' | 'UPDATE' | 'DELETE' | 'NONE',
 							{
 								qualitySource,
 								sourceSessionId: context?.sessionId,

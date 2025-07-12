@@ -56,9 +56,9 @@ describe('SearchContextManager', () => {
 			expect(result.secondaryResults).toHaveLength(0);
 			expect(result.totalResults).toBe(2);
 			expect(result.sourcesUsed).toContain('graph');
-			expect(result.primaryResults[0].source).toBe('graph');
-			expect(result.primaryResults[0].content).toBe('Graph node 1');
-			expect(result.primaryResults[0].relevance).toBe(0.8);
+			expect(result.primaryResults[0]?.source).toBe('graph');
+			expect(result.primaryResults[0]?.content).toBe('Graph node 1');
+			expect(result.primaryResults[0]?.relevance).toBe(0.8);
 		});
 
 		it('should process memory search results', async () => {
@@ -81,9 +81,9 @@ describe('SearchContextManager', () => {
 
 			expect(result.primaryResults).toHaveLength(2);
 			expect(result.sourcesUsed).toContain('memory');
-			expect(result.primaryResults[0].source).toBe('memory');
-			expect(result.primaryResults[0].content).toBe('Memory fact 1');
-			expect(result.primaryResults[0].relevance).toBe(0.9);
+			expect(result.primaryResults[0]?.source).toBe('memory');
+			expect(result.primaryResults[0]?.content).toBe('Memory fact 1');
+			expect(result.primaryResults[0]?.relevance).toBe(0.9);
 		});
 
 		it('should process reasoning patterns search results', async () => {
@@ -101,8 +101,8 @@ describe('SearchContextManager', () => {
 
 			expect(result.primaryResults).toHaveLength(1);
 			expect(result.sourcesUsed).toContain('reasoning_patterns');
-			expect(result.primaryResults[0].source).toBe('reasoning_patterns');
-			expect(result.primaryResults[0].content).toBe('Reasoning pattern 1');
+			expect(result.primaryResults[0]?.source).toBe('reasoning_patterns');
+			expect(result.primaryResults[0]?.content).toBe('Reasoning pattern 1');
 		});
 
 		it('should process mixed search results', async () => {
@@ -132,10 +132,10 @@ describe('SearchContextManager', () => {
 
 			const result = await manager.processSearchResults(searchResults);
 
-			expect(result.primaryResults[0].content).toBe('High relevance');
-			expect(result.primaryResults[0].relevance).toBe(0.9);
-			expect(result.primaryResults[1].content).toBe('Medium relevance');
-			expect(result.primaryResults[1].relevance).toBe(0.7);
+			expect(result.primaryResults[0]?.content).toBe('High relevance');
+			expect(result.primaryResults[0]?.relevance).toBe(0.9);
+			expect(result.primaryResults[1]?.content).toBe('Medium relevance');
+			expect(result.primaryResults[1]?.relevance).toBe(0.7);
 			// Note: Low relevance result might be filtered out due to relevance threshold
 		});
 
@@ -153,7 +153,7 @@ describe('SearchContextManager', () => {
 			const result = await manager.processSearchResults(searchResults);
 
 			expect(result.totalResults).toBe(1);
-			expect(result.primaryResults[0].content).toBe('High relevance');
+			expect(result.primaryResults[0]?.content).toBe('High relevance');
 		});
 
 		it('should split results into primary and secondary', async () => {
@@ -173,10 +173,10 @@ describe('SearchContextManager', () => {
 
 			expect(result.primaryResults).toHaveLength(2);
 			expect(result.secondaryResults).toHaveLength(2);
-			expect(result.primaryResults[0].content).toBe('Result 1');
-			expect(result.primaryResults[1].content).toBe('Result 2');
-			expect(result.secondaryResults[0].content).toBe('Result 3');
-			expect(result.secondaryResults[1].content).toBe('Result 4');
+			expect(result.primaryResults[0]?.content).toBe('Result 1');
+			expect(result.primaryResults[1]?.content).toBe('Result 2');
+			expect(result.secondaryResults[0]?.content).toBe('Result 3');
+			expect(result.secondaryResults[1]?.content).toBe('Result 4');
 		});
 	});
 
@@ -193,8 +193,8 @@ describe('SearchContextManager', () => {
 			const result = await manager.processSearchResults(searchResults);
 
 			expect(result.totalResults).toBe(2);
-			expect(result.primaryResults[0].content).toBe('Same content');
-			expect(result.primaryResults[0].relevance).toBe(0.9); // Higher relevance kept
+			expect(result.primaryResults[0]?.content).toBe('Same content');
+			expect(result.primaryResults[0]?.relevance).toBe(0.9); // Higher relevance kept
 		});
 
 		it('should not deduplicate when disabled', async () => {
@@ -276,7 +276,7 @@ describe('SearchContextManager', () => {
 			const cached = manager.getCachedResults('test query');
 			expect(cached).toBeDefined();
 			expect(cached).toHaveLength(1);
-			expect(cached![0].content).toBe('Cached result');
+			expect(cached?.[0]?.content).toBe('Cached result');
 		});
 
 		it('should return null for non-existent cached results', () => {

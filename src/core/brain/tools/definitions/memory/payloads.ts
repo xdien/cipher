@@ -98,7 +98,11 @@ export function createKnowledgePayload(
 		event,
 		timestamp: new Date().toISOString(),
 		version: 2,
-		...options,
+		...(options.domain && { domain: options.domain }),
+		...(options.sourceSessionId && { sourceSessionId: options.sourceSessionId }),
+		qualitySource: options.qualitySource,
+		...(options.code_pattern && { code_pattern: options.code_pattern }),
+		...(options.old_memory && { old_memory: options.old_memory }),
 	};
 }
 
