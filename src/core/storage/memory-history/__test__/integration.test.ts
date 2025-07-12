@@ -8,10 +8,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { MemoryHistoryStorageService } from '../service.js';
 import { createMemoryHistoryEntry, createMemoryHistoryService } from '../index.js';
-import type {
-	MemoryHistoryEntry,
-	MemoryOperation,
-} from '../types.js';
+import type { MemoryHistoryEntry, MemoryOperation } from '../types.js';
 import { StorageManager } from '../../manager.js';
 import type { StorageConfig } from '../../config.js';
 

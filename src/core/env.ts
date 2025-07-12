@@ -255,7 +255,8 @@ export const validateEnv = () => {
 		// Memory Search Configuration
 		SEARCH_MEMORY_TYPE: process.env.SEARCH_MEMORY_TYPE || 'both',
 		// Reflection Memory Configuration
-		REFLECTION_VECTOR_STORE_COLLECTION: process.env.REFLECTION_VECTOR_STORE_COLLECTION || 'reflection_memory',
+		REFLECTION_VECTOR_STORE_COLLECTION:
+			process.env.REFLECTION_VECTOR_STORE_COLLECTION || 'reflection_memory',
 		DISABLE_REFLECTION_MEMORY: process.env.DISABLE_REFLECTION_MEMORY === 'true',
 	};
 

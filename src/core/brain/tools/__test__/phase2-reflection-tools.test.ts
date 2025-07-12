@@ -1,6 +1,6 @@
 /**
  * Phase 2 Test: Reflection Memory Tools
- * 
+ *
  * Tests the three core reasoning tools:
  * - extractReasoningSteps
  * - evaluateReasoning
@@ -8,9 +8,9 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { 
-	extractReasoningSteps, 
-	evaluateReasoning, 
+import {
+	extractReasoningSteps,
+	evaluateReasoning,
 	searchReasoningPatterns,
 	ReasoningStepSchema,
 	ReasoningTraceSchema,
@@ -64,21 +64,25 @@ Result: Function complete with proper validation.
 				options: {
 					extractExplicit: true,
 					extractImplicit: true,
-					includeMetadata: true
-				}
+					includeMetadata: true,
+				},
 			});
 
 			expect(result.success).toBe(true);
 			expect(result.result.trace).toBeDefined();
 			expect(result.result.trace.steps).toBeInstanceOf(Array);
 			expect(result.result.trace.steps.length).toBeGreaterThan(0);
-			
+
 			// Should extract explicit thought steps
 			const thoughtSteps = result.result.trace.steps.filter((s: any) => s.type === 'thought');
 			expect(thoughtSteps.length).toBeGreaterThan(0);
-			
+
 			// Steps should not have confidence fields (removed in new requirements)
-			expect(result.result.trace.steps.every((s: any) => !Object.prototype.hasOwnProperty.call(s, 'confidence'))).toBe(true);
+			expect(
+				result.result.trace.steps.every(
+					(s: any) => !Object.prototype.hasOwnProperty.call(s, 'confidence')
+				)
+			).toBe(true);
 		});
 
 		it('should extract implicit reasoning patterns when no explicit markup', async () => {
@@ -95,23 +99,27 @@ I'll implement quicksort with proper pivot selection.
 				reasoningContent,
 				options: {
 					extractExplicit: true,
-					extractImplicit: true
-				}
+					extractImplicit: true,
+				},
 			});
 
 			expect(result.success).toBe(true);
 			expect(result.result.trace.steps).toBeInstanceOf(Array);
 			expect(result.result.trace.steps.length).toBeGreaterThan(0);
-			
+
 			// Should extract implicit reasoning
-			expect(result.result.trace.steps.some((s: any) => s.content.includes('sorting') || s.content.includes('quicksort'))).toBe(true);
+			expect(
+				result.result.trace.steps.some(
+					(s: any) => s.content.includes('sorting') || s.content.includes('quicksort')
+				)
+			).toBe(true);
 		});
 
 		it('should handle empty reasoning content gracefully', async () => {
 			const result = await extractReasoningSteps.handler({
 				userInput: 'Test input',
 				reasoningContent: '   ',
-				options: {}
+				options: {},
 			});
 
 			// Should handle gracefully - either succeed with empty steps or fail with clear message
@@ -139,7 +147,7 @@ Observation: Same 404 error.
 			const result = await extractReasoningSteps.handler({
 				userInput,
 				reasoningContent,
-				options: {}
+				options: {},
 			});
 
 			expect(result.success).toBe(true);
@@ -155,23 +163,23 @@ Observation: Same 404 error.
 			steps: [
 				{
 					type: 'thought',
-					content: 'I need to solve this problem'
+					content: 'I need to solve this problem',
 				},
 				{
 					type: 'action',
-					content: 'Implementing solution approach A'
+					content: 'Implementing solution approach A',
 				},
 				{
 					type: 'observation',
-					content: 'Approach A worked correctly'
-				}
+					content: 'Approach A worked correctly',
+				},
 			],
 			metadata: {
 				extractedAt: '2024-01-01T00:00:00Z',
 				conversationLength: 100,
 				stepCount: 3,
-				hasExplicitMarkup: true
-			}
+				hasExplicitMarkup: true,
+			},
 		};
 
 		it('should evaluate reasoning quality and provide suggestions', async () => {
@@ -180,8 +188,8 @@ Observation: Same 404 error.
 				options: {
 					checkEfficiency: true,
 					detectLoops: true,
-					generateSuggestions: true
-				}
+					generateSuggestions: true,
+				},
 			});
 
 			expect(result.success).toBe(true);
@@ -199,14 +207,14 @@ Observation: Same 404 error.
 					...sampleTrace.steps,
 					{
 						type: 'thought',
-						content: 'I need to solve this problem' // Duplicate
-					}
-				]
+						content: 'I need to solve this problem', // Duplicate
+					},
+				],
 			};
 
 			const result = await evaluateReasoning.handler({
 				trace: traceWithRedundancy,
-				options: { detectLoops: true }
+				options: { detectLoops: true },
 			});
 
 			expect(result.success).toBe(true);
@@ -217,15 +225,17 @@ Observation: Same 404 error.
 		it('should identify inefficient paths', async () => {
 			const inefficientTrace = {
 				...sampleTrace,
-				steps: Array(20).fill(0).map((_, i) => ({
-					type: 'thought',
-					content: `Step ${i}`
-				}))
+				steps: Array(20)
+					.fill(0)
+					.map((_, i) => ({
+						type: 'thought',
+						content: `Step ${i}`,
+					})),
 			};
 
 			const result = await evaluateReasoning.handler({
 				trace: inefficientTrace,
-				options: { checkEfficiency: true }
+				options: { checkEfficiency: true },
 			});
 
 			expect(result.success).toBe(true);
@@ -239,18 +249,18 @@ Observation: Same 404 error.
 				steps: [
 					{
 						type: 'thought',
-						content: 'Uncertain about this approach'
+						content: 'Uncertain about this approach',
 					},
 					{
 						type: 'action',
-						content: 'Trying something random'
-					}
-				]
+						content: 'Trying something random',
+					},
+				],
 			};
 
 			const result = await evaluateReasoning.handler({
 				trace: lowConfidenceTrace,
-				options: { checkEfficiency: true }
+				options: { checkEfficiency: true },
 			});
 
 			expect(result.success).toBe(true);
@@ -266,20 +276,20 @@ Observation: Same 404 error.
 						type: 'thought',
 						content: 'Clear problem analysis',
 						confidence: 0.95,
-						timestamp: '2024-01-01T00:00:00Z'
+						timestamp: '2024-01-01T00:00:00Z',
 					},
 					{
 						type: 'action',
 						content: 'Efficient implementation',
-						confidence: 0.90,
-						timestamp: '2024-01-01T00:01:00Z'
-					}
-				]
+						confidence: 0.9,
+						timestamp: '2024-01-01T00:01:00Z',
+					},
+				],
 			};
 
 			const result = await evaluateReasoning.handler({
 				trace: goodTrace,
-				options: { generateSuggestions: true }
+				options: { generateSuggestions: true },
 			});
 
 			expect(result.success).toBe(true);
@@ -292,22 +302,22 @@ Observation: Same 404 error.
 				steps: [
 					{
 						type: 'thought',
-						content: 'Systematic problem analysis'
+						content: 'Systematic problem analysis',
 					},
 					{
 						type: 'action',
-						content: 'Implement optimal solution'
+						content: 'Implement optimal solution',
 					},
 					{
 						type: 'observation',
-						content: 'Solution works perfectly'
-					}
-				]
+						content: 'Solution works perfectly',
+					},
+				],
 			};
 
 			const result = await evaluateReasoning.handler({
 				trace: highQualityTrace,
-				options: {}
+				options: {},
 			});
 
 			expect(result.success).toBe(true);
@@ -321,12 +331,12 @@ Observation: Same 404 error.
 				query: 'How to create React components',
 				context: {
 					taskType: 'code_generation',
-					domain: 'programming'
+					domain: 'programming',
 				},
 				options: {
 					maxResults: 5,
-					minQualityScore: 0.7
-				}
+					minQualityScore: 0.7,
+				},
 			});
 
 			expect(result.success).toBe(true);
@@ -340,8 +350,8 @@ Observation: Same 404 error.
 			const result = await searchReasoningPatterns.handler({
 				query: 'Test query',
 				options: {
-					maxResults: 3
-				}
+					maxResults: 3,
+				},
 			});
 
 			expect(result.success).toBe(true);
@@ -354,8 +364,8 @@ Observation: Same 404 error.
 				query: 'Test query',
 				options: {
 					minQualityScore: 0.8,
-					includeEvaluations: true
-				}
+					includeEvaluations: true,
+				},
 			});
 
 			expect(result.success).toBe(true);
@@ -368,11 +378,11 @@ Observation: Same 404 error.
 				context: {
 					taskType: 'problem_solving',
 					domain: 'math',
-					complexity: 'high'
+					complexity: 'high',
 				},
 				options: {
-					maxResults: 10
-				}
+					maxResults: 10,
+				},
 			});
 
 			expect(result.success).toBe(true);
@@ -395,8 +405,8 @@ Result: Algorithm works correctly.
 				`,
 				options: {
 					extractExplicit: true,
-					includeMetadata: true
-				}
+					includeMetadata: true,
+				},
 			});
 
 			expect(extractResult.success).toBe(true);
@@ -407,8 +417,8 @@ Result: Algorithm works correctly.
 				trace: extractResult.result.trace,
 				options: {
 					checkEfficiency: true,
-					generateSuggestions: true
-				}
+					generateSuggestions: true,
+				},
 			});
 
 			expect(evaluateResult.success).toBe(true);
@@ -428,7 +438,7 @@ Thought: Maybe I can optimize it somehow.
 Action: Adding some micro-optimizations.
 Observation: Still too slow, approach failed.
 				`,
-				options: {}
+				options: {},
 			});
 
 			expect(extractResult.success).toBe(true);
@@ -436,7 +446,7 @@ Observation: Still too slow, approach failed.
 			// Evaluate the failed reasoning
 			const evaluateResult = await evaluateReasoning.handler({
 				trace: extractResult.result.trace,
-				options: {}
+				options: {},
 			});
 
 			expect(evaluateResult.success).toBe(true);
@@ -450,7 +460,7 @@ Observation: Still too slow, approach failed.
 		it('should validate ReasoningStep schema', () => {
 			const validStep = {
 				type: 'thought',
-				content: 'I need to think about this'
+				content: 'I need to think about this',
 			};
 
 			const result = ReasoningStepSchema.safeParse(validStep);
@@ -463,23 +473,23 @@ Observation: Still too slow, approach failed.
 				steps: [
 					{
 						type: 'thought',
-						content: 'I need to solve this problem'
+						content: 'I need to solve this problem',
 					},
 					{
 						type: 'action',
-						content: 'Implementing solution approach A'
-					}
+						content: 'Implementing solution approach A',
+					},
 				],
 				metadata: {
 					extractedAt: '2024-01-01T00:00:00Z',
 					conversationLength: 100,
 					stepCount: 2,
-					hasExplicitMarkup: true
-				}
+					hasExplicitMarkup: true,
+				},
 			};
 
 			const result = ReasoningTraceSchema.safeParse(validTrace);
 			expect(result.success).toBe(true);
 		});
 	});
-}); 
+});

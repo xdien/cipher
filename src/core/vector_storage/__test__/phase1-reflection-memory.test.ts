@@ -1,6 +1,6 @@
 /**
  * Phase 1 Test: Reflection Memory Infrastructure
- * 
+ *
  * Tests dual collection vector storage
  */
 
@@ -40,7 +40,7 @@ describe('Phase 1: Reflection Memory Infrastructure', () => {
 	beforeEach(() => {
 		// Reset all mocks
 		vi.clearAllMocks();
-		
+
 		// Mock Qdrant to fail connections (to trigger fallback to in-memory)
 		mockQdrantClient.getCollections.mockRejectedValue(new Error('Qdrant connection failed'));
 	});
@@ -51,7 +51,7 @@ describe('Phase 1: Reflection Memory Infrastructure', () => {
 		beforeEach(async () => {
 			// Enable reflection memory for these tests by setting both collection names
 			process.env.REFLECTION_VECTOR_STORE_COLLECTION = 'reflection_memory';
-			
+
 			const config: VectorStoreConfig = {
 				type: 'in-memory',
 				collectionName: 'test_knowledge',
@@ -103,7 +103,7 @@ describe('Phase 1: Reflection Memory Infrastructure', () => {
 
 			// Testing invalid collection type
 			expect(() => manager.getStore('invalid' as any)).toThrow('Unknown collection type');
-			
+
 			// Testing invalid collection type
 			expect(() => manager.isConnected('invalid' as any)).toThrow('Unknown collection type');
 
@@ -113,4 +113,4 @@ describe('Phase 1: Reflection Memory Infrastructure', () => {
 			await manager.disconnect();
 		});
 	});
-}); 
+});

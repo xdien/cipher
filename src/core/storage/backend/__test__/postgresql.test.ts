@@ -76,7 +76,7 @@ describe('PostgresBackend', () => {
 				port: 5432,
 				database: 'test',
 				user: 'test',
-				password: 'test'
+				password: 'test',
 			});
 
 			await expect(invalidBackend.connect()).rejects.toThrow();

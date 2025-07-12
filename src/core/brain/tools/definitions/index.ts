@@ -106,14 +106,15 @@ export const TOOL_CATEGORIES = {
 	memory: {
 		description: 'Tools for managing facts, memories, knowledge storage, and reasoning patterns',
 		tools: [
-			'extract_and_operate_memory', 
-			'memory_search', 
+			'extract_and_operate_memory',
+			'memory_search',
 			'store_reasoning_memory',
 			'extract_reasoning_steps',
 			'evaluate_reasoning',
-			'search_reasoning_patterns'
+			'search_reasoning_patterns',
 		] as string[],
-		useCase: 'Use these tools to capture, search, and store important information and reasoning patterns for future reference',
+		useCase:
+			'Use these tools to capture, search, and store important information and reasoning patterns for future reference',
 	},
 	knowledge_graph: {
 		description: 'Tools for managing and querying knowledge graphs',

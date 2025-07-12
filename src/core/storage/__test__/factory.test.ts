@@ -46,7 +46,7 @@ vi.mock('ioredis', () => {
 		status: 'disconnected',
 		isConnected: () => false,
 	}));
-	
+
 	return {
 		Redis: mockRedis,
 		default: mockRedis,

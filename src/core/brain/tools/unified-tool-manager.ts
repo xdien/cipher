@@ -125,7 +125,9 @@ export class UnifiedToolManager {
 						};
 					}
 					const totalInternalTools = Object.keys(internalTools).length;
-					const agentAccessibleTools = Object.values(internalTools).filter(tool => tool.agentAccessible !== false).length;
+					const agentAccessibleTools = Object.values(internalTools).filter(
+						tool => tool.agentAccessible !== false
+					).length;
 					logger.debug(
 						`UnifiedToolManager: Loaded ${totalInternalTools} internal tools (${agentAccessibleTools} agent-accessible, ${totalInternalTools - agentAccessibleTools} internal-only)`
 					);
@@ -192,12 +194,12 @@ export class UnifiedToolManager {
 				// Check if tool exists and is agent-accessible
 				const tool = this.internalToolManager.getTool(toolName);
 				if (!tool) return false;
-				
+
 				// Skip tools that are not agent-accessible (internal-only tools)
 				if (tool.agentAccessible === false) {
 					return false;
 				}
-				
+
 				return true;
 			} else if (this.config.enableMcpTools) {
 				const mcpTools = await this.mcpManager.getAllTools();
@@ -221,12 +223,12 @@ export class UnifiedToolManager {
 				// Check if tool exists and is agent-accessible
 				const tool = this.internalToolManager.getTool(toolName);
 				if (!tool) return null;
-				
+
 				// Skip tools that are not agent-accessible (internal-only tools)
 				if (tool.agentAccessible === false) {
 					return null;
 				}
-				
+
 				return 'internal';
 			} else if (this.config.enableMcpTools) {
 				const mcpTools = await this.mcpManager.getAllTools();

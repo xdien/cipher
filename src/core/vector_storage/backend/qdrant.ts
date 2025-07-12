@@ -16,11 +16,7 @@
 import { QdrantClient } from '@qdrant/js-client-rest';
 import type { VectorStore } from './vector-store.js';
 import type { SearchFilters, VectorStoreResult, QdrantBackendConfig } from './types.js';
-import {
-	VectorStoreError,
-	VectorStoreConnectionError,
-	VectorDimensionError,
-} from './types.js';
+import { VectorStoreError, VectorStoreConnectionError, VectorDimensionError } from './types.js';
 import { Logger, createLogger } from '../../logger/index.js';
 import { LOG_PREFIXES, DEFAULTS, ERROR_MESSAGES } from '../constants.js';
 

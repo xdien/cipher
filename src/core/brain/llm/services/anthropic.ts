@@ -238,7 +238,7 @@ export class AnthropicService implements ILLMService {
 	// Helper methods
 	private async getAIResponseWithRetries(
 		tools: any[],
-		userInput: string
+		_userInput: string
 	): Promise<{ response: any }> {
 		let attempts = 0;
 		const MAX_ATTEMPTS = 3;

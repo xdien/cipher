@@ -7,12 +7,7 @@
  * @module storage/manager
  */
 
-import type {
-	CacheBackend,
-	DatabaseBackend,
-	StorageBackends,
-	StorageConfig,
-} from './types.js';
+import type { CacheBackend, DatabaseBackend, StorageBackends, StorageConfig } from './types.js';
 import { StorageSchema } from './config.js';
 import { Logger, createLogger } from '../logger/index.js';
 import {

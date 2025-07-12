@@ -178,7 +178,9 @@ describe('UnifiedToolManager', () => {
 			expect(isAvailable).toBe(true);
 
 			// Internal-only tools should not be available to agents
-			const notAvailable = await unifiedManager.isToolAvailable('cipher_extract_and_operate_memory');
+			const notAvailable = await unifiedManager.isToolAvailable(
+				'cipher_extract_and_operate_memory'
+			);
 			expect(notAvailable).toBe(false);
 
 			const notAvailable2 = await unifiedManager.isToolAvailable('nonexistent_tool');
@@ -305,7 +307,9 @@ describe('UnifiedToolManager', () => {
 			expect(source).toBe('internal');
 
 			// Internal-only tools should return null (not accessible to agents)
-			const internalSource = await unifiedManager.getToolSource('cipher_extract_and_operate_memory');
+			const internalSource = await unifiedManager.getToolSource(
+				'cipher_extract_and_operate_memory'
+			);
 			expect(internalSource).toBe(null);
 		});
 

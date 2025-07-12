@@ -9,12 +9,7 @@
  */
 
 import { z } from 'zod';
-import {
-	DEFAULTS,
-	OPENAI_MODELS,
-	PROVIDER_TYPES,
-	ENV_VARS,
-} from './constants.js';
+import { DEFAULTS, OPENAI_MODELS, PROVIDER_TYPES, ENV_VARS } from './constants.js';
 
 /**
  * Base Embedding Configuration Schema

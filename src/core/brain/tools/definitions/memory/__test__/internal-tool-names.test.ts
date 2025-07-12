@@ -91,7 +91,9 @@ describe('Internal Tool Names', () => {
 		});
 
 		// Internal-only tools should not be available to agents
-		expect(await unifiedToolManager.isToolAvailable('cipher_extract_and_operate_memory')).toBe(false);
+		expect(await unifiedToolManager.isToolAvailable('cipher_extract_and_operate_memory')).toBe(
+			false
+		);
 		expect(await unifiedToolManager.isToolAvailable('nonexistent_tool')).toBe(false);
 	});
 });

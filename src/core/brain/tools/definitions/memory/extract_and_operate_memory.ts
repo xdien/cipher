@@ -121,18 +121,87 @@ function isSignificantKnowledge(content: string): boolean {
 
 	// Check for technical words density
 	const technicalWords = [
-		'api', 'sdk', 'cli', 'gui', 'ui', 'ux', 'ide', 'editor', 'compiler', 'interpreter', 'runtime',
-		'virtual', 'machine', 'container', 'image', 'build', 'deploy', 'release', 'version', 'update',
-		'patch', 'bug', 'feature', 'enhancement', 'issue', 'ticket', 'workflow', 'process', 'pipeline',
-		'automation', 'script', 'batch', 'cron', 'job', 'service', 'microservice', 'monolith',
-		'architecture', 'pattern', 'design', 'system', 'network', 'protocol', 'tcp', 'udp', 'http',
-		'https', 'ssl', 'tls', 'dns', 'cdn', 'cache', 'redis', 'memcached', 'session', 'cookie',
-		'token', 'jwt', 'oauth', 'auth', 'encrypt', 'decrypt', 'hash', 'salt', 'key', 'certificate',
-		'public', 'private', 'binary', 'ascii', 'unicode', 'utf8', 'base64', 'hex', 'decimal', 'octal', 'buffer'
+		'api',
+		'sdk',
+		'cli',
+		'gui',
+		'ui',
+		'ux',
+		'ide',
+		'editor',
+		'compiler',
+		'interpreter',
+		'runtime',
+		'virtual',
+		'machine',
+		'container',
+		'image',
+		'build',
+		'deploy',
+		'release',
+		'version',
+		'update',
+		'patch',
+		'bug',
+		'feature',
+		'enhancement',
+		'issue',
+		'ticket',
+		'workflow',
+		'process',
+		'pipeline',
+		'automation',
+		'script',
+		'batch',
+		'cron',
+		'job',
+		'service',
+		'microservice',
+		'monolith',
+		'architecture',
+		'pattern',
+		'design',
+		'system',
+		'network',
+		'protocol',
+		'tcp',
+		'udp',
+		'http',
+		'https',
+		'ssl',
+		'tls',
+		'dns',
+		'cdn',
+		'cache',
+		'redis',
+		'memcached',
+		'session',
+		'cookie',
+		'token',
+		'jwt',
+		'oauth',
+		'auth',
+		'encrypt',
+		'decrypt',
+		'hash',
+		'salt',
+		'key',
+		'certificate',
+		'public',
+		'private',
+		'binary',
+		'ascii',
+		'unicode',
+		'utf8',
+		'base64',
+		'hex',
+		'decimal',
+		'octal',
+		'buffer',
 	];
 
 	const words = text.split(/\s+/);
-	const technicalWordCount = words.filter(word => 
+	const technicalWordCount = words.filter(word =>
 		technicalWords.includes(word.replace(/[^\w]/g, ''))
 	).length;
 
@@ -148,8 +217,9 @@ function isSignificantKnowledge(content: string): boolean {
 	}
 
 	// Check for programming-specific patterns that indicate technical content
-	const programmingKeywords = /\b(code|coding|program|programming|develop|development|software|hardware|tech|technical|digital|computer|computing|algorithm|logic|syntax|semantic|compile|runtime|execute|debug|test|deploy|implement|configure|setup|install|upgrade|migrate|scale|optimize|refactor)\b/i;
-	
+	const programmingKeywords =
+		/\b(code|coding|program|programming|develop|development|software|hardware|tech|technical|digital|computer|computing|algorithm|logic|syntax|semantic|compile|runtime|execute|debug|test|deploy|implement|configure|setup|install|upgrade|migrate|scale|optimize|refactor)\b/i;
+
 	if (programmingKeywords.test(text)) {
 		return true;
 	}
@@ -173,27 +243,27 @@ function generateSafeMemoryId(index: number): number {
  */
 function inferDomainFromTags(tags: string[]): string | undefined {
 	const domainMapping: Record<string, string> = {
-		'javascript': 'frontend',
-		'typescript': 'frontend',
-		'react': 'frontend',
-		'vue': 'frontend',
-		'angular': 'frontend',
-		'html': 'frontend',
-		'css': 'frontend',
-		'node': 'backend',
-		'express': 'backend',
-		'api': 'backend',
-		'database': 'backend',
-		'sql': 'backend',
-		'docker': 'devops',
-		'kubernetes': 'devops',
-		'deployment': 'devops',
-		'ci': 'devops',
-		'cd': 'devops',
-		'git': 'version-control',
-		'github': 'version-control',
-		'testing': 'quality-assurance',
-		'debug': 'quality-assurance'
+		javascript: 'frontend',
+		typescript: 'frontend',
+		react: 'frontend',
+		vue: 'frontend',
+		angular: 'frontend',
+		html: 'frontend',
+		css: 'frontend',
+		node: 'backend',
+		express: 'backend',
+		api: 'backend',
+		database: 'backend',
+		sql: 'backend',
+		docker: 'devops',
+		kubernetes: 'devops',
+		deployment: 'devops',
+		ci: 'devops',
+		cd: 'devops',
+		git: 'version-control',
+		github: 'version-control',
+		testing: 'quality-assurance',
+		debug: 'quality-assurance',
 	};
 
 	for (const tag of tags) {
@@ -324,24 +394,24 @@ export const extractAndOperateMemoryTool: InternalTool = {
 			} else {
 				throw new Error('Interaction must be a string or array of strings');
 			}
-			
+
 			// Filter out empty or invalid facts
 			const validFacts = knowledgeArray
 				.filter(fact => fact && typeof fact === 'string' && fact.trim().length > 0)
 				.map(fact => fact.trim());
-      
+
 			// Apply significance filtering to extract only programming knowledge and concepts
 			const significantFacts = validFacts.filter(fact => {
 				const isSignificant = isSignificantKnowledge(fact);
 				if (!isSignificant) {
 					logger.debug('ExtractAndOperateMemory: Skipping non-significant fact', {
 						factPreview: fact.substring(0, 100) + (fact.length > 100 ? '...' : ''),
-						reason: 'Does not contain significant programming knowledge or concepts'
+						reason: 'Does not contain significant programming knowledge or concepts',
 					});
 				}
 				return isSignificant;
 			});
-      
+
 			if (significantFacts.length === 0) {
 				logger.debug('ExtractAndOperateMemory: No significant facts found after filtering', {
 					originalFacts: validFacts.length,
@@ -378,7 +448,9 @@ export const extractAndOperateMemoryTool: InternalTool = {
 
 			// Step 2: Enhanced error handling for service dependencies
 			if (!context?.services) {
-				logger.warn('ExtractAndOperateMemory: No services context available, using basic processing');
+				logger.warn(
+					'ExtractAndOperateMemory: No services context available, using basic processing'
+				);
 				// Return basic processing without vector operations
 				const basicMemoryActions = significantFacts.map((fact, i) => ({
 					id: generateSafeMemoryId(i),
@@ -386,9 +458,9 @@ export const extractAndOperateMemoryTool: InternalTool = {
 					event: 'ADD' as const,
 					tags: extractTechnicalTags(fact),
 					confidence: 0.7,
-					reasoning: 'Basic processing without vector services'
+					reasoning: 'Basic processing without vector services',
 				}));
-				
+
 				return {
 					success: true,
 					extraction: extractionStats,
@@ -398,27 +470,29 @@ export const extractAndOperateMemoryTool: InternalTool = {
 						action: action.event,
 						confidence: action.confidence,
 						reason: action.reasoning,
-						targetId: action.id
+						targetId: action.id,
 					})),
-					timestamp: new Date().toISOString()
+					timestamp: new Date().toISOString(),
 				};
 			}
 
 			const embeddingManager = context.services.embeddingManager;
 			const vectorStoreManager = context.services.vectorStoreManager;
 			const llmService = context.services.llmService;
-			
+
 			if (!embeddingManager || !vectorStoreManager) {
-				logger.warn('ExtractAndOperateMemory: Missing embedding or vector services, falling back to basic processing');
+				logger.warn(
+					'ExtractAndOperateMemory: Missing embedding or vector services, falling back to basic processing'
+				);
 				const basicMemoryActions = significantFacts.map((fact, i) => ({
 					id: generateSafeMemoryId(i),
 					text: fact,
 					event: 'ADD' as const,
 					tags: extractTechnicalTags(fact),
 					confidence: 0.6,
-					reasoning: 'Fallback processing due to missing services'
+					reasoning: 'Fallback processing due to missing services',
 				}));
-				
+
 				return {
 					success: true,
 					extraction: extractionStats,
@@ -428,36 +502,39 @@ export const extractAndOperateMemoryTool: InternalTool = {
 						action: action.event,
 						confidence: action.confidence,
 						reason: action.reasoning,
-						targetId: action.id
+						targetId: action.id,
 					})),
-					timestamp: new Date().toISOString()
+					timestamp: new Date().toISOString(),
 				};
 			}
-			
+
 			const embedder = embeddingManager.getEmbedder('default');
 			// Get knowledge store explicitly (uses VECTOR_STORE_COLLECTION env var)
 			let vectorStore;
 			try {
 				logger.debug('ExtractAndOperateMemory: Using knowledge collection');
-				vectorStore = (vectorStoreManager as any).getStore('knowledge') || vectorStoreManager.getStore();
+				vectorStore =
+					(vectorStoreManager as any).getStore('knowledge') || vectorStoreManager.getStore();
 			} catch (error) {
 				logger.debug('ExtractAndOperateMemory: Falling back to default store', {
-					error: error instanceof Error ? error.message : String(error)
+					error: error instanceof Error ? error.message : String(error),
 				});
 				vectorStore = vectorStoreManager.getStore();
 			}
-			
+
 			if (!embedder || !vectorStore) {
-				logger.warn('ExtractAndOperateMemory: Embedder or vector store not available, using basic processing');
+				logger.warn(
+					'ExtractAndOperateMemory: Embedder or vector store not available, using basic processing'
+				);
 				const basicMemoryActions = significantFacts.map((fact, i) => ({
 					id: generateSafeMemoryId(i),
 					text: fact,
 					event: 'ADD' as const,
 					tags: extractTechnicalTags(fact),
 					confidence: 0.6,
-					reasoning: 'Basic processing - embedder/vector store unavailable'
+					reasoning: 'Basic processing - embedder/vector store unavailable',
 				}));
-				
+
 				return {
 					success: true,
 					extraction: extractionStats,
@@ -467,12 +544,12 @@ export const extractAndOperateMemoryTool: InternalTool = {
 						action: action.event,
 						confidence: action.confidence,
 						reason: action.reasoning,
-						targetId: action.id
+						targetId: action.id,
 					})),
-					timestamp: new Date().toISOString()
+					timestamp: new Date().toISOString(),
 				};
 			}
-			
+
 			if (!embedder.embed || typeof embedder.embed !== 'function') {
 				throw new Error('Embedder is not properly initialized or missing embed() method');
 			}
@@ -480,7 +557,7 @@ export const extractAndOperateMemoryTool: InternalTool = {
 			const options = {
 				similarityThreshold: args.options?.similarityThreshold ?? 0.8,
 				maxSimilarResults: args.options?.maxSimilarResults ?? 5,
-				useLLMDecisions: args.options?.useLLMDecisions ?? false
+				useLLMDecisions: args.options?.useLLMDecisions ?? false,
 			};
 
 			const memoryActions = [];
@@ -488,16 +565,19 @@ export const extractAndOperateMemoryTool: InternalTool = {
 
 			for (let i = 0; i < significantFacts.length; i++) {
 				const fact = significantFacts[i];
-				
+
 				if (!fact) {
 					logger.warn(`ExtractAndOperateMemory: Skipping undefined fact at index ${i}`);
 					continue;
 				}
-				
-				logger.debug(`ExtractAndOperateMemory: Processing fact ${i + 1}/${significantFacts.length}`, {
-					factPreview: fact.substring(0, 80) + (fact.length > 80 ? '...' : ''),
-					factLength: fact.length
-				});
+
+				logger.debug(
+					`ExtractAndOperateMemory: Processing fact ${i + 1}/${significantFacts.length}`,
+					{
+						factPreview: fact.substring(0, 80) + (fact.length > 80 ? '...' : ''),
+						factLength: fact.length,
+					}
+				);
 
 				try {
 					// Embed the fact with error handling
@@ -505,11 +585,14 @@ export const extractAndOperateMemoryTool: InternalTool = {
 					try {
 						embedding = await embedder.embed(fact);
 					} catch (embedError) {
-						logger.warn(`ExtractAndOperateMemory: Failed to embed fact ${i + 1}, using default action`, {
-							error: embedError instanceof Error ? embedError.message : String(embedError),
-							factPreview: fact.substring(0, 50)
-						});
-						
+						logger.warn(
+							`ExtractAndOperateMemory: Failed to embed fact ${i + 1}, using default action`,
+							{
+								error: embedError instanceof Error ? embedError.message : String(embedError),
+								factPreview: fact.substring(0, 50),
+							}
+						);
+
 						// Fallback to ADD without embedding
 						memoryActions.push({
 							id: generateSafeMemoryId(i),
@@ -517,7 +600,7 @@ export const extractAndOperateMemoryTool: InternalTool = {
 							event: 'ADD',
 							tags: extractTechnicalTags(fact),
 							confidence: 0.5,
-							reasoning: 'Fallback ADD due to embedding failure'
+							reasoning: 'Fallback ADD due to embedding failure',
 						});
 						continue;
 					}
@@ -527,21 +610,24 @@ export const extractAndOperateMemoryTool: InternalTool = {
 					try {
 						similar = await vectorStore.search(embedding, options.maxSimilarResults);
 					} catch (searchError) {
-						logger.warn(`ExtractAndOperateMemory: Failed to search similar memories for fact ${i + 1}`, {
-							error: searchError instanceof Error ? searchError.message : String(searchError),
-							factPreview: fact.substring(0, 50)
-						});
+						logger.warn(
+							`ExtractAndOperateMemory: Failed to search similar memories for fact ${i + 1}`,
+							{
+								error: searchError instanceof Error ? searchError.message : String(searchError),
+								factPreview: fact.substring(0, 50),
+							}
+						);
 						// Continue with empty similar array
 					}
-					
+
 					logger.debug(`ExtractAndOperateMemory: Similarity search completed for fact ${i + 1}`, {
 						similarMemoriesFound: similar.length,
 						topSimilarity: similar.length > 0 ? similar[0]?.score?.toFixed(3) : 'N/A',
 						similarities: similar.slice(0, 3).map(s => ({
 							id: s.id,
 							score: s.score?.toFixed(3),
-							preview: (s.payload?.text || '').substring(0, 50) + '...'
-						}))
+							preview: (s.payload?.text || '').substring(0, 50) + '...',
+						})),
 					});
 
 					// LLM-based decision making with enhanced error handling
@@ -555,27 +641,31 @@ export const extractAndOperateMemoryTool: InternalTool = {
 						try {
 							// Format similar memories for prompt
 							const similarMemoriesStr = similar
-								.map((mem, idx) => `  ${idx + 1}. ID: ${mem.id} (similarity: ${mem.score?.toFixed(2) ?? 'N/A'})\n     Content: ${(mem.payload?.text || '').substring(0, 200)}`)
+								.map(
+									(mem, idx) =>
+										`  ${idx + 1}. ID: ${mem.id} (similarity: ${mem.score?.toFixed(2) ?? 'N/A'})\n     Content: ${(mem.payload?.text || '').substring(0, 200)}`
+								)
 								.join('\n');
-							
+
 							// Use the DECISION_PROMPT from memory_operation
 							const DECISION_PROMPT = MEMORY_OPERATION_PROMPTS.DECISION_PROMPT;
-							const llmInput = DECISION_PROMPT
-								.replace('{fact}', fact)
+							const llmInput = DECISION_PROMPT.replace('{fact}', fact)
 								.replace('{similarMemories}', similarMemoriesStr || 'No similar memories found.')
 								.replace('{context}', '');
-							
+
 							// Use directGenerate with timeout and error handling
 							let llmResponse;
 							try {
 								llmResponse = await Promise.race([
 									llmService.directGenerate(llmInput),
-									new Promise((_, reject) => 
+									new Promise((_, reject) =>
 										setTimeout(() => reject(new Error('LLM decision timeout')), 30000)
-									)
+									),
 								]);
 							} catch (llmError) {
-								throw new Error(`LLM call failed: ${llmError instanceof Error ? llmError.message : String(llmError)}`);
+								throw new Error(
+									`LLM call failed: ${llmError instanceof Error ? llmError.message : String(llmError)}`
+								);
 							}
 
 							const decision = parseLLMDecision(llmResponse);
@@ -585,23 +675,26 @@ export const extractAndOperateMemoryTool: InternalTool = {
 								reason = decision.reasoning || 'LLM decision';
 								targetId = decision.targetMemoryId || null;
 								usedLLM = true;
-								
-								logger.debug(`ExtractAndOperateMemory: LLM decision for fact ${i + 1}`, { 
+
+								logger.debug(`ExtractAndOperateMemory: LLM decision for fact ${i + 1}`, {
 									factPreview: fact.substring(0, 80) + (fact.length > 80 ? '...' : ''),
 									decision: action,
 									confidence: confidence.toFixed(2),
 									reasoning: reason,
 									targetMemoryId: targetId,
-									decisionMethod: 'LLM'
+									decisionMethod: 'LLM',
 								});
 							} else {
 								throw new Error('LLM decision missing required fields or invalid operation');
 							}
 						} catch (llmError) {
-							logger.warn(`ExtractAndOperateMemory: LLM decision failed for fact ${i + 1}, using heuristic fallback`, { 
-								factPreview: fact.substring(0, 80), 
-								error: llmError instanceof Error ? llmError.message : String(llmError) 
-							});
+							logger.warn(
+								`ExtractAndOperateMemory: LLM decision failed for fact ${i + 1}, using heuristic fallback`,
+								{
+									factPreview: fact.substring(0, 80),
+									error: llmError instanceof Error ? llmError.message : String(llmError),
+								}
+							);
 							usedLLM = false;
 						}
 					}
@@ -610,7 +703,7 @@ export const extractAndOperateMemoryTool: InternalTool = {
 					if (!usedLLM) {
 						const mostSimilar = similar.length > 0 ? similar[0] : null;
 						confidence = mostSimilar?.score ?? 0;
-						
+
 						if (!mostSimilar || confidence < options.similarityThreshold) {
 							action = 'ADD';
 							reason = 'No highly similar memory found; adding as new.';
@@ -623,7 +716,11 @@ export const extractAndOperateMemoryTool: InternalTool = {
 								action = 'UPDATE';
 								targetId = mostSimilar.id;
 								reason = 'Fact is more complete/correct; updating existing memory.';
-							} else if (fact.includes('not') && mostSimilar.payload?.text && !mostSimilar.payload.text.includes('not')) {
+							} else if (
+								fact.includes('not') &&
+								mostSimilar.payload?.text &&
+								!mostSimilar.payload.text.includes('not')
+							) {
 								action = 'DELETE';
 								targetId = mostSimilar.id;
 								reason = 'Fact contradicts existing memory; deleting old memory.';
@@ -642,17 +739,22 @@ export const extractAndOperateMemoryTool: InternalTool = {
 							targetMemoryId: targetId,
 							decisionMethod: 'Heuristic',
 							topSimilarityScore: mostSimilar?.score?.toFixed(3) || 'N/A',
-							similarityThreshold: options.similarityThreshold.toFixed(2)
+							similarityThreshold: options.similarityThreshold.toFixed(2),
 						});
 					}
 
 					memoryActions.push({
-						id: action === 'ADD' ? generateSafeMemoryId(i) : (targetId && !isNaN(Number(targetId)) && Number(targetId) > 0 ? Number(targetId) : generateSafeMemoryId(i)),
+						id:
+							action === 'ADD'
+								? generateSafeMemoryId(i)
+								: targetId && !isNaN(Number(targetId)) && Number(targetId) > 0
+									? Number(targetId)
+									: generateSafeMemoryId(i),
 						text: fact,
 						event: action,
 						tags: extractTechnicalTags(fact),
 						confidence,
-						reasoning: reason
+						reasoning: reason,
 					});
 
 					memorySummaries.push({
@@ -660,15 +762,14 @@ export const extractAndOperateMemoryTool: InternalTool = {
 						action,
 						confidence,
 						reason,
-						targetId
+						targetId,
 					});
-
 				} catch (factError) {
 					logger.error(`ExtractAndOperateMemory: Failed to process fact ${i + 1}`, {
 						error: factError instanceof Error ? factError.message : String(factError),
-						factPreview: fact.substring(0, 50)
+						factPreview: fact.substring(0, 50),
 					});
-					
+
 					// Add fallback action for failed fact
 					memoryActions.push({
 						id: generateSafeMemoryId(i),
@@ -676,7 +777,7 @@ export const extractAndOperateMemoryTool: InternalTool = {
 						event: 'ADD',
 						tags: extractTechnicalTags(fact),
 						confidence: 0.4,
-						reasoning: `Fallback due to processing error: ${factError instanceof Error ? factError.message : String(factError)}`
+						reasoning: `Fallback due to processing error: ${factError instanceof Error ? factError.message : String(factError)}`,
 					});
 				}
 			}
@@ -684,8 +785,9 @@ export const extractAndOperateMemoryTool: InternalTool = {
 			// Step 3: Enhanced persistence with better error handling
 			logger.debug('ExtractAndOperateMemory: Starting memory persistence operations', {
 				totalActions: memoryActions.length,
-				persistableActions: memoryActions.filter(a => ['ADD', 'UPDATE', 'DELETE'].includes(a.event)).length,
-				skippableActions: memoryActions.filter(a => a.event === 'NONE').length
+				persistableActions: memoryActions.filter(a => ['ADD', 'UPDATE', 'DELETE'].includes(a.event))
+					.length,
+				skippableActions: memoryActions.filter(a => a.event === 'NONE').length,
 			});
 
 			let persistedCount = 0;
@@ -694,14 +796,14 @@ export const extractAndOperateMemoryTool: InternalTool = {
 					if (!action.text) {
 						logger.warn(`ExtractAndOperateMemory: Skipping action with undefined text`, {
 							memoryId: action.id,
-							event: action.event
+							event: action.event,
 						});
 						continue;
 					}
-					
+
 					try {
 						const embedding = await embedder.embed(action.text);
-						
+
 						// Determine quality source based on how the decision was made
 						let qualitySource: 'similarity' | 'llm' | 'heuristic' = 'heuristic';
 						if (action.reasoning.includes('LLM')) {
@@ -709,7 +811,7 @@ export const extractAndOperateMemoryTool: InternalTool = {
 						} else if (action.reasoning.includes('similarity')) {
 							qualitySource = 'similarity';
 						}
-						
+
 						// Create V2 payload with enhanced metadata
 						const payload = createKnowledgePayload(
 							action.id,
@@ -723,17 +825,17 @@ export const extractAndOperateMemoryTool: InternalTool = {
 								sourceSessionId: context?.sessionId,
 								domain: inferDomainFromTags(action.tags),
 								...(action.code_pattern && { code_pattern: action.code_pattern }),
-								...(action.old_memory && { old_memory: action.old_memory })
+								...(action.old_memory && { old_memory: action.old_memory }),
 							}
 						);
-						
+
 						if (action.event === 'ADD') {
 							await vectorStore.insert([embedding], [action.id], [payload]);
 							logger.debug(`ExtractAndOperateMemory: ${action.event} operation completed`, {
 								memoryId: action.id,
 								textPreview: action.text.substring(0, 60) + (action.text.length > 60 ? '...' : ''),
 								tags: action.tags,
-								confidence: action.confidence.toFixed(3)
+								confidence: action.confidence.toFixed(3),
 							});
 						} else if (action.event === 'UPDATE') {
 							await vectorStore.update(action.id, embedding, payload);
@@ -741,22 +843,25 @@ export const extractAndOperateMemoryTool: InternalTool = {
 								memoryId: action.id,
 								textPreview: action.text.substring(0, 60) + (action.text.length > 60 ? '...' : ''),
 								tags: action.tags,
-								confidence: action.confidence.toFixed(3)
+								confidence: action.confidence.toFixed(3),
 							});
 						} else if (action.event === 'DELETE') {
 							await vectorStore.delete(action.id);
 							logger.debug(`ExtractAndOperateMemory: ${action.event} operation completed`, {
 								memoryId: action.id,
-								reasoning: action.reasoning
+								reasoning: action.reasoning,
 							});
 						}
 						persistedCount++;
 					} catch (persistError) {
-						logger.error(`ExtractAndOperateMemory: ${action.event} operation failed, continuing with others`, {
-							memoryId: action.id,
-							textPreview: action.text.substring(0, 60) + (action.text.length > 60 ? '...' : ''),
-							error: persistError instanceof Error ? persistError.message : String(persistError)
-						});
+						logger.error(
+							`ExtractAndOperateMemory: ${action.event} operation failed, continuing with others`,
+							{
+								memoryId: action.id,
+								textPreview: action.text.substring(0, 60) + (action.text.length > 60 ? '...' : ''),
+								error: persistError instanceof Error ? persistError.message : String(persistError),
+							}
+						);
 						// Continue with other actions even if one fails
 					}
 				}
@@ -769,8 +874,8 @@ export const extractAndOperateMemoryTool: InternalTool = {
 					ADD: memoryActions.filter(a => a.event === 'ADD').length,
 					UPDATE: memoryActions.filter(a => a.event === 'UPDATE').length,
 					DELETE: memoryActions.filter(a => a.event === 'DELETE').length,
-					NONE: memoryActions.filter(a => a.event === 'NONE').length
-				}
+					NONE: memoryActions.filter(a => a.event === 'NONE').length,
+				},
 			});
 
 			// Return successful result even if some operations failed
@@ -779,28 +884,27 @@ export const extractAndOperateMemoryTool: InternalTool = {
 				extraction: extractionStats,
 				memory: memoryActions,
 				summary: memorySummaries,
-				timestamp: new Date().toISOString()
+				timestamp: new Date().toISOString(),
 			};
-
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			logger.error('ExtractAndOperateMemory: Critical failure in extract and operate', {
 				error: errorMessage,
-				stack: error instanceof Error ? error.stack : undefined
+				stack: error instanceof Error ? error.stack : undefined,
 			});
-			
+
 			return {
 				success: false,
 				error: errorMessage,
 				extraction: {
 					extracted: 0,
 					skipped: Array.isArray(args.interaction) ? args.interaction.length : 1,
-					facts: []
+					facts: [],
 				},
 				memory: [],
 				summary: [],
-				timestamp: new Date().toISOString()
+				timestamp: new Date().toISOString(),
 			};
 		}
-	}
+	},
 };

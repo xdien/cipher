@@ -47,7 +47,7 @@ export interface DualCollectionInfo {
  *
  * // Get knowledge store
  * const knowledgeStore = dualManager.getStore('knowledge');
- * 
+ *
  * // Get reflection store (if enabled)
  * const reflectionStore = dualManager.getStore('reflection');
  * ```
@@ -57,14 +57,16 @@ export class DualCollectionVectorManager {
 	private readonly reflectionManager: VectorStoreManager | null;
 	private readonly logger: Logger;
 	private readonly reflectionEnabled: boolean;
-	
+
 	constructor(baseConfig: VectorStoreConfig) {
 		this.logger = createLogger({
 			level: env.CIPHER_LOG_LEVEL || 'info',
 		});
 
 		// Check if reflection memory is enabled (based on collection name being set and not empty)
-		this.reflectionEnabled = !!(env.REFLECTION_VECTOR_STORE_COLLECTION && env.REFLECTION_VECTOR_STORE_COLLECTION.trim());
+		this.reflectionEnabled = !!(
+			env.REFLECTION_VECTOR_STORE_COLLECTION && env.REFLECTION_VECTOR_STORE_COLLECTION.trim()
+		);
 
 		// Create knowledge manager with original collection name (single log for dual manager)
 		this.knowledgeManager = new VectorStoreManager(baseConfig);
@@ -169,8 +171,9 @@ export class DualCollectionVectorManager {
 
 		// Check overall connection status
 		const knowledgeConnected = this.knowledgeManager.isConnected();
-		const reflectionConnected = !this.reflectionEnabled || this.reflectionManager?.isConnected() === true;
-		
+		const reflectionConnected =
+			!this.reflectionEnabled || this.reflectionManager?.isConnected() === true;
+
 		return knowledgeConnected && reflectionConnected;
 	}
 
@@ -217,7 +220,7 @@ export class DualCollectionVectorManager {
 		overall: boolean;
 	}> {
 		const knowledgeHealth = await this.knowledgeManager.healthCheck();
-		const reflectionHealth = this.reflectionManager 
+		const reflectionHealth = this.reflectionManager
 			? await this.reflectionManager.healthCheck()
 			: { overall: true }; // Consider healthy if disabled
 
@@ -227,4 +230,4 @@ export class DualCollectionVectorManager {
 			overall: knowledgeHealth.overall && reflectionHealth.overall,
 		};
 	}
-} 
+}

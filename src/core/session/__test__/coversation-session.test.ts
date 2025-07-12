@@ -883,7 +883,7 @@ describe('ConversationSession Advanced Metadata Integration', () => {
 		};
 	});
 
-			it.skip('should merge session-level and per-run metadata (per-run takes precedence)', async () => {
+	it.skip('should merge session-level and per-run metadata (per-run takes precedence)', async () => {
 		session = new ConversationSession(
 			{
 				stateManager: mockStateManager,

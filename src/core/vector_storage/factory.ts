@@ -219,16 +219,19 @@ export async function createDualCollectionVectorStoreFromEnv(): Promise<DualColl
 	// If reflection collection is not set or is empty/whitespace, treat as disabled
 	const reflectionCollection = (env.REFLECTION_VECTOR_STORE_COLLECTION || '').trim();
 	if (!reflectionCollection) {
-		logger.info(`${LOG_PREFIXES.FACTORY} Reflection collection not set, creating single collection manager only`, {
-			type: config.type,
-			knowledgeCollection: config.collectionName
-		});
+		logger.info(
+			`${LOG_PREFIXES.FACTORY} Reflection collection not set, creating single collection manager only`,
+			{
+				type: config.type,
+				knowledgeCollection: config.collectionName,
+			}
+		);
 		const manager = new DualCollectionVectorManager(config);
 		await manager.connect();
 		return {
 			manager,
 			knowledgeStore: manager.getStore('knowledge'),
-			reflectionStore: null
+			reflectionStore: null,
 		};
 	}
 
@@ -260,10 +263,10 @@ export async function createDualCollectionVectorStoreFromEnv(): Promise<DualColl
 			reflectionEnabled: true,
 		});
 
-		return { 
-			manager, 
-			knowledgeStore, 
-			reflectionStore 
+		return {
+			manager,
+			knowledgeStore,
+			reflectionStore,
 		};
 	} catch (error) {
 		// If connection fails, ensure cleanup

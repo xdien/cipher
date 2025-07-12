@@ -14,7 +14,10 @@ import { VectorStoreManager, DualCollectionVectorManager } from '../vector_stora
 import { createLLMService } from '../brain/llm/services/factory.js';
 import { createContextManager } from '../brain/llm/messages/factory.js';
 import { ILLMService } from '../brain/llm/index.js';
-import { createVectorStoreFromEnv, createDualCollectionVectorStoreFromEnv } from '../vector_storage/factory.js';
+import {
+	createVectorStoreFromEnv,
+	createDualCollectionVectorStoreFromEnv,
+} from '../vector_storage/factory.js';
 import { KnowledgeGraphManager } from '../knowledge_graph/manager.js';
 import { createKnowledgeGraphFromEnv } from '../knowledge_graph/factory.js';
 
@@ -76,23 +79,24 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 	// 3. Initialize vector storage manager with configuration
 	// Use dual collection manager if reflection memory is enabled, otherwise use regular manager
 	logger.debug('Initializing vector storage manager...');
-	
+
 	let vectorStoreManager: VectorStoreManager | DualCollectionVectorManager;
-	
+
 	try {
 		// Check if reflection memory is enabled to determine which manager to use
 		const { env } = await import('../env.js');
-		
+
 		// Use dual collection manager if reflection memory is not disabled and reflection collection is configured
-		const reflectionEnabled = !env.DISABLE_REFLECTION_MEMORY && 
-			env.REFLECTION_VECTOR_STORE_COLLECTION && 
+		const reflectionEnabled =
+			!env.DISABLE_REFLECTION_MEMORY &&
+			env.REFLECTION_VECTOR_STORE_COLLECTION &&
 			env.REFLECTION_VECTOR_STORE_COLLECTION.trim() !== '';
-		
+
 		if (reflectionEnabled) {
 			logger.debug('Reflection memory enabled, using dual collection vector manager');
 			const { manager } = await createDualCollectionVectorStoreFromEnv();
 			vectorStoreManager = manager;
-			
+
 			const info = (vectorStoreManager as DualCollectionVectorManager).getInfo();
 			logger.info('Dual collection vector storage manager initialized successfully', {
 				backend: info.knowledge.manager.getInfo().backend.type,
@@ -107,7 +111,7 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 			logger.debug('Reflection memory disabled, using single collection vector manager');
 			const { manager } = await createVectorStoreFromEnv();
 			vectorStoreManager = manager;
-			
+
 			logger.info('Vector storage manager initialized successfully', {
 				backend: vectorStoreManager.getInfo().backend.type,
 				collection: vectorStoreManager.getInfo().backend.collectionName,

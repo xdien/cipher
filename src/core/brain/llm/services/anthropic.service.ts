@@ -20,7 +20,7 @@ export class AnthropicService {
 			// Check for file references in user input and attempt to find them
 			const fileReferences = this.extractFileReferences(input);
 			let contextualInfo = '';
-			
+
 			if (fileReferences.length > 0 && this.unifiedToolManager) {
 				contextualInfo = await this.searchForReferencedFiles(fileReferences);
 			}
@@ -30,7 +30,7 @@ export class AnthropicService {
 
 			// Get the current context for the API call
 			const messages = this.contextManager.getMessages();
-			
+
 			// Add contextual file information if found
 			if (contextualInfo) {
 				// Insert context before the last user message
@@ -53,7 +53,7 @@ export class AnthropicService {
 				hasSystem: !!systemMessage,
 				stream,
 				model: this.config.anthropic?.model || 'claude-3-5-sonnet-20241022',
-				hasFileContext: !!contextualInfo
+				hasFileContext: !!contextualInfo,
 			});
 
 			// ... existing code ...
@@ -71,7 +71,7 @@ export class AnthropicService {
 	 */
 	private extractFileReferences(input: string): string[] {
 		const fileReferences: string[] = [];
-		
+
 		// Look for common file patterns
 		const patterns = [
 			// Files with extensions
@@ -79,15 +79,13 @@ export class AnthropicService {
 			// Quoted filenames
 			/["'`]([^"'`]*\.[a-zA-Z0-9]{1,10})["'`]/g,
 			// Files in paths
-			/[\w\-/.]+\.[a-zA-Z0-9]{1,10}/g
+			/[\w\-/.]+\.[a-zA-Z0-9]{1,10}/g,
 		];
 
 		for (const pattern of patterns) {
 			const matches = input.match(pattern);
 			if (matches) {
-				fileReferences.push(...matches.map(match => 
-					match.replace(/["'`]/g, '').trim()
-				));
+				fileReferences.push(...matches.map(match => match.replace(/["'`]/g, '').trim()));
 			}
 		}
 
@@ -108,13 +106,14 @@ export class AnthropicService {
 		}
 
 		const foundFiles: string[] = [];
-		
-		for (const fileRef of fileReferences.slice(0, 3)) { // Limit to 3 files to avoid spam
+
+		for (const fileRef of fileReferences.slice(0, 3)) {
+			// Limit to 3 files to avoid spam
 			try {
 				// Use file_search tool to find the file
 				const searchResult = await this.unifiedToolManager.executeTool('file_search', {
 					query: fileRef,
-					explanation: `Searching for file referenced by user: ${fileRef}`
+					explanation: `Searching for file referenced by user: ${fileRef}`,
 				});
 
 				if (searchResult && Array.isArray(searchResult) && searchResult.length > 0) {
@@ -124,7 +123,7 @@ export class AnthropicService {
 				// Silently continue if file search fails
 				logger.debug('AnthropicService: File search failed', {
 					file: fileRef,
-					error: error instanceof Error ? error.message : String(error)
+					error: error instanceof Error ? error.message : String(error),
 				});
 			}
 		}
@@ -135,4 +134,4 @@ export class AnthropicService {
 
 		return '';
 	}
-} 
+}

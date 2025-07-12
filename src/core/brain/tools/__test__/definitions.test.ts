@@ -60,8 +60,8 @@ describe('Tool Definitions', () => {
 					// Create mock services for the tool
 					const mockEmbeddingManager = {
 						getEmbedder: vi.fn().mockReturnValue({
-							embed: vi.fn().mockResolvedValue([0.1, 0.2, 0.3])
-						})
+							embed: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
+						}),
 					} as any;
 
 					const mockVectorStoreManager = {
@@ -69,12 +69,12 @@ describe('Tool Definitions', () => {
 							search: vi.fn().mockResolvedValue([]),
 							insert: vi.fn().mockResolvedValue(undefined),
 							update: vi.fn().mockResolvedValue(undefined),
-							delete: vi.fn().mockResolvedValue(undefined)
-						})
+							delete: vi.fn().mockResolvedValue(undefined),
+						}),
 					} as any;
 
 					const mockLlmService = {
-						directGenerate: vi.fn().mockResolvedValue('ADD')
+						directGenerate: vi.fn().mockResolvedValue('ADD'),
 					} as any;
 
 					const mockContext = {
@@ -143,7 +143,11 @@ describe('Tool Definitions', () => {
 			const memorySearchTool = manager.getTool('cipher_memory_search');
 			expect(memorySearchTool).toBeDefined();
 			if (memorySearchTool) {
-				expect(memorySearchTool.parameters.properties.type.enum).toEqual(['knowledge', 'reflection', 'both']);
+				expect(memorySearchTool.parameters.properties.type.enum).toEqual([
+					'knowledge',
+					'reflection',
+					'both',
+				]);
 			}
 		});
 

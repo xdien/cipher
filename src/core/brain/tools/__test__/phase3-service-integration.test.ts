@@ -36,7 +36,7 @@ describe('Phase 3: Service Integration Tests', () => {
 			store: vi.fn().mockResolvedValue(undefined),
 			insert: vi.fn().mockResolvedValue(undefined),
 		};
-		
+
 		mockVectorStoreManager = {
 			search: vi.fn().mockResolvedValue([]),
 			store: vi.fn().mockResolvedValue(undefined),
@@ -66,11 +66,19 @@ describe('Phase 3: Service Integration Tests', () => {
 			vectorStoreManager: mockVectorStoreManager,
 			embeddingManager: {
 				getEmbedder: vi.fn().mockReturnValue({
-					embed: vi.fn().mockResolvedValue(Array(128).fill(0).map(() => Math.random())),
+					embed: vi.fn().mockResolvedValue(
+						Array(128)
+							.fill(0)
+							.map(() => Math.random())
+					),
 				}),
 			},
 			llmService: {
-				directGenerate: vi.fn().mockResolvedValue('Operation: ADD\nConfidence: 0.8\nReasoning: New technical information to store'),
+				directGenerate: vi
+					.fn()
+					.mockResolvedValue(
+						'Operation: ADD\nConfidence: 0.8\nReasoning: New technical information to store'
+					),
 			},
 		});
 	});
@@ -84,11 +92,11 @@ describe('Phase 3: Service Integration Tests', () => {
 	describe('Tool Registration', () => {
 		it('should register all reflection memory tools', () => {
 			const tools = toolManager.getAllTools();
-			
+
 			expect(tools).toHaveProperty('cipher_extract_reasoning_steps');
 			expect(tools).toHaveProperty('cipher_evaluate_reasoning');
 			expect(tools).toHaveProperty('cipher_search_reasoning_patterns');
-			
+
 			// Verify tool categories
 			const reflectionTools = toolManager.getToolsByCategory('memory');
 			expect(Object.keys(reflectionTools).length).toBeGreaterThan(0);
@@ -117,14 +125,14 @@ Conclusion: The answer is 4.
 
 			const result = await toolManager.executeTool(
 				'extract_reasoning_steps',
-				{ 
+				{
 					userInput,
 					reasoningContent,
-					options: { includeMetadata: true }
+					options: { includeMetadata: true },
 				},
-				{ 
+				{
 					sessionId: 'test-session',
-					services: { vectorStoreManager: mockVectorStoreManager }
+					services: { vectorStoreManager: mockVectorStoreManager },
 				}
 			);
 
@@ -143,7 +151,7 @@ Conclusion: The answer is 4.
 			const result = await toolManager.executeTool(
 				'extract_reasoning_steps',
 				{ userInput, reasoningContent },
-				{ services: { vectorStoreManager: mockVectorStoreManager }}
+				{ services: { vectorStoreManager: mockVectorStoreManager } }
 			);
 
 			// Should still succeed even if storage fails
@@ -159,38 +167,40 @@ Conclusion: The answer is 4.
 				steps: [
 					{
 						type: 'thought',
-						content: 'I need to solve this problem'
+						content: 'I need to solve this problem',
 					},
 					{
 						type: 'action',
-						content: 'Implementing solution approach'
-					}
+						content: 'Implementing solution approach',
+					},
 				],
 				metadata: {
 					extractedAt: '2024-01-01T00:00:00Z',
 					conversationLength: 100,
 					stepCount: 2,
-					hasExplicitMarkup: true
-				}
+					hasExplicitMarkup: true,
+				},
 			};
 
 			const result = await toolManager.executeTool(
 				'evaluate_reasoning',
-				{ 
+				{
 					trace: sampleTrace,
-					options: { checkEfficiency: true, detectLoops: true, generateSuggestions: true }
+					options: { checkEfficiency: true, detectLoops: true, generateSuggestions: true },
 				},
-				{ services: { vectorStoreManager: mockVectorStoreManager }}
+				{ services: { vectorStoreManager: mockVectorStoreManager } }
 			);
 
 			expect(result.success).toBe(true);
 			expect(result.result.evaluation).toBeDefined();
 			expect(result.result.evaluation.qualityScore).toBeGreaterThan(0);
-			
+
 			// Verify evaluation storage was attempted if shouldStore is true
 			const mockVectorStore = mockVectorStoreManager.getStore();
 			if (result.result.evaluation.shouldStore) {
-				expect(mockVectorStore.store.mock.calls.length + mockVectorStore.insert.mock.calls.length).toBeGreaterThanOrEqual(0);
+				expect(
+					mockVectorStore.store.mock.calls.length + mockVectorStore.insert.mock.calls.length
+				).toBeGreaterThanOrEqual(0);
 			}
 		});
 	});
@@ -206,22 +216,22 @@ Conclusion: The answer is 4.
 					metadata: {
 						type: 'reasoning_trace',
 						qualityScore: 0.9,
-						traceId: 'trace-1'
-					}
-				}
+						traceId: 'trace-1',
+					},
+				},
 			];
-			
+
 			// Set up the mock on the vector store's search method
 			const mockVectorStore = mockVectorStoreManager.getStore();
 			mockVectorStore.search.mockResolvedValue(mockSearchResults);
 
 			const result = await toolManager.executeTool(
 				'search_reasoning_patterns',
-				{ 
+				{
 					query: 'problem solving approaches',
-					options: { maxResults: 5, minQualityScore: 0.7 }
+					options: { maxResults: 5, minQualityScore: 0.7 },
 				},
-				{ services: { vectorStoreManager: mockVectorStoreManager }}
+				{ services: { vectorStoreManager: mockVectorStoreManager } }
 			);
 
 			expect(result.success).toBe(true);
@@ -247,7 +257,7 @@ Conclusion: The answer is 4.
 			const result = await toolManager.executeTool(
 				'search_reasoning_patterns',
 				{ query: 'test query' },
-				{ services: { vectorStoreManager: mockVectorStoreManager }}
+				{ services: { vectorStoreManager: mockVectorStoreManager } }
 			);
 
 			expect(result.success).toBe(true);
@@ -274,7 +284,7 @@ Observation: The solution works correctly.
 			const extractResult = await toolManager.executeTool(
 				'extract_reasoning_steps',
 				{ userInput, reasoningContent },
-				{ services: { vectorStoreManager: mockVectorStoreManager }}
+				{ services: { vectorStoreManager: mockVectorStoreManager } }
 			);
 
 			expect(extractResult.success).toBe(true);
@@ -283,11 +293,11 @@ Observation: The solution works correctly.
 			// Step 2: Evaluate reasoning
 			const evaluateResult = await toolManager.executeTool(
 				'evaluate_reasoning',
-				{ 
+				{
 					trace: extractResult.result.trace,
-					options: { checkEfficiency: true, detectLoops: true, generateSuggestions: true }
+					options: { checkEfficiency: true, detectLoops: true, generateSuggestions: true },
 				},
-				{ services: { vectorStoreManager: mockVectorStoreManager }}
+				{ services: { vectorStoreManager: mockVectorStoreManager } }
 			);
 
 			expect(evaluateResult.success).toBe(true);
@@ -297,13 +307,11 @@ Observation: The solution works correctly.
 			const searchResult = await toolManager.executeTool(
 				'search_reasoning_patterns',
 				{ query: 'programming problem solving' },
-				{ services: { vectorStoreManager: mockVectorStoreManager }}
+				{ services: { vectorStoreManager: mockVectorStoreManager } }
 			);
 
 			expect(searchResult.success).toBe(true);
 			expect(searchResult.result.patterns).toBeDefined();
 		});
 	});
-
-
-}); 
+});

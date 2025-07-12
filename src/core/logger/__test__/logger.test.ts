@@ -251,7 +251,9 @@ describe.concurrent('Global Logger Instance', () => {
 		expect(logger).toBeDefined();
 		expect(logger).toBeInstanceOf(Logger);
 		// The global logger level depends on environment, so just check it's a valid level
-		expect(['error', 'warn', 'info', 'http', 'verbose', 'debug', 'silly']).toContain(logger.getLevel());
+		expect(['error', 'warn', 'info', 'http', 'verbose', 'debug', 'silly']).toContain(
+			logger.getLevel()
+		);
 
 		// Test level management
 		const originalLevel = getGlobalLogLevel();

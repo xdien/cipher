@@ -10,38 +10,38 @@ import { MemAgentStateManager } from '../brain/memAgent/state-manager.js';
 import { ReasoningContentDetector } from '../brain/reasoning/content-detector.js';
 import { SearchContextManager } from '../brain/reasoning/search-context-manager.js';
 import type { ZodSchema } from 'zod';
-import { setImmediate } from "timers";
+import { setImmediate } from 'timers';
 
 // Utility to extract reasoning content blocks from model responses (Anthropic and similar models)
 function extractReasoningContentBlocks(aiResponse: any): string {
-  // If the response is an object with a content array (Anthropic API best practice)
-  if (aiResponse && Array.isArray(aiResponse.content)) {
-    // Extract all 'thinking' and 'redacted_thinking' blocks
-    const reasoningBlocks = aiResponse.content
-      .filter((block: any) => block.type === 'thinking' || block.type === 'redacted_thinking')
-      .map((block: any) => block.thinking)
-      .filter(Boolean);
-    if (reasoningBlocks.length > 0) {
-      return reasoningBlocks.join('\n\n');
-    }
-    // Fallback: join all text blocks if no thinking blocks found
-    const textBlocks = aiResponse.content
-      .filter((block: any) => block.type === 'text' && block.text)
-      .map((block: any) => block.text);
-    if (textBlocks.length > 0) {
-      return textBlocks.join('\n\n');
-    }
-    return '';
-  }
-  // Fallback: support legacy string input (regex for <thinking> tags)
-  if (typeof aiResponse === 'string') {
-    const matches = Array.from(aiResponse.matchAll(/<thinking>([\s\S]*?)<\/thinking>/gi));
-    if (matches.length > 0) {
-      return matches.map(m => m[1].trim()).join('\n\n');
-    }
-    return aiResponse;
-  }
-  return '';
+	// If the response is an object with a content array (Anthropic API best practice)
+	if (aiResponse && Array.isArray(aiResponse.content)) {
+		// Extract all 'thinking' and 'redacted_thinking' blocks
+		const reasoningBlocks = aiResponse.content
+			.filter((block: any) => block.type === 'thinking' || block.type === 'redacted_thinking')
+			.map((block: any) => block.thinking)
+			.filter(Boolean);
+		if (reasoningBlocks.length > 0) {
+			return reasoningBlocks.join('\n\n');
+		}
+		// Fallback: join all text blocks if no thinking blocks found
+		const textBlocks = aiResponse.content
+			.filter((block: any) => block.type === 'text' && block.text)
+			.map((block: any) => block.text);
+		if (textBlocks.length > 0) {
+			return textBlocks.join('\n\n');
+		}
+		return '';
+	}
+	// Fallback: support legacy string input (regex for <thinking> tags)
+	if (typeof aiResponse === 'string') {
+		const matches = Array.from(aiResponse.matchAll(/<thinking>([\s\S]*?)<\/thinking>/gi));
+		if (matches.length > 0) {
+			return matches.map(m => m[1].trim()).join('\n\n');
+		}
+		return aiResponse;
+	}
+	return '';
 }
 
 export class ConversationSession {
@@ -253,12 +253,14 @@ export class ConversationSession {
 			logger.debug('Starting background memory operations', { sessionId: this.id });
 			this.enforceMemoryExtraction(input, response)
 				.then(() => {
-					logger.debug('Background memory operations completed successfully', { sessionId: this.id });
+					logger.debug('Background memory operations completed successfully', {
+						sessionId: this.id,
+					});
 				})
 				.catch(error => {
 					logger.debug('Background memory extraction failed', {
 						sessionId: this.id,
-						error: error instanceof Error ? error.message : String(error)
+						error: error instanceof Error ? error.message : String(error),
 					});
 					// Silently continue - memory extraction failures shouldn't affect user experience
 				});
@@ -284,14 +286,16 @@ export class ConversationSession {
 		logger.debug('ConversationSession.enforceMemoryExtraction called');
 		logger.debug('enforceMemoryExtraction: unifiedToolManager at entry', {
 			unifiedToolManager: this.services.unifiedToolManager,
-			type: typeof this.services.unifiedToolManager
+			type: typeof this.services.unifiedToolManager,
 		});
 		try {
 			logger.debug('ConversationSession: Enforcing memory extraction for interaction');
 
 			// Check if the unifiedToolManager is available
 			if (!this.services.unifiedToolManager) {
-				logger.debug('ConversationSession: UnifiedToolManager not available, skipping memory extraction');
+				logger.debug(
+					'ConversationSession: UnifiedToolManager not available, skipping memory extraction'
+				);
 				return;
 			}
 
@@ -366,7 +370,6 @@ export class ConversationSession {
 			// **NEW: Automatic Reflection Memory Processing**
 			// Process reasoning traces in the background, similar to knowledge memory
 			await this.enforceReflectionMemoryProcessing(userInput, aiResponse);
-
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			logger.error('ConversationSession: Memory extraction failed', {
@@ -399,7 +402,7 @@ export class ConversationSession {
 		} catch (error) {
 			logger.warn('ConversationSession: Failed to initialize reasoning services', {
 				sessionId: this.id,
-				error: error instanceof Error ? error.message : String(error)
+				error: error instanceof Error ? error.message : String(error),
 			});
 		}
 	}
@@ -409,13 +412,18 @@ export class ConversationSession {
 	 * This automatically extracts, evaluates, and stores reasoning patterns in the background
 	 * NOTE: This method is called from enforceMemoryExtraction which already runs asynchronously
 	 */
-	private async enforceReflectionMemoryProcessing(userInput: string, aiResponse: string): Promise<void> {
+	private async enforceReflectionMemoryProcessing(
+		userInput: string,
+		aiResponse: string
+	): Promise<void> {
 		try {
 			logger.debug('ConversationSession: Enforcing reflection memory processing');
 
 			// Check if reflection memory is force disabled
 			if (env.DISABLE_REFLECTION_MEMORY) {
-				logger.debug('ConversationSession: Reflection memory force disabled via DISABLE_REFLECTION_MEMORY, skipping processing');
+				logger.debug(
+					'ConversationSession: Reflection memory force disabled via DISABLE_REFLECTION_MEMORY, skipping processing'
+				);
 				return;
 			}
 
@@ -424,28 +432,36 @@ export class ConversationSession {
 
 			// Check if reasoning content is detected in user input
 			if (!this.reasoningDetector) {
-				logger.debug('ConversationSession: Reasoning detector not available, skipping reflection processing');
+				logger.debug(
+					'ConversationSession: Reasoning detector not available, skipping reflection processing'
+				);
 				return;
 			}
 
 			const reasoningDetection = await this.reasoningDetector.detectReasoningContent(userInput, {
 				sessionId: this.id,
-				taskType: 'conversation'
+				taskType: 'conversation',
 			});
 
 			// Only proceed if reasoning content is detected
 			if (!reasoningDetection.containsReasoning) {
-				logger.debug('ConversationSession: No reasoning content detected in user input, skipping reflection processing', {
-					confidence: reasoningDetection.confidence,
-					detectedPatterns: reasoningDetection.detectedPatterns
-				});
+				logger.debug(
+					'ConversationSession: No reasoning content detected in user input, skipping reflection processing',
+					{
+						confidence: reasoningDetection.confidence,
+						detectedPatterns: reasoningDetection.detectedPatterns,
+					}
+				);
 				return;
 			}
 
-			logger.debug('ConversationSession: Reasoning content detected, proceeding with reflection processing', {
-				confidence: reasoningDetection.confidence,
-				detectedPatterns: reasoningDetection.detectedPatterns
-			});
+			logger.debug(
+				'ConversationSession: Reasoning content detected, proceeding with reflection processing',
+				{
+					confidence: reasoningDetection.confidence,
+					detectedPatterns: reasoningDetection.detectedPatterns,
+				}
+			);
 
 			// Step 1: Extract reasoning steps from the interaction
 			let extractionResult: any;
@@ -464,26 +480,28 @@ export class ConversationSession {
 						options: {
 							extractExplicit: true,
 							extractImplicit: true,
-							includeMetadata: true
-						}
+							includeMetadata: true,
+						},
 					}
 				);
 
 				logger.debug('ConversationSession: Reasoning extraction completed', {
 					success: extractionResult.success,
 					stepCount: extractionResult.result?.trace?.steps?.length || 0,
-					traceId: extractionResult.result?.trace?.id
+					traceId: extractionResult.result?.trace?.id,
 				});
 			} catch (extractError) {
 				logger.debug('ConversationSession: Reasoning extraction failed', {
-					error: extractError instanceof Error ? extractError.message : String(extractError)
+					error: extractError instanceof Error ? extractError.message : String(extractError),
 				});
 				return; // Skip if extraction fails
 			}
 
 			// Only proceed if we extracted reasoning steps
 			if (!extractionResult.success || !extractionResult.result?.trace?.steps?.length) {
-				logger.debug('ConversationSession: No reasoning steps extracted, skipping evaluation and storage');
+				logger.debug(
+					'ConversationSession: No reasoning steps extracted, skipping evaluation and storage'
+				);
 				return;
 			}
 
@@ -497,7 +515,7 @@ export class ConversationSession {
 					provider: 'anthropic',
 					model: 'claude-3-5-haiku-20241022', // Fast, non-thinking model
 					apiKey: process.env.ANTHROPIC_API_KEY,
-					maxIterations: 5
+					maxIterations: 5,
 				};
 				const evalContextManager = createContextManager(evalConfig, this.services.promptManager);
 				const evalLLMService = createLLMService(
@@ -514,31 +532,34 @@ export class ConversationSession {
 						options: {
 							checkEfficiency: true,
 							detectLoops: true,
-							generateSuggestions: true
+							generateSuggestions: true,
 						},
-						llmService: evalLLMService
+						llmService: evalLLMService,
 					}
 				);
 
 				logger.debug('ConversationSession: Reasoning evaluation completed', {
 					success: evaluationResult.success,
 					qualityScore: evaluationResult.result?.evaluation?.qualityScore,
-					shouldStore: evaluationResult.result?.evaluation?.shouldStore
+					shouldStore: evaluationResult.result?.evaluation?.shouldStore,
 				});
 			} catch (evalError) {
 				logger.debug('ConversationSession: Reasoning evaluation failed', {
 					error: evalError instanceof Error ? evalError.message : String(evalError),
-					traceId: reasoningTrace.id
+					traceId: reasoningTrace.id,
 				});
 				return; // Skip if evaluation fails
 			}
 
 			// Only proceed if evaluation was successful and indicates we should store
 			if (!evaluationResult.success || !evaluationResult.result?.evaluation?.shouldStore) {
-				logger.debug('ConversationSession: Evaluation indicates should not store, skipping storage', {
-					shouldStore: evaluationResult.result?.evaluation?.shouldStore,
-					qualityScore: evaluationResult.result?.evaluation?.qualityScore
-				});
+				logger.debug(
+					'ConversationSession: Evaluation indicates should not store, skipping storage',
+					{
+						shouldStore: evaluationResult.result?.evaluation?.shouldStore,
+						qualityScore: evaluationResult.result?.evaluation?.qualityScore,
+					}
+				);
 				return;
 			}
 
@@ -550,7 +571,7 @@ export class ConversationSession {
 					'cipher_store_reasoning_memory',
 					{
 						trace: reasoningTrace,
-						evaluation: evaluation
+						evaluation: evaluation,
 					}
 				);
 
@@ -560,7 +581,7 @@ export class ConversationSession {
 					traceId: storageResult.result?.traceId,
 					vectorId: storageResult.result?.vectorId,
 					stepCount: storageResult.result?.metrics?.stepCount,
-					qualityScore: storageResult.result?.metrics?.qualityScore
+					qualityScore: storageResult.result?.metrics?.qualityScore,
 				});
 
 				// Log successful end-to-end reflection processing
@@ -571,22 +592,20 @@ export class ConversationSession {
 						stepCount: reasoningTrace.steps.length,
 						qualityScore: evaluation.qualityScore.toFixed(3),
 						issueCount: evaluation.issues?.length || 0,
-						suggestionCount: evaluation.suggestions?.length || 0
+						suggestionCount: evaluation.suggestions?.length || 0,
 					});
 				}
-
 			} catch (storageError) {
 				logger.debug('ConversationSession: Reflection memory storage failed', {
 					error: storageError instanceof Error ? storageError.message : String(storageError),
 					traceId: reasoningTrace.id,
-					qualityScore: evaluation.qualityScore
+					qualityScore: evaluation.qualityScore,
 				});
 				// Continue execution even if storage fails
 			}
-
 		} catch (error) {
 			logger.debug('ConversationSession: Reflection memory processing failed', {
-				error: error instanceof Error ? error.message : String(error)
+				error: error instanceof Error ? error.message : String(error),
 			});
 			// Continue execution even if reflection processing fails
 		}
