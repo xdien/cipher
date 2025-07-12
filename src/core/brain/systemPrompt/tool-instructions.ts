@@ -1,6 +1,6 @@
 /**
  * Tool Instructions Manager
- * 
+ *
  * This module contains all the tool usage instructions and agent behavior descriptions
  * that are automatically included in the system prompt. These instructions are
  * part of the core agent behavior and should not be modified by users.
@@ -427,7 +427,7 @@ export function getToolInstructions(): string {
 		KNOWLEDGE_GRAPH_ADVANCED_INSTRUCTIONS,
 		KNOWLEDGE_GRAPH_RELATIONSHIP_INSTRUCTIONS,
 		EFFICIENCY_GUIDELINES,
-		AUTOMATIC_TOOLS_INFORMATION
+		AUTOMATIC_TOOLS_INFORMATION,
 	].join('\n\n');
 }
 
@@ -469,4 +469,4 @@ export function getSpecificToolInstructions(toolName: string): string {
 		default:
 			return getToolInstructions();
 	}
-} 
+}

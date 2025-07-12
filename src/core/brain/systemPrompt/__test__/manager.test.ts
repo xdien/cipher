@@ -13,17 +13,17 @@ describe('PromptManager', () => {
 		it('should return only built-in instructions when no user instruction is provided', () => {
 			const completePrompt = promptManager.getCompleteSystemPrompt();
 			const builtInInstructions = getBuiltInInstructions();
-			
+
 			expect(completePrompt).toBe(builtInInstructions);
 		});
 
 		it('should combine user instruction with built-in instructions', () => {
 			const userInstruction = 'You are a helpful AI assistant.';
 			promptManager.load(userInstruction);
-			
+
 			const completePrompt = promptManager.getCompleteSystemPrompt();
 			const builtInInstructions = getBuiltInInstructions();
-			
+
 			expect(completePrompt).toContain(userInstruction);
 			expect(completePrompt).toContain(builtInInstructions);
 			expect(completePrompt).toContain('\n\n');
@@ -34,10 +34,10 @@ describe('PromptManager', () => {
 		it('should handle user instruction that ends with newline', () => {
 			const userInstruction = 'You are a helpful AI assistant.\n';
 			promptManager.load(userInstruction);
-			
+
 			const completePrompt = promptManager.getCompleteSystemPrompt();
 			const builtInInstructions = getBuiltInInstructions();
-			
+
 			expect(completePrompt).toContain(userInstruction);
 			expect(completePrompt).toContain(builtInInstructions);
 			expect(completePrompt).toContain('\n');
@@ -47,19 +47,19 @@ describe('PromptManager', () => {
 
 		it('should handle empty string user instruction', () => {
 			promptManager.load('');
-			
+
 			const completePrompt = promptManager.getCompleteSystemPrompt();
 			const builtInInstructions = getBuiltInInstructions();
-			
+
 			expect(completePrompt).toBe(builtInInstructions);
 		});
 
 		it('should handle whitespace-only user instruction', () => {
 			promptManager.load('   \n  \t  ');
-			
+
 			const completePrompt = promptManager.getCompleteSystemPrompt();
 			const builtInInstructions = getBuiltInInstructions();
-			
+
 			expect(completePrompt).toBe(builtInInstructions);
 		});
 	});
@@ -68,7 +68,7 @@ describe('PromptManager', () => {
 		it('should return the user instruction', () => {
 			const userInstruction = 'You are a helpful AI assistant.';
 			promptManager.load(userInstruction);
-			
+
 			expect(promptManager.getUserInstruction()).toBe(userInstruction);
 		});
 
@@ -80,7 +80,7 @@ describe('PromptManager', () => {
 	describe('getBuiltInInstructions', () => {
 		it('should return the built-in tool instructions', () => {
 			const builtInInstructions = getBuiltInInstructions();
-			
+
 			expect(promptManager.getBuiltInInstructions()).toBe(builtInInstructions);
 		});
 	});
@@ -89,7 +89,7 @@ describe('PromptManager', () => {
 		it('should return the user instruction only', () => {
 			const userInstruction = 'You are a helpful AI assistant.';
 			promptManager.load(userInstruction);
-			
+
 			expect(promptManager.getInstruction()).toBe(userInstruction);
 		});
 
@@ -97,4 +97,4 @@ describe('PromptManager', () => {
 			expect(promptManager.getInstruction()).toBe('');
 		});
 	});
-}); 
+});

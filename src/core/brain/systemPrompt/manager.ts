@@ -23,18 +23,18 @@ export class PromptManager {
 	getCompleteSystemPrompt(): string {
 		const userInstruction = this.instruction || '';
 		const builtInInstructions = getBuiltInInstructions();
-		
+
 		// Combine user instruction with built-in instructions
 		// If user instruction is empty, just return built-in instructions
 		if (!userInstruction.trim()) {
 			return builtInInstructions;
 		}
-		
+
 		// If user instruction doesn't end with a newline, add one
-		const userInstructionWithNewline = userInstruction.endsWith('\n') 
-			? userInstruction 
+		const userInstructionWithNewline = userInstruction.endsWith('\n')
+			? userInstruction
 			: userInstruction + '\n';
-		
+
 		return userInstructionWithNewline + '\n' + builtInInstructions;
 	}
 
