@@ -640,7 +640,7 @@ export const extractAndOperateMemoryTool: InternalTool = {
 					if (options.useLLMDecisions && llmService) {
 						try {
 							// Format similar memories for prompt
-							const similarMemoriesStr = 							similar
+							const similarMemoriesStr = similar
 								.map(
 									(mem: any, idx: any) =>
 										`  ${idx + 1}. ID: ${mem.id} (similarity: ${mem.score?.toFixed(2) ?? 'N/A'})\n     Content: ${(mem.payload?.text || '').substring(0, 200)}`

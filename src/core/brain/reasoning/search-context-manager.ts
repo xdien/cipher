@@ -329,7 +329,11 @@ export class SearchContextManager {
 					return existingHash === contentHash;
 				});
 
-				if (existingIndex >= 0 && unique[existingIndex] && result.relevance > unique[existingIndex].relevance) {
+				if (
+					existingIndex >= 0 &&
+					unique[existingIndex] &&
+					result.relevance > unique[existingIndex].relevance
+				) {
 					unique[existingIndex] = result;
 				}
 			}
@@ -380,7 +384,8 @@ export class SearchContextManager {
 		const topResults = primaryResults.slice(0, 3);
 
 		let summary = `Found ${primaryResults.length} relevant results`;
-		if ((resultCounts.graph || 0) > 0) summary += ` (${resultCounts.graph || 0} from knowledge graph`;
+		if ((resultCounts.graph || 0) > 0)
+			summary += ` (${resultCounts.graph || 0} from knowledge graph`;
 		if ((resultCounts.memory || 0) > 0)
 			summary += `${(resultCounts.graph || 0) > 0 ? ', ' : ' ('}${resultCounts.memory || 0} from memory`;
 		if ((resultCounts.reasoning_patterns || 0) > 0)
@@ -412,7 +417,8 @@ export class SearchContextManager {
 		let summary = `Found ${primaryResults.length} relevant results`;
 
 		const sources = [];
-		if ((resultCounts.graph || 0) > 0) sources.push(`${resultCounts.graph || 0} from knowledge graph`);
+		if ((resultCounts.graph || 0) > 0)
+			sources.push(`${resultCounts.graph || 0} from knowledge graph`);
 		if ((resultCounts.memory || 0) > 0) sources.push(`${resultCounts.memory || 0} from memory`);
 		if ((resultCounts.reasoning_patterns || 0) > 0)
 			sources.push(`${resultCounts.reasoning_patterns || 0} reasoning patterns`);

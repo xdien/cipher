@@ -939,8 +939,8 @@ function parseLLMDecision(response: string): any {
 		);
 
 		if (operationMatch && confidenceMatch) {
-			    const operation = operationMatch[1]?.toUpperCase() || '';
-			    const confidence = parseFloat(confidenceMatch[1] || '0');
+			const operation = operationMatch[1]?.toUpperCase() || '';
+			const confidence = parseFloat(confidenceMatch[1] || '0');
 
 			if (['ADD', 'UPDATE', 'DELETE', 'NONE'].includes(operation) && !isNaN(confidence)) {
 				logger.debug('MemoryOperation: Extracted decision using regex fallback', {
