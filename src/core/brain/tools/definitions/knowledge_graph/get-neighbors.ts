@@ -5,9 +5,7 @@
  * Supports filtering by edge types and limiting the number of results.
  */
 
-import { InternalTool, InternalToolContext } from '../../types.js';
-import { logger } from '../../../../logger/index.js';
-import type { GraphNode, GraphEdge } from '../../../../knowledge_graph/backend/types.js';
+import { InternalTool } from '../../types.js';
 
 /**
  * Input schema for the get neighbors tool

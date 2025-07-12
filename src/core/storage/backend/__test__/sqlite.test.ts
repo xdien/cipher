@@ -5,7 +5,7 @@
  * Verifies DatabaseBackend functionality with persistent storage.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { SqliteBackend } from '../sqlite.js';
 import { StorageError, StorageConnectionError } from '../types.js';
 import { BACKEND_TYPES } from '../../constants.js';

@@ -6,7 +6,6 @@
  */
 
 import { logger } from '../../logger/index.js';
-import { env } from '../../env.js';
 import { ILLMService } from '../llm/index.js';
 import { createContextManager } from '../llm/messages/factory.js';
 import { createLLMService } from '../llm/services/factory.js';

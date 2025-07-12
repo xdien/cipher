@@ -8,8 +8,8 @@
 import { logger } from '../../logger/index.js';
 import { MCPManager } from '../../mcp/manager.js';
 import { InternalToolManager } from './manager.js';
-import { ToolSet, ToolExecutionResult } from '../../mcp/types.js';
-import { InternalToolSet, isInternalToolName } from './types.js';
+import { ToolExecutionResult } from '../../mcp/types.js';
+import { isInternalToolName } from './types.js';
 
 /**
  * Configuration for the unified tool manager

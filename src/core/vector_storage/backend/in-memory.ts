@@ -20,7 +20,7 @@
 
 import type { VectorStore } from './vector-store.js';
 import type { SearchFilters, VectorStoreResult, InMemoryBackendConfig } from './types.js';
-import { VectorStoreError, VectorDimensionError, CollectionNotFoundError } from './types.js';
+import { VectorStoreError, VectorDimensionError } from './types.js';
 import { Logger, createLogger } from '../../logger/index.js';
 import { LOG_PREFIXES, DEFAULTS, ERROR_MESSAGES } from '../constants.js';
 

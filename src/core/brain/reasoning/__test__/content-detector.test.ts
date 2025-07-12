@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { ReasoningContentDetector, ReasoningDetectionResult } from '../content-detector.js';
+import { ReasoningContentDetector } from '../content-detector.js';
 import { PromptManager } from '../../systemPrompt/manager.js';
 import { MCPManager } from '../../../mcp/manager.js';
 import { UnifiedToolManager } from '../../tools/unified-tool-manager.js';

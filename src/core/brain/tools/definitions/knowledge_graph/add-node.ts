@@ -7,7 +7,6 @@
 
 import type { InternalTool, InternalToolContext } from '../../types.js';
 import { logger } from '../../../../logger/index.js';
-import type { GraphNode } from '../../../../knowledge_graph/backend/types.js';
 
 /**
  * Input schema for the add node tool

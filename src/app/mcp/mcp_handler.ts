@@ -1,6 +1,5 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import {
 	CallToolRequestSchema,
 	ListToolsRequestSchema,
@@ -91,7 +90,7 @@ async function createSseTransport(
  * Create HTTP transport for MCP server
  */
 async function createHttpTransport(
-	options: { port?: number; host?: string } = {}
+	_options: { port?: number; host?: string } = {}
 ): Promise<McpTransport> {
 	// Note: HTTP transport may not be available in all MCP SDK versions
 	// This is a placeholder for future implementation
@@ -373,7 +372,7 @@ async function registerAgentPrompts(server: Server, agent: MemAgent): Promise<vo
 
 	// Register get prompt handler
 	server.setRequestHandler(GetPromptRequestSchema, async request => {
-		const { name, arguments: args } = request.params;
+		const { name } = request.params;
 
 		logger.info(`[MCP Handler] Prompt requested: ${name}`);
 

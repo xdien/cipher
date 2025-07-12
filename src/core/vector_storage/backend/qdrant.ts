@@ -20,11 +20,9 @@ import {
 	VectorStoreError,
 	VectorStoreConnectionError,
 	VectorDimensionError,
-	CollectionNotFoundError,
 } from './types.js';
 import { Logger, createLogger } from '../../logger/index.js';
 import { LOG_PREFIXES, DEFAULTS, ERROR_MESSAGES } from '../constants.js';
-import * as fs from 'node:fs';
 
 /**
  * Qdrant filter structure

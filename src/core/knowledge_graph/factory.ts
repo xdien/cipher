@@ -11,7 +11,7 @@ import { KnowledgeGraphManager } from './manager.js';
 import type { KnowledgeGraph } from './backend/knowledge-graph.js';
 import type { KnowledgeGraphConfig } from './config.js';
 import { parseKnowledgeGraphConfigFromEnv } from './config.js';
-import { Logger, createLogger } from '../logger/logger.js';
+import { createLogger } from '../logger/logger.js';
 import { LOG_PREFIXES, BACKEND_TYPES, DEFAULTS } from './constants.js';
 import { env } from '../env.js';
 

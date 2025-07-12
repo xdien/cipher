@@ -10,8 +10,7 @@
 
 import { env } from '../../env.js';
 import { type OpenAIEmbeddingConfig } from './backend/types.js';
-import { PROVIDER_TYPES, DEFAULTS } from './constants.js';
-import { parseEmbeddingConfigFromEnv } from './config.js';
+import { DEFAULTS } from './constants.js';
 
 /**
  * Get embedding configuration from environment variables

@@ -4,7 +4,7 @@
  * Tests dual collection vector storage
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { DualCollectionVectorManager } from '../dual-collection-manager.js';
 import type { VectorStoreConfig } from '../types.js';
 

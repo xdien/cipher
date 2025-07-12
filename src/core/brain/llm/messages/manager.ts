@@ -161,7 +161,7 @@ export class ContextManager {
 	 * @param message - The current message (already added to context by the service)
 	 * @returns The formatted messages array including conversation history
 	 */
-	async getFormattedMessage(message: InternalMessage): Promise<any[]> {
+	async getFormattedMessage(_message: InternalMessage): Promise<any[]> {
 		try {
 			// Don't add the message again - it's already been added by the service
 			// Just return all formatted messages from the existing conversation history

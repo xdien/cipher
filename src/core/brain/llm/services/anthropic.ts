@@ -137,12 +137,12 @@ export class AnthropicService implements ILLMService {
 	 * @param systemPrompt - Optional system prompt to use
 	 * @returns Promise<string> - The generated response
 	 */
-	async directGenerate(userInput: string, systemPrompt?: string): Promise<string> {
+	async directGenerate(_userInput: string, systemPrompt?: string): Promise<string> {
 		let attempts = 0;
 		const MAX_ATTEMPTS = 3;
 
 		logger.debug('AnthropicService: Direct generate call (bypassing conversation context)', {
-			inputLength: userInput.length,
+			inputLength: _userInput.length,
 			hasSystemPrompt: !!systemPrompt,
 		});
 
@@ -153,7 +153,7 @@ export class AnthropicService implements ILLMService {
 				const messages = [
 					{
 						role: 'user' as const,
-						content: userInput,
+						content: _userInput,
 					},
 				];
 
@@ -192,7 +192,7 @@ export class AnthropicService implements ILLMService {
 						type: errorType,
 						attempt: attempts,
 						maxAttempts: MAX_ATTEMPTS,
-						inputLength: userInput.length,
+						inputLength: _userInput.length,
 					}
 				);
 

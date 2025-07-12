@@ -3,7 +3,6 @@ import * as readline from 'readline';
 import chalk from 'chalk';
 import { executeCommand } from './commands.js';
 import { commandParser } from './parser.js';
-import type { AgentCard } from '../mcp/mcp_handler.js';
 
 /**
  * Start headless CLI mode for one-shot command execution
@@ -23,7 +22,7 @@ export async function startHeadlessCli(agent: MemAgent, input: string): Promise<
 			if (metaStr) {
 				metadata = parseMetaString(metaStr);
 			}
-		} catch (err) {
+		} catch {
 			console.log(chalk.red('❌ Invalid metadata format. Use key=value,key2=value2 ...'));
 			return;
 		}
@@ -100,7 +99,7 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 					if (metaStr) {
 						metadata = parseMetaString(metaStr);
 					}
-				} catch (err) {
+				} catch {
 					console.log(chalk.red('❌ Invalid metadata format. Use key=value,key2=value2 ...'));
 					rl.prompt();
 					return;
@@ -201,8 +200,8 @@ export async function startMcpMode(agent: MemAgent): Promise<void> {
 		console.log(chalk.gray('📊 Available resources: cipher://agent/card, cipher://agent/stats'));
 		console.log(chalk.gray('📝 Available prompts: system_prompt'));
 		console.log(chalk.gray('💡 Connect MCP clients to interact with the Cipher agent'));
-	} catch (error) {
-		const errorMessage = error instanceof Error ? error.message : String(error);
+	} catch (_err) {
+		const errorMessage = _err instanceof Error ? _err.message : String(_err);
 		logger.error(`[MCP Mode] Failed to start MCP server: ${errorMessage}`);
 		console.log(chalk.red(`❌ Failed to start MCP server: ${errorMessage}`));
 		process.exit(1);

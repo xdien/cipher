@@ -10,9 +10,7 @@ import { MemoryHistoryStorageService } from '../service.js';
 import { createMemoryHistoryEntry, createMemoryHistoryService } from '../index.js';
 import type {
 	MemoryHistoryEntry,
-	HistoryFilters,
 	MemoryOperation,
-	OperationStats,
 } from '../types.js';
 import { StorageManager } from '../../manager.js';
 import type { StorageConfig } from '../../config.js';

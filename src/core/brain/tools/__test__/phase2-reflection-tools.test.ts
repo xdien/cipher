@@ -12,8 +12,6 @@ import {
 	extractReasoningSteps, 
 	evaluateReasoning, 
 	searchReasoningPatterns,
-	type ReasoningTrace,
-	type ReasoningStep,
 	ReasoningStepSchema,
 	ReasoningTraceSchema,
 } from '../def_reflective_memory_tools.js';
@@ -80,7 +78,7 @@ Result: Function complete with proper validation.
 			expect(thoughtSteps.length).toBeGreaterThan(0);
 			
 			// Steps should not have confidence fields (removed in new requirements)
-			expect(result.result.trace.steps.every((s: any) => !s.hasOwnProperty('confidence'))).toBe(true);
+			expect(result.result.trace.steps.every((s: any) => !Object.prototype.hasOwnProperty.call(s, 'confidence'))).toBe(true);
 		});
 
 		it('should extract implicit reasoning patterns when no explicit markup', async () => {

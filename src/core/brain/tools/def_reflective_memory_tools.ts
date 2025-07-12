@@ -11,7 +11,6 @@
 
 import { z } from 'zod';
 import { logger } from '../../logger/index.js';
-import { env } from '../../env.js';
 import type { InternalTool, InternalToolContext } from './types.js';
 
 /**
@@ -586,7 +585,7 @@ export const evaluateReasoning: InternalTool = {
 		},
 		required: ['trace']
 	},
-	handler: async (args: any, context?: InternalToolContext) => {
+	handler: async (args: any, _context?: InternalToolContext) => {
 		logger.debug('Starting reasoning evaluation', { 
 			traceId: args.trace?.id,
 			stepCount: args.trace?.steps?.length || 0,
@@ -707,7 +706,7 @@ export const searchReasoningPatterns: InternalTool = {
 		},
 		required: ['query']
 	},
-	handler: async (args: any, context?: InternalToolContext) => {
+	handler: async (args: any, _context?: InternalToolContext) => {
 		logger.debug('Starting reasoning pattern search', { 
 			query: args.query,
 			context: args.context,
@@ -720,8 +719,8 @@ export const searchReasoningPatterns: InternalTool = {
 
 			// Query deduplication to reduce redundant searches
 			const shouldDeduplicate = true; // Default behavior, can be made configurable later
-			if (shouldDeduplicate && context?.sessionId) {
-				const queryKey = `search_patterns_${context.sessionId}`;
+			if (shouldDeduplicate && _context?.sessionId) {
+				const queryKey = `search_patterns_${_context.sessionId}`;
 				const recentQueries = (global as any)[queryKey] || [];
 				
 				// Check if a very similar query was made recently (within last 5 minutes)
@@ -766,23 +765,23 @@ export const searchReasoningPatterns: InternalTool = {
 			let usedMock = false;
 			let fallback = false;
 			
-			if (context && context.services && context.services.vectorStoreManager) {
+			if (_context && _context.services && _context.services.vectorStoreManager) {
 				try {
 					// Check if we have a DualCollectionVectorManager
-					const isDualManager = context.services.vectorStoreManager.constructor.name === 'DualCollectionVectorManager' ||
-					                     (typeof context.services.vectorStoreManager.getStore === 'function' && 
-					                      context.services.vectorStoreManager.getStore.length === 1);
+					const isDualManager = _context.services.vectorStoreManager.constructor.name === 'DualCollectionVectorManager' ||
+					                     (typeof _context.services.vectorStoreManager.getStore === 'function' && 
+					                      _context.services.vectorStoreManager.getStore.length === 1);
 					
 					let store = null;
 					
 					if (isDualManager) {
 						// For DualCollectionVectorManager, request reflection collection specifically
 						logger.debug('ReasoningPatternSearch: Using DualCollectionVectorManager, accessing reflection collection');
-						store = (context.services.vectorStoreManager as any).getStore('reflection');
+						store = (_context.services.vectorStoreManager as any).getStore('reflection');
 					} else {
 						// For single collection manager
 						logger.debug('ReasoningPatternSearch: Using single collection manager');
-						store = context.services.vectorStoreManager.getStore();
+						store = _context.services.vectorStoreManager.getStore();
 					}
 					
 					if (store && typeof store.search === 'function') {

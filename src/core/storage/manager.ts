@@ -12,10 +12,8 @@ import type {
 	DatabaseBackend,
 	StorageBackends,
 	StorageConfig,
-	BackendConfig,
 } from './types.js';
 import { StorageSchema } from './config.js';
-import { StorageError, StorageConnectionError } from './backend/types.js';
 import { Logger, createLogger } from '../logger/index.js';
 import {
 	LOG_PREFIXES,
@@ -23,8 +21,6 @@ import {
 	TIMEOUTS,
 	HEALTH_CHECK,
 	BACKEND_TYPES,
-	DEFAULTS,
-	METRICS_EVENTS,
 } from './constants.js';
 
 /**

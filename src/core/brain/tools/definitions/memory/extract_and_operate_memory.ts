@@ -485,7 +485,6 @@ export const extractAndOperateMemoryTool: InternalTool = {
 
 			const memoryActions = [];
 			const memorySummaries = [];
-			let processedFacts = 0;
 
 			for (let i = 0; i < significantFacts.length; i++) {
 				const fact = significantFacts[i];
@@ -663,8 +662,6 @@ export const extractAndOperateMemoryTool: InternalTool = {
 						reason,
 						targetId
 					});
-
-					processedFacts++;
 
 				} catch (factError) {
 					logger.error(`ExtractAndOperateMemory: Failed to process fact ${i + 1}`, {

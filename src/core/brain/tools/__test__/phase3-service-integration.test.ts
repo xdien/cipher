@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { InternalToolManager } from '../manager.js';
-import { InternalToolRegistry } from '../registry.js';
 import { registerAllTools } from '../definitions/index.js';
 
 // Mock the logger to avoid console output during tests

@@ -39,7 +39,7 @@ import {
 	GraphValidationError,
 } from './types.js';
 import type { Neo4jBackendConfig } from '../config.js';
-import { DEFAULTS, ERROR_MESSAGES, LOG_PREFIXES, QUERY_TEMPLATES } from '../constants.js';
+import { DEFAULTS, ERROR_MESSAGES, LOG_PREFIXES } from '../constants.js';
 
 /**
  * Neo4j Knowledge Graph Backend

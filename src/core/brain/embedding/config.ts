@@ -13,7 +13,6 @@ import {
 	DEFAULTS,
 	OPENAI_MODELS,
 	PROVIDER_TYPES,
-	VALIDATION_LIMITS,
 	ENV_VARS,
 } from './constants.js';
 
@@ -267,7 +266,7 @@ export function parseEmbeddingConfigFromEnv(
 		}
 
 		return parseEmbeddingConfig(rawConfig);
-	} catch (error) {
+	} catch {
 		// Configuration parsing failed
 		return null;
 	}
@@ -287,10 +286,10 @@ export function validateEmbeddingConfig(config: unknown): {
 	try {
 		const data = parseEmbeddingConfig(config);
 		return { success: true, data };
-	} catch (error) {
-		if (error instanceof z.ZodError) {
-			return { success: false, errors: error };
+	} catch (_error) {
+		if (_error instanceof z.ZodError) {
+			return { success: false, errors: _error };
 		}
-		throw error;
+		return { success: false, errors: _error };
 	}
 }

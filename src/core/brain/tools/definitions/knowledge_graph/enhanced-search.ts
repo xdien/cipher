@@ -17,8 +17,6 @@ import { logger } from '../../../../logger/index.js';
 import type {
 	GraphNode,
 	GraphEdge,
-	NodeFilters,
-	EdgeFilters,
 } from '../../../../knowledge_graph/backend/types.js';
 
 /**

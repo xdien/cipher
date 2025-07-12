@@ -6,7 +6,7 @@
  * session control, and system operations.
  */
 
-import { Tool, ToolParameters, ToolExecutionResult } from '../../mcp/types.js';
+import { Tool, ToolExecutionResult } from '../../mcp/types.js';
 import type { EmbeddingManager } from '../embedding/index.js';
 import type { VectorStoreManager } from '../../vector_storage/index.js';
 import type { ILLMService } from '../llm/index.js';

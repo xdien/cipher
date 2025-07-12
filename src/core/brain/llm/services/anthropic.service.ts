@@ -16,8 +16,6 @@ export class AnthropicService {
 		imageDataInput?: { image: string; mimeType: string },
 		stream: boolean = false
 	): Promise<string> {
-		const startTime = Date.now();
-
 		try {
 			// Check for file references in user input and attempt to find them
 			const fileReferences = this.extractFileReferences(input);
@@ -77,11 +75,11 @@ export class AnthropicService {
 		// Look for common file patterns
 		const patterns = [
 			// Files with extensions
-			/\b[\w\-]+\.[a-zA-Z0-9]{1,10}\b/g,
+			/\b[\w-]+\.[a-zA-Z0-9]{1,10}\b/g,
 			// Quoted filenames
 			/["'`]([^"'`]*\.[a-zA-Z0-9]{1,10})["'`]/g,
 			// Files in paths
-			/[\w\-\/\\\.]+\.[a-zA-Z0-9]{1,10}/g
+			/[\w\-/.]+\.[a-zA-Z0-9]{1,10}/g
 		];
 
 		for (const pattern of patterns) {

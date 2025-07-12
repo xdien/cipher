@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { SearchContextManager, SearchResult, SortedContext } from '../search-context-manager.js';
+import { SearchContextManager } from '../search-context-manager.js';
 
 // Mock logger
 vi.mock('../../../../logger/index.js', () => ({

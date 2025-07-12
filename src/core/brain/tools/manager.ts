@@ -16,9 +16,7 @@ import {
 	InternalToolManagerConfig,
 	InternalToolContext,
 	ToolExecutionStats,
-	INTERNAL_TOOL_PREFIX,
 	createInternalToolName,
-	isInternalToolName,
 } from './types.js';
 
 /**

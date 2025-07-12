@@ -10,6 +10,7 @@ import { MemAgentStateManager } from '../brain/memAgent/state-manager.js';
 import { ReasoningContentDetector } from '../brain/reasoning/content-detector.js';
 import { SearchContextManager } from '../brain/reasoning/search-context-manager.js';
 import type { ZodSchema } from 'zod';
+import { setImmediate } from "timers";
 
 // Utility to extract reasoning content blocks from model responses (Anthropic and similar models)
 function extractReasoningContentBlocks(aiResponse: any): string {

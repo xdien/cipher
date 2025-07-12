@@ -184,7 +184,7 @@ describe('MemAgent', () => {
 				},
 			];
 
-			invalidConfigs.forEach((config, index) => {
+			invalidConfigs.forEach((config, _index) => {
 				expect(() => {
 					AgentConfigSchema.parse(config);
 				}).toThrow(ZodError);

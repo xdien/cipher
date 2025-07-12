@@ -7,7 +7,6 @@
  */
 
 import { logger } from '../../logger/index.js';
-import { env } from '../../env.js';
 
 export interface SearchResult {
   source: 'graph' | 'memory' | 'reasoning_patterns';
@@ -242,7 +241,7 @@ export class SearchContextManager {
   /**
    * Extract relevance score from search result
    */
-  private extractRelevance(result: any, source: string): number {
+  private extractRelevance(result: any, _source: string): number {
     // Try to extract relevance from various possible fields
     const relevance = result.relevance || result.score || result.similarity || result.confidence || 0.5;
     return Math.max(0, Math.min(1, relevance));
@@ -284,7 +283,7 @@ export class SearchContextManager {
   /**
    * Extract timestamp from search result
    */
-  private extractTimestamp(result: any, source: string): string | undefined {
+  private extractTimestamp(result: any, _source: string): string | undefined {
     return result.timestamp || result.createdAt || result.updatedAt || result.date;
   }
 
@@ -353,7 +352,7 @@ export class SearchContextManager {
   /**
    * Generate a summary of the primary search results
    */
-  private async generateSummary(primaryResults: SearchResult[], query?: string): Promise<string> {
+  private async generateSummary(primaryResults: SearchResult[], _query?: string): Promise<string> {
     if (primaryResults.length === 0) {
       return 'No relevant search results found.';
     }
@@ -424,9 +423,9 @@ export class SearchContextManager {
   /**
    * Cache search results for future reference
    */
-  private cacheSearchResults(query: string, results: SearchResult[]): void {
+  private cacheSearchResults(_query: string, results: SearchResult[]): void {
     const now = Date.now();
-    this.recentSearches.set(query, { timestamp: now, results });
+    this.recentSearches.set(_query, { timestamp: now, results });
     
     // Clean up old cache entries (older than 1 hour)
     const oneHourAgo = now - 3600000;

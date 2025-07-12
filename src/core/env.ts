@@ -166,12 +166,13 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 			case 'SEARCH_MEMORY_TYPE':
 				return process.env.SEARCH_MEMORY_TYPE || 'both';
 			// Reflection Memory Configuration
-			case 'REFLECTION_VECTOR_STORE_COLLECTION':
+			case 'REFLECTION_VECTOR_STORE_COLLECTION': {
 				// Handle boolean conversion for test compatibility
 				const value = process.env.REFLECTION_VECTOR_STORE_COLLECTION || 'reflection_memory';
 				if (value === 'true') return true;
 				if (value === 'false') return false;
 				return value;
+			}
 			case 'DISABLE_REFLECTION_MEMORY':
 				return process.env.DISABLE_REFLECTION_MEMORY === 'true';
 			default:
