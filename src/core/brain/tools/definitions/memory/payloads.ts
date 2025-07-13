@@ -30,8 +30,8 @@ export interface KnowledgePayload extends BasePayload {
 }
 
 /**
- * Reasoning Memory Payload - For reasoning traces and evaluations
- * Append-only, stores raw reasoning steps + evaluation + task context
+ * Reasoning Memory Payload - Simplified format focusing on reasoning steps and evaluation
+ * Append-only, stores raw reasoning steps + evaluation
  */
 export interface ReasoningPayload extends BasePayload {
 	tags: string[]; // Simplified: ['reasoning']
@@ -53,18 +53,7 @@ export interface ReasoningPayload extends BasePayload {
 		suggestions: string[];
 		[key: string]: any; // Preserve any additional evaluation data
 	};
-	// TASK CONTEXT: Critical for understanding what reasoning was about
-	taskContext?: {
-		goal?: string; // What the agent was trying to achieve
-		input?: string; // Original user request/problem
-		taskType?: string; // code_generation, analysis, problem_solving, etc.
-		domain?: string; // programming, math, planning, etc.
-		complexity?: 'low' | 'medium' | 'high';
-		conversationLength?: number;
-		hasExplicitMarkup?: boolean;
-		[key: string]: any; // Preserve additional context
-	};
-	// Derived metrics for fast filtering/search (computed from raw data)
+	context: string; // Single context field for reasoning steps
 	stepCount: number; // Computed: reasoningSteps.length
 	stepTypes: string[]; // Computed: unique step types
 	issueCount: number; // Computed: evaluation.issues.length
@@ -107,7 +96,7 @@ export function createKnowledgePayload(
 }
 
 /**
- * Create new reasoning payload (V2 format)
+ * Create new reasoning payload (simplified format)
  */
 export function createReasoningPayload(
 	id: number,
@@ -128,18 +117,9 @@ export function createReasoningPayload(
 		suggestions: string[];
 		[key: string]: any;
 	},
+	context: string,
 	options: {
 		sourceSessionId?: string;
-		taskContext?: {
-			goal?: string;
-			input?: string;
-			taskType?: string;
-			domain?: string;
-			complexity?: 'low' | 'medium' | 'high';
-			conversationLength?: number;
-			hasExplicitMarkup?: boolean;
-			[key: string]: any;
-		};
 	} = {}
 ): ReasoningPayload {
 	// Compute derived metrics from raw data
@@ -155,7 +135,7 @@ export function createReasoningPayload(
 		tags: ['reasoning'],
 		reasoningSteps,
 		evaluation,
-		...(options.taskContext && { taskContext: options.taskContext }),
+		context,
 		stepCount,
 		stepTypes,
 		issueCount,

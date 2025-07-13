@@ -103,17 +103,10 @@ export const evaluateReasoningInputSchema = z.object({
 
 export const searchReasoningInputSchema = z.object({
 	query: z.string().min(1),
-	context: z
-		.object({
-			taskType: z.string().optional(),
-			domain: z.string().optional(),
-			complexity: z.enum(['low', 'medium', 'high']).optional(),
-		})
-		.optional(),
 	options: z
 		.object({
 			maxResults: z.number().min(1).max(50).default(10),
-			minQualityScore: z.number().min(0).max(1).default(0.5),
+			minQualityScore: z.number().min(0).max(1).default(0.3),
 			includeEvaluations: z.boolean().default(true),
 		})
 		.optional()
@@ -752,7 +745,7 @@ export const searchReasoningPatterns: InternalTool = {
 						description: 'Minimum quality score for results',
 						minimum: 0,
 						maximum: 1,
-						default: 0.5,
+						default: 0.3,
 					},
 					includeEvaluations: {
 						type: 'boolean',
@@ -829,40 +822,59 @@ export const searchReasoningPatterns: InternalTool = {
 			let usedMock = false;
 			let fallback = false;
 
-			if (_context && _context.services && _context.services.vectorStoreManager) {
+			if (_context && _context.services && _context.services.vectorStoreManager && _context.services.embeddingManager) {
 				try {
-					// Check if we have a DualCollectionVectorManager
-					const isDualManager =
-						_context.services.vectorStoreManager.constructor.name ===
-							'DualCollectionVectorManager' ||
-						(typeof _context.services.vectorStoreManager.getStore === 'function' &&
-							_context.services.vectorStoreManager.getStore.length === 1);
-
-					let store = null;
-
-					if (isDualManager) {
-						// For DualCollectionVectorManager, request reflection collection specifically
-						logger.debug(
-							'ReasoningPatternSearch: Using DualCollectionVectorManager, accessing reflection collection'
-						);
-						store = (_context.services.vectorStoreManager as any).getStore('reflection');
-					} else {
-						// For single collection manager
-						logger.debug('ReasoningPatternSearch: Using single collection manager');
-						store = _context.services.vectorStoreManager.getStore();
-					}
-
-					if (store && typeof store.search === 'function') {
-						// Use empty embedding array as placeholder for Phase 2
-						patterns = await store.search([], input.options?.maxResults || 10);
-						usedMock = false;
-						logger.debug('ReasoningPatternSearch: Successfully accessed vector store', {
-							isDualManager,
-							resultsFound: patterns.length,
-						});
-					} else {
+					// Get embedder for generating query embeddings
+					const embedder = _context.services.embeddingManager.getEmbedder('default');
+					if (!embedder?.embed || typeof embedder.embed !== 'function') {
+						logger.debug('ReasoningPatternSearch: Embedder not available, using fallback');
 						fallback = true;
-						logger.debug('ReasoningPatternSearch: Store not available or missing search method');
+					} else {
+						// Generate embedding for the search query
+						logger.debug('ReasoningPatternSearch: Generating embedding for query', {
+							queryLength: input.query.length,
+							queryPreview: input.query.substring(0, 50),
+						});
+
+						const queryEmbedding = await embedder.embed(input.query);
+						
+						logger.debug('ReasoningPatternSearch: Embedding generated successfully', {
+							embeddingDimensions: Array.isArray(queryEmbedding) ? queryEmbedding.length : 'unknown',
+						});
+
+						// Check if we have a DualCollectionVectorManager
+						const isDualManager =
+							_context.services.vectorStoreManager.constructor.name ===
+								'DualCollectionVectorManager' ||
+							(typeof _context.services.vectorStoreManager.getStore === 'function' &&
+								_context.services.vectorStoreManager.getStore.length === 1);
+
+						let store = null;
+
+						if (isDualManager) {
+							// For DualCollectionVectorManager, request reflection collection specifically
+							logger.debug(
+								'ReasoningPatternSearch: Using DualCollectionVectorManager, accessing reflection collection'
+							);
+							store = (_context.services.vectorStoreManager as any).getStore('reflection');
+						} else {
+							// For single collection manager
+							logger.debug('ReasoningPatternSearch: Using single collection manager');
+							store = _context.services.vectorStoreManager.getStore();
+						}
+
+						if (store && typeof store.search === 'function') {
+							// Use the generated embedding for search
+							patterns = await store.search(queryEmbedding, input.options?.maxResults || 10);
+							usedMock = false;
+							logger.debug('ReasoningPatternSearch: Successfully accessed vector store', {
+								isDualManager,
+								resultsFound: patterns.length,
+							});
+						} else {
+							fallback = true;
+							logger.debug('ReasoningPatternSearch: Store not available or missing search method');
+						}
 					}
 				} catch (error) {
 					fallback = true;
@@ -884,28 +896,33 @@ export const searchReasoningPatterns: InternalTool = {
 
 			// Filter patterns based on quality and context
 			const filteredPatterns = patterns.filter((pattern: any) => {
-				// Apply quality score filter
+				// Extract quality score from payload (same logic as memory search)
+				const rawPayload = pattern.payload || {};
+				const qualityScore = rawPayload.evaluation?.qualityScore || rawPayload.qualityScore;
+				
+				// Apply quality score filter (relaxed for better recall)
 				if (
-					pattern.qualityScore &&
-					pattern.qualityScore < (input.options?.minQualityScore || 0.5)
+					qualityScore !== undefined &&
+					qualityScore < (input.options?.minQualityScore || 0.3)
 				) {
+					logger.debug('ReasoningPatternSearch: Filtered out pattern due to low quality score', {
+						patternId: pattern.id,
+						qualityScore,
+						threshold: input.options?.minQualityScore || 0.3,
+					});
 					return false;
 				}
 
-				// Apply context filters if provided
-				if (input.context) {
-					if (input.context.taskType && pattern.taskType !== input.context.taskType) {
-						return false;
-					}
-					if (input.context.domain && pattern.domain !== input.context.domain) {
-						return false;
-					}
-					if (input.context.complexity && pattern.complexity !== input.context.complexity) {
-						return false;
-					}
-				}
+				// Note: Context filtering removed since we simplified the payload structure
+				// to focus only on reasoning steps and evaluation
 
 				return true;
+			}).map((pattern: any) => {
+				const rawPayload = pattern.payload || {};
+				return {
+					...pattern,
+					context: rawPayload.context || '',
+				};
 			});
 
 			logger.debug('ReasoningPatternSearch: Search completed', {

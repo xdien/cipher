@@ -12,6 +12,7 @@ export * from './knowledge_graph/index.js';
 // Import types and utilities
 import type { InternalToolSet } from '../types.js';
 import { logger } from '../../../logger/index.js';
+import { env } from '../../../env.js';
 
 /**
  * Get all tools from all categories
@@ -20,11 +21,17 @@ export async function getAllToolDefinitions(): Promise<InternalToolSet> {
 	try {
 		logger.debug('Loading all tool definitions...');
 
-		// Import all tools dynamically
-		const [memoryTools, knowledgeGraphTools] = await Promise.all([
-			import('./memory/index.js').then(m => m.getMemoryTools()),
-			import('./knowledge_graph/index.js').then(m => m.getKnowledgeGraphTools()),
-		]);
+		// Always load memory tools
+		const memoryTools = await import('./memory/index.js').then(m => m.getMemoryTools());
+
+		// Conditionally load knowledge graph tools based on environment setting
+		let knowledgeGraphTools: InternalToolSet = {};
+		if (env.KNOWLEDGE_GRAPH_ENABLED) {
+			logger.debug('Knowledge graph enabled, loading knowledge graph tools');
+			knowledgeGraphTools = await import('./knowledge_graph/index.js').then(m => m.getKnowledgeGraphTools());
+		} else {
+			logger.debug('Knowledge graph disabled, skipping knowledge graph tools');
+		}
 
 		// Combine all tools (reasoning tools are already included in memoryTools now)
 		const allTools: InternalToolSet = {
@@ -36,6 +43,7 @@ export async function getAllToolDefinitions(): Promise<InternalToolSet> {
 			totalTools: Object.keys(allTools).length,
 			memoryTools: Object.keys(memoryTools).length,
 			knowledgeGraphTools: Object.keys(knowledgeGraphTools).length,
+			knowledgeGraphEnabled: env.KNOWLEDGE_GRAPH_ENABLED,
 		});
 
 		return allTools;

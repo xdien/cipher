@@ -17,7 +17,7 @@ export default defineConfig([
 		shims: true,
 		bundle: true,
 		platform: 'node',
-		external: ['better-sqlite3', 'pg', 'neo4j-driver', 'ioredis'],
+		external: ['better-sqlite3', 'pg', 'neo4j-driver', 'ioredis', 'commander'],
 		noExternal: ['chalk', 'boxen'],
 	},
 ]);

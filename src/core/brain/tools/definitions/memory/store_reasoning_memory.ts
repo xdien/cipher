@@ -387,18 +387,25 @@ export const storeReasoningMemoryTool: InternalTool = {
 
 			const stepTypes = Array.from(new Set(validSteps.map((step: any) => step.type))) as string[];
 
-			// Create searchable content for embedding (similar to extract_and_operate_memory approach)
+			// Create simplified searchable content focusing on reasoning steps and evaluation
 			const searchableContent = [
-				// Reasoning content
-				`Reasoning trace with ${validSteps.length} steps`,
-				`Quality score: ${evaluation.qualityScore.toFixed(2)}`,
-				`Step types: ${stepTypes.join(', ')}`,
-				// Individual reasoning steps
+				// Core reasoning steps (most important for similarity search)
 				...validSteps.map((step: any) => `${step.type}: ${step.content}`),
-				// Evaluation insights
-				`Issues found: ${evaluation.issues.length}`,
-				...evaluation.suggestions.map((suggestion: string) => `Suggestion: ${suggestion}`),
+				// Quality score for filtering
+				`Quality: ${evaluation.qualityScore.toFixed(2)}`,
 			].join(' ');
+
+			// Generate a context string for the reasoning trace
+			let contextString = '';
+			if (trace.metadata?.taskContext?.goal) {
+				contextString = String(trace.metadata.taskContext.goal);
+			} else if (trace.metadata?.taskContext?.input) {
+				contextString = String(trace.metadata.taskContext.input);
+			} else if (typeof args.userInput === 'string') {
+				contextString = args.userInput.slice(0, 100);
+			} else {
+				contextString = 'No context provided';
+			}
 
 			logger.debug('StoreReasoningMemory: Generating embedding for unified reasoning content', {
 				traceId: trace.id,
@@ -437,48 +444,19 @@ export const storeReasoningMemoryTool: InternalTool = {
 				});
 			}
 
-			// Create V2 reasoning payload (preserving raw reasoning steps and evaluation)
-			// REQUIREMENT: Store both extracted reasoning steps AND their evaluation (no extraction)
+			// Create simplified reasoning payload focusing only on reasoning steps, evaluation, and context
 			const payload = createReasoningPayload(
 				vectorId,
 				String(searchableContent),
-				validSteps, // Raw reasoning steps (no extraction)
+				validSteps, // Raw reasoning steps
 				{
 					qualityScore: Math.max(0, Math.min(1, safeQualityScore)),
-					issues: evaluation.issues, // Raw issues (no extraction)
-					suggestions: evaluation.suggestions, // Raw suggestions (no extraction)
-					// Preserve any additional evaluation fields
-					...(evaluation.metrics && { metrics: evaluation.metrics }),
-					...(evaluation.summary && { summary: evaluation.summary }),
+					issues: evaluation.issues,
+					suggestions: evaluation.suggestions,
 				},
+				contextString,
 				{
 					sourceSessionId: trace.metadata.sessionId || context?.sessionId,
-					// Extract task context from trace metadata - now automatically extracted from conversation
-					...(trace.metadata.taskContext && {
-						taskContext: {
-							...(trace.metadata.taskContext.goal !== undefined && {
-								goal: trace.metadata.taskContext.goal,
-							}),
-							...(trace.metadata.taskContext.input !== undefined && {
-								input: trace.metadata.taskContext.input,
-							}),
-							...(trace.metadata.taskContext.taskType !== undefined && {
-								taskType: trace.metadata.taskContext.taskType,
-							}),
-							...(trace.metadata.taskContext.domain !== undefined && {
-								domain: trace.metadata.taskContext.domain,
-							}),
-							...(trace.metadata.taskContext.complexity !== undefined && {
-								complexity: trace.metadata.taskContext.complexity,
-							}),
-							...(trace.metadata.conversationLength !== undefined && {
-								conversationLength: trace.metadata.conversationLength,
-							}),
-							...(trace.metadata.hasExplicitMarkup !== undefined && {
-								hasExplicitMarkup: trace.metadata.hasExplicitMarkup,
-							}),
-						},
-					}),
 				}
 			);
 

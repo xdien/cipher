@@ -45,16 +45,7 @@ interface MemorySearchResult {
 			suggestions: string[];
 			[key: string]: any;
 		};
-		taskContext?: {
-			goal?: string;
-			input?: string;
-			taskType?: string;
-			domain?: string;
-			complexity?: 'low' | 'medium' | 'high';
-			conversationLength?: number;
-			hasExplicitMarkup?: boolean;
-			[key: string]: any;
-		};
+
 		stepCount?: number;
 		stepTypes?: string[];
 		issueCount?: number;
@@ -387,7 +378,6 @@ export const searchMemoryTool: InternalTool = {
 							...baseResult,
 							reasoningSteps: reasoningPayload.reasoningSteps,
 							evaluation: reasoningPayload.evaluation,
-							taskContext: reasoningPayload.taskContext,
 							// Computed metrics for convenience
 							stepCount: reasoningPayload.stepCount,
 							stepTypes: reasoningPayload.stepTypes,

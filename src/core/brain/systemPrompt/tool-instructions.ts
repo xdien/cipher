@@ -78,31 +78,31 @@ export const REASONING_PATTERNS_SEARCH_INSTRUCTIONS = `
 - When you need to learn from previous reasoning quality and evaluations
 
 **Parameters:**
-- \`query\`: Describe the type of reasoning pattern you need (e.g., "problem solving approaches", "debugging strategies", "algorithm design thinking")
-- \`context\`: Optional filtering by task type, domain, or complexity
-  - \`taskType\`: Type of task (e.g., code_generation, analysis, problem_solving)
-  - \`domain\`: Problem domain (e.g., javascript, python, frontend, backend, data_structures)
-  - \`complexity\`: Task complexity level (low, medium, high)
+- \`query\`: Describe the type of reasoning pattern you need (e.g., "problem solving approaches", "debugging strategies", "algorithm design thinking"). The search will also match against the context field (a short description of what the reasoning is about).
 - \`options.maxResults\`: Number of results to return (1-50, default: 10)
-- \`options.minQualityScore\`: Minimum quality score for results (0-1, default: 0.5)
+- \`options.minQualityScore\`: Minimum quality score for results (0-1, default: 0.3 - relaxed for better recall)
 - \`options.includeEvaluations\`: Whether to include quality evaluations (default: true)
+
+**Returned Results:**
+- Each result includes a \`context\` field (string) describing what the reasoning steps are about. You can use this for filtering or understanding the result at a glance.
 
 **Example usage:**
 \`\`\`
 cipher_search_reasoning_patterns(
   query: "hash table design reasoning implementation",
-  context: {
-    taskType: "problem_solving",
-    domain: "data_structures",
-    complexity: "medium"
-  },
   options: {
     maxResults: 5,
-    minQualityScore: 0.6,
+    minQualityScore: 0.3,
     includeEvaluations: true
   }
 )
 \`\`\`
+
+**Search Tips for Better Results:**
+- Use broader, more general queries rather than very specific ones
+- Try different variations of your query if no results are found
+- Lower the minQualityScore to 0.2-0.3 for more inclusive results
+- Focus on reasoning content rather than specific task types
 `;
 
 /**

@@ -204,8 +204,7 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 		it('should load internal tools when enabled', async () => {
 			const tools = await unifiedToolManager.getAllTools();
 
-			// Should have 13 agent-accessible tools total (2 memory search tools + 11 knowledge graph tools)
-			expect(Object.keys(tools)).toHaveLength(13);
+			// Check memory tools (always available)
 			expect(tools['cipher_memory_search']).toBeDefined();
 			expect(tools['cipher_search_reasoning_patterns']).toBeDefined();
 
@@ -218,6 +217,16 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 			// Should NOT have old deprecated tools
 			expect(tools['cipher_extract_knowledge']).toBeUndefined();
 			expect(tools['cipher_memory_operation']).toBeUndefined();
+
+			// Check knowledge graph tools (conditionally available)
+			const { env } = await import('../../../env.js');
+			if (env.KNOWLEDGE_GRAPH_ENABLED) {
+				// Should have 13 agent-accessible tools total (2 memory search tools + 11 knowledge graph tools)
+				expect(Object.keys(tools)).toHaveLength(13);
+			} else {
+				// Should have 2 agent-accessible tools total (only memory search tools)
+				expect(Object.keys(tools)).toHaveLength(2);
+			}
 
 			// All accessible tools should be marked as internal
 			for (const tool of Object.values(tools)) {
@@ -346,11 +355,22 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 		it('should work with real tool execution flow using new tools', async () => {
 			// 1. Get all available tools (current implementation)
 			const allTools = await unifiedToolManager.getAllTools();
-			expect(Object.keys(allTools).length).toBe(13);
+			
+			// Check based on environment setting
+			const { env } = await import('../../../env.js');
+			if (env.KNOWLEDGE_GRAPH_ENABLED) {
+				expect(Object.keys(allTools).length).toBe(13);
+			} else {
+				expect(Object.keys(allTools).length).toBe(2);
+			}
 
 			// 2. Format tools for OpenAI (current implementation)
 			const openaiTools = await unifiedToolManager.getToolsForProvider('openai');
-			expect(openaiTools.length).toBe(13);
+			if (env.KNOWLEDGE_GRAPH_ENABLED) {
+				expect(openaiTools.length).toBe(13);
+			} else {
+				expect(openaiTools.length).toBe(2);
+			}
 
 			// 3. Execute a tool with new name (this will use the real manager now)
 			const searchResult = await unifiedToolManager.executeTool('cipher_memory_search', {
