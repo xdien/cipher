@@ -325,23 +325,22 @@ export const extractAndOperateMemoryTool: InternalTool = {
 	version: '1.0.0',
 	parameters: {
 		type: 'object',
-		properties: {
-			interaction: {
-				oneOf: [
-					{
+		properties: {		interaction: {
+			oneOf: [
+				{
+					type: 'string',
+					description: 'A single user interaction or conversation text to extract knowledge from.',
+				},
+				{
+					type: 'array',
+					items: {
 						type: 'string',
-						description: 'Single raw user interaction or conversation text to extract knowledge from.'
 					},
-					{
-						type: 'array',
-						items: {
-							type: 'string'
-						},
-						description: 'Array of raw user interactions or conversation texts to extract knowledge from.'
-					}
-				],
-				description: 'Raw user interaction(s) or conversation text(s) to extract knowledge from.',
-			},
+					description: 'Multiple user interactions or conversation texts to extract knowledge from.',
+				},
+			],
+			description: 'Raw user interaction(s) or conversation text(s) to extract knowledge from.',
+		},
 			existingMemories: {
 				type: 'array',
 				description: 'Array of existing memory entries to compare against for similarity analysis.',
