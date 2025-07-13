@@ -721,7 +721,12 @@ describe('ConversationSession Robustness & Validation', () => {
 
 	it('should throw if input is empty string', async () => {
 		session = new ConversationSession(
-			{ stateManager: mockStateManager, promptManager: mockPromptManager, mcpManager: mockMcpManager, unifiedToolManager: mockUnifiedToolManager },
+			{
+				stateManager: mockStateManager,
+				promptManager: mockPromptManager,
+				mcpManager: mockMcpManager,
+				unifiedToolManager: mockUnifiedToolManager,
+			},
 			sessionId
 		);
 		await session.init();
@@ -730,7 +735,12 @@ describe('ConversationSession Robustness & Validation', () => {
 
 	it('should throw if input is not a string', async () => {
 		session = new ConversationSession(
-			{ stateManager: mockStateManager, promptManager: mockPromptManager, mcpManager: mockMcpManager, unifiedToolManager: mockUnifiedToolManager },
+			{
+				stateManager: mockStateManager,
+				promptManager: mockPromptManager,
+				mcpManager: mockMcpManager,
+				unifiedToolManager: mockUnifiedToolManager,
+			},
 			sessionId
 		);
 		await session.init();
@@ -739,25 +749,44 @@ describe('ConversationSession Robustness & Validation', () => {
 
 	it('should throw if imageDataInput is missing fields', async () => {
 		session = new ConversationSession(
-			{ stateManager: mockStateManager, promptManager: mockPromptManager, mcpManager: mockMcpManager, unifiedToolManager: mockUnifiedToolManager },
+			{
+				stateManager: mockStateManager,
+				promptManager: mockPromptManager,
+				mcpManager: mockMcpManager,
+				unifiedToolManager: mockUnifiedToolManager,
+			},
 			sessionId
 		);
 		await session.init();
-		await expect(session.run('valid', { image: 'img' } as any)).rejects.toThrow('imageDataInput must have image and mimeType as non-empty strings');
+		await expect(session.run('valid', { image: 'img' } as any)).rejects.toThrow(
+			'imageDataInput must have image and mimeType as non-empty strings'
+		);
 	});
 
 	it('should throw if imageDataInput fields are not strings', async () => {
 		session = new ConversationSession(
-			{ stateManager: mockStateManager, promptManager: mockPromptManager, mcpManager: mockMcpManager, unifiedToolManager: mockUnifiedToolManager },
+			{
+				stateManager: mockStateManager,
+				promptManager: mockPromptManager,
+				mcpManager: mockMcpManager,
+				unifiedToolManager: mockUnifiedToolManager,
+			},
 			sessionId
 		);
 		await session.init();
-		await expect(session.run('valid', { image: 123, mimeType: 456 } as any)).rejects.toThrow('imageDataInput must have image and mimeType as non-empty strings');
+		await expect(session.run('valid', { image: 123, mimeType: 456 } as any)).rejects.toThrow(
+			'imageDataInput must have image and mimeType as non-empty strings'
+		);
 	});
 
 	it('should coerce stream to boolean and warn if not boolean', async () => {
 		session = new ConversationSession(
-			{ stateManager: mockStateManager, promptManager: mockPromptManager, mcpManager: mockMcpManager, unifiedToolManager: mockUnifiedToolManager },
+			{
+				stateManager: mockStateManager,
+				promptManager: mockPromptManager,
+				mcpManager: mockMcpManager,
+				unifiedToolManager: mockUnifiedToolManager,
+			},
 			sessionId
 		);
 		await session.init();
@@ -769,7 +798,12 @@ describe('ConversationSession Robustness & Validation', () => {
 
 	it('should warn on unknown option keys', async () => {
 		session = new ConversationSession(
-			{ stateManager: mockStateManager, promptManager: mockPromptManager, mcpManager: mockMcpManager, unifiedToolManager: mockUnifiedToolManager },
+			{
+				stateManager: mockStateManager,
+				promptManager: mockPromptManager,
+				mcpManager: mockMcpManager,
+				unifiedToolManager: mockUnifiedToolManager,
+			},
 			sessionId
 		);
 		await session.init();
@@ -781,10 +815,17 @@ describe('ConversationSession Robustness & Validation', () => {
 
 	it('should throw if run is called before init', async () => {
 		session = new ConversationSession(
-			{ stateManager: mockStateManager, promptManager: mockPromptManager, mcpManager: mockMcpManager, unifiedToolManager: mockUnifiedToolManager },
+			{
+				stateManager: mockStateManager,
+				promptManager: mockPromptManager,
+				mcpManager: mockMcpManager,
+				unifiedToolManager: mockUnifiedToolManager,
+			},
 			sessionId
 		);
-		await expect(session.run('valid')).rejects.toThrow('ConversationSession is not initialized. Call init() before run().');
+		await expect(session.run('valid')).rejects.toThrow(
+			'ConversationSession is not initialized. Call init() before run().'
+		);
 	});
 });
 

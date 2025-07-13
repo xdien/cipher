@@ -174,7 +174,9 @@ export class ConversationSession {
 				!imageDataInput.mimeType ||
 				typeof imageDataInput.mimeType !== 'string'
 			) {
-				logger.error('ConversationSession.run: imageDataInput must have image and mimeType as non-empty strings');
+				logger.error(
+					'ConversationSession.run: imageDataInput must have image and mimeType as non-empty strings'
+				);
 				throw new Error('imageDataInput must have image and mimeType as non-empty strings');
 			}
 		}
@@ -190,7 +192,9 @@ export class ConversationSession {
 			const allowedKeys = ['memoryMetadata', 'contextOverrides', 'historyTracking'];
 			const unknownKeys = Object.keys(options).filter(k => !allowedKeys.includes(k));
 			if (unknownKeys.length > 0) {
-				logger.warn(`ConversationSession.run: Unknown option keys provided: ${unknownKeys.join(', ')}`);
+				logger.warn(
+					`ConversationSession.run: Unknown option keys provided: ${unknownKeys.join(', ')}`
+				);
 			}
 		}
 
@@ -212,10 +216,10 @@ export class ConversationSession {
 		const mergedContext = {
 			...defaultContext,
 			...(options?.contextOverrides &&
-				typeof options.contextOverrides === 'object' &&
-				!Array.isArray(options.contextOverrides)
-					? options.contextOverrides
-					: {}),
+			typeof options.contextOverrides === 'object' &&
+			!Array.isArray(options.contextOverrides)
+				? options.contextOverrides
+				: {}),
 		};
 		if (this.beforeMemoryExtraction) {
 			this.beforeMemoryExtraction(mergedMeta, mergedContext);
@@ -272,10 +276,10 @@ export class ConversationSession {
 			const mergedContext = {
 				...defaultContext,
 				...(options?.contextOverrides &&
-					typeof options.contextOverrides === 'object' &&
-					!Array.isArray(options.contextOverrides)
-						? options.contextOverrides
-						: {}),
+				typeof options.contextOverrides === 'object' &&
+				!Array.isArray(options.contextOverrides)
+					? options.contextOverrides
+					: {}),
 			};
 
 			// Prepare memory metadata (merge session-level and per-run, per-run takes precedence)
@@ -317,11 +321,11 @@ export class ConversationSession {
 				totalMemoryActions: memoryResult.memory?.length || 0,
 				actionBreakdown: memoryResult.memory
 					? {
-						ADD: memoryResult.memory.filter((a: any) => a.event === 'ADD').length,
-						UPDATE: memoryResult.memory.filter((a: any) => a.event === 'UPDATE').length,
-						DELETE: memoryResult.memory.filter((a: any) => a.event === 'DELETE').length,
-						NONE: memoryResult.memory.filter((a: any) => a.event === 'NONE').length,
-					}
+							ADD: memoryResult.memory.filter((a: any) => a.event === 'ADD').length,
+							UPDATE: memoryResult.memory.filter((a: any) => a.event === 'UPDATE').length,
+							DELETE: memoryResult.memory.filter((a: any) => a.event === 'DELETE').length,
+							NONE: memoryResult.memory.filter((a: any) => a.event === 'NONE').length,
+						}
 					: {},
 			});
 		} catch (error) {
@@ -403,7 +407,7 @@ export class ConversationSession {
 						// Summarize key arguments for memory (avoid storing full large content)
 						const keyArgs = this.summarizeToolArguments(toolName, parsedArgs);
 						args = keyArgs ? ` with ${keyArgs}` : '';
-					} catch (e) {
+					} catch (_e) {
 						// If parsing fails, just note that there were arguments
 						args = ' with arguments';
 					}
@@ -481,7 +485,7 @@ export class ConversationSession {
 			}
 
 			return 'result received';
-		} catch (e) {
+		} catch (_e) {
 			// If parsing fails, provide a basic summary
 			const contentStr = String(content);
 			return contentStr.length > 100 ? `${contentStr.substring(0, 100)}...` : contentStr;
