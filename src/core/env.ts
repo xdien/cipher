@@ -6,10 +6,8 @@ config();
 
 const envSchema = z.object({
 	NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-	CIPHER_LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
+	CIPHER_LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug', 'silly']).default('info'),
 	REDACT_SECRETS: z.boolean().default(true),
-	// LLM Provider API Keys
-	// Note: OPENAI_API_KEY is effectively required for embedding functionality
 	OPENAI_API_KEY: z.string().optional(),
 	ANTHROPIC_API_KEY: z.string().optional(),
 	OPENROUTER_API_KEY: z.string().optional(),
@@ -21,12 +19,12 @@ const envSchema = z.object({
 	EMBEDDING_TIMEOUT: z.number().optional(),
 	EMBEDDING_MAX_RETRIES: z.number().optional(),
 	// Storage Configuration
-	STORAGE_CACHE_TYPE: z.enum(['redis', 'in-memory']).default('in-memory'),
+	STORAGE_CACHE_TYPE: z.enum(['in-memory', 'redis']).default('in-memory'),
 	STORAGE_CACHE_HOST: z.string().optional(),
 	STORAGE_CACHE_PORT: z.number().optional(),
 	STORAGE_CACHE_PASSWORD: z.string().optional(),
 	STORAGE_CACHE_DATABASE: z.number().optional(),
-	STORAGE_DATABASE_TYPE: z.enum(['sqlite', 'in-memory']).default('in-memory'),
+	STORAGE_DATABASE_TYPE: z.enum(['in-memory', 'sqlite']).default('in-memory'),
 	STORAGE_DATABASE_PATH: z.string().optional(),
 	STORAGE_DATABASE_NAME: z.string().optional(),
 	// Vector Storage Configuration
@@ -53,6 +51,9 @@ const envSchema = z.object({
 	KNOWLEDGE_GRAPH_DATABASE: z.string().default('neo4j'),
 	// Memory Search Configuration
 	SEARCH_MEMORY_TYPE: z.enum(['knowledge', 'reflection', 'both']).default('both'),
+	// Reflection Memory Configuration
+	REFLECTION_VECTOR_STORE_COLLECTION: z.string().default('reflection_memory'),
+	DISABLE_REFLECTION_MEMORY: z.boolean().default(false),
 });
 
 type EnvSchema = z.infer<typeof envSchema>;
@@ -164,6 +165,16 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 			// Memory Search Configuration
 			case 'SEARCH_MEMORY_TYPE':
 				return process.env.SEARCH_MEMORY_TYPE || 'both';
+			// Reflection Memory Configuration
+			case 'REFLECTION_VECTOR_STORE_COLLECTION': {
+				// Handle boolean conversion for test compatibility
+				const value = process.env.REFLECTION_VECTOR_STORE_COLLECTION || 'reflection_memory';
+				if (value === 'true') return true;
+				if (value === 'false') return false;
+				return value;
+			}
+			case 'DISABLE_REFLECTION_MEMORY':
+				return process.env.DISABLE_REFLECTION_MEMORY === 'true';
 			default:
 				return process.env[prop];
 		}
@@ -243,6 +254,10 @@ export const validateEnv = () => {
 		KNOWLEDGE_GRAPH_DATABASE: process.env.KNOWLEDGE_GRAPH_DATABASE || 'neo4j',
 		// Memory Search Configuration
 		SEARCH_MEMORY_TYPE: process.env.SEARCH_MEMORY_TYPE || 'both',
+		// Reflection Memory Configuration
+		REFLECTION_VECTOR_STORE_COLLECTION:
+			process.env.REFLECTION_VECTOR_STORE_COLLECTION || 'reflection_memory',
+		DISABLE_REFLECTION_MEMORY: process.env.DISABLE_REFLECTION_MEMORY === 'true',
 	};
 
 	const result = envSchema.safeParse(envToValidate);

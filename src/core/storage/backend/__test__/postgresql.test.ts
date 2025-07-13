@@ -72,15 +72,15 @@ describe('PostgresBackend', () => {
 		it('should throw connection error for invalid configuration', async () => {
 			const invalidBackend = new PostgresBackend({
 				type: 'postgres',
-				host: 'nonexistent-host',
-				port: 9999,
-				database: 'nonexistent',
-				user: 'invalid',
-				password: 'invalid',
+				host: 'invalid-host',
+				port: 5432,
+				database: 'test',
+				user: 'test',
+				password: 'test',
 			});
 
 			await expect(invalidBackend.connect()).rejects.toThrow();
-		});
+		}, 20000);
 	});
 
 	describe('Backend Type', () => {

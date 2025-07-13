@@ -9,13 +9,7 @@
  */
 
 import { z } from 'zod';
-import {
-	DEFAULTS,
-	OPENAI_MODELS,
-	PROVIDER_TYPES,
-	VALIDATION_LIMITS,
-	ENV_VARS,
-} from './constants.js';
+import { DEFAULTS, OPENAI_MODELS, PROVIDER_TYPES, ENV_VARS } from './constants.js';
 
 /**
  * Base Embedding Configuration Schema
@@ -267,7 +261,7 @@ export function parseEmbeddingConfigFromEnv(
 		}
 
 		return parseEmbeddingConfig(rawConfig);
-	} catch (error) {
+	} catch {
 		// Configuration parsing failed
 		return null;
 	}
@@ -291,6 +285,6 @@ export function validateEmbeddingConfig(config: unknown): {
 		if (error instanceof z.ZodError) {
 			return { success: false, errors: error };
 		}
-		throw error;
+		return { success: false, errors: error as z.ZodError };
 	}
 }

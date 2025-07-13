@@ -23,7 +23,7 @@ export function createMcpRoutes(agent: MemAgent): Router {
 			const clients = agent.getMcpClients();
 			const failedConnections = agent.getMcpFailedConnections();
 
-			const connectedServers = Array.from(clients.entries()).map(([name, client]) => ({
+			const connectedServers = Array.from(clients.entries()).map(([name, _client]) => ({
 				name,
 				status: 'connected',
 				// You could add more client metadata here if available

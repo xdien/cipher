@@ -3,7 +3,6 @@ import * as readline from 'readline';
 import chalk from 'chalk';
 import { executeCommand } from './commands.js';
 import { commandParser } from './parser.js';
-import type { AgentCard } from '../mcp/mcp_handler.js';
 
 /**
  * Start headless CLI mode for one-shot command execution
@@ -23,27 +22,37 @@ export async function startHeadlessCli(agent: MemAgent, input: string): Promise<
 			if (metaStr) {
 				metadata = parseMetaString(metaStr);
 			}
-		} catch (err) {
+		} catch {
 			console.log(chalk.red('❌ Invalid metadata format. Use key=value,key2=value2 ...'));
 			return;
 		}
 		console.log(chalk.gray('🤔 Processing (with metadata)...'));
-		const response = await agent.run(message, undefined, undefined, false, {
-			memoryMetadata: metadata,
-		});
+		const { response, backgroundOperations } = await agent.run(
+			message,
+			undefined,
+			undefined,
+			false,
+			{
+				memoryMetadata: metadata,
+			}
+		);
 		if (response) {
 			logger.displayAIResponse(response);
 		} else {
 			console.log(chalk.gray('No response received.'));
 		}
+		// In headless mode, always wait for background operations to complete before exiting
+		await backgroundOperations;
 	} else {
 		console.log(chalk.gray('🤔 Processing...'));
-		const response = await agent.run(input);
+		const { response, backgroundOperations } = await agent.run(input);
 		if (response) {
 			logger.displayAIResponse(response);
 		} else {
 			console.log(chalk.gray('No response received.'));
 		}
+		// In headless mode, always wait for background operations to complete before exiting
+		await backgroundOperations;
 	}
 }
 
@@ -100,19 +109,30 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 					if (metaStr) {
 						metadata = parseMetaString(metaStr);
 					}
-				} catch (err) {
+				} catch {
 					console.log(chalk.red('❌ Invalid metadata format. Use key=value,key2=value2 ...'));
 					rl.prompt();
 					return;
 				}
 				console.log(chalk.gray('🤔 Thinking (with metadata)...'));
-				const response = await agent.run(message, undefined, undefined, false, {
-					memoryMetadata: metadata,
-				});
+				const { response, backgroundOperations } = await agent.run(
+					message,
+					undefined,
+					undefined,
+					false,
+					{
+						memoryMetadata: metadata,
+					}
+				);
 				if (response) {
 					logger.displayAIResponse(response);
 				} else {
 					console.log(chalk.gray('No response received.'));
+				}
+				// In debug mode, wait for background operations to complete to avoid log interference
+				// In info mode, show prompt immediately after response for better UX
+				if (process.env.CIPHER_LOG_LEVEL === 'debug') {
+					await backgroundOperations;
 				}
 			} else {
 				const parsedInput = commandParser.parseInput(trimmedInput);
@@ -136,13 +156,18 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 				} else {
 					// Handle regular user prompt - pass to agent
 					console.log(chalk.gray('🤔 Thinking...'));
-					const response = await agent.run(trimmedInput);
+					const { response, backgroundOperations } = await agent.run(trimmedInput);
 
 					if (response) {
 						// Display the AI response with nice formatting
 						logger.displayAIResponse(response);
 					} else {
 						console.log(chalk.gray('No response received.'));
+					}
+					// In debug mode, wait for background operations to complete to avoid log interference
+					// In info mode, show prompt immediately after response for better UX
+					if (process.env.CIPHER_LOG_LEVEL === 'debug') {
+						await backgroundOperations;
 					}
 				}
 			}
@@ -201,8 +226,8 @@ export async function startMcpMode(agent: MemAgent): Promise<void> {
 		console.log(chalk.gray('📊 Available resources: cipher://agent/card, cipher://agent/stats'));
 		console.log(chalk.gray('📝 Available prompts: system_prompt'));
 		console.log(chalk.gray('💡 Connect MCP clients to interact with the Cipher agent'));
-	} catch (error) {
-		const errorMessage = error instanceof Error ? error.message : String(error);
+	} catch (_err) {
+		const errorMessage = _err instanceof Error ? _err.message : String(_err);
 		logger.error(`[MCP Mode] Failed to start MCP server: ${errorMessage}`);
 		console.log(chalk.red(`❌ Failed to start MCP server: ${errorMessage}`));
 		process.exit(1);

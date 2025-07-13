@@ -3,14 +3,52 @@ import { ContextManager, ILLMService } from '../brain/llm/index.js';
 import { MCPManager } from '../mcp/manager.js';
 import { UnifiedToolManager } from '../brain/tools/unified-tool-manager.js';
 import { logger } from '../logger/index.js';
+import { env } from '../env.js';
 import { createContextManager } from '../brain/llm/messages/factory.js';
 import { createLLMService } from '../brain/llm/services/factory.js';
 import { MemAgentStateManager } from '../brain/memAgent/state-manager.js';
+import { ReasoningContentDetector } from '../brain/reasoning/content-detector.js';
+import { SearchContextManager } from '../brain/reasoning/search-context-manager.js';
 import type { ZodSchema } from 'zod';
+import { setImmediate } from 'timers';
+
+// Utility to extract reasoning content blocks from model responses (Anthropic and similar models)
+function extractReasoningContentBlocks(aiResponse: any): string {
+	// If the response is an object with a content array (Anthropic API best practice)
+	if (aiResponse && Array.isArray(aiResponse.content)) {
+		// Extract all 'thinking' and 'redacted_thinking' blocks
+		const reasoningBlocks = aiResponse.content
+			.filter((block: any) => block.type === 'thinking' || block.type === 'redacted_thinking')
+			.map((block: any) => block.thinking)
+			.filter(Boolean);
+		if (reasoningBlocks.length > 0) {
+			return reasoningBlocks.join('\n\n');
+		}
+		// Fallback: join all text blocks if no thinking blocks found
+		const textBlocks = aiResponse.content
+			.filter((block: any) => block.type === 'text' && block.text)
+			.map((block: any) => block.text);
+		if (textBlocks.length > 0) {
+			return textBlocks.join('\n\n');
+		}
+		return '';
+	}
+	// Fallback: support legacy string input (regex for <thinking> tags)
+	if (typeof aiResponse === 'string') {
+		const matches = Array.from(aiResponse.matchAll(/<thinking>([\s\S]*?)<\/thinking>/gi));
+		if (matches.length > 0) {
+			return matches.map(m => m[1]?.trim() || '').join('\n\n');
+		}
+		return aiResponse;
+	}
+	return '';
+}
 
 export class ConversationSession {
 	private contextManager!: ContextManager;
 	private llmService!: ILLMService;
+	private reasoningDetector?: ReasoningContentDetector;
+	private searchContextManager?: SearchContextManager;
 
 	private sessionMemoryMetadata?: Record<string, any>;
 	private mergeMetadata?: (
@@ -141,7 +179,7 @@ export class ConversationSession {
 	 *   - memoryMetadata: Custom metadata to attach to memory extraction (merged with session defaults)
 	 *   - contextOverrides: Overrides for context fields passed to memory extraction
 	 *   - historyTracking: Enable/disable history tracking
-	 * @returns The generated assistant response as a string
+	 * @returns An object containing the response and a promise for background operations
 	 */
 	public async run(
 		input: string,
@@ -152,7 +190,7 @@ export class ConversationSession {
 			contextOverrides?: Record<string, any>;
 			historyTracking?: boolean;
 		}
-	): Promise<string> {
+	): Promise<{ response: string; backgroundOperations: Promise<void> }> {
 		// --- Input validation ---
 		if (typeof input !== 'string' || input.trim() === '') {
 			logger.error('ConversationSession.run: input must be a non-empty string');
@@ -198,42 +236,45 @@ export class ConversationSession {
 			}
 		}
 
-		console.log('ConversationSession.run called');
+		logger.debug('ConversationSession.run called');
 		logger.debug(
 			`Running session ${this.id} with input: ${input} and imageDataInput: ${imageDataInput} and stream: ${stream}`
 		);
 
+		// Initialize reasoning detector and search context manager if not already done
+		await this.initializeReasoningServices();
+
 		// Generate response
 		const response = await this.llmService.generate(input, imageDataInput, stream);
 
-		// Prepare merged metadata and context
-		const mergedMeta = this.getSessionMetadata(options?.memoryMetadata);
-		const defaultContext = {
-			sessionId: this.id,
-			conversationTopic: 'Interactive CLI session',
-			recentMessages: this.extractComprehensiveInteractionData(input, response),
-		};
-		const mergedContext = {
-			...defaultContext,
-			...(options?.contextOverrides &&
-			typeof options.contextOverrides === 'object' &&
-			!Array.isArray(options.contextOverrides)
-				? options.contextOverrides
-				: {}),
-		};
-		if (this.beforeMemoryExtraction) {
-			this.beforeMemoryExtraction(mergedMeta, mergedContext);
-		}
+		// PROGRAMMATIC ENFORCEMENT: Run memory extraction asynchronously in background AFTER response is returned
+		// This ensures users see the response immediately without waiting for memory operations
+		const backgroundOperations = new Promise<void>(resolve => {
+			setImmediate(async () => {
+				logger.debug('Starting background memory operations', { sessionId: this.id });
+				try {
+					await this.enforceMemoryExtraction(input, response, options);
+					logger.debug('Background memory operations completed successfully', {
+						sessionId: this.id,
+					});
+				} catch (error) {
+					logger.debug('Background memory extraction failed', {
+						sessionId: this.id,
+						error: error instanceof Error ? error.message : String(error),
+					});
+					// Silently continue - memory extraction failures shouldn't affect user experience
+				}
+				resolve();
+			});
+		});
 
-		// PROGRAMMATIC ENFORCEMENT: Automatically call extract_and_operate_memory after every interaction
-		await this.enforceMemoryExtraction(input, response, options);
-
-		return response;
+		return { response, backgroundOperations };
 	}
 
 	/**
-	 * Programmatically enforce memory extraction after each user interaction
+	 * Programmatically enforce memory extraction after each user interaction (runs in background)
 	 * This ensures the extract_and_operate_memory tool is always called, regardless of AI decisions
+	 * NOTE: This method runs asynchronously in the background to avoid delaying the user response
 	 */
 	private async enforceMemoryExtraction(
 		userInput: string,
@@ -244,18 +285,17 @@ export class ConversationSession {
 			historyTracking?: boolean;
 		}
 	): Promise<void> {
-		console.log('ConversationSession.enforceMemoryExtraction called');
-		console.log(
-			'enforceMemoryExtraction: unifiedToolManager at entry',
-			this.services.unifiedToolManager,
-			typeof this.services.unifiedToolManager
-		);
+		logger.debug('ConversationSession.enforceMemoryExtraction called');
+		logger.debug('enforceMemoryExtraction: unifiedToolManager at entry', {
+			unifiedToolManager: this.services.unifiedToolManager,
+			type: typeof this.services.unifiedToolManager,
+		});
 		try {
-			logger.info('ConversationSession: Enforcing memory extraction for interaction');
+			logger.debug('ConversationSession: Enforcing memory extraction for interaction');
 
 			// Check if the unifiedToolManager is available
 			if (!this.services.unifiedToolManager) {
-				logger.warn(
+				logger.debug(
 					'ConversationSession: UnifiedToolManager not available, skipping memory extraction'
 				);
 				return;
@@ -315,7 +355,7 @@ export class ConversationSession {
 				}
 			);
 
-			logger.info('ConversationSession: Memory extraction completed', {
+			logger.debug('ConversationSession: Memory extraction completed', {
 				success: memoryResult.success,
 				extractedFacts: memoryResult.extraction?.extracted || 0,
 				totalMemoryActions: memoryResult.memory?.length || 0,
@@ -328,12 +368,241 @@ export class ConversationSession {
 						}
 					: {},
 			});
+
+			// **NEW: Automatic Reflection Memory Processing**
+			// Process reasoning traces in the background, similar to knowledge memory
+			await this.enforceReflectionMemoryProcessing(userInput, aiResponse);
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			logger.error('ConversationSession: Memory extraction failed', {
 				error: errorMessage,
 			});
-			// Don't throw error to avoid breaking the main conversation flow
+			// Continue execution even if memory extraction fails
+		}
+	}
+
+	/**
+	 * Initialize reasoning services (content detector and search context manager)
+	 */
+	private async initializeReasoningServices(): Promise<void> {
+		if (this.reasoningDetector && this.searchContextManager) {
+			return; // Already initialized
+		}
+
+		try {
+			// Initialize reasoning content detector
+			this.reasoningDetector = new ReasoningContentDetector(
+				this.services.promptManager,
+				this.services.mcpManager,
+				this.services.unifiedToolManager
+			);
+
+			// Initialize search context manager
+			this.searchContextManager = new SearchContextManager();
+
+			logger.debug('ConversationSession: Reasoning services initialized', { sessionId: this.id });
+		} catch (error) {
+			logger.warn('ConversationSession: Failed to initialize reasoning services', {
+				sessionId: this.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	/**
+	 * Programmatically enforce reflection memory processing after each interaction (runs in background)
+	 * This automatically extracts, evaluates, and stores reasoning patterns in the background
+	 * NOTE: This method is called from enforceMemoryExtraction which already runs asynchronously
+	 */
+	private async enforceReflectionMemoryProcessing(
+		userInput: string,
+		aiResponse: string
+	): Promise<void> {
+		try {
+			logger.debug('ConversationSession: Enforcing reflection memory processing');
+
+			// Check if reflection memory is force disabled
+			if (env.DISABLE_REFLECTION_MEMORY) {
+				logger.debug(
+					'ConversationSession: Reflection memory force disabled via DISABLE_REFLECTION_MEMORY, skipping processing'
+				);
+				return;
+			}
+
+			// Initialize reasoning services if not already done
+			await this.initializeReasoningServices();
+
+			// Check if reasoning content is detected in user input
+			if (!this.reasoningDetector) {
+				logger.debug(
+					'ConversationSession: Reasoning detector not available, skipping reflection processing'
+				);
+				return;
+			}
+
+			const reasoningDetection = await this.reasoningDetector.detectReasoningContent(userInput, {
+				sessionId: this.id,
+				taskType: 'conversation',
+			});
+
+			// Only proceed if reasoning content is detected
+			if (!reasoningDetection.containsReasoning) {
+				logger.debug(
+					'ConversationSession: No reasoning content detected in user input, skipping reflection processing',
+					{
+						confidence: reasoningDetection.confidence,
+						detectedPatterns: reasoningDetection.detectedPatterns,
+					}
+				);
+				return;
+			}
+
+			logger.debug(
+				'ConversationSession: Reasoning content detected, proceeding with reflection processing',
+				{
+					confidence: reasoningDetection.confidence,
+					detectedPatterns: reasoningDetection.detectedPatterns,
+				}
+			);
+
+			// Step 1: Extract reasoning steps from the interaction (only from user input)
+			let extractionResult: any;
+			try {
+				extractionResult = await this.services.unifiedToolManager.executeTool(
+					'cipher_extract_reasoning_steps',
+					{
+						userInput: userInput,
+						options: {
+							extractExplicit: true,
+							extractImplicit: true,
+							includeMetadata: true,
+						},
+					}
+				);
+
+				logger.debug('ConversationSession: Reasoning extraction completed', {
+					success: extractionResult.success,
+					stepCount: extractionResult.result?.trace?.steps?.length || 0,
+					traceId: extractionResult.result?.trace?.id,
+				});
+			} catch (extractError) {
+				logger.debug('ConversationSession: Reasoning extraction failed', {
+					error: extractError instanceof Error ? extractError.message : String(extractError),
+				});
+				return; // Skip if extraction fails
+			}
+
+			// Only proceed if we extracted reasoning steps
+			if (!extractionResult.success || !extractionResult.result?.trace?.steps?.length) {
+				logger.debug(
+					'ConversationSession: No reasoning steps extracted, skipping evaluation and storage'
+				);
+				return;
+			}
+
+			const reasoningTrace = extractionResult.result.trace;
+
+			// Step 2: Evaluate the reasoning quality using a non-thinking model
+			let evaluationResult: any;
+			try {
+				// Use a non-thinking model for evaluation (e.g., claude-3-5-haiku)
+				const evalConfig = {
+					provider: 'anthropic',
+					model: 'claude-3-5-haiku-20241022', // Fast, non-thinking model
+					apiKey: process.env.ANTHROPIC_API_KEY,
+					maxIterations: 5,
+				};
+				const evalContextManager = createContextManager(evalConfig, this.services.promptManager);
+				const evalLLMService = createLLMService(
+					evalConfig,
+					this.services.mcpManager,
+					evalContextManager,
+					this.services.unifiedToolManager
+				);
+				// Directly call the evaluation tool using the non-thinking model
+				evaluationResult = await this.services.unifiedToolManager.executeTool(
+					'cipher_evaluate_reasoning',
+					{
+						trace: reasoningTrace,
+						options: {
+							checkEfficiency: true,
+							detectLoops: true,
+							generateSuggestions: true,
+						},
+						llmService: evalLLMService,
+					}
+				);
+
+				logger.debug('ConversationSession: Reasoning evaluation completed', {
+					success: evaluationResult.success,
+					qualityScore: evaluationResult.result?.evaluation?.qualityScore,
+					shouldStore: evaluationResult.result?.evaluation?.shouldStore,
+				});
+			} catch (evalError) {
+				logger.debug('ConversationSession: Reasoning evaluation failed', {
+					error: evalError instanceof Error ? evalError.message : String(evalError),
+					traceId: reasoningTrace.id,
+				});
+				return; // Skip if evaluation fails
+			}
+
+			// Only proceed if evaluation was successful and indicates we should store
+			if (!evaluationResult.success || !evaluationResult.result?.evaluation?.shouldStore) {
+				logger.debug(
+					'ConversationSession: Evaluation indicates should not store, skipping storage',
+					{
+						shouldStore: evaluationResult.result?.evaluation?.shouldStore,
+						qualityScore: evaluationResult.result?.evaluation?.qualityScore,
+					}
+				);
+				return;
+			}
+
+			const evaluation = evaluationResult.result.evaluation;
+
+			// Step 3: Store the unified reasoning entry
+			try {
+				const storageResult = await this.services.unifiedToolManager.executeTool(
+					'cipher_store_reasoning_memory',
+					{
+						trace: reasoningTrace,
+						evaluation: evaluation,
+					}
+				);
+
+				logger.debug('ConversationSession: Reflection memory storage completed', {
+					success: storageResult.success,
+					stored: storageResult.result?.stored,
+					traceId: storageResult.result?.traceId,
+					vectorId: storageResult.result?.vectorId,
+					stepCount: storageResult.result?.metrics?.stepCount,
+					qualityScore: storageResult.result?.metrics?.qualityScore,
+				});
+
+				// Log successful end-to-end reflection processing
+				if (storageResult.success && storageResult.result?.stored) {
+					logger.debug('ConversationSession: Reflection memory processing completed successfully', {
+						pipeline: 'extract → evaluate → store',
+						traceId: storageResult.result.traceId,
+						stepCount: reasoningTrace.steps.length,
+						qualityScore: evaluation.qualityScore.toFixed(3),
+						issueCount: evaluation.issues?.length || 0,
+						suggestionCount: evaluation.suggestions?.length || 0,
+					});
+				}
+			} catch (storageError) {
+				logger.debug('ConversationSession: Reflection memory storage failed', {
+					error: storageError instanceof Error ? storageError.message : String(storageError),
+					traceId: reasoningTrace.id,
+					qualityScore: evaluation.qualityScore,
+				});
+				// Continue execution even if storage fails
+			}
+		} catch (error) {
+			logger.debug('ConversationSession: Reflection memory processing failed', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+			// Continue execution even if reflection processing fails
 		}
 	}
 

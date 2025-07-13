@@ -8,8 +8,8 @@
 import { logger } from '../../logger/index.js';
 import { MCPManager } from '../../mcp/manager.js';
 import { InternalToolManager } from './manager.js';
-import { ToolSet, ToolExecutionResult } from '../../mcp/types.js';
-import { InternalToolSet, isInternalToolName } from './types.js';
+import { ToolExecutionResult } from '../../mcp/types.js';
+import { isInternalToolName } from './types.js';
 
 /**
  * Configuration for the unified tool manager
@@ -104,6 +104,12 @@ export class UnifiedToolManager {
 				try {
 					const internalTools = this.internalToolManager.getAllTools();
 					for (const [toolName, tool] of Object.entries(internalTools)) {
+						// Skip tools that are not agent-accessible (internal-only tools)
+						if (tool.agentAccessible === false) {
+							logger.debug(`UnifiedToolManager: Skipping internal-only tool '${toolName}'`);
+							continue;
+						}
+
 						const normalizedName = toolName.startsWith('cipher_') ? toolName : `cipher_${toolName}`;
 
 						// Handle conflicts
@@ -118,8 +124,12 @@ export class UnifiedToolManager {
 							source: 'internal',
 						};
 					}
+					const totalInternalTools = Object.keys(internalTools).length;
+					const agentAccessibleTools = Object.values(internalTools).filter(
+						tool => tool.agentAccessible !== false
+					).length;
 					logger.debug(
-						`UnifiedToolManager: Loaded ${Object.keys(internalTools).length} internal tools`
+						`UnifiedToolManager: Loaded ${totalInternalTools} internal tools (${agentAccessibleTools} agent-accessible, ${totalInternalTools - agentAccessibleTools} internal-only)`
 					);
 				} catch (error) {
 					logger.warn('UnifiedToolManager: Failed to load internal tools', { error });
@@ -144,7 +154,7 @@ export class UnifiedToolManager {
 	 */
 	async executeTool(toolName: string, args: any): Promise<ToolExecutionResult> {
 		try {
-			logger.info(`UnifiedToolManager: Executing tool '${toolName}'`, {
+			logger.debug(`UnifiedToolManager: Executing tool '${toolName}'`, {
 				toolName,
 				hasArgs: !!args,
 			});
@@ -176,12 +186,21 @@ export class UnifiedToolManager {
 	}
 
 	/**
-	 * Check if a tool is available
+	 * Check if a tool is available (to agents)
 	 */
 	async isToolAvailable(toolName: string): Promise<boolean> {
 		try {
 			if (this.config.enableInternalTools && isInternalToolName(toolName)) {
-				return this.internalToolManager.isInternalTool(toolName);
+				// Check if tool exists and is agent-accessible
+				const tool = this.internalToolManager.getTool(toolName);
+				if (!tool) return false;
+
+				// Skip tools that are not agent-accessible (internal-only tools)
+				if (tool.agentAccessible === false) {
+					return false;
+				}
+
+				return true;
 			} else if (this.config.enableMcpTools) {
 				const mcpTools = await this.mcpManager.getAllTools();
 				return toolName in mcpTools;
@@ -196,13 +215,21 @@ export class UnifiedToolManager {
 	}
 
 	/**
-	 * Get tool source (internal or mcp)
+	 * Get tool source (internal or mcp) for agent-accessible tools
 	 */
 	async getToolSource(toolName: string): Promise<'internal' | 'mcp' | null> {
 		try {
 			if (this.config.enableInternalTools && isInternalToolName(toolName)) {
-				const isAvailable = this.internalToolManager.isInternalTool(toolName);
-				return isAvailable ? 'internal' : null;
+				// Check if tool exists and is agent-accessible
+				const tool = this.internalToolManager.getTool(toolName);
+				if (!tool) return null;
+
+				// Skip tools that are not agent-accessible (internal-only tools)
+				if (tool.agentAccessible === false) {
+					return null;
+				}
+
+				return 'internal';
 			} else if (this.config.enableMcpTools) {
 				const mcpTools = await this.mcpManager.getAllTools();
 				return toolName in mcpTools ? 'mcp' : null;

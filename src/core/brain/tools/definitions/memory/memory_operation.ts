@@ -9,6 +9,8 @@
 
 import { InternalTool, InternalToolContext } from '../../types.js';
 import { logger } from '../../../../logger/index.js';
+// Import payload migration utilities
+import { createKnowledgePayload } from './payloads.js';
 
 /**
  * MEMORY OPERATIONAL TOOL
@@ -780,10 +782,25 @@ async function llmDetermineMemoryOperation(
 			}
 		}
 
+		// Validate that the final ID is a valid integer
+		if (
+			typeof memoryAction.id !== 'number' ||
+			!Number.isInteger(memoryAction.id) ||
+			memoryAction.id <= 0
+		) {
+			logger.warn('MemoryOperation: Invalid memory ID detected, using fallback', {
+				invalidId: memoryAction.id,
+				factIndex: index,
+				factPreview: fact.substring(0, 80),
+			});
+			memoryAction.id = factId; // Use the safe generated ID as fallback
+		}
+
 		logger.debug('MemoryOperation: LLM decision applied', {
 			factIndex: index,
 			operation: memoryAction.event,
 			confidence: memoryAction.confidence,
+			memoryId: memoryAction.id,
 			reasoning: memoryAction.reasoning.substring(0, 100),
 		});
 
@@ -848,32 +865,65 @@ function formatSimilarMemoriesForLLM(similarMemories: any[]): string {
 }
 
 /**
- * Parse LLM decision response
+ * Parse LLM decision response with enhanced error handling and proper ID conversion
  */
 function parseLLMDecision(response: string): any {
 	try {
+		if (!response || typeof response !== 'string') {
+			logger.debug('MemoryOperation: Empty or invalid LLM response', {
+				responseType: typeof response,
+			});
+			return null;
+		}
+
+		// Clean and normalize the response
+		const cleanResponse = response.trim();
+
+		// Helper function to safely convert ID to integer
+		const safeConvertId = (id: any): number | null => {
+			if (id === null || id === undefined) return null;
+			const numId = parseInt(String(id), 10);
+			return !isNaN(numId) && Number.isInteger(numId) && numId > 0 ? numId : null;
+		};
+
 		// Try to extract the first JSON object from the response
-		const jsonMatch = response.match(/\{[\s\S]*\}/);
+		const jsonMatch = cleanResponse.match(/\{[\s\S]*\}/);
 		if (jsonMatch) {
 			try {
 				const decision = JSON.parse(jsonMatch[0]);
-				if (decision && decision.operation && decision.confidence) {
-					return decision;
+				if (decision && decision.operation && typeof decision.confidence === 'number') {
+					// Normalize the decision object with proper ID conversion
+					return {
+						operation: decision.operation,
+						confidence: Math.max(0, Math.min(1, decision.confidence)),
+						reasoning: decision.reasoning || decision.reason || 'LLM decision',
+						targetMemoryId: safeConvertId(
+							decision.targetMemoryId || decision.target_id || decision.id
+						),
+					};
 				}
-			} catch (e) {
-				// Continue to fallback extraction below
+			} catch (parseError) {
+				logger.debug('MemoryOperation: Failed to parse JSON match', {
+					jsonMatch: jsonMatch[0].substring(0, 100),
+					error: parseError instanceof Error ? parseError.message : String(parseError),
+				});
 			}
 		}
 
 		// Fallback: try to find any substring that parses as JSON
-		for (let start = 0; start < response.length; start++) {
-			for (let end = response.length; end > start + 1; end--) {
-				const substr = response.slice(start, end);
+		for (let start = 0; start < cleanResponse.length; start++) {
+			for (let end = cleanResponse.length; end > start + 10; end--) {
+				const substr = cleanResponse.slice(start, end);
 				if (substr[0] !== '{' || substr[substr.length - 1] !== '}') continue;
 				try {
 					const obj = JSON.parse(substr);
-					if (obj && obj.operation && obj.confidence) {
-						return obj;
+					if (obj && obj.operation && typeof obj.confidence === 'number') {
+						return {
+							operation: obj.operation,
+							confidence: Math.max(0, Math.min(1, obj.confidence)),
+							reasoning: obj.reasoning || obj.reason || 'LLM decision',
+							targetMemoryId: safeConvertId(obj.targetMemoryId || obj.target_id || obj.id),
+						};
 					}
 				} catch (e) {
 					// Not valid JSON, continue
@@ -881,20 +931,86 @@ function parseLLMDecision(response: string): any {
 			}
 		}
 
-		// If all attempts fail, log the raw response and throw
-		logger.error('MemoryOperation: Failed to parse LLM decision', {
-			response: response.substring(0, 500),
-			error: 'No valid JSON decision found',
-		});
-		throw new Error('Failed to parse LLM decision: No valid JSON decision found');
-	} catch (error) {
-		logger.error('MemoryOperation: Failed to parse LLM decision', {
-			response: response.substring(0, 500),
-			error: error instanceof Error ? error.message : String(error),
-		});
-		throw new Error(
-			`Failed to parse LLM decision: ${error instanceof Error ? error.message : String(error)}`
+		// Advanced fallback: try to extract decision components using regex
+		const operationMatch = cleanResponse.match(/(?:operation|action)['"]?\s*:\s*['"]?(\w+)['"]?/i);
+		const confidenceMatch = cleanResponse.match(/confidence['"]?\s*:\s*([0-9.]+)/i);
+		const reasoningMatch = cleanResponse.match(
+			/(?:reasoning|reason)['"]?\s*:\s*['"]([^'"]+)['"]?/i
 		);
+
+		if (operationMatch && confidenceMatch) {
+			const operation = operationMatch[1]?.toUpperCase() || '';
+			const confidence = parseFloat(confidenceMatch[1] || '0');
+
+			if (['ADD', 'UPDATE', 'DELETE', 'NONE'].includes(operation) && !isNaN(confidence)) {
+				logger.debug('MemoryOperation: Extracted decision using regex fallback', {
+					operation,
+					confidence,
+					response: cleanResponse.substring(0, 200),
+				});
+
+				return {
+					operation,
+					confidence: Math.max(0, Math.min(1, confidence)),
+					reasoning: reasoningMatch ? reasoningMatch[1] : 'Parsed from LLM response',
+					targetMemoryId: null,
+				};
+			}
+		}
+
+		// Final fallback: look for operation keywords in the response
+		const responseUpper = cleanResponse.toUpperCase();
+		let detectedOperation = null;
+
+		if (
+			responseUpper.includes('ADD') ||
+			responseUpper.includes('CREATE') ||
+			responseUpper.includes('NEW')
+		) {
+			detectedOperation = 'ADD';
+		} else if (
+			responseUpper.includes('UPDATE') ||
+			responseUpper.includes('MODIFY') ||
+			responseUpper.includes('CHANGE')
+		) {
+			detectedOperation = 'UPDATE';
+		} else if (responseUpper.includes('DELETE') || responseUpper.includes('REMOVE')) {
+			detectedOperation = 'DELETE';
+		} else if (
+			responseUpper.includes('NONE') ||
+			responseUpper.includes('SKIP') ||
+			responseUpper.includes('IGNORE')
+		) {
+			detectedOperation = 'NONE';
+		}
+
+		if (detectedOperation) {
+			logger.debug('MemoryOperation: Detected operation using keyword fallback', {
+				operation: detectedOperation,
+				response: cleanResponse.substring(0, 200),
+			});
+
+			return {
+				operation: detectedOperation,
+				confidence: 0.6, // Default confidence for keyword detection
+				reasoning: 'Detected from LLM response keywords',
+				targetMemoryId: null,
+			};
+		}
+
+		// If all attempts fail, log the raw response and return null
+		logger.debug('MemoryOperation: Failed to parse LLM decision using all methods', {
+			response: cleanResponse.substring(0, 500),
+			responseLength: cleanResponse.length,
+		});
+
+		return null;
+	} catch (error) {
+		logger.warn('MemoryOperation: Error parsing LLM decision', {
+			error: error instanceof Error ? error.message : String(error),
+			responsePreview: typeof response === 'string' ? response.substring(0, 100) : 'non-string',
+		});
+		return null;
 	}
 }
 
@@ -1159,15 +1275,26 @@ function extractTechnicalTags(fact: string): string[] {
 	}
 
 	// Remove duplicates and return lowercase singular nouns
-	return [...new Set(tags)].map(tag => tag.toLowerCase());
+	return Array.from(new Set(tags)).map(tag => tag.toLowerCase());
 }
 
 /**
  * Generate unique memory ID (integer)
+ * Uses range 1-333333 to avoid conflicts with other memory systems
  */
 function generateMemoryId(index: number): number {
-	// Use timestamp + index for uniqueness
-	return Date.now() + index;
+	// Use timestamp-based approach to avoid conflicts
+	// Range: 1-333333 for knowledge memory entries
+	const now = Date.now();
+	const randomSuffix = Math.floor(Math.random() * 1000); // 0-999
+	let vectorId = 1 + (((now % 300000) * 1000 + randomSuffix + index) % 333333);
+
+	// Ensure it's a positive integer
+	if (vectorId <= 0) {
+		vectorId = Math.floor(Math.random() * 333333) + 1;
+	}
+
+	return vectorId;
 }
 
 /**
@@ -1247,8 +1374,8 @@ function calculateTextSimilarity(text1: string, text2: string): number {
 	const words1 = new Set(text1.toLowerCase().split(/\s+/));
 	const words2 = new Set(text2.toLowerCase().split(/\s+/));
 
-	const intersection = new Set([...words1].filter(word => words2.has(word)));
-	const union = new Set([...words1, ...words2]);
+	const intersection = new Set(Array.from(words1).filter(word => words2.has(word)));
+	const union = new Set(Array.from(words1).concat(Array.from(words2)));
 
 	return intersection.size / union.size;
 }
@@ -1282,18 +1409,28 @@ async function persistMemoryActions(
 			// Generate embedding for the memory text
 			const embedding = await embedder.embed(action.text || '');
 
-			// Prepare payload with metadata
-			const payload = {
-				id: action.id,
-				text: action.text || '',
-				tags: action.tags,
-				confidence: action.confidence,
-				reasoning: action.reasoning,
-				event: action.event,
-				timestamp: new Date().toISOString(),
-				...(action.code_pattern && { code_pattern: action.code_pattern }),
-				...(action.old_memory && { old_memory: action.old_memory }),
-			};
+			// Determine quality source for V2 payload
+			let qualitySource: 'similarity' | 'llm' | 'heuristic' = 'heuristic';
+			if (action.reasoning?.includes('LLM')) {
+				qualitySource = 'llm';
+			} else if (action.reasoning?.includes('similarity')) {
+				qualitySource = 'similarity';
+			}
+
+			// Create V2 payload with enhanced metadata
+			const payload = createKnowledgePayload(
+				action.id,
+				action.text || '',
+				action.tags,
+				action.confidence,
+				action.reasoning,
+				action.event,
+				{
+					qualitySource,
+					...(action.code_pattern && { code_pattern: action.code_pattern }),
+					...(action.old_memory && { old_memory: action.old_memory }),
+				}
+			);
 
 			if (action.event === 'ADD') {
 				// Insert new memory
@@ -1321,5 +1458,4 @@ async function persistMemoryActions(
 	}
 }
 
-export { parseLLMDecision, MEMORY_OPERATION_PROMPTS };
-export { extractTechnicalTags };
+export { parseLLMDecision, MEMORY_OPERATION_PROMPTS, extractTechnicalTags };

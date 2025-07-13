@@ -13,12 +13,13 @@ export class ContextManager {
 		if (!formatter) throw new Error('formatter is required');
 		this.formatter = formatter;
 		this.promptManager = promptManager;
-		logger.info('ContextManager initialized with formatter', { formatter });
+		logger.debug('ContextManager initialized with formatter', { formatter });
 	}
 
 	async getSystemPrompt(): Promise<string> {
-		const prompt = await this.promptManager.getInstruction();
-		logger.debug(`[SystemPrompt] Built system prompt:\n${prompt}`);
+		// Use the complete system prompt that includes both user instruction and built-in tool instructions
+		const prompt = await this.promptManager.getCompleteSystemPrompt();
+		logger.debug(`[SystemPrompt] Built complete system prompt:\n${prompt}`);
 		return prompt;
 	}
 
@@ -161,7 +162,7 @@ export class ContextManager {
 	 * @param message - The current message (already added to context by the service)
 	 * @returns The formatted messages array including conversation history
 	 */
-	async getFormattedMessage(message: InternalMessage): Promise<any[]> {
+	async getFormattedMessage(_message: InternalMessage): Promise<any[]> {
 		try {
 			// Don't add the message again - it's already been added by the service
 			// Just return all formatted messages from the existing conversation history

@@ -17,7 +17,7 @@
 
 ## Overview
 
-*`cipher`* is a simple, composable framework to build memory for agents using [Model Context Protocol](https://modelcontextprotocol.io/introduction).
+_`cipher`_ is a simple, composable framework to build memory for agents using [Model Context Protocol](https://modelcontextprotocol.io/introduction).
 
 **Design Principal**:
 `cipher` bring the fundamental and best practices for building agent's memory:
@@ -155,22 +155,28 @@ cipher --agent ./my-config.yml "Process this data"
 ```
 
 The one-shot mode is perfect for:
+
 - Quick queries that don't need ongoing conversation
 - Storing information to memory from scripts
 - Integrating cipher into automated workflows
 - Testing prompts without starting interactive mode
 
 ## Using Custom Metadata in Cipher CLI
+
 Firstly, start the interactive CLI
+
 ```sh
 # Start with node command
 node dist/cli.js
 ```
+
 or
+
 ```sh
 # Start with pnpm command
 pnpm cli
 ```
+
 Then, to send custom metadata with your message, use the `!meta` command:
 
 ```bash
@@ -252,6 +258,7 @@ cipher --mode mcp
 **Integration with MCP-compatible Tools:**
 
 The MCP server mode allows Cipher to integrate with any MCP-compatible tool or client, including:
+
 - VS Code extensions with MCP support
 - Claude Desktop with MCP server configuration
 - Custom MCP clients and tools
@@ -312,7 +319,7 @@ Cipher provides a rich interactive CLI with various commands for managing sessio
 ```bash
 # Session commands (alias: /s)
 /session help                 # Show session management help
-/session list                 # List all active sessions  
+/session list                 # List all active sessions
 /session new [sessionId]      # Create new session (optional custom ID)
 /session switch <sessionId>   # Switch to a different session
 /session current              # Show current session information
@@ -603,7 +610,7 @@ GET /api/sessions/{sessionId}/history
         "timestamp": "2024-01-15T10:00:00.000Z"
       },
       {
-        "role": "assistant", 
+        "role": "assistant",
         "content": "Hello! How can I help you today?",
         "timestamp": "2024-01-15T10:00:05.000Z"
       }
@@ -651,6 +658,7 @@ The API uses standardized error responses:
 ```
 
 **Common Error Codes:**
+
 - `VALIDATION_ERROR`: Invalid request parameters
 - `SESSION_NOT_FOUND`: Session doesn't exist
 - `INTERNAL_ERROR`: Server-side error
@@ -688,64 +696,64 @@ curl http://localhost:3000/api/sessions/weather-chat/history
 ```javascript
 // Example client for cipher API
 class CipherClient {
-  constructor(baseUrl = 'http://localhost:3000') {
-    this.baseUrl = baseUrl;
-  }
+	constructor(baseUrl = 'http://localhost:3000') {
+		this.baseUrl = baseUrl;
+	}
 
-  async sendMessage(message, sessionId = null, images = null) {
-    const response = await fetch(`${this.baseUrl}/api/message/sync`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message,
-        sessionId,
-        images
-      })
-    });
-    
-    return response.json();
-  }
+	async sendMessage(message, sessionId = null, images = null) {
+		const response = await fetch(`${this.baseUrl}/api/message/sync`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				message,
+				sessionId,
+				images,
+			}),
+		});
 
-  async createSession(sessionId = null) {
-    const response = await fetch(`${this.baseUrl}/api/sessions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ sessionId })
-    });
-    
-    return response.json();
-  }
+		return response.json();
+	}
 
-  async listSessions() {
-    const response = await fetch(`${this.baseUrl}/api/sessions`);
-    return response.json();
-  }
+	async createSession(sessionId = null) {
+		const response = await fetch(`${this.baseUrl}/api/sessions`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({ sessionId }),
+		});
 
-  async getSessionHistory(sessionId) {
-    const response = await fetch(`${this.baseUrl}/api/sessions/${sessionId}/history`);
-    return response.json();
-  }
+		return response.json();
+	}
+
+	async listSessions() {
+		const response = await fetch(`${this.baseUrl}/api/sessions`);
+		return response.json();
+	}
+
+	async getSessionHistory(sessionId) {
+		const response = await fetch(`${this.baseUrl}/api/sessions/${sessionId}/history`);
+		return response.json();
+	}
 }
 
 // Usage example
 const client = new CipherClient();
 
 (async () => {
-  // Create a new session
-  const session = await client.createSession('my-chat');
-  console.log('Created session:', session.data.sessionId);
+	// Create a new session
+	const session = await client.createSession('my-chat');
+	console.log('Created session:', session.data.sessionId);
 
-  // Send a message
-  const response = await client.sendMessage('Hello, cipher!', session.data.sessionId);
-  console.log('Agent response:', response.data.response);
+	// Send a message
+	const response = await client.sendMessage('Hello, cipher!', session.data.sessionId);
+	console.log('Agent response:', response.data.response);
 
-  // Get conversation history
-  const history = await client.getSessionHistory(session.data.sessionId);
-  console.log('Chat history:', history.data.history);
+	// Get conversation history
+	const history = await client.getSessionHistory(session.data.sessionId);
+	console.log('Chat history:', history.data.history);
 })();
 ```
 
@@ -759,33 +767,33 @@ class CipherClient:
     def __init__(self, base_url="http://localhost:3000"):
         self.base_url = base_url
         self.session = requests.Session()
-    
+
     def send_message(self, message, session_id=None, images=None):
         url = f"{self.base_url}/api/message/sync"
         data = {"message": message}
-        
+
         if session_id:
             data["sessionId"] = session_id
         if images:
             data["images"] = images
-            
+
         response = self.session.post(url, json=data)
         return response.json()
-    
+
     def create_session(self, session_id=None):
         url = f"{self.base_url}/api/sessions"
         data = {}
         if session_id:
             data["sessionId"] = session_id
-            
+
         response = self.session.post(url, json=data)
         return response.json()
-    
+
     def list_sessions(self):
         url = f"{self.base_url}/api/sessions"
         response = self.session.get(url)
         return response.json()
-    
+
     def get_session_history(self, session_id):
         url = f"{self.base_url}/api/sessions/{session_id}/history"
         response = self.session.get(url)
@@ -829,10 +837,12 @@ Cipher can be easily deployed as a Docker container for production use. The Dock
 ### Quick Start with Docker
 
 **Prerequisites:**
+
 - Docker and Docker Compose installed on your system
 - A configured `.env` file with your API keys
 
 **Step 1: Prepare Environment**
+
 ```bash
 # Copy and configure environment variables
 cp .env.example .env
@@ -842,6 +852,7 @@ nano .env  # or use your preferred editor
 ```
 
 **Step 2: Start with Docker Compose (Recommended)**
+
 ```bash
 # Start the service
 docker-compose up -d
@@ -851,6 +862,7 @@ docker-compose ps
 ```
 
 **Step 3: Test the API**
+
 ```bash
 # Health check
 curl http://localhost:3000/health
@@ -863,16 +875,19 @@ curl http://localhost:3000/health
 If you prefer to use Docker directly without Docker Compose:
 
 **Build the image:**
+
 ```bash
 docker build -t cipher-api .
 ```
 
 **Run with environment file:**
+
 ```bash
 docker run -d -p 3000:3000 --name cipher-api --env-file .env cipher-api
 ```
 
 **Run with individual environment variables:**
+
 ```bash
 docker run -d -p 3000:3000 --name cipher-api \
   -e OPENAI_API_KEY="your_openai_api_key" \
@@ -885,12 +900,14 @@ docker run -d -p 3000:3000 --name cipher-api \
 Once your container is running, test all the key functionalities:
 
 **1. Health Check**
+
 ```bash
 curl http://localhost:3000/health
 # Expected: {"status":"healthy","timestamp":"...","uptime":...}
 ```
 
 **2. Send a Message**
+
 ```bash
 curl -X POST http://localhost:3000/api/message/sync \
   -H "Content-Type: application/json" \
@@ -898,6 +915,7 @@ curl -X POST http://localhost:3000/api/message/sync \
 ```
 
 **3. Session Management**
+
 ```bash
 # Create a new session
 curl -X POST http://localhost:3000/api/sessions \
@@ -917,6 +935,7 @@ curl http://localhost:3000/api/sessions/my-test-session/history
 ```
 
 **4. Validate Container Health**
+
 ```bash
 # Check container status
 docker ps
@@ -931,6 +950,7 @@ docker stats cipher-api
 ### Troubleshooting Docker Setup
 
 **Container won't start:**
+
 ```bash
 # Check logs for errors
 docker logs cipher-api
@@ -942,6 +962,7 @@ docker logs cipher-api
 ```
 
 **API not responding:**
+
 ```bash
 # Check if container is running
 docker ps
@@ -954,6 +975,7 @@ docker port cipher-api
 ```
 
 **Environment Variables not working:**
+
 ```bash
 # Verify .env file exists and has proper format
 cat .env
@@ -1008,12 +1030,12 @@ test_endpoint() {
     local url=$1
     local description=$2
     local expected_status=${3:-200}
-    
+
     echo -n "Testing $description... "
-    
+
     response=$(curl -s -w "%{http_code}" -o /tmp/response.json "$url")
     status_code="${response: -3}"
-    
+
     if [ "$status_code" -eq "$expected_status" ]; then
         echo -e "${GREEN}✓ PASS${NC}"
         return 0
@@ -1029,12 +1051,12 @@ test_post() {
     local url=$1
     local data=$2
     local description=$3
-    
+
     echo -n "Testing $description... "
-    
+
     response=$(curl -s -w "%{http_code}" -X POST -H "Content-Type: application/json" -d "$data" -o /tmp/response.json "$url")
     status_code="${response: -3}"
-    
+
     if [ "$status_code" -eq 200 ]; then
         echo -e "${GREEN}✓ PASS${NC}"
         return 0
@@ -1074,6 +1096,7 @@ echo "Container is ready to use at http://localhost:3000"
 ```
 
 **Usage:**
+
 ```bash
 # Make the script executable
 chmod +x test-docker.sh
@@ -1097,6 +1120,7 @@ docker build --build-arg NODE_VERSION=20.18.1 -t cipher-api .
 #### Running the Container
 
 **Basic Usage:**
+
 ```bash
 # Run with default configuration
 docker run -p 3000:3000 --env-file .env cipher-api
@@ -1109,6 +1133,7 @@ docker run -d -p 3000:3000 --env-file .env --name cipher-api cipher-api
 ```
 
 **With Custom Configuration:**
+
 ```bash
 # Mount custom agent configuration
 docker run -p 3000:3000 \
@@ -1124,6 +1149,7 @@ docker run -p 3000:3000 \
 ```
 
 **Production Deployment:**
+
 ```bash
 # Run with health checks and restart policy
 docker run -d \
@@ -1150,18 +1176,18 @@ services:
   cipher-api:
     build: .
     ports:
-      - "3000:3000"
+      - '3000:3000'
     environment:
       - PORT=3000
       - NODE_ENV=production
     env_file:
       - .env
     volumes:
-      - ./memAgent:/app/memAgent:ro  # Mount custom agent config
-      - cipher-data:/app/.cipher     # Persist application data
+      - ./memAgent:/app/memAgent:ro # Mount custom agent config
+      - cipher-data:/app/.cipher # Persist application data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -1172,6 +1198,7 @@ volumes:
 ```
 
 **Deploy with Docker Compose:**
+
 ```bash
 # Start the service
 docker-compose up -d
@@ -1210,18 +1237,21 @@ STORAGE_DATABASE_PATH=/app/.cipher/database
 #### Volume Mounts
 
 **Configuration Volume:**
+
 ```bash
 # Mount custom agent configuration
 -v $(pwd)/my-config.yml:/app/memAgent/cipher.yml:ro
 ```
 
 **Data Persistence:**
+
 ```bash
 # Persist application data (database, logs, etc.)
 -v cipher-data:/app/.cipher
 ```
 
 **Development Mode:**
+
 ```bash
 # Mount entire memAgent directory for development
 -v $(pwd)/memAgent:/app/memAgent:ro
@@ -1242,12 +1272,14 @@ docker inspect cipher-api --format='{{.State.Health.Status}}'
 ### Production Considerations
 
 #### Security
+
 - Container runs as non-root user `cipher` (UID 1001)
 - Minimal Alpine Linux base image
 - Only essential production dependencies included
 - Secrets should be passed via environment variables or Docker secrets
 
 #### Scaling
+
 ```bash
 # Run multiple instances with load balancer
 docker run -d -p 3001:3000 --env-file .env --name cipher-api-1 cipher-api
@@ -1256,6 +1288,7 @@ docker run -d -p 3003:3000 --env-file .env --name cipher-api-3 cipher-api
 ```
 
 #### Monitoring
+
 ```bash
 # View container logs
 docker logs -f cipher-api
@@ -1272,18 +1305,21 @@ docker exec -it cipher-api sh
 **Common Issues:**
 
 1. **Port Already in Use:**
+
    ```bash
    # Use different port
    docker run -p 8080:3000 --env-file .env cipher-api
    ```
 
 2. **Missing API Keys:**
+
    ```bash
    # Check environment variables
    docker exec cipher-api env | grep -E "(OPENAI|ANTHROPIC|OPENROUTER)"
    ```
 
 3. **Configuration File Not Found:**
+
    ```bash
    # Verify mount and file exists
    docker exec cipher-api ls -la /app/memAgent/
@@ -1321,42 +1357,42 @@ The main configuration file is located at `memAgent/cipher.yml` and follows this
 ```yaml
 # LLM Configuration (Required)
 llm:
-  provider: openai                   # Required: 'openai', 'anthropic', 'openrouter', or 'ollama'
-  model: gpt-4.1-mini                # Required: Model name for the provider
-  apiKey: $OPENAI_API_KEY            # Required: API key (supports env vars with $VAR syntax, not needed for Ollama)
-  maxIterations: 50                  # Optional: Max iterations for agentic loops (default: 50)
+  provider: openai # Required: 'openai', 'anthropic', 'openrouter', or 'ollama'
+  model: gpt-4.1-mini # Required: Model name for the provider
+  apiKey: $OPENAI_API_KEY # Required: API key (supports env vars with $VAR syntax, not needed for Ollama)
+  maxIterations: 50 # Optional: Max iterations for agentic loops (default: 50)
   baseURL: https://api.openai.com/v1 # Optional: Custom API base URL (OpenAI only)
 
 # System Prompt (Required)
-systemPrompt: "You are a helpful AI assistant with memory capabilities."
+systemPrompt: 'You are a helpful AI assistant with memory capabilities.'
 
 # MCP Servers Configuration (Optional)
 mcpServers:
-  filesystem:                        # Server name (can be any identifier)
-    type: stdio                      # Connection type: 'stdio', 'sse', or 'http'
-    command: npx                     # Command to launch the server
-    args:                           # Arguments for the command
+  filesystem: # Server name (can be any identifier)
+    type: stdio # Connection type: 'stdio', 'sse', or 'http'
+    command: npx # Command to launch the server
+    args: # Arguments for the command
       - -y
-      - "@modelcontextprotocol/server-filesystem" 
+      - '@modelcontextprotocol/server-filesystem'
       - .
-    env:                            # Environment variables for the server
+    env: # Environment variables for the server
       HOME: /Users/username
-    timeout: 30000                  # Connection timeout in ms (default: 30000)
-    connectionMode: lenient         # 'strict' or 'lenient' (default: lenient)
+    timeout: 30000 # Connection timeout in ms (default: 30000)
+    connectionMode: lenient # 'strict' or 'lenient' (default: lenient)
 
 # Session Management (Optional)
 sessions:
-  maxSessions: 100                  # Maximum concurrent sessions (default: 100)
-  sessionTTL: 3600000              # Session TTL in milliseconds (default: 1 hour)
+  maxSessions: 100 # Maximum concurrent sessions (default: 100)
+  sessionTTL: 3600000 # Session TTL in milliseconds (default: 1 hour)
 
 # Agent Card (Optional) - for MCP server mode
 agentCard:
-  name: cipher                      # Agent name (default: cipher)
-  description: "Custom description" # Agent description
-  version: "1.0.0"                 # Version (default: 1.0.0)
+  name: cipher # Agent name (default: cipher)
+  description: 'Custom description' # Agent description
+  version: '1.0.0' # Version (default: 1.0.0)
   provider:
-    organization: your-org          # Organization name
-    url: https://your-site.com      # Organization URL
+    organization: your-org # Organization name
+    url: https://your-site.com # Organization URL
 ```
 
 ### Environment Variables
@@ -1398,9 +1434,9 @@ STORAGE_DATABASE_NAME=cipher.db   # SQLite database name (if using sqlite)
 ```yaml
 llm:
   provider: openai
-  model: gpt-4.1                     # or o4-mini, etc.
+  model: gpt-4.1 # or o4-mini, etc.
   apiKey: $OPENAI_API_KEY
-  baseURL: https://api.openai.com/v1  # Optional: for custom endpoints
+  baseURL: https://api.openai.com/v1 # Optional: for custom endpoints
 ```
 
 #### Anthropic Claude
@@ -1408,7 +1444,7 @@ llm:
 ```yaml
 llm:
   provider: anthropic
-  model: claude-4-sonnet-20250514    # or claude-3-7-sonnet-20250219, etc.
+  model: claude-4-sonnet-20250514 # or claude-3-7-sonnet-20250219, etc.
   apiKey: $ANTHROPIC_API_KEY
 ```
 
@@ -1417,7 +1453,7 @@ llm:
 ```yaml
 llm:
   provider: openrouter
-  model: openai/gpt-4.1               # Any model available on OpenRouter
+  model: openai/gpt-4.1 # Any model available on OpenRouter
   apiKey: $OPENROUTER_API_KEY
 ```
 
@@ -1426,15 +1462,16 @@ llm:
 ```yaml
 llm:
   provider: ollama
-  model: qwen3:32b                   # Use larger models for better performance (see model selection guide below)
+  model: qwen3:32b # Use larger models for better performance (see model selection guide below)
   # apiKey: NOT REQUIRED             # Ollama is self-hosted, no API key needed
-  baseURL: $OLLAMA_BASE_URL          # Optional: defaults to http://localhost:11434/v1
-  maxIterations: 50                  # Optional: for agentic tool calling loops
+  baseURL: $OLLAMA_BASE_URL # Optional: defaults to http://localhost:11434/v1
+  maxIterations: 50 # Optional: for agentic tool calling loops
 ```
 
 **Note**: Ollama is unique among providers as it runs locally on your machine. No API key or internet connection is required for inference - only the `OLLAMA_BASE_URL` environment variable pointing to your local Ollama instance.
 
 **OpenRouter Model Examples:**
+
 - `openai/gpt-4.1`, `openai/gpt-4.1-mini`
 - `anthropic/claude-3.5-sonnet`, `anthropic/claude-3-haiku`
 - `google/gemini-pro-1.5`, `meta-llama/llama-3.1-8b-instruct`
@@ -1465,8 +1502,8 @@ cipher
 mcpServers:
   myserver:
     type: stdio
-    command: node                  # or python, uvx, etc.
-    args: ["server.js", "--port=3000"]
+    command: node # or python, uvx, etc.
+    args: ['server.js', '--port=3000']
     env:
       API_KEY: $MY_API_KEY
     timeout: 30000
@@ -1481,7 +1518,7 @@ mcpServers:
     type: sse
     url: https://api.example.com/sse
     headers:
-      Authorization: "Bearer $TOKEN"
+      Authorization: 'Bearer $TOKEN'
     timeout: 30000
     connectionMode: strict
 ```
@@ -1494,8 +1531,8 @@ mcpServers:
     type: http
     url: https://api.example.com
     headers:
-      Authorization: "Bearer $TOKEN"
-      User-Agent: "Cipher/1.0"
+      Authorization: 'Bearer $TOKEN'
+      User-Agent: 'Cipher/1.0'
     timeout: 30000
     connectionMode: lenient
 ```
@@ -1516,9 +1553,9 @@ You can use environment variables anywhere in the YAML configuration:
 
 ```yaml
 llm:
-  apiKey: $OPENAI_API_KEY          # Simple expansion
-  baseURL: ${API_BASE_URL}         # Brace syntax
-  model: ${MODEL_NAME:-gpt-4.1}      # With default value (syntax may vary)
+  apiKey: $OPENAI_API_KEY # Simple expansion
+  baseURL: ${API_BASE_URL} # Brace syntax
+  model: ${MODEL_NAME:-gpt-4.1} # With default value (syntax may vary)
 ```
 
 ### Configuration Loading
@@ -1526,7 +1563,7 @@ llm:
 Cipher uses intelligent path resolution for configuration files:
 
 1. **Default behavior**: Looks for `memAgent/cipher.yml` relative to the package installation root
-2. **Custom config with `--agent`**: 
+2. **Custom config with `--agent`**:
    - Absolute paths are used as-is
    - Relative paths are resolved relative to the current working directory
    - Default path is resolved relative to the package installation root
@@ -1534,6 +1571,7 @@ Cipher uses intelligent path resolution for configuration files:
 4. Configuration is parsed, validated, and environment variables are expanded
 
 **Examples:**
+
 ```bash
 # Use default config (memAgent/cipher.yml in package root)
 cipher
@@ -1551,6 +1589,7 @@ cipher -a cipher-custom.yml
 ## Capabilities
 
 ### Session Management
+
 Cipher provides advanced session management capabilities for maintaining separate conversation contexts:
 
 - **Multiple Sessions**: Create and manage multiple conversation sessions simultaneously
@@ -1561,6 +1600,7 @@ Cipher provides advanced session management capabilities for maintaining separat
 - **CLI Integration**: Full command-line interface for session operations with intuitive commands
 
 **Key Features:**
+
 - Auto-generated or custom session IDs
 - Session metadata tracking (creation time, last activity, message count)
 - Protection against deleting active sessions
@@ -1568,15 +1608,19 @@ Cipher provides advanced session management capabilities for maintaining separat
 - Integration with the `--new-session` CLI flag for immediate session creation
 
 ### MCP Integration
+
 Cipher handles all the complexity of MCP server connections and lifecycle management, providing seamless integration with MCP-compatible tools and services.
 
 ### Enhanced LLM Provider Support
+
 Cipher now supports multiple LLM providers with seamless integration and advanced capabilities:
 
 ### Knowledge Graph Memory
+
 Cipher features a sophisticated knowledge graph system that provides structured, persistent memory for agents. This system enables agents to build and maintain complex relationships between entities, concepts, and information across conversations.
 
 #### Overview
+
 The knowledge graph memory system transforms unstructured conversational data into a structured graph of entities and relationships. Unlike traditional flat memory systems, knowledge graphs excel at:
 
 - **Relationship Modeling**: Capture complex relationships between entities (e.g., "John works at Google as a Software Engineer")
@@ -1587,12 +1631,14 @@ The knowledge graph memory system transforms unstructured conversational data in
 #### Supported Backends
 
 **Neo4j**
+
 - Full-featured graph database with Cypher query support
 - Advanced indexing and query optimization
 - ACID transactions and data consistency
 - Suitable for production workloads and complex graph operations
 
 **In-Memory**
+
 - Fast local storage ideal for development and testing
 - No external dependencies required
 - Configurable memory limits and indexing
@@ -1625,6 +1671,7 @@ KNOWLEDGE_GRAPH_DATABASE=neo4j
 #### Backend Setup
 
 **Neo4j Setup:**
+
 1. **Install Neo4j**: Download from [neo4j.com](https://neo4j.com/download/)
 2. **Start Neo4j**: Run Neo4j Desktop or server
 3. **Create Database**: Set up your knowledge graph database
@@ -1652,9 +1699,11 @@ Cipher supports multiple LLM providers for maximum flexibility:
 - **Ollama**: Self-hosted local models with no API costs (`qwen3:8b`, `llama3.1:8b`, `mistral:7b`, etc.) - **No API key required**
 
 ### OpenRouter Integration
+
 OpenRouter provides access to a vast ecosystem of AI models through one unified API:
 
 #### Supported Model Providers
+
 - **OpenAI**: `openai/gpt-4.1`, `openai/gpt-4.1-mini`
 - **Anthropic**: `anthropic/claude-4-sonnet`, `anthropic/claude-3.5-haiku`
 - **Google**: `google/gemini-pro-2.5`
@@ -1663,6 +1712,7 @@ OpenRouter provides access to a vast ecosystem of AI models through one unified 
 - **And 200+ more models**
 
 #### Benefits of OpenRouter
+
 - **Single API Key**: Access hundreds of models with one API key
 - **Cost Optimization**: Choose the most cost-effective model for your use case
 - **Model Diversity**: Access models from different providers without multiple integrations
@@ -1670,8 +1720,8 @@ OpenRouter provides access to a vast ecosystem of AI models through one unified 
 - **Latest Models**: Access to cutting-edge models as soon as they're released
 
 ### Ollama Integration
-Ollama enables you to run large language models locally on your machine for complete privacy and control:
 
+Ollama enables you to run large language models locally on your machine for complete privacy and control:
 
 We recommend these models that work great with tool calling:
 
@@ -1690,18 +1740,21 @@ We recommend these models that work great with tool calling:
 Pick any model from these families - start with smaller sizes like 8B or 14B if you're not sure about your hardware, then upgrade to 32B or 70B for better performance once you know what works.
 
 #### Setup Instructions
+
 1. **Install Ollama**: Download from [ollama.com](https://ollama.com)
 2. **Choose & Pull a Model** (based on your hardware):
+
    ```bash
    # For high-end hardware (32GB+ VRAM)
    ollama pull qwen3:32b           # or llama3.1:70b
-   
-   # For mid-range hardware (8-16GB VRAM)  
+
+   # For mid-range hardware (8-16GB VRAM)
    ollama pull qwen3:8b            # or llama3.1:8b
-   
+
    # For resource-constrained hardware (4GB VRAM)
    ollama pull phi4-mini:3.8b      # or granite3.3:2b
    ```
+
 3. **Set Environment**: `OLLAMA_BASE_URL=http://localhost:11434/v1`
 4. **Configure Cipher**: Use `provider: ollama` in your `cipher.yml`
 5. **Check Model Status**: `ollama list` to verify your model is available
@@ -1709,32 +1762,34 @@ Pick any model from these families - start with smaller sizes like 8B or 14B if 
 #### Configuration Examples
 
 **For High Performance (if you have good hardware):**
+
 ```yaml
 llm:
   provider: ollama
-  model: qwen3:32b                   # 32B model for excellent performance
-  baseURL: $OLLAMA_BASE_URL          # Points to your local Ollama instance
-  maxIterations: 50                  # For agentic tool calling loops
+  model: qwen3:32b # 32B model for excellent performance
+  baseURL: $OLLAMA_BASE_URL # Points to your local Ollama instance
+  maxIterations: 50 # For agentic tool calling loops
 ```
 
 **For Maximum Performance (requires high-end hardware):**
+
 ```yaml
 llm:
   provider: ollama
-  model: llama3.1:70b                # 70B model for best results
-  baseURL: $OLLAMA_BASE_URL          # Points to your local Ollama instance
-  maxIterations: 50                  # For agentic tool calling loops
+  model: llama3.1:70b # 70B model for best results
+  baseURL: $OLLAMA_BASE_URL # Points to your local Ollama instance
+  maxIterations: 50 # For agentic tool calling loops
 ```
 
 **For Balanced Performance/Resources:**
+
 ```yaml
 llm:
   provider: ollama
-  model: qwen3:8b                    # 8B model for good balance
-  baseURL: $OLLAMA_BASE_URL          # Points to your local Ollama instance
-  maxIterations: 50                  # For agentic tool calling loops
+  model: qwen3:8b # 8B model for good balance
+  baseURL: $OLLAMA_BASE_URL # Points to your local Ollama instance
+  maxIterations: 50 # For agentic tool calling loops
 ```
-
 
 ## Contributing
 

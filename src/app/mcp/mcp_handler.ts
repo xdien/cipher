@@ -1,6 +1,5 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import {
 	CallToolRequestSchema,
 	ListToolsRequestSchema,
@@ -91,7 +90,7 @@ async function createSseTransport(
  * Create HTTP transport for MCP server
  */
 async function createHttpTransport(
-	options: { port?: number; host?: string } = {}
+	_options: { port?: number; host?: string } = {}
 ): Promise<McpTransport> {
 	// Note: HTTP transport may not be available in all MCP SDK versions
 	// This is a placeholder for future implementation
@@ -217,7 +216,14 @@ async function handleAskCipherTool(agent: MemAgent, args: any): Promise<any> {
 
 	try {
 		// Run the agent with the provided message and session
-		const response = await agent.run(message, undefined, session_id, stream);
+		const { response, backgroundOperations } = await agent.run(
+			message,
+			undefined,
+			session_id,
+			stream
+		);
+		// In MCP mode, always wait for background operations to complete before returning response
+		await backgroundOperations;
 
 		return {
 			content: [
@@ -373,7 +379,7 @@ async function registerAgentPrompts(server: Server, agent: MemAgent): Promise<vo
 
 	// Register get prompt handler
 	server.setRequestHandler(GetPromptRequestSchema, async request => {
-		const { name, arguments: args } = request.params;
+		const { name } = request.params;
 
 		logger.info(`[MCP Handler] Prompt requested: ${name}`);
 
@@ -391,7 +397,7 @@ async function registerAgentPrompts(server: Server, agent: MemAgent): Promise<vo
  */
 async function getSystemPrompt(agent: MemAgent): Promise<any> {
 	try {
-		const systemPrompt = agent.promptManager.getInstruction();
+		const systemPrompt = agent.promptManager.getCompleteSystemPrompt();
 
 		return {
 			messages: [

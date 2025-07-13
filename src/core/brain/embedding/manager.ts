@@ -9,14 +9,9 @@
  */
 
 import { logger } from '../../logger/index.js';
-import {
-	type Embedder,
-	type BackendConfig,
-	EmbeddingError,
-	EmbeddingConnectionError,
-} from './backend/index.js';
+import { type Embedder, type BackendConfig } from './backend/index.js';
 import { createEmbedder, createEmbedderFromEnv } from './factory.js';
-import { LOG_PREFIXES, ERROR_MESSAGES } from './constants.js';
+import { LOG_PREFIXES } from './constants.js';
 
 /**
  * Health check result for an embedder instance

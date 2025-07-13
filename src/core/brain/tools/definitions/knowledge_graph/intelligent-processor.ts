@@ -235,7 +235,7 @@ export const intelligentProcessorTool: InternalTool = {
 async function analyzeTextIntent(
 	text: string,
 	options: ProcessingOptions,
-	llmService: any
+	_llmService: any
 ): Promise<{
 	intent: 'create' | 'update' | 'delete' | 'mixed';
 	entities: Array<{
@@ -335,7 +335,7 @@ Respond with a JSON object in this format:
 Respond ONLY with the JSON object, no other text:`;
 
 	try {
-		const response = await llmService.generate(analysisPrompt);
+		const response = await _llmService.generate(analysisPrompt);
 		const cleanResponse = response.replace(/```json|```/g, '').trim();
 		const analysis = JSON.parse(cleanResponse);
 
@@ -448,7 +448,7 @@ async function processEntityOperations(
 	existingEntities: GraphNode[],
 	options: ProcessingOptions,
 	kgManager: any,
-	llmService: any,
+	_llmService: any,
 	result: ProcessingResult
 ): Promise<void> {
 	const graph = kgManager?.getGraph();
@@ -538,7 +538,7 @@ async function processRelationshipOperations(
 	}>,
 	result: ProcessingResult,
 	kgManager: any,
-	llmService: any
+	_llmService: any
 ): Promise<void> {
 	const graph = kgManager?.getGraph();
 	if (!graph) return;
@@ -607,7 +607,7 @@ async function resolveConflicts(
 	conflicts: Array<{ type: string; description: string; resolution?: string }>,
 	options: ProcessingOptions,
 	kgManager: any,
-	llmService: any
+	_llmService: any
 ): Promise<void> {
 	for (const conflict of conflicts) {
 		try {

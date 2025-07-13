@@ -5,16 +5,7 @@ import type { SearchFilters, VectorStoreResult, MilvusBackendConfig } from './ty
 import { VectorStoreError, VectorStoreConnectionError, VectorDimensionError } from './types.js';
 import { Logger, createLogger } from '../../logger/index.js';
 import { LOG_PREFIXES, ERROR_MESSAGES } from '../constants.js';
-import dotenv from 'dotenv';
-dotenv.config();
-
-// Read index and distance config from environment variables (with fallback)
-const MILVUS_INDEX_TYPE = process.env.MILVUS_INDEX_TYPE || 'IVF_FLAT';
-const VECTOR_STORE_DISTANCE = process.env.VECTOR_STORE_DISTANCE || 'Cosine';
-const VECTOR_STORE_CONFIG_EFCONSTRUCTION = process.env.VECTOR_STORE_CONFIG_EFCONSTRUCTION || 10;
-const VECTOR_STORE_CONFIG_M = process.env.VECTOR_STORE_CONFIG_M || 4;
-const VECTOR_STORE_USERNAME = process.env.VECTOR_STORE_USERNAME || '';
-const VECTOR_STORE_PASSWORD = process.env.VECTOR_STORE_PASSWORD || '';
+import { env } from '../../env.js';
 
 /**
  * MilvusBackend Class
@@ -32,15 +23,14 @@ export class MilvusBackend implements VectorStore {
 	private readonly logger: Logger;
 	private connected = false;
 
-	// Milvus collection and index configuration
+	// Milvus collection configuration
 	private readonly MILVUS_COLLECTION_CONFIG = {
 		schema: [
 			{
 				name: 'id',
 				description: 'Primary key',
-				data_type: DataType.VarChar,
+				data_type: DataType.Int64,
 				is_primary_key: true,
-				max_length: 128,
 			},
 			{
 				name: 'vector',
@@ -53,12 +43,6 @@ export class MilvusBackend implements VectorStore {
 				data_type: DataType.JSON,
 			},
 		],
-		index: {
-			field_name: 'vector',
-			index_type: MILVUS_INDEX_TYPE,
-			metric_type: VECTOR_STORE_DISTANCE,
-			params: { efConstruction: VECTOR_STORE_CONFIG_EFCONSTRUCTION, M: VECTOR_STORE_CONFIG_M },
-		},
 	};
 
 	constructor(config: MilvusBackendConfig) {
@@ -66,17 +50,17 @@ export class MilvusBackend implements VectorStore {
 		this.collectionName = config.collectionName;
 		this.dimension = config.dimension;
 		this.logger = createLogger({
-			level: process.env.LOG_LEVEL || 'info',
+			level: env.CIPHER_LOG_LEVEL || 'info',
 		});
 
 		// Prefer config values, fallback to env if not provided
 		const address =
 			config.url ||
 			(config.host && config.port ? `http://${config.host}:${config.port}` : undefined) ||
-			process.env.VECTOR_STORE_URL ||
+			env.VECTOR_STORE_URL ||
 			'';
-		const username = config.username || process.env.VECTOR_STORE_USERNAME || '';
-		const password = config.password || process.env.VECTOR_STORE_PASSWORD || '';
+		const username = config.username || env.VECTOR_STORE_USERNAME || '';
+		const password = config.password || env.VECTOR_STORE_PASSWORD || '';
 
 		try {
 			this.client = new MilvusClient({
@@ -94,7 +78,7 @@ export class MilvusBackend implements VectorStore {
 				error as Error
 			);
 		}
-		this.logger.info(`${LOG_PREFIXES.MILVUS} Milvus Initialized`, {
+		this.logger.debug(`${LOG_PREFIXES.MILVUS} Backend initialized`, {
 			collection: this.collectionName,
 			dimension: this.dimension,
 			host: address,
@@ -117,37 +101,64 @@ export class MilvusBackend implements VectorStore {
 			return;
 		}
 
-		this.logger.info(`${LOG_PREFIXES.MILVUS} Connecting to Milvus`);
+		this.logger.debug(`${LOG_PREFIXES.MILVUS} Connecting to Milvus`);
 
 		try {
 			const collections = await this.client.showCollections();
 			const exists = collections.data.some((c: any) => c.name === this.collectionName);
 
 			if (!exists) {
-				this.logger.info(`${LOG_PREFIXES.MILVUS} Creating collection ${this.collectionName}`);
-				// Use fields array for schema
+				this.logger.debug(`${LOG_PREFIXES.MILVUS} Creating collection ${this.collectionName}`);
+
+				// Create schema with vector field dimension
 				const schema = this.MILVUS_COLLECTION_CONFIG.schema.map(field =>
 					field.name === 'vector' ? { ...field, dim: this.dimension } : { ...field }
 				);
+
+				// Create collection with index parameters for Cloud Milvus compatibility
 				await this.client.createCollection({
 					collection_name: this.collectionName,
 					fields: schema,
+					// Include index parameters during collection creation
+					index_params: [
+						{
+							field_name: 'vector',
+							index_name: 'vector_index',
+							index_type: 'AUTOINDEX',
+							metric_type: 'COSINE',
+						},
+					],
 				});
-				// Create index after collection
-				await this.client.createIndex({
-					collection_name: this.collectionName,
-					...this.MILVUS_COLLECTION_CONFIG.index,
-				});
-				this.logger.info(`${LOG_PREFIXES.MILVUS} Collection created: ${this.collectionName}`);
+
+				this.logger.debug(
+					`${LOG_PREFIXES.MILVUS} Collection created with indexes: ${this.collectionName}`
+				);
 			} else {
-				this.logger.info(
+				this.logger.debug(
 					`${LOG_PREFIXES.MILVUS} Collection already exists: ${this.collectionName}`
 				);
+
+				// For existing collections, check if indexes exist and create them if needed
+				try {
+					const indexes = await this.client.describeIndex({
+						collection_name: this.collectionName,
+						field_name: 'vector',
+					});
+
+					if (!indexes || !indexes.index_descriptions || indexes.index_descriptions.length === 0) {
+						this.logger.debug(`${LOG_PREFIXES.MILVUS} Creating missing vector index`);
+						await this.createMissingIndexes();
+					}
+				} catch (error) {
+					this.logger.debug(`${LOG_PREFIXES.MILVUS} Creating missing vector index`);
+					await this.createMissingIndexes();
+				}
 			}
 
+			// Load collection
 			await this.client.loadCollection({ collection_name: this.collectionName });
 			this.connected = true;
-			this.logger.info(`${LOG_PREFIXES.MILVUS} Successfully connected`);
+			this.logger.debug(`${LOG_PREFIXES.MILVUS} Successfully connected`);
 		} catch (error) {
 			this.logger.error(`${LOG_PREFIXES.MILVUS} Connection failed`, { error });
 			if (error instanceof VectorStoreConnectionError) {
@@ -161,6 +172,57 @@ export class MilvusBackend implements VectorStore {
 		}
 	}
 
+	/**
+	 * Create missing indexes for existing collections
+	 * This is a fallback method for collections that were created without indexes
+	 */
+	private async createMissingIndexes(): Promise<void> {
+		try {
+			// Create vector index with AUTOINDEX and COSINE metric
+			await this.client.createIndex({
+				collection_name: this.collectionName,
+				field_name: 'vector',
+				index_name: 'vector_index',
+				index_type: 'AUTOINDEX',
+				metric_type: 'COSINE',
+			});
+
+			// Create payload field indexes for better filtering performance
+			await this.createPayloadFieldIndexes();
+
+			// Reload collection after index creation
+			this.logger.debug(`${LOG_PREFIXES.MILVUS} Reloading collection after index creation`);
+			await this.client.loadCollection({ collection_name: this.collectionName });
+		} catch (error) {
+			this.logger.error(`${LOG_PREFIXES.MILVUS} Failed to create indexes and reload collection`);
+			throw error;
+		}
+	}
+
+	/**
+	 * Create indexes for payload fields to improve filtering performance
+	 */
+	private async createPayloadFieldIndexes(): Promise<void> {
+		const payloadFields = ['type', 'category', 'sessionId', 'traceId', 'timestamp'];
+
+		for (const fieldName of payloadFields) {
+			try {
+				this.logger.debug(`${LOG_PREFIXES.MILVUS} Creating index for field: ${fieldName}`);
+				await this.client.createIndex({
+					collection_name: this.collectionName,
+					field_name: `payload.${fieldName}`,
+					index_type: 'AUTOINDEX',
+				});
+			} catch (error) {
+				// Continue with other fields even if one fails
+				this.logger.warn(
+					`${LOG_PREFIXES.MILVUS} Failed to create index for field ${fieldName}:`,
+					error
+				);
+			}
+		}
+	}
+
 	async insert(vectors: number[][], ids: number[], payloads: Record<string, any>[]): Promise<void> {
 		if (!this.connected)
 			return Promise.reject(new VectorStoreError(ERROR_MESSAGES.NOT_CONNECTED, 'insert'));
@@ -171,7 +233,7 @@ export class MilvusBackend implements VectorStore {
 		}
 		for (const vector of vectors) this.validateDimension(vector, 'insert');
 		const data = vectors.map((vector, idx) => ({
-			id: ids[idx]!.toString(),
+			id: ids[idx]!,
 			vector,
 			payload: payloads[idx],
 		}));
@@ -180,7 +242,7 @@ export class MilvusBackend implements VectorStore {
 				collection_name: this.collectionName,
 				data,
 			});
-			this.logger.info(`Inserted ${vectors.length} vectors`);
+			this.logger.debug(`Inserted ${vectors.length} vectors`);
 		} catch (error) {
 			this.logger.error(`Insert failed`, { error });
 			throw new VectorStoreError('Failed to insert vectors', 'insert', error as Error);
@@ -224,13 +286,13 @@ export class MilvusBackend implements VectorStore {
 			const res = await this.client.query({
 				collection_name: this.collectionName,
 				output_fields: ['id', 'vector', 'payload'],
-				filter: `id == "${vectorId.toString()}"`,
+				filter: `id == ${vectorId}`,
 			});
 			if (!res.data.length || !res.data[0]) return null;
 			const doc = res.data[0];
 			if (!doc) return null;
 			return {
-				id: doc.id,
+				id: vectorId,
 				vector: doc.vector,
 				payload: doc.payload,
 				score: 1.0,
@@ -248,9 +310,9 @@ export class MilvusBackend implements VectorStore {
 		try {
 			await this.client.upsert({
 				collection_name: this.collectionName,
-				data: [{ id: vectorId.toString(), vector, payload }],
+				data: [{ id: vectorId, vector, payload }],
 			});
-			this.logger.info(`Updated vector ${vectorId}`);
+			this.logger.debug(`${LOG_PREFIXES.MILVUS} Updated vector ${vectorId}`);
 		} catch (error) {
 			this.logger.error(`Update failed`, { error });
 			throw new VectorStoreError('Failed to update vector', 'update', error as Error);
@@ -263,9 +325,9 @@ export class MilvusBackend implements VectorStore {
 		try {
 			await this.client.deleteEntities({
 				collection_name: this.collectionName,
-				expr: `id == "${vectorId.toString()}"`,
+				expr: `id == ${vectorId}`,
 			});
-			this.logger.info(`Deleted vector ${vectorId}`);
+			this.logger.debug(`${LOG_PREFIXES.MILVUS} Deleted vector ${vectorId}`);
 		} catch (error) {
 			this.logger.error(`Delete failed`, { error });
 			throw new VectorStoreError('Failed to delete vector', 'delete', error as Error);

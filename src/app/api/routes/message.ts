@@ -62,7 +62,9 @@ export function createMessageRoutes(agent: MemAgent): Router {
 				};
 			}
 
-			const response = await agent.run(message, imageData, sessionId);
+			const { response, backgroundOperations } = await agent.run(message, imageData, sessionId);
+			// In API mode, always wait for background operations to complete before returning response
+			await backgroundOperations;
 
 			successResponse(
 				res,

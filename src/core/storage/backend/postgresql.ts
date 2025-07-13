@@ -15,7 +15,7 @@
  * @module storage/backend/postgresql
  */
 
-import { Pool, Client, type PoolConfig } from 'pg';
+import { Pool, type PoolConfig } from 'pg';
 import type { DatabaseBackend } from './database-backend.js';
 import type { PostgresBackendConfig } from '../config.js';
 import { StorageError, StorageConnectionError } from './types.js';

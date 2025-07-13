@@ -350,7 +350,7 @@ export class CommandParser {
 			handler: async (args: string[], agent: MemAgent) => {
 				try {
 					// Create a new session to effectively reset conversation
-					const newSession = await agent.createSession('default');
+					await agent.createSession('default');
 					console.log(chalk.green('🔄 Conversation history reset successfully'));
 					console.log(chalk.gray('💡 Starting fresh with a clean session'));
 					return true;
@@ -484,7 +484,7 @@ export class CommandParser {
 								`  ${chalk.gray('Sample Tools:')} ${toolNames.join(', ')}${toolCount > 5 ? '...' : ''}`
 							);
 						}
-					} catch (error) {
+					} catch {
 						console.log(`  ${chalk.gray('Tool Count:')} Error retrieving tools`);
 					}
 					console.log('');
@@ -595,7 +595,7 @@ export class CommandParser {
 			category: 'system',
 			handler: async (args: string[], agent: MemAgent) => {
 				try {
-					const systemPrompt = agent.promptManager.getInstruction();
+					const systemPrompt = agent.promptManager.getCompleteSystemPrompt();
 
 					console.log(chalk.cyan('📝 Current System Prompt:'));
 					console.log('');
@@ -643,12 +643,8 @@ export class CommandParser {
 
 					return true;
 				} catch (error) {
-					console.log(
-						chalk.red(
-							`❌ Failed to get system prompt: ${error instanceof Error ? error.message : String(error)}`
-						)
-					);
-					return true;
+					console.error(chalk.red('❌ Error displaying system prompt:'), error);
+					return false;
 				}
 			},
 		});
@@ -899,7 +895,7 @@ export class CommandParser {
 	/**
 	 * Session help subcommand handler
 	 */
-	private async sessionHelpHandler(args: string[], agent: MemAgent): Promise<boolean> {
+	private async sessionHelpHandler(_args: string[], _agent: MemAgent): Promise<boolean> {
 		console.log(chalk.cyan('\n📋 Session Management Commands:\n'));
 
 		console.log(chalk.yellow('Available subcommands:'));
