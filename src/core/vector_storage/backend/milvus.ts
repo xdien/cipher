@@ -7,12 +7,6 @@ import { Logger, createLogger } from '../../logger/index.js';
 import { LOG_PREFIXES, ERROR_MESSAGES } from '../constants.js';
 import { env } from '../../env.js';
 
-// Read index and distance config from environment variables (with fallback)
-const MILVUS_INDEX_TYPE = process.env.MILVUS_INDEX_TYPE || 'IVF_FLAT';
-const VECTOR_STORE_DISTANCE = env.VECTOR_STORE_DISTANCE || 'Cosine';
-const VECTOR_STORE_CONFIG_EFCONSTRUCTION = process.env.VECTOR_STORE_CONFIG_EFCONSTRUCTION || 10;
-const VECTOR_STORE_CONFIG_M = process.env.VECTOR_STORE_CONFIG_M || 4;
-
 // Helper to convert number ID to string for Milvus
 function numberIdToMilvusId(id: number): string {
 	return id.toString();
@@ -34,7 +28,7 @@ export class MilvusBackend implements VectorStore {
 	private readonly logger: Logger;
 	private connected = false;
 
-	// Milvus collection and index configuration
+	// Milvus collection configuration
 	private readonly MILVUS_COLLECTION_CONFIG = {
 		schema: [
 			{
@@ -55,12 +49,6 @@ export class MilvusBackend implements VectorStore {
 				data_type: DataType.JSON,
 			},
 		],
-		index: {
-			field_name: 'vector',
-			index_type: MILVUS_INDEX_TYPE,
-			metric_type: VECTOR_STORE_DISTANCE,
-			params: { efConstruction: VECTOR_STORE_CONFIG_EFCONSTRUCTION, M: VECTOR_STORE_CONFIG_M },
-		},
 	};
 
 	constructor(config: MilvusBackendConfig) {
@@ -127,26 +115,48 @@ export class MilvusBackend implements VectorStore {
 
 			if (!exists) {
 				this.logger.debug(`${LOG_PREFIXES.MILVUS} Creating collection ${this.collectionName}`);
-				// Use fields array for schema
+				
+				// Create schema with vector field dimension
 				const schema = this.MILVUS_COLLECTION_CONFIG.schema.map(field =>
 					field.name === 'vector' ? { ...field, dim: this.dimension } : { ...field }
 				);
+
+				// Create collection with index parameters for Cloud Milvus compatibility
 				await this.client.createCollection({
 					collection_name: this.collectionName,
 					fields: schema,
+					// Include index parameters during collection creation
+					index_params: [
+						{
+							field_name: 'vector',
+							index_type: 'AUTOINDEX',
+							metric_type: 'COSINE',
+						}
+					]
 				});
-				// Create index after collection
-				await this.client.createIndex({
-					collection_name: this.collectionName,
-					...this.MILVUS_COLLECTION_CONFIG.index,
-				});
-				this.logger.debug(`${LOG_PREFIXES.MILVUS} Collection created: ${this.collectionName}`);
+
+				this.logger.debug(`${LOG_PREFIXES.MILVUS} Collection created with indexes: ${this.collectionName}`);
 			} else {
-				this.logger.debug(
-					`${LOG_PREFIXES.MILVUS} Collection already exists: ${this.collectionName}`
-				);
+				this.logger.debug(`${LOG_PREFIXES.MILVUS} Collection already exists: ${this.collectionName}`);
+				
+				// For existing collections, check if indexes exist and create them if needed
+				try {
+					const indexes = await this.client.describeIndex({
+						collection_name: this.collectionName,
+						field_name: 'vector'
+					});
+					
+					if (!indexes || !indexes.index_descriptions || indexes.index_descriptions.length === 0) {
+						this.logger.debug(`${LOG_PREFIXES.MILVUS} Creating missing vector index`);
+						await this.createMissingIndexes();
+					}
+				} catch (error) {
+					this.logger.debug(`${LOG_PREFIXES.MILVUS} Creating missing vector index`);
+					await this.createMissingIndexes();
+				}
 			}
 
+			// Load collection
 			await this.client.loadCollection({ collection_name: this.collectionName });
 			this.connected = true;
 			this.logger.debug(`${LOG_PREFIXES.MILVUS} Successfully connected`);
@@ -160,6 +170,53 @@ export class MilvusBackend implements VectorStore {
 				'milvus',
 				error as Error
 			);
+		}
+	}
+
+	/**
+	 * Create missing indexes for existing collections
+	 * This is a fallback method for collections that were created without indexes
+	 */
+	private async createMissingIndexes(): Promise<void> {
+		try {
+			// Create vector index with AUTOINDEX and COSINE metric
+			await this.client.createIndex({
+				collection_name: this.collectionName,
+				field_name: 'vector',
+				index_type: 'AUTOINDEX',
+				metric_type: 'COSINE'
+			});
+			
+			// Create payload field indexes for better filtering performance
+			await this.createPayloadFieldIndexes();
+			
+			// Reload collection after index creation
+			this.logger.debug(`${LOG_PREFIXES.MILVUS} Reloading collection after index creation`);
+			await this.client.loadCollection({ collection_name: this.collectionName });
+		} catch (error) {
+			this.logger.error(`${LOG_PREFIXES.MILVUS} Failed to create indexes and reload collection`);
+			throw error;
+		}
+	}
+
+	/**
+	 * Create indexes for payload fields to improve filtering performance
+	 */
+	private async createPayloadFieldIndexes(): Promise<void> {
+		const payloadFields = ['type', 'category', 'sessionId', 'traceId', 'timestamp'];
+		
+		for (const fieldName of payloadFields) {
+			try {
+				this.logger.debug(`${LOG_PREFIXES.MILVUS} Creating index for field: ${fieldName}`);
+				await this.client.createIndex({
+					collection_name: this.collectionName,
+					field_name: `payload.${fieldName}`,
+					index_type: 'AUTOINDEX'
+				});
+			} catch (error) {
+				// Continue with other fields even if one fails
+				this.logger.warn(`${LOG_PREFIXES.MILVUS} Failed to create index for field ${fieldName}:`, error);
+			}
 		}
 	}
 
