@@ -204,3 +204,52 @@ describe('memoryMetadata parameter and metadata merging', () => {
 		}
 	});
 });
+
+describe('extractAndOperateMemoryTool interaction parameter schema', () => {
+  const mockEmbedder = {
+    embed: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
+  };
+  const mockVectorStore = {
+    search: vi.fn().mockResolvedValue([]),
+    insert: vi.fn().mockResolvedValue(undefined),
+    update: vi.fn().mockResolvedValue(undefined),
+    delete: vi.fn().mockResolvedValue(undefined),
+  };
+  const mockEmbeddingManager = {
+    getEmbedder: vi.fn().mockReturnValue(mockEmbedder),
+  };
+  const mockVectorStoreManager = {
+    getStore: vi.fn().mockReturnValue(mockVectorStore),
+  };
+  const mockLlmService = {
+    directGenerate: vi.fn().mockResolvedValue('ADD'),
+  };
+  const mockContext = {
+    services: {
+      embeddingManager: mockEmbeddingManager,
+      vectorStoreManager: mockVectorStoreManager,
+      llmService: mockLlmService,
+    },
+  } as any;
+
+  it('should process a single string interaction', async () => {
+    const args = {
+      interaction: 'In JavaScript, Array.prototype.map creates a new array populated with the results of calling a provided function on every element in the calling array.',
+    };
+    const result = await extractAndOperateMemoryTool.handler(args, mockContext);
+    expect(result).toBeDefined();
+    expect(mockEmbedder.embed).toHaveBeenCalled();
+  });
+
+  it('should process an array of string interactions', async () => {
+    const args = {
+      interaction: [
+        'In Python, the def keyword is used to define a function.',
+        'In TypeScript, interfaces define the shape of an object.'
+      ],
+    };
+    const result = await extractAndOperateMemoryTool.handler(args, mockContext);
+    expect(result).toBeDefined();
+    expect(mockEmbedder.embed).toHaveBeenCalled();
+  });
+});
