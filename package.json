@@ -11,7 +11,7 @@
 	"module": "dist/index.js",
 	"types": "dist/index.d.ts",
 	"bin": {
-		"cipher": "./dist/src/app/index.js"
+		"cipher": "./dist/src/app/index.cjs"
 	},
 	"exports": {
 		".": {
@@ -36,6 +36,7 @@
 		"dev": "tsc --watch",
 		"typecheck": "tsc --project tsconfig.typecheck.json",
 		"prepare": "husky",
+		"precommit": "npm run lint && npm run typecheck && npm run format:check && npm run test:ci && npm run build",
 		"test": "vitest run",
 		"test:unit": "vitest run --exclude '**/integration/**' --exclude '**/*.integration.test.ts'",
 		"test:integration": "vitest run --include '**/integration/**' --include '**/*.integration.test.ts'",
