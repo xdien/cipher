@@ -35,8 +35,7 @@ vi.mock('../../../logger/index.js', () => ({
 describe('Phase 2: Reflection Memory Tools', () => {
 	describe('extractReasoningSteps', () => {
 		it('should extract explicit thought markup patterns', async () => {
-			const userInput = 'Create a factorial function with proper validation';
-			const reasoningContent = `
+			const userInput = `Create a factorial function with proper validation
 Thought: I need to create a function to calculate the factorial.
 Action: I'll write a recursive function.
 \`\`\`javascript
@@ -60,7 +59,6 @@ Result: Function complete with proper validation.
 
 			const result = await extractReasoningSteps.handler({
 				userInput,
-				reasoningContent,
 				options: {
 					extractExplicit: true,
 					extractImplicit: true,
@@ -86,8 +84,7 @@ Result: Function complete with proper validation.
 		});
 
 		it('should extract implicit reasoning patterns when no explicit markup', async () => {
-			const userInput = 'I need an efficient sorting algorithm';
-			const reasoningContent = `
+			const userInput = `I need an efficient sorting algorithm
 I need to solve this sorting problem. Let me think about different approaches.
 Bubble sort would be simple but inefficient for large datasets. 
 Quick sort might be better - it has O(n log n) average complexity.
@@ -96,7 +93,6 @@ I'll implement quicksort with proper pivot selection.
 
 			const result = await extractReasoningSteps.handler({
 				userInput,
-				reasoningContent,
 				options: {
 					extractExplicit: true,
 					extractImplicit: true,
@@ -118,7 +114,6 @@ I'll implement quicksort with proper pivot selection.
 		it('should handle empty reasoning content gracefully', async () => {
 			const result = await extractReasoningSteps.handler({
 				userInput: 'Test input',
-				reasoningContent: '   ',
 				options: {},
 			});
 
@@ -131,8 +126,7 @@ I'll implement quicksort with proper pivot selection.
 		});
 
 		it('should detect reasoning loops', async () => {
-			const userInput = 'Help me test this API endpoint';
-			const reasoningContent = `
+			const userInput = `Help me test this API endpoint
 Thought: I need to test the API endpoint.
 Action: Making a request to /api/test
 Observation: Got 404 error.
@@ -146,7 +140,6 @@ Observation: Same 404 error.
 
 			const result = await extractReasoningSteps.handler({
 				userInput,
-				reasoningContent,
 				options: {},
 			});
 
@@ -394,8 +387,7 @@ Observation: Same 404 error.
 		it('should work together: extract → evaluate workflow', async () => {
 			// Step 1: Extract reasoning
 			const extractResult = await extractReasoningSteps.handler({
-				userInput: 'Create a sorting algorithm',
-				reasoningContent: `
+				userInput: `Create a sorting algorithm
 Thought: I need to solve this coding problem step by step.
 Action: First, let me understand the requirements.
 Observation: The problem asks for a sorting algorithm.
@@ -429,8 +421,7 @@ Result: Algorithm works correctly.
 		it('should handle failed outcomes in extract → evaluate workflow', async () => {
 			// Extract reasoning from a failed attempt
 			const extractResult = await extractReasoningSteps.handler({
-				userInput: 'Optimize a sorting algorithm',
-				reasoningContent: `
+				userInput: `Optimize a sorting algorithm
 Thought: Let me try a simple approach.
 Action: Using bubble sort algorithm.
 Observation: It's too slow for large datasets.

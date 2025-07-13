@@ -41,10 +41,10 @@ describe('Minimal ConversationSession direct invocation', () => {
 		session.init = async () => {};
 		session.run = async (...args: any[]) => {
 			console.log('MINIMAL TEST: run called with', ...args);
-			return 'ok';
+			return { response: 'ok', backgroundOperations: Promise.resolve() };
 		};
 		const result = await session.run('test input');
-		expect(result).toBe('ok');
+		expect(result.response).toBe('ok');
 	});
 });
 
@@ -215,7 +215,8 @@ describe('ConversationSession', () => {
 
 			const result = await session.run(input);
 
-			expect(result).toBe(expectedResponse);
+			expect(result.response).toBe(expectedResponse);
+			expect(result.backgroundOperations).toBeInstanceOf(Promise);
 			expect(mockLLMService.generate).toHaveBeenCalledWith(input, undefined, undefined);
 		});
 
@@ -228,7 +229,8 @@ describe('ConversationSession', () => {
 
 			const result = await session.run(input, imageData);
 
-			expect(result).toBe(expectedResponse);
+			expect(result.response).toBe(expectedResponse);
+			expect(result.backgroundOperations).toBeInstanceOf(Promise);
 			expect(mockLLMService.generate).toHaveBeenCalledWith(input, imageData, undefined);
 		});
 
@@ -240,7 +242,8 @@ describe('ConversationSession', () => {
 
 			const result = await session.run(input, undefined, true);
 
-			expect(result).toBe(expectedResponse);
+			expect(result.response).toBe(expectedResponse);
+			expect(result.backgroundOperations).toBeInstanceOf(Promise);
 			expect(mockLLMService.generate).toHaveBeenCalledWith(input, undefined, true);
 		});
 
@@ -254,7 +257,8 @@ describe('ConversationSession', () => {
 
 			const result = await session.run(input, imageData, stream);
 
-			expect(result).toBe(expectedResponse);
+			expect(result.response).toBe(expectedResponse);
+			expect(result.backgroundOperations).toBeInstanceOf(Promise);
 			expect(mockLLMService.generate).toHaveBeenCalledWith(input, imageData, stream);
 		});
 
@@ -605,7 +609,8 @@ describe('ConversationSession', () => {
 
 			// Check that all expected responses are present, but order may vary due to concurrency
 			expect(results).toHaveLength(3);
-			expect(results).toEqual(expect.arrayContaining(expectedResponses));
+			const responseStrings = results.map(r => r.response);
+			expect(responseStrings).toEqual(expect.arrayContaining(expectedResponses));
 			expect(mockLLMService.generate).toHaveBeenCalledTimes(3);
 		});
 
@@ -629,7 +634,7 @@ describe('ConversationSession', () => {
 			expect(fulfilled).toHaveLength(2);
 			expect(rejected).toHaveLength(1);
 
-			const successValues = fulfilled.map(r => (r as PromiseFulfilledResult<string>).value);
+			const successValues = fulfilled.map(r => (r as PromiseFulfilledResult<{ response: string; backgroundOperations: Promise<void> }>).value.response);
 			expect(successValues).toContain('Success 1');
 			expect(successValues).toContain('Success 2');
 
@@ -656,7 +661,8 @@ describe('ConversationSession', () => {
 
 			const result = await session.run(longInput);
 
-			expect(result).toBe(expectedResponse);
+			expect(result.response).toBe(expectedResponse);
+			expect(result.backgroundOperations).toBeInstanceOf(Promise);
 			expect(mockLLMService.generate).toHaveBeenCalledWith(longInput, undefined, undefined);
 		});
 
@@ -668,7 +674,8 @@ describe('ConversationSession', () => {
 
 			const result = await session.run(specialInput);
 
-			expect(result).toBe(expectedResponse);
+			expect(result.response).toBe(expectedResponse);
+			expect(result.backgroundOperations).toBeInstanceOf(Promise);
 			expect(mockLLMService.generate).toHaveBeenCalledWith(specialInput, undefined, undefined);
 		});
 	});

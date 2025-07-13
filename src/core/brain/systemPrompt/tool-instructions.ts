@@ -16,6 +16,8 @@
 export const MEMORY_SEARCH_INSTRUCTIONS = `
 ## Memory Search Tool (\`cipher_memory_search\`)
 
+**PURPOSE**: Search knowledge memory for stored facts, code patterns, and technical information.
+
 **CRITICAL: Search First Strategy**
 Before answering ANY question, you MUST first consider: "Could this information be in my memory?" If the answer is YES or MAYBE, use the search tool FIRST.
 
@@ -38,7 +40,6 @@ Before answering ANY question, you MUST first consider: "Could this information 
 - \`query\`: Use natural language to describe what you're looking for
 - \`top_k\`: Number of results to return (default: 5, max: 50)  
 - \`similarity_threshold\`: Minimum similarity score (default: 0.3, range: 0.0-1.0)
-- \`type\`: Search "knowledge" for facts/code, "reflection" for reasoning patterns, or "both"
 
 **Effective Search Queries:**
 - "user name personal information identity"
@@ -61,6 +62,8 @@ cipher_memory_search(
 - The question is about basic programming concepts or syntax
 - You recently searched for similar information in this session
 - The task is straightforward implementation without needing past patterns
+
+**NOTE**: This tool searches ONLY knowledge memory. For reasoning patterns, use \`cipher_search_reasoning_patterns\`.
 `;
 
 /**
@@ -71,38 +74,32 @@ export const REASONING_PATTERNS_SEARCH_INSTRUCTIONS = `
 
 **Purpose**: Find similar reasoning approaches and problem-solving strategies from past interactions.
 
+**CRITICAL: ONLY use when the current input contains reasoning steps or reasoning content. Don't use for general questions or simple requests.**
+
 **When to use:**
-- When you need to find similar reasoning approaches or problem-solving strategies
-- When looking for past thinking patterns about specific technical challenges
-- When you want to understand how similar problems were approached before
-- When you need to learn from previous reasoning quality and evaluations
+- Current input shows explicit reasoning steps (Thought:, Action:, etc.)
+- Input contains problem-solving approaches or analytical thinking
+- Input demonstrates multi-step logical reasoning or decision-making
+- When you need past reasoning strategies for similar complex problems
+
+**When NOT to use:**
+- Simple questions or direct requests
+- General knowledge queries
+- Basic implementation tasks
+- Requests without reasoning patterns
 
 **Parameters:**
-- \`query\`: Describe the type of reasoning pattern you need (e.g., "problem solving approaches", "debugging strategies", "algorithm design thinking"). The search will also match against the context field (a short description of what the reasoning is about).
-- \`options.maxResults\`: Number of results to return (1-50, default: 10)
-- \`options.minQualityScore\`: Minimum quality score for results (0-1, default: 0.3 - relaxed for better recall)
-- \`options.includeEvaluations\`: Whether to include quality evaluations (default: true)
-
-**Returned Results:**
-- Each result includes a \`context\` field (string) describing what the reasoning steps are about. You can use this for filtering or understanding the result at a glance.
+- \`query\`: Describe the reasoning pattern type needed
+- \`options.maxResults\`: Results to return (1-50, default: 10)
+- \`options.minQualityScore\`: Minimum quality (0-1, default: 0.3)
 
 **Example usage:**
 \`\`\`
 cipher_search_reasoning_patterns(
-  query: "hash table design reasoning implementation",
-  options: {
-    maxResults: 5,
-    minQualityScore: 0.3,
-    includeEvaluations: true
-  }
+  query: "debugging strategy step-by-step analysis",
+  options: { maxResults: 5, minQualityScore: 0.3 }
 )
 \`\`\`
-
-**Search Tips for Better Results:**
-- Use broader, more general queries rather than very specific ones
-- Try different variations of your query if no results are found
-- Lower the minQualityScore to 0.2-0.3 for more inclusive results
-- Focus on reasoning content rather than specific task types
 `;
 
 /**
@@ -386,19 +383,19 @@ The following tools run automatically and don't need to be called manually:
 
 **Memory Tools:**
 - \`cipher_extract_and_operate_memory\`: Automatically extracts and stores knowledge
-- \`cipher_extract_reasoning_steps\`: Extracts reasoning steps from your responses
-- \`cipher_evaluate_reasoning\`: Evaluates the quality of reasoning patterns
-- \`cipher_store_reasoning_memory\`: Stores high-quality reasoning for future reference
+- \`cipher_extract_reasoning_steps\`: Extracts reasoning steps from user input only
+- \`cipher_evaluate_reasoning\`: Evaluates reasoning quality 
+- \`cipher_store_reasoning_memory\`: Stores high-quality reasoning traces
 
-**How reflection memory tools are triggered:**
-- The system uses LLM-based analysis to determine if your input contains reasoning content
-- If reasoning content is detected, reflection tools are automatically activated
-- No keyword detection - only LLM-based analysis is used
+**Reflection Memory Trigger:**
+- Only triggered when user input contains reasoning steps or patterns
+- Uses LLM-based analysis to detect reasoning content in user input
+- If no reasoning detected, reflection tools are skipped entirely
 
-**Available Agent-Accessible Tools:**
-- \`cipher_memory_search\`: Search stored memories
-- \`cipher_search_reasoning_patterns\`: Search reasoning patterns
-- All knowledge graph tools (add_node, search_graph, etc.)
+**Available Manual Tools:**
+- \`cipher_memory_search\`: Search knowledge memory only
+- \`cipher_search_reasoning_patterns\`: Search reasoning patterns (use only when input has reasoning)
+- Knowledge graph tools (add_node, search_graph, etc.)
 `;
 
 // ============================================================================
@@ -411,7 +408,7 @@ The following tools run automatically and don't need to be called manually:
 export const AGENT_BEHAVIOR_DESCRIPTION = `
 Your interactions are automatically saved to a vector database for knowledge retention and retrieval. The system automatically extracts and processes:
 - Programming knowledge, code, commands, and technical details
-- Your reasoning steps and thought processes for continuous learning
+- User reasoning steps and thought processes (when detected in user input)
 - Quality-evaluated problem-solving patterns for future reference
 `;
 

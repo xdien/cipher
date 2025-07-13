@@ -154,7 +154,7 @@ export class MemAgent {
 			memoryMetadata?: Record<string, any>;
 			sessionOptions?: Record<string, any>;
 		}
-	): Promise<string | null> {
+	): Promise<{ response: string | null; backgroundOperations: Promise<void> }> {
 		this.ensureStarted();
 		try {
 			let session: ConversationSession;
@@ -170,16 +170,13 @@ export class MemAgent {
 					(await this.sessionManager.createSession(this.currentActiveSessionId));
 			}
 			logger.debug(`MemAgent.run: using session ${session.id}`);
-			const response = await session.run(userInput, imageDataInput, stream, {
+			const { response, backgroundOperations } = await session.run(userInput, imageDataInput, stream, {
 				...(options?.memoryMetadata !== undefined && { memoryMetadata: options.memoryMetadata }),
 				...(options?.sessionOptions !== undefined && { contextOverrides: options.sessionOptions }),
 			});
 
-			if (response && response.trim() !== '') {
-				return response;
-			}
-			// Return null if the response is empty or just whitespace.
-			return null;
+			const finalResponse = response && response.trim() !== '' ? response : null;
+			return { response: finalResponse, backgroundOperations };
 		} catch (error) {
 			logger.error('MemAgent.run: error', error);
 			throw error;

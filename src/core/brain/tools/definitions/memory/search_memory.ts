@@ -16,8 +16,8 @@ interface MemorySearchResult {
 		tags: string[];
 		timestamp: string;
 		similarity: number;
-		source?: 'knowledge' | 'reflection';
-		memoryType?: 'knowledge' | 'reflection';
+		source: 'knowledge';
+		memoryType: 'knowledge';
 		version?: number;
 		// Knowledge memory fields
 		confidence?: number;
@@ -27,28 +27,6 @@ interface MemorySearchResult {
 		qualitySource?: string;
 		code_pattern?: string;
 		old_memory?: string;
-		// Reasoning memory fields
-		reasoningSteps?: Array<{
-			type: string;
-			content: string;
-			confidence?: number;
-			[key: string]: any;
-		}>;
-		evaluation?: {
-			qualityScore: number;
-			issues: Array<{
-				type: string;
-				description: string;
-				severity?: string;
-				[key: string]: any;
-			}>;
-			suggestions: string[];
-			[key: string]: any;
-		};
-
-		stepCount?: number;
-		stepTypes?: string[];
-		issueCount?: number;
 		sourceSessionId?: string;
 	}>;
 	metadata: {
@@ -58,9 +36,9 @@ interface MemorySearchResult {
 		maxSimilarity: number;
 		minSimilarity: number;
 		averageSimilarity: number;
-		knowledgeResults?: number;
-		reflectionResults?: number;
-		searchMode: 'knowledge' | 'reflection' | 'both';
+		knowledgeResults: number;
+		reflectionResults: number; // Always 0 for knowledge-only search
+		searchMode: 'knowledge';
 		usedFallback?: boolean;
 	};
 	timestamp: string;
@@ -69,17 +47,19 @@ interface MemorySearchResult {
 /**
  * Memory Search Tool
  *
- * This tool enables semantic retrieval from the agent's memory system.
+ * This tool enables semantic retrieval from the agent's knowledge memory system.
  * It searches over stored knowledge memories using vector similarity search
  * and returns relevant entries that can inform the current reasoning process.
+ * 
+ * NOTE: This tool ONLY searches knowledge memory. For reflection memory, use cipher_search_reasoning_patterns.
  */
 export const searchMemoryTool: InternalTool = {
 	name: 'memory_search',
 	category: 'memory',
 	internal: true,
-	agentAccessible: true, // Agent-accessible: one of two search tools available to agent
+	agentAccessible: true, // Agent-accessible: searches knowledge memory only
 	description:
-		'Perform semantic search over stored memory entries to retrieve relevant knowledge and reasoning traces that can inform current decision-making.',
+		'Perform semantic search over stored knowledge memory entries to retrieve relevant knowledge that can inform current decision-making.',
 	version: '1.0.0',
 	parameters: {
 		type: 'object',
@@ -87,7 +67,7 @@ export const searchMemoryTool: InternalTool = {
 			query: {
 				type: 'string',
 				description:
-					'The search query to find relevant memories. Use natural language to describe what you are looking for.',
+					'The search query to find relevant knowledge memories. Use natural language to describe what you are looking for.',
 				minLength: 1,
 				maxLength: 1000,
 			},
@@ -97,13 +77,6 @@ export const searchMemoryTool: InternalTool = {
 				minimum: 1,
 				maximum: 50,
 				default: 5,
-			},
-			type: {
-				type: 'string',
-				description:
-					'Type of memory to search. Defaults to environment variable SEARCH_MEMORY_TYPE (currently only "knowledge" is fully implemented).',
-				enum: ['knowledge', 'reflection', 'both'],
-				default: env.SEARCH_MEMORY_TYPE,
 			},
 			similarity_threshold: {
 				type: 'number',
@@ -124,10 +97,9 @@ export const searchMemoryTool: InternalTool = {
 		const startTime = Date.now();
 
 		try {
-			logger.debug('MemorySearch: Processing search request', {
+			logger.debug('MemorySearch: Processing knowledge memory search request', {
 				query: args.query?.substring(0, 100) || 'undefined',
 				top_k: args.top_k || 5,
-				type: args.type || env.SEARCH_MEMORY_TYPE,
 				similarity_threshold: args.similarity_threshold || 0.3,
 			});
 
@@ -139,7 +111,6 @@ export const searchMemoryTool: InternalTool = {
 			// Set defaults
 			const query = args.query.trim();
 			const topK = Math.max(1, Math.min(50, args.top_k || 5));
-			const memoryType = args.type || env.SEARCH_MEMORY_TYPE;
 			const similarityThreshold = Math.max(0.0, Math.min(1.0, args.similarity_threshold || 0.3));
 			const includeMetadata = args.include_metadata !== false;
 
@@ -175,11 +146,11 @@ export const searchMemoryTool: InternalTool = {
 				embeddingTime: `${embeddingTime}ms`,
 				embeddingDimensions: Array.isArray(queryEmbedding) ? queryEmbedding.length : 'unknown',
 			});
-			// Detect vector store manager type and perform appropriate search
+			// Search knowledge memory only
 			const searchStartTime = Date.now();
 			let allResults: any[] = [];
 			let knowledgeResultCount = 0;
-			let reflectionResultCount = 0;
+			let reflectionResultCount = 0; // Always 0 for knowledge-only search
 			let usedFallback = false;
 
 			// Check if we have a DualCollectionVectorManager
@@ -188,159 +159,64 @@ export const searchMemoryTool: InternalTool = {
 				(typeof vectorStoreManager.getStore === 'function' &&
 					vectorStoreManager.getStore.length === 1); // getStore(type) signature
 
-			if (isDualManager && (memoryType === 'both' || memoryType === 'reflection')) {
-				logger.debug(
-					'MemorySearch: Using DualCollectionVectorManager for multi-collection search',
-					{
-						requestedType: memoryType,
-						isDualManager: true,
-					}
-				);
+			let knowledgeStore = null;
+			if (isDualManager) {
+				logger.debug('MemorySearch: Using DualCollectionVectorManager for knowledge search', {
+					isDualManager: true,
+				});
 
 				try {
-					// Search knowledge collection if needed
-					if (memoryType === 'both' || memoryType === 'knowledge') {
-						let knowledgeStore = null;
-						try {
-							// Try dual manager API first
-							knowledgeStore = (vectorStoreManager as any).getStore('knowledge');
-						} catch {
-							// Fallback to single collection API
-							knowledgeStore = vectorStoreManager.getStore();
-						}
-
-						if (knowledgeStore) {
-							const knowledgeResults = await knowledgeStore.search(queryEmbedding, topK * 2);
-							knowledgeResultCount = knowledgeResults.length;
-
-							// Mark results with source
-							const markedKnowledgeResults = knowledgeResults.map((result: any) => ({
-								...result,
-								payload: {
-									...result.payload,
-									source: 'knowledge',
-									memoryType: 'knowledge',
-								},
-							}));
-
-							allResults.push(...markedKnowledgeResults);
-
-							logger.debug('MemorySearch: Knowledge collection search completed', {
-								resultsFound: knowledgeResultCount,
-							});
-						}
-					}
-
-					// Search reflection collection if needed
-					if (memoryType === 'both' || memoryType === 'reflection') {
-						let reflectionStore = null;
-						try {
-							// Try dual manager API
-							reflectionStore = (vectorStoreManager as any).getStore('reflection');
-						} catch {
-							// Reflection not available in single collection manager
-							if (memoryType === 'reflection') {
-								throw new Error('Reflection memory collection not available');
-							}
-						}
-
-						if (reflectionStore) {
-							const reflectionResults = await reflectionStore.search(queryEmbedding, topK * 2);
-							reflectionResultCount = reflectionResults.length;
-
-							// Mark results with source and extract reflection-specific metadata
-							const markedReflectionResults = reflectionResults.map((result: any) => ({
-								...result,
-								payload: {
-									...result.payload,
-									source: 'reflection',
-									memoryType: 'reflection',
-									// Extract reflection-specific fields from metadata
-									...(result.payload?.qualityScore && {
-										qualityScore: result.payload.qualityScore,
-									}),
-									...(result.payload?.stepTypes && { stepTypes: result.payload.stepTypes }),
-									...(result.payload?.issueCount && { issueCount: result.payload.issueCount }),
-									...(result.payload?.traceId && { traceId: result.payload.traceId }),
-								},
-							}));
-
-							allResults.push(...markedReflectionResults);
-
-							logger.debug('MemorySearch: Reflection collection search completed', {
-								resultsFound: reflectionResultCount,
-							});
-						} else if (memoryType === 'reflection') {
-							// Reflection requested but not available
-							throw new Error('Reflection memory collection not available');
-						}
-					}
-				} catch (error) {
-					logger.warn(
-						'MemorySearch: Dual collection search failed, falling back to knowledge only',
-						{
-							error: error instanceof Error ? error.message : String(error),
-							requestedType: memoryType,
-						}
-					);
-
-					// Fallback to knowledge collection only
-					usedFallback = true;
-					const knowledgeStore = vectorStoreManager.getStore();
-					if (knowledgeStore) {
-						const fallbackResults = await knowledgeStore.search(queryEmbedding, topK * 2);
-						allResults = fallbackResults.map((result: any) => ({
-							...result,
-							payload: {
-								...result.payload,
-								source: 'knowledge',
-								memoryType: 'knowledge',
-							},
-						}));
-						knowledgeResultCount = allResults.length;
+					// Try dual manager API first for knowledge collection
+					knowledgeStore = (vectorStoreManager as any).getStore('knowledge');
+				} catch {
+					// Fallback to default store
+					try {
+						knowledgeStore = vectorStoreManager.getStore();
+						usedFallback = true;
+					} catch (fallbackError) {
+						throw new Error(`Knowledge collection failed and fallback to default store also failed: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`);
 					}
 				}
 			} else {
-				// Single collection manager or knowledge-only search
-				logger.debug('MemorySearch: Using single collection search', {
-					requestedType: memoryType,
+				// Single collection manager - get default store
+				logger.debug('MemorySearch: Using single collection manager for knowledge search', {
 					isDualManager: false,
 				});
 
-				if (memoryType === 'reflection') {
-					throw new Error(
-						'Reflection memory search requires DualCollectionVectorManager but single collection manager detected'
-					);
-				}
-
-				const vectorStore = vectorStoreManager.getStore();
-				if (!vectorStore) {
-					throw new Error('VectorStore not available');
-				}
-
-				const singleResults = await vectorStore.search(queryEmbedding, topK * 2);
-				allResults = singleResults.map((result: any) => ({
-					...result,
-					payload: {
-						...result.payload,
-						source: 'knowledge',
-						memoryType: 'knowledge',
-					},
-				}));
-				knowledgeResultCount = allResults.length;
+				knowledgeStore = vectorStoreManager.getStore();
 			}
+
+			if (!knowledgeStore) {
+				throw new Error('Knowledge vector store not available');
+			}
+
+			// Search knowledge collection
+			const knowledgeResults = await knowledgeStore.search(queryEmbedding, topK * 2);
+			knowledgeResultCount = knowledgeResults.length;
+
+			// Mark results with source
+			allResults = knowledgeResults.map((result: any) => ({
+				...result,
+				payload: {
+					...result.payload,
+					source: 'knowledge',
+					memoryType: 'knowledge',
+				},
+			}));
+
+			logger.debug('MemorySearch: Knowledge collection search completed', {
+				resultsFound: knowledgeResultCount,
+			});
 
 			const searchTime = Date.now() - searchStartTime;
 
-			logger.debug('MemorySearch: All searches completed', {
+			logger.debug('MemorySearch: Knowledge search completed', {
 				searchTime: `${searchTime}ms`,
 				totalResults: allResults.length,
 				knowledgeResults: knowledgeResultCount,
-				reflectionResults: reflectionResultCount,
-				requestedType: memoryType,
 			});
 
-			// Merge, rank, and filter results
+							// Filter, rank, and format knowledge memory results
 			const filteredResults = allResults
 				.filter(result => (result.score || 0) >= similarityThreshold)
 				.sort((a, b) => (b.score || 0) - (a.score || 0)) // Sort by similarity score descending
@@ -349,14 +225,7 @@ export const searchMemoryTool: InternalTool = {
 					const rawPayload = result.payload || {};
 
 					// All data is V2 format after collection cleanup - no migration needed
-					const payload = rawPayload as KnowledgePayload | ReasoningPayload;
-
-					// Detect if this is knowledge or reasoning memory based on structure
-					const isReasoningMemory =
-						rawPayload.source === 'reflection' ||
-						rawPayload.memoryType === 'reflection' ||
-						(rawPayload.tags && rawPayload.tags.includes('reasoning')) ||
-						'reasoningSteps' in rawPayload;
+					const payload = rawPayload as KnowledgePayload;
 
 					// Return unified result format with V2 payload data
 					const baseResult = {
@@ -366,46 +235,26 @@ export const searchMemoryTool: InternalTool = {
 						timestamp: payload.timestamp || new Date().toISOString(),
 						similarity: result.score || 0,
 						version: payload.version || 2, // All data is V2 after cleanup
-						...(rawPayload.source && { source: rawPayload.source }),
-						...(rawPayload.memoryType && { memoryType: rawPayload.memoryType }),
+						source: 'knowledge',
+						memoryType: 'knowledge',
 					};
 
-					// Add type-specific fields based on payload type
-					if (isReasoningMemory) {
-						// Reasoning memory - return raw reasoning steps and evaluation
-						const reasoningPayload = payload as ReasoningPayload;
-						return {
-							...baseResult,
-							reasoningSteps: reasoningPayload.reasoningSteps,
-							evaluation: reasoningPayload.evaluation,
-							// Computed metrics for convenience
-							stepCount: reasoningPayload.stepCount,
-							stepTypes: reasoningPayload.stepTypes,
-							issueCount: reasoningPayload.issueCount,
-							sourceSessionId: reasoningPayload.sourceSessionId,
-						};
-					} else {
-						// Knowledge memory
-						const knowledgePayload = payload as KnowledgePayload;
-						return {
-							...baseResult,
-							confidence: knowledgePayload.confidence || 0,
-							reasoning: knowledgePayload.reasoning || 'No reasoning available',
-							event: knowledgePayload.event,
-							domain: knowledgePayload.domain,
-							qualitySource: knowledgePayload.qualitySource,
-							sourceSessionId: knowledgePayload.sourceSessionId,
-							...(knowledgePayload.code_pattern && { code_pattern: knowledgePayload.code_pattern }),
-							...(knowledgePayload.old_memory && { old_memory: knowledgePayload.old_memory }),
-						};
-					}
+					// Add knowledge-specific fields
+					const knowledgePayload = payload as KnowledgePayload;
+					return {
+						...baseResult,
+						confidence: knowledgePayload.confidence || 0,
+						reasoning: knowledgePayload.reasoning || 'No reasoning available',
+						event: knowledgePayload.event,
+						domain: knowledgePayload.domain,
+						qualitySource: knowledgePayload.qualitySource,
+						sourceSessionId: knowledgePayload.sourceSessionId,
+						...(knowledgePayload.code_pattern && { code_pattern: knowledgePayload.code_pattern }),
+						...(knowledgePayload.old_memory && { old_memory: knowledgePayload.old_memory }),
+					};
 				});
 
-			// Calculate memory type breakdown from filtered results
-			const finalKnowledgeCount = filteredResults.filter(r => r.source === 'knowledge').length;
-			const finalReflectionCount = filteredResults.filter(r => r.source === 'reflection').length;
-
-			// Calculate statistics
+			// Calculate statistics for knowledge search results
 			const totalResults = filteredResults.length;
 			const similarities = filteredResults.map(r => r.similarity);
 			const maxSimilarity = similarities.length > 0 ? Math.max(...similarities) : 0;
@@ -427,20 +276,18 @@ export const searchMemoryTool: InternalTool = {
 					maxSimilarity,
 					minSimilarity,
 					averageSimilarity,
-					knowledgeResults: finalKnowledgeCount,
-					reflectionResults: finalReflectionCount,
-					searchMode: memoryType as 'knowledge' | 'reflection' | 'both',
+					knowledgeResults: totalResults, // All results are knowledge results
+					reflectionResults: 0, // No reflection results in knowledge-only search
+					searchMode: 'knowledge',
 					usedFallback,
 				},
 				timestamp: new Date().toISOString(),
 			};
 
-			logger.debug('MemorySearch: Search completed successfully', {
+			logger.debug('MemorySearch: Knowledge search completed successfully', {
 				query: query.substring(0, 50),
 				resultsFound: totalResults,
-				knowledgeResults: finalKnowledgeCount,
-				reflectionResults: finalReflectionCount,
-				searchMode: memoryType,
+				knowledgeResults: totalResults,
 				maxSimilarity: maxSimilarity.toFixed(3),
 				averageSimilarity: averageSimilarity.toFixed(3),
 				totalTime: `${totalTime}ms`,

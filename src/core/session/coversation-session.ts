@@ -179,7 +179,7 @@ export class ConversationSession {
 	 *   - memoryMetadata: Custom metadata to attach to memory extraction (merged with session defaults)
 	 *   - contextOverrides: Overrides for context fields passed to memory extraction
 	 *   - historyTracking: Enable/disable history tracking
-	 * @returns The generated assistant response as a string
+	 * @returns An object containing the response and a promise for background operations
 	 */
 	public async run(
 		input: string,
@@ -190,7 +190,7 @@ export class ConversationSession {
 			contextOverrides?: Record<string, any>;
 			historyTracking?: boolean;
 		}
-	): Promise<string> {
+	): Promise<{ response: string; backgroundOperations: Promise<void> }> {
 		// --- Input validation ---
 		if (typeof input !== 'string' || input.trim() === '') {
 			logger.error('ConversationSession.run: input must be a non-empty string');
@@ -249,24 +249,26 @@ export class ConversationSession {
 
 		// PROGRAMMATIC ENFORCEMENT: Run memory extraction asynchronously in background AFTER response is returned
 		// This ensures users see the response immediately without waiting for memory operations
-		setImmediate(() => {
-			logger.debug('Starting background memory operations', { sessionId: this.id });
-			this.enforceMemoryExtraction(input, response)
-				.then(() => {
+		const backgroundOperations = new Promise<void>((resolve) => {
+			setImmediate(async () => {
+				logger.debug('Starting background memory operations', { sessionId: this.id });
+				try {
+					await this.enforceMemoryExtraction(input, response, options);
 					logger.debug('Background memory operations completed successfully', {
 						sessionId: this.id,
 					});
-				})
-				.catch(error => {
+				} catch (error) {
 					logger.debug('Background memory extraction failed', {
 						sessionId: this.id,
 						error: error instanceof Error ? error.message : String(error),
 					});
 					// Silently continue - memory extraction failures shouldn't affect user experience
-				});
+				}
+				resolve();
+			});
 		});
 
-		return response;
+		return { response, backgroundOperations };
 	}
 
 	/**
@@ -463,20 +465,13 @@ export class ConversationSession {
 				}
 			);
 
-			// Step 1: Extract reasoning steps from the interaction
+			// Step 1: Extract reasoning steps from the interaction (only from user input)
 			let extractionResult: any;
-			let reasoningContent = aiResponse;
-			// If using Anthropic extended thinking, extract only the <thinking>...</thinking> content
-			const llmConfig = this.services.stateManager.getLLMConfig(this.id);
-			if (llmConfig.provider?.toLowerCase() === 'anthropic') {
-				reasoningContent = extractReasoningContentBlocks(aiResponse);
-			}
 			try {
 				extractionResult = await this.services.unifiedToolManager.executeTool(
 					'cipher_extract_reasoning_steps',
 					{
 						userInput: userInput,
-						reasoningContent: reasoningContent,
 						options: {
 							extractExplicit: true,
 							extractImplicit: true,

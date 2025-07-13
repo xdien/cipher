@@ -180,102 +180,43 @@ describe('Search Memory Tool', () => {
 		});
 	});
 
-	describe('Reflection-Only Search', () => {
+	describe('Dual Manager Support', () => {
 		beforeEach(() => {
-			// Use dual manager for reflection tests
+			// Use dual manager for knowledge search
 			mockContext.services.vectorStoreManager = mockDualVectorStoreManager;
 		});
 
-		it('should search reflection collection with dual manager', async () => {
+		it('should search knowledge collection with dual manager', async () => {
 			const args = {
 				query: 'debugging patterns',
-				type: 'reflection',
 				top_k: 5,
 			};
 
 			const result = await searchMemoryTool.handler(args, mockContext);
 
 			expect(result.success).toBe(true);
-			expect(result.results).toHaveLength(1);
-			expect(result.results[0].source).toBe('reflection');
-			expect(result.results[0].memoryType).toBe('reflection');
-			expect(result.results[0].stepTypes).toEqual(['thought', 'action']);
-			expect(result.results[0].issueCount).toBe(0);
-			expect(result.metadata.searchMode).toBe('reflection');
-			expect(result.metadata.knowledgeResults).toBe(0);
-			expect(result.metadata.reflectionResults).toBe(1);
-		});
-
-		it('should fail reflection search with single manager', async () => {
-			// Use single manager (should fail)
-			mockContext.services.vectorStoreManager = mockVectorStoreManager;
-
-			const args = {
-				query: 'debugging patterns',
-				type: 'reflection',
-			};
-
-			const result = await searchMemoryTool.handler(args, mockContext);
-
-			expect(result.success).toBe(false);
-		});
-	});
-
-	describe('Both Collections Search', () => {
-		beforeEach(() => {
-			// Use dual manager for both tests
-			mockContext.services.vectorStoreManager = mockDualVectorStoreManager;
-		});
-
-		it('should search both collections and merge results', async () => {
-			const args = {
-				query: 'programming and debugging',
-				type: 'both',
-				top_k: 10,
-			};
-
-			const result = await searchMemoryTool.handler(args, mockContext);
-
-			expect(result.success).toBe(true);
-			expect(result.results).toHaveLength(3); // 2 knowledge + 1 reflection
-			expect(result.metadata.searchMode).toBe('both');
+			expect(result.results).toHaveLength(2); // Only knowledge results
+			expect(result.results[0].source).toBe('knowledge');
+			expect(result.results[0].memoryType).toBe('knowledge');
+			expect(result.results[1].source).toBe('knowledge');
+			expect(result.results[1].memoryType).toBe('knowledge');
+			expect(result.metadata.searchMode).toBe('knowledge');
 			expect(result.metadata.knowledgeResults).toBe(2);
-			expect(result.metadata.reflectionResults).toBe(1);
-
-			// Should be sorted by similarity score (descending)
-			expect(result.results[0].similarity).toBe(0.9); // knowledge_1
-			expect(result.results[1].similarity).toBe(0.85); // reflection_1
-			expect(result.results[2].similarity).toBe(0.7); // knowledge_2
-
-			// Check that sources are correctly identified
-			const knowledgeResults = result.results.filter((r: any) => r.source === 'knowledge');
-			const reflectionResults = result.results.filter((r: any) => r.source === 'reflection');
-			expect(knowledgeResults).toHaveLength(2);
-			expect(reflectionResults).toHaveLength(1);
+			expect(result.metadata.reflectionResults).toBe(0);
 		});
 
-		it('should respect top_k when merging results from both collections', async () => {
-			const args = {
-				query: 'test query',
-				type: 'both',
-				top_k: 2,
-			};
-
-			const result = await searchMemoryTool.handler(args, mockContext);
-
-			expect(result.success).toBe(true);
-			expect(result.results).toHaveLength(2); // Limited to top 2
-			expect(result.results[0].similarity).toBe(0.9); // Highest score
-			expect(result.results[1].similarity).toBe(0.85); // Second highest
-		});
-
-		it('should handle fallback when reflection collection fails', async () => {
-			// Mock reflection store to throw error
-			mockReflectionStore.search = vi.fn().mockRejectedValue(new Error('Reflection unavailable'));
+		it('should fallback to default store when knowledge collection fails', async () => {
+			// Make knowledge collection fail, should fallback to default store
+			mockDualVectorStoreManager.getStore.mockImplementation((type) => {
+				if (type === 'knowledge') {
+					throw new Error('Knowledge collection failed');
+				}
+				// Return the fallback store for calls without parameters
+				return mockKnowledgeStore;
+			});
 
 			const args = {
-				query: 'test query',
-				type: 'both',
+				query: 'sorting algorithms',
 			};
 
 			const result = await searchMemoryTool.handler(args, mockContext);

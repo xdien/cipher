@@ -100,6 +100,7 @@ describe('MilvusBackend', () => {
 			expect(mockMilvusClient.createIndex).toHaveBeenCalledWith({
 				collection_name: 'test_collection',
 				field_name: 'vector',
+				index_name: 'vector_index',
 				index_type: 'AUTOINDEX',
 				metric_type: 'COSINE'
 			});
@@ -119,6 +120,7 @@ describe('MilvusBackend', () => {
 			expect(mockMilvusClient.createIndex).toHaveBeenCalledWith({
 				collection_name: 'test_collection',
 				field_name: 'vector',
+				index_name: 'vector_index',
 				index_type: 'AUTOINDEX',
 				metric_type: 'COSINE'
 			});
@@ -140,6 +142,7 @@ describe('MilvusBackend', () => {
 				index_params: [
 					{
 						field_name: 'vector',
+						index_name: 'vector_index',
 						index_type: 'AUTOINDEX',
 						metric_type: 'COSINE',
 					}

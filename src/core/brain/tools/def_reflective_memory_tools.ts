@@ -78,7 +78,7 @@ export type ReasoningEvaluation = z.infer<typeof ReasoningEvaluationSchema>;
 // Input schemas for tools
 export const extractReasoningInputSchema = z.object({
 	userInput: z.string().min(1),
-	reasoningContent: z.string().min(1),
+	reasoningContent: z.string().optional(), // Made optional since we only extract from userInput
 	options: z
 		.object({
 			extractExplicit: z.boolean().default(true),
@@ -138,14 +138,13 @@ function detectReasoningLoops(steps: ReasoningStep[]): boolean {
 
 async function extractReasoningFromContent(
 	userInput: string,
-	reasoningContent: string,
+	reasoningContent: string, // Keep parameter for backward compatibility but only use userInput
 	options: { extractExplicit?: boolean; extractImplicit?: boolean; includeMetadata?: boolean }
 ): Promise<ReasoningStep[]> {
 	const steps: ReasoningStep[] = [];
 
-	// Combine user input and reasoning content for analysis
-	const combinedContent = `User Input: ${userInput}\n\nReasoning: ${reasoningContent}`;
-	const lines = combinedContent
+	// Only analyze user input since the tool is only called when user input contains reasoning
+	const lines = userInput
 		.split('\n')
 		.map(line => line.trim())
 		.filter(line => line.length > 0);
@@ -251,7 +250,7 @@ async function extractReasoningFromContent(
  */
 async function extractTaskContextFromContent(
 	userInput: string,
-	reasoningContent: string
+	reasoningContent: string // Keep parameter for backward compatibility but only use userInput
 ): Promise<{
 	goal?: string;
 	input?: string;
@@ -259,7 +258,8 @@ async function extractTaskContextFromContent(
 	domain?: string;
 	complexity?: 'low' | 'medium' | 'high';
 }> {
-	const combinedContent = `User Input: ${userInput}\n\nReasoning: ${reasoningContent}`;
+	// Only analyze user input since the tool is only called when user input contains reasoning
+	const content = userInput;
 
 	// Extract goal from user input
 	let goal: string | undefined;
@@ -277,18 +277,18 @@ async function extractTaskContextFromContent(
 	// Determine task type
 	let taskType: string | undefined;
 	if (
-		combinedContent.toLowerCase().includes('function') ||
-		combinedContent.toLowerCase().includes('code')
+		content.toLowerCase().includes('function') ||
+		content.toLowerCase().includes('code')
 	) {
 		taskType = 'code_generation';
 	} else if (
-		combinedContent.toLowerCase().includes('analyze') ||
-		combinedContent.toLowerCase().includes('review')
+		content.toLowerCase().includes('analyze') ||
+		content.toLowerCase().includes('review')
 	) {
 		taskType = 'analysis';
 	} else if (
-		combinedContent.toLowerCase().includes('solve') ||
-		combinedContent.toLowerCase().includes('problem')
+		content.toLowerCase().includes('solve') ||
+		content.toLowerCase().includes('problem')
 	) {
 		taskType = 'problem_solving';
 	}
@@ -296,27 +296,27 @@ async function extractTaskContextFromContent(
 	// Determine domain
 	let domain: string | undefined;
 	if (
-		combinedContent.toLowerCase().includes('javascript') ||
-		combinedContent.toLowerCase().includes('typescript')
+		content.toLowerCase().includes('javascript') ||
+		content.toLowerCase().includes('typescript')
 	) {
 		domain = 'javascript';
-	} else if (combinedContent.toLowerCase().includes('python')) {
+	} else if (content.toLowerCase().includes('python')) {
 		domain = 'python';
 	} else if (
-		combinedContent.toLowerCase().includes('react') ||
-		combinedContent.toLowerCase().includes('component')
+		content.toLowerCase().includes('react') ||
+		content.toLowerCase().includes('component')
 	) {
 		domain = 'frontend';
 	} else if (
-		combinedContent.toLowerCase().includes('server') ||
-		combinedContent.toLowerCase().includes('api')
+		content.toLowerCase().includes('server') ||
+		content.toLowerCase().includes('api')
 	) {
 		domain = 'backend';
 	}
 
 	// Determine complexity
 	let complexity: 'low' | 'medium' | 'high' | undefined;
-	const wordCount = combinedContent.split(' ').length;
+	const wordCount = content.split(' ').length;
 	if (wordCount < 50) {
 		complexity = 'low';
 	} else if (wordCount < 200) {
@@ -485,19 +485,19 @@ export const extractReasoningSteps: InternalTool = {
 	internal: true,
 	agentAccessible: false, // Internal-only: programmatically called when reasoning content is detected
 	description:
-		'Extract reasoning steps from user input and reasoning content. Analyzes both explicit thought markup and implicit reasoning patterns to create structured reasoning traces.',
-	version: '1.0.0',
+		'Extract reasoning steps from user input only. Analyzes both explicit thought markup and implicit reasoning patterns to create structured reasoning traces. Only called when user input contains reasoning content.',
+	version: '1.1.0',
 	parameters: {
 		type: 'object',
 		properties: {
 			userInput: {
 				type: 'string',
-				description: 'The original user input or request',
+				description: 'The original user input or request containing reasoning steps',
 			},
 			reasoningContent: {
 				type: 'string',
 				description:
-					'The reasoning content (not the final output) to analyze for reasoning patterns',
+					'[DEPRECATED] The reasoning content parameter - kept for backward compatibility but not used',
 			},
 			options: {
 				type: 'object',
@@ -521,12 +521,11 @@ export const extractReasoningSteps: InternalTool = {
 				},
 			},
 		},
-		required: ['userInput', 'reasoningContent'],
+		required: ['userInput'],
 	},
 	handler: async (args: any, context?: InternalToolContext) => {
-		logger.debug('Starting reasoning extraction', {
+		logger.debug('Starting reasoning extraction from user input only', {
 			userInputLength: args.userInput?.length || 0,
-			reasoningContentLength: args.reasoningContent?.length || 0,
 			options: args.options,
 		});
 
@@ -537,14 +536,14 @@ export const extractReasoningSteps: InternalTool = {
 			// Extract reasoning steps
 			const steps = await extractReasoningFromContent(
 				input.userInput,
-				input.reasoningContent,
+				input.reasoningContent || '', // Pass empty string if reasoningContent is not provided
 				input.options || {}
 			);
 
 			// Extract task context from user input and reasoning content
 			const taskContext = await extractTaskContextFromContent(
 				input.userInput,
-				input.reasoningContent
+				input.reasoningContent || '' // Pass empty string if reasoningContent is not provided
 			);
 
 			// Create reasoning trace
@@ -553,7 +552,7 @@ export const extractReasoningSteps: InternalTool = {
 				steps,
 				metadata: {
 					extractedAt: new Date().toISOString(),
-					conversationLength: input.userInput.length + input.reasoningContent.length,
+					conversationLength: input.userInput.length, // Only count user input length
 					stepCount: steps.length,
 					hasExplicitMarkup: steps.length > 0 && steps.some(s => s.content.includes(':')),
 					sessionId: context?.sessionId,

@@ -7,11 +7,6 @@ import { Logger, createLogger } from '../../logger/index.js';
 import { LOG_PREFIXES, ERROR_MESSAGES } from '../constants.js';
 import { env } from '../../env.js';
 
-// Helper to convert number ID to string for Milvus
-function numberIdToMilvusId(id: number): string {
-	return id.toString();
-}
-
 /**
  * MilvusBackend Class
  *
@@ -34,9 +29,8 @@ export class MilvusBackend implements VectorStore {
 			{
 				name: 'id',
 				description: 'Primary key',
-				data_type: DataType.VarChar,
+				data_type: DataType.Int64,
 				is_primary_key: true,
-				max_length: 128,
 			},
 			{
 				name: 'vector',
@@ -129,6 +123,7 @@ export class MilvusBackend implements VectorStore {
 					index_params: [
 						{
 							field_name: 'vector',
+							index_name: 'vector_index',
 							index_type: 'AUTOINDEX',
 							metric_type: 'COSINE',
 						}
@@ -183,6 +178,7 @@ export class MilvusBackend implements VectorStore {
 			await this.client.createIndex({
 				collection_name: this.collectionName,
 				field_name: 'vector',
+				index_name: 'vector_index',
 				index_type: 'AUTOINDEX',
 				metric_type: 'COSINE'
 			});
@@ -230,7 +226,7 @@ export class MilvusBackend implements VectorStore {
 		}
 		for (const vector of vectors) this.validateDimension(vector, 'insert');
 		const data = vectors.map((vector, idx) => ({
-			id: numberIdToMilvusId(ids[idx]!),
+			id: ids[idx]!,
 			vector,
 			payload: payloads[idx],
 		}));
@@ -283,7 +279,7 @@ export class MilvusBackend implements VectorStore {
 			const res = await this.client.query({
 				collection_name: this.collectionName,
 				output_fields: ['id', 'vector', 'payload'],
-				filter: `id == "${numberIdToMilvusId(vectorId)}"`,
+				filter: `id == ${vectorId}`,
 			});
 			if (!res.data.length || !res.data[0]) return null;
 			const doc = res.data[0];
@@ -307,7 +303,7 @@ export class MilvusBackend implements VectorStore {
 		try {
 			await this.client.upsert({
 				collection_name: this.collectionName,
-				data: [{ id: numberIdToMilvusId(vectorId), vector, payload }],
+				data: [{ id: vectorId, vector, payload }],
 			});
 			this.logger.debug(`${LOG_PREFIXES.MILVUS} Updated vector ${vectorId}`);
 		} catch (error) {
@@ -322,7 +318,7 @@ export class MilvusBackend implements VectorStore {
 		try {
 			await this.client.deleteEntities({
 				collection_name: this.collectionName,
-				expr: `id == "${numberIdToMilvusId(vectorId)}"`,
+				expr: `id == ${vectorId}`,
 			});
 			this.logger.debug(`${LOG_PREFIXES.MILVUS} Deleted vector ${vectorId}`);
 		} catch (error) {

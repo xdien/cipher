@@ -476,7 +476,10 @@ describe('MemAgent', () => {
 
 			const mockSession = {
 				id: 'test-session',
-				run: vi.fn().mockResolvedValue('Mock response'),
+				run: vi.fn().mockResolvedValue({
+					response: 'Mock response',
+					backgroundOperations: Promise.resolve(),
+				}),
 			};
 			mockServices.sessionManager.getSession.mockResolvedValue(mockSession);
 
