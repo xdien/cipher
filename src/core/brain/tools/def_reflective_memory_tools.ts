@@ -276,20 +276,14 @@ async function extractTaskContextFromContent(
 
 	// Determine task type
 	let taskType: string | undefined;
-	if (
-		content.toLowerCase().includes('function') ||
-		content.toLowerCase().includes('code')
-	) {
+	if (content.toLowerCase().includes('function') || content.toLowerCase().includes('code')) {
 		taskType = 'code_generation';
 	} else if (
 		content.toLowerCase().includes('analyze') ||
 		content.toLowerCase().includes('review')
 	) {
 		taskType = 'analysis';
-	} else if (
-		content.toLowerCase().includes('solve') ||
-		content.toLowerCase().includes('problem')
-	) {
+	} else if (content.toLowerCase().includes('solve') || content.toLowerCase().includes('problem')) {
 		taskType = 'problem_solving';
 	}
 
@@ -307,10 +301,7 @@ async function extractTaskContextFromContent(
 		content.toLowerCase().includes('component')
 	) {
 		domain = 'frontend';
-	} else if (
-		content.toLowerCase().includes('server') ||
-		content.toLowerCase().includes('api')
-	) {
+	} else if (content.toLowerCase().includes('server') || content.toLowerCase().includes('api')) {
 		domain = 'backend';
 	}
 

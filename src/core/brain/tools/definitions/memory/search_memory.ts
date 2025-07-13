@@ -50,7 +50,7 @@ interface MemorySearchResult {
  * This tool enables semantic retrieval from the agent's knowledge memory system.
  * It searches over stored knowledge memories using vector similarity search
  * and returns relevant entries that can inform the current reasoning process.
- * 
+ *
  * NOTE: This tool ONLY searches knowledge memory. For reflection memory, use cipher_search_reasoning_patterns.
  */
 export const searchMemoryTool: InternalTool = {
@@ -174,7 +174,9 @@ export const searchMemoryTool: InternalTool = {
 						knowledgeStore = vectorStoreManager.getStore();
 						usedFallback = true;
 					} catch (fallbackError) {
-						throw new Error(`Knowledge collection failed and fallback to default store also failed: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`);
+						throw new Error(
+							`Knowledge collection failed and fallback to default store also failed: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`
+						);
 					}
 				}
 			} else {
@@ -216,7 +218,7 @@ export const searchMemoryTool: InternalTool = {
 				knowledgeResults: knowledgeResultCount,
 			});
 
-							// Filter, rank, and format knowledge memory results
+			// Filter, rank, and format knowledge memory results
 			const filteredResults = allResults
 				.filter(result => (result.score || 0) >= similarityThreshold)
 				.sort((a, b) => (b.score || 0) - (a.score || 0)) // Sort by similarity score descending
@@ -246,9 +248,11 @@ export const searchMemoryTool: InternalTool = {
 						confidence: knowledgePayload.confidence || 0,
 						reasoning: knowledgePayload.reasoning || 'No reasoning available',
 						event: knowledgePayload.event,
-						domain: knowledgePayload.domain,
+						...(knowledgePayload.domain && { domain: knowledgePayload.domain }),
 						qualitySource: knowledgePayload.qualitySource,
-						sourceSessionId: knowledgePayload.sourceSessionId,
+						...(knowledgePayload.sourceSessionId && {
+							sourceSessionId: knowledgePayload.sourceSessionId,
+						}),
 						...(knowledgePayload.code_pattern && { code_pattern: knowledgePayload.code_pattern }),
 						...(knowledgePayload.old_memory && { old_memory: knowledgePayload.old_memory }),
 					};

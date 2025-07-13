@@ -249,7 +249,7 @@ export class ConversationSession {
 
 		// PROGRAMMATIC ENFORCEMENT: Run memory extraction asynchronously in background AFTER response is returned
 		// This ensures users see the response immediately without waiting for memory operations
-		const backgroundOperations = new Promise<void>((resolve) => {
+		const backgroundOperations = new Promise<void>(resolve => {
 			setImmediate(async () => {
 				logger.debug('Starting background memory operations', { sessionId: this.id });
 				try {

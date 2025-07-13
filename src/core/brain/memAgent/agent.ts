@@ -170,10 +170,17 @@ export class MemAgent {
 					(await this.sessionManager.createSession(this.currentActiveSessionId));
 			}
 			logger.debug(`MemAgent.run: using session ${session.id}`);
-			const { response, backgroundOperations } = await session.run(userInput, imageDataInput, stream, {
-				...(options?.memoryMetadata !== undefined && { memoryMetadata: options.memoryMetadata }),
-				...(options?.sessionOptions !== undefined && { contextOverrides: options.sessionOptions }),
-			});
+			const { response, backgroundOperations } = await session.run(
+				userInput,
+				imageDataInput,
+				stream,
+				{
+					...(options?.memoryMetadata !== undefined && { memoryMetadata: options.memoryMetadata }),
+					...(options?.sessionOptions !== undefined && {
+						contextOverrides: options.sessionOptions,
+					}),
+				}
+			);
 
 			const finalResponse = response && response.trim() !== '' ? response : null;
 			return { response: finalResponse, backgroundOperations };

@@ -216,9 +216,14 @@ async function handleAskCipherTool(agent: MemAgent, args: any): Promise<any> {
 
 	try {
 		// Run the agent with the provided message and session
-					const { response, backgroundOperations } = await agent.run(message, undefined, session_id, stream);
-			// In MCP mode, always wait for background operations to complete before returning response
-			await backgroundOperations;
+		const { response, backgroundOperations } = await agent.run(
+			message,
+			undefined,
+			session_id,
+			stream
+		);
+		// In MCP mode, always wait for background operations to complete before returning response
+		await backgroundOperations;
 
 		return {
 			content: [

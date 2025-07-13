@@ -158,34 +158,34 @@ describe('Tool Definitions', () => {
 				expect(result.failed.length).toBe(0);
 			}
 
-					// Verify memory search tool is available (searches knowledge memory only)
-		const memorySearchTool = manager.getTool('cipher_memory_search');
-		expect(memorySearchTool).toBeDefined();
-		if (memorySearchTool) {
-			expect(memorySearchTool.parameters.properties.query).toBeDefined();
-			expect(memorySearchTool.parameters.properties.top_k).toBeDefined();
-			expect(memorySearchTool.parameters.properties.similarity_threshold).toBeDefined();
-			// Verify type parameter is removed (knowledge-only search)
-			expect(memorySearchTool.parameters.properties.type).toBeUndefined();
-		}
+			// Verify memory search tool is available (searches knowledge memory only)
+			const memorySearchTool = manager.getTool('cipher_memory_search');
+			expect(memorySearchTool).toBeDefined();
+			if (memorySearchTool) {
+				expect(memorySearchTool.parameters.properties.query).toBeDefined();
+				expect(memorySearchTool.parameters.properties.top_k).toBeDefined();
+				expect(memorySearchTool.parameters.properties.similarity_threshold).toBeDefined();
+				// Verify type parameter is removed (knowledge-only search)
+				expect(memorySearchTool.parameters.properties.type).toBeUndefined();
+			}
 		});
 
-			it('should validate memory search tool parameters', async () => {
-		const tools = await getAllToolDefinitions();
-		// Debug: Log available tool names
-		console.log('Available tool names:', Object.keys(tools));
-		const memorySearchTool = tools['cipher_memory_search'];
+		it('should validate memory search tool parameters', async () => {
+			const tools = await getAllToolDefinitions();
+			// Debug: Log available tool names
+			console.log('Available tool names:', Object.keys(tools));
+			const memorySearchTool = tools['cipher_memory_search'];
 
-		expect(memorySearchTool).toBeDefined();
-		if (memorySearchTool) {
-			expect(memorySearchTool.parameters.properties.query).toBeDefined();
-			expect(memorySearchTool.parameters.properties.top_k).toBeDefined();
-			expect(memorySearchTool.parameters.properties.similarity_threshold).toBeDefined();
-			expect(memorySearchTool.parameters.properties.include_metadata).toBeDefined();
-			// Verify type parameter is removed (knowledge-only search)
-			expect(memorySearchTool.parameters.properties.type).toBeUndefined();
-		}
-	});
+			expect(memorySearchTool).toBeDefined();
+			if (memorySearchTool) {
+				expect(memorySearchTool.parameters.properties.query).toBeDefined();
+				expect(memorySearchTool.parameters.properties.top_k).toBeDefined();
+				expect(memorySearchTool.parameters.properties.similarity_threshold).toBeDefined();
+				expect(memorySearchTool.parameters.properties.include_metadata).toBeDefined();
+				// Verify type parameter is removed (knowledge-only search)
+				expect(memorySearchTool.parameters.properties.type).toBeUndefined();
+			}
+		});
 
 		it('should handle registration failures gracefully', async () => {
 			// Create a mock manager that always fails registration

@@ -27,9 +27,15 @@ export async function startHeadlessCli(agent: MemAgent, input: string): Promise<
 			return;
 		}
 		console.log(chalk.gray('🤔 Processing (with metadata)...'));
-		const { response, backgroundOperations } = await agent.run(message, undefined, undefined, false, {
-			memoryMetadata: metadata,
-		});
+		const { response, backgroundOperations } = await agent.run(
+			message,
+			undefined,
+			undefined,
+			false,
+			{
+				memoryMetadata: metadata,
+			}
+		);
 		if (response) {
 			logger.displayAIResponse(response);
 		} else {
@@ -37,17 +43,17 @@ export async function startHeadlessCli(agent: MemAgent, input: string): Promise<
 		}
 		// In headless mode, always wait for background operations to complete before exiting
 		await backgroundOperations;
-			} else {
-			console.log(chalk.gray('🤔 Processing...'));
-			const { response, backgroundOperations } = await agent.run(input);
-			if (response) {
-				logger.displayAIResponse(response);
-			} else {
-				console.log(chalk.gray('No response received.'));
-			}
-			// In headless mode, always wait for background operations to complete before exiting
-			await backgroundOperations;
+	} else {
+		console.log(chalk.gray('🤔 Processing...'));
+		const { response, backgroundOperations } = await agent.run(input);
+		if (response) {
+			logger.displayAIResponse(response);
+		} else {
+			console.log(chalk.gray('No response received.'));
 		}
+		// In headless mode, always wait for background operations to complete before exiting
+		await backgroundOperations;
+	}
 }
 
 /**
@@ -109,9 +115,15 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 					return;
 				}
 				console.log(chalk.gray('🤔 Thinking (with metadata)...'));
-				const { response, backgroundOperations } = await agent.run(message, undefined, undefined, false, {
-					memoryMetadata: metadata,
-				});
+				const { response, backgroundOperations } = await agent.run(
+					message,
+					undefined,
+					undefined,
+					false,
+					{
+						memoryMetadata: metadata,
+					}
+				);
 				if (response) {
 					logger.displayAIResponse(response);
 				} else {

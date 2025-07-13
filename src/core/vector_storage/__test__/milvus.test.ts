@@ -68,8 +68,8 @@ describe('MilvusBackend', () => {
 	describe('Connection Management', () => {
 		it('should connect successfully when collection exists', async () => {
 			mockMilvusClient.showCollections.mockResolvedValue({ data: [{ name: 'test_collection' }] });
-			mockMilvusClient.describeIndex.mockResolvedValue({ 
-				index_descriptions: [{ index_name: 'vector_index' }] 
+			mockMilvusClient.describeIndex.mockResolvedValue({
+				index_descriptions: [{ index_name: 'vector_index' }],
 			});
 			mockMilvusClient.loadCollection.mockResolvedValue({});
 
@@ -79,7 +79,7 @@ describe('MilvusBackend', () => {
 			expect(mockMilvusClient.showCollections).toHaveBeenCalled();
 			expect(mockMilvusClient.describeIndex).toHaveBeenCalledWith({
 				collection_name: 'test_collection',
-				field_name: 'vector'
+				field_name: 'vector',
 			});
 			expect(mockMilvusClient.loadCollection).toHaveBeenCalled();
 		});
@@ -95,14 +95,14 @@ describe('MilvusBackend', () => {
 			expect(mockMilvusClient.showCollections).toHaveBeenCalled();
 			expect(mockMilvusClient.describeIndex).toHaveBeenCalledWith({
 				collection_name: 'test_collection',
-				field_name: 'vector'
+				field_name: 'vector',
 			});
 			expect(mockMilvusClient.createIndex).toHaveBeenCalledWith({
 				collection_name: 'test_collection',
 				field_name: 'vector',
 				index_name: 'vector_index',
 				index_type: 'AUTOINDEX',
-				metric_type: 'COSINE'
+				metric_type: 'COSINE',
 			});
 			expect(mockMilvusClient.loadCollection).toHaveBeenCalled();
 		});
@@ -122,7 +122,7 @@ describe('MilvusBackend', () => {
 				field_name: 'vector',
 				index_name: 'vector_index',
 				index_type: 'AUTOINDEX',
-				metric_type: 'COSINE'
+				metric_type: 'COSINE',
 			});
 			expect(mockMilvusClient.loadCollection).toHaveBeenCalled();
 		});
@@ -145,8 +145,8 @@ describe('MilvusBackend', () => {
 						index_name: 'vector_index',
 						index_type: 'AUTOINDEX',
 						metric_type: 'COSINE',
-					}
-				]
+					},
+				],
 			});
 			// createIndex should NOT be called separately anymore
 			expect(mockMilvusClient.createIndex).not.toHaveBeenCalled();

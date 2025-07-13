@@ -207,7 +207,7 @@ describe('Search Memory Tool', () => {
 
 		it('should fallback to default store when knowledge collection fails', async () => {
 			// Make knowledge collection fail, should fallback to default store
-			mockDualVectorStoreManager.getStore.mockImplementation((type) => {
+			mockDualVectorStoreManager.getStore.mockImplementation((type: string) => {
 				if (type === 'knowledge') {
 					throw new Error('Knowledge collection failed');
 				}

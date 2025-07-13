@@ -634,7 +634,11 @@ describe('ConversationSession', () => {
 			expect(fulfilled).toHaveLength(2);
 			expect(rejected).toHaveLength(1);
 
-			const successValues = fulfilled.map(r => (r as PromiseFulfilledResult<{ response: string; backgroundOperations: Promise<void> }>).value.response);
+			const successValues = fulfilled.map(
+				r =>
+					(r as PromiseFulfilledResult<{ response: string; backgroundOperations: Promise<void> }>)
+						.value.response
+			);
 			expect(successValues).toContain('Success 1');
 			expect(successValues).toContain('Success 2');
 
