@@ -3,7 +3,6 @@ import * as readline from 'readline';
 import chalk from 'chalk';
 import { executeCommand } from './commands.js';
 import { commandParser } from './parser.js';
-import type { AgentCard } from '../mcp/mcp_handler.js';
 
 /**
  * Start headless CLI mode for one-shot command execution
@@ -23,7 +22,7 @@ export async function startHeadlessCli(agent: MemAgent, input: string): Promise<
 			if (metaStr) {
 				metadata = parseMetaString(metaStr);
 			}
-		} catch (err) {
+		} catch (_err) {
 			console.log(chalk.red('❌ Invalid metadata format. Use key=value,key2=value2 ...'));
 			return;
 		}
@@ -100,7 +99,7 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 					if (metaStr) {
 						metadata = parseMetaString(metaStr);
 					}
-				} catch (err) {
+				} catch (_err) {
 					console.log(chalk.red('❌ Invalid metadata format. Use key=value,key2=value2 ...'));
 					rl.prompt();
 					return;

@@ -49,14 +49,24 @@ describe('Tool Definitions', () => {
 				it('should have valid parameter schema', () => {
 					expect(extractAndOperateMemoryTool.parameters.type).toBe('object');
 					expect(extractAndOperateMemoryTool.parameters.properties?.interaction).toBeDefined();
-					
+
 					// Check that interaction uses oneOf for string or array (OpenAI-compliant)
-					expect(extractAndOperateMemoryTool.parameters.properties?.interaction?.oneOf).toBeDefined();
-					expect(extractAndOperateMemoryTool.parameters.properties?.interaction?.oneOf).toHaveLength(2);
-					expect(extractAndOperateMemoryTool.parameters.properties?.interaction?.oneOf[0].type).toBe('string');
-					expect(extractAndOperateMemoryTool.parameters.properties?.interaction?.oneOf[1].type).toBe('array');
-					expect(extractAndOperateMemoryTool.parameters.properties?.interaction?.oneOf[1].items).toBeDefined();
-					
+					expect(
+						extractAndOperateMemoryTool.parameters.properties?.interaction?.oneOf
+					).toBeDefined();
+					expect(
+						extractAndOperateMemoryTool.parameters.properties?.interaction?.oneOf
+					).toHaveLength(2);
+					expect(
+						extractAndOperateMemoryTool.parameters.properties?.interaction?.oneOf[0].type
+					).toBe('string');
+					expect(
+						extractAndOperateMemoryTool.parameters.properties?.interaction?.oneOf[1].type
+					).toBe('array');
+					expect(
+						extractAndOperateMemoryTool.parameters.properties?.interaction?.oneOf[1].items
+					).toBeDefined();
+
 					expect(extractAndOperateMemoryTool.parameters.required).toContain('interaction');
 				});
 
