@@ -115,19 +115,16 @@ describe('Phase 3: Service Integration Tests', () => {
 
 	describe('Extract and Store Workflow', () => {
 		it('should extract reasoning and store in vector storage', async () => {
-			const userInput = 'I need to solve this math problem: 2 + 2.';
-			const reasoningContent = `
+			const userInput = `I need to solve this math problem: 2 + 2.
 Thought: I need to solve this math problem: 2 + 2.
 Action: I'll add the numbers together.
 Observation: 2 + 2 = 4.
-Conclusion: The answer is 4.
-			`;
+Conclusion: The answer is 4.`;
 
 			const result = await toolManager.executeTool(
 				'extract_reasoning_steps',
 				{
 					userInput,
-					reasoningContent,
 					options: { includeMetadata: true },
 				},
 				{
@@ -145,12 +142,11 @@ Conclusion: The answer is 4.
 			// Mock storage failure
 			mockVectorStoreManager.storeInCollection.mockRejectedValue(new Error('Storage failed'));
 
-			const userInput = 'Simple test.';
-			const reasoningContent = 'Thought: Simple test.';
+			const userInput = 'Simple test.\nThought: Simple test.';
 
 			const result = await toolManager.executeTool(
 				'extract_reasoning_steps',
-				{ userInput, reasoningContent },
+				{ userInput },
 				{ services: { vectorStoreManager: mockVectorStoreManager } }
 			);
 

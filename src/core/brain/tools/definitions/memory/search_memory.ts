@@ -235,8 +235,8 @@ export const searchMemoryTool: InternalTool = {
 						timestamp: payload.timestamp || new Date().toISOString(),
 						similarity: result.score || 0,
 						version: payload.version || 2, // All data is V2 after cleanup
-						source: 'knowledge',
-						memoryType: 'knowledge',
+						source: 'knowledge' as const,
+						memoryType: 'knowledge' as const,
 					};
 
 					// Add knowledge-specific fields

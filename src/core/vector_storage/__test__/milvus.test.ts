@@ -200,8 +200,8 @@ describe('MilvusBackend', () => {
 			expect(mockMilvusClient.insert).toHaveBeenCalledWith({
 				collection_name: 'test_collection',
 				data: [
-					{ id: '1', vector: [1, 2, 3], payload: { title: 'First' } },
-					{ id: '2', vector: [4, 5, 6], payload: { title: 'Second' } },
+					{ id: 1, vector: [1, 2, 3], payload: { title: 'First' } },
+					{ id: 2, vector: [4, 5, 6], payload: { title: 'Second' } },
 				],
 			});
 		});
@@ -230,7 +230,7 @@ describe('MilvusBackend', () => {
 			await backend.update(1, [1, 2, 3], { title: 'Updated' });
 			expect(mockMilvusClient.upsert).toHaveBeenCalledWith({
 				collection_name: 'test_collection',
-				data: [{ id: '1', vector: [1, 2, 3], payload: { title: 'Updated' } }],
+				data: [{ id: 1, vector: [1, 2, 3], payload: { title: 'Updated' } }],
 			});
 		});
 
@@ -239,7 +239,7 @@ describe('MilvusBackend', () => {
 			await backend.delete(1);
 			expect(mockMilvusClient.deleteEntities).toHaveBeenCalledWith({
 				collection_name: 'test_collection',
-				expr: 'id == "1"',
+				expr: 'id == 1',
 			});
 		});
 
