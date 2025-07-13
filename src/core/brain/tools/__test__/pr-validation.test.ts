@@ -355,7 +355,7 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 		it('should work with real tool execution flow using new tools', async () => {
 			// 1. Get all available tools (current implementation)
 			const allTools = await unifiedToolManager.getAllTools();
-			
+
 			// Check based on environment setting
 			const { env } = await import('../../../env.js');
 			if (env.KNOWLEDGE_GRAPH_ENABLED) {

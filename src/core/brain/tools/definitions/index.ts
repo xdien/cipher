@@ -28,7 +28,9 @@ export async function getAllToolDefinitions(): Promise<InternalToolSet> {
 		let knowledgeGraphTools: InternalToolSet = {};
 		if (env.KNOWLEDGE_GRAPH_ENABLED) {
 			logger.debug('Knowledge graph enabled, loading knowledge graph tools');
-			knowledgeGraphTools = await import('./knowledge_graph/index.js').then(m => m.getKnowledgeGraphTools());
+			knowledgeGraphTools = await import('./knowledge_graph/index.js').then(m =>
+				m.getKnowledgeGraphTools()
+			);
 		} else {
 			logger.debug('Knowledge graph disabled, skipping knowledge graph tools');
 		}

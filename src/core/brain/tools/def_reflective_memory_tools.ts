@@ -822,7 +822,12 @@ export const searchReasoningPatterns: InternalTool = {
 			let usedMock = false;
 			let fallback = false;
 
-			if (_context && _context.services && _context.services.vectorStoreManager && _context.services.embeddingManager) {
+			if (
+				_context &&
+				_context.services &&
+				_context.services.vectorStoreManager &&
+				_context.services.embeddingManager
+			) {
 				try {
 					// Get embedder for generating query embeddings
 					const embedder = _context.services.embeddingManager.getEmbedder('default');
@@ -837,9 +842,11 @@ export const searchReasoningPatterns: InternalTool = {
 						});
 
 						const queryEmbedding = await embedder.embed(input.query);
-						
+
 						logger.debug('ReasoningPatternSearch: Embedding generated successfully', {
-							embeddingDimensions: Array.isArray(queryEmbedding) ? queryEmbedding.length : 'unknown',
+							embeddingDimensions: Array.isArray(queryEmbedding)
+								? queryEmbedding.length
+								: 'unknown',
 						});
 
 						// Check if we have a DualCollectionVectorManager
@@ -895,35 +902,37 @@ export const searchReasoningPatterns: InternalTool = {
 			}
 
 			// Filter patterns based on quality and context
-			const filteredPatterns = patterns.filter((pattern: any) => {
-				// Extract quality score from payload (same logic as memory search)
-				const rawPayload = pattern.payload || {};
-				const qualityScore = rawPayload.evaluation?.qualityScore || rawPayload.qualityScore;
-				
-				// Apply quality score filter (relaxed for better recall)
-				if (
-					qualityScore !== undefined &&
-					qualityScore < (input.options?.minQualityScore || 0.3)
-				) {
-					logger.debug('ReasoningPatternSearch: Filtered out pattern due to low quality score', {
-						patternId: pattern.id,
-						qualityScore,
-						threshold: input.options?.minQualityScore || 0.3,
-					});
-					return false;
-				}
+			const filteredPatterns = patterns
+				.filter((pattern: any) => {
+					// Extract quality score from payload (same logic as memory search)
+					const rawPayload = pattern.payload || {};
+					const qualityScore = rawPayload.evaluation?.qualityScore || rawPayload.qualityScore;
 
-				// Note: Context filtering removed since we simplified the payload structure
-				// to focus only on reasoning steps and evaluation
+					// Apply quality score filter (relaxed for better recall)
+					if (
+						qualityScore !== undefined &&
+						qualityScore < (input.options?.minQualityScore || 0.3)
+					) {
+						logger.debug('ReasoningPatternSearch: Filtered out pattern due to low quality score', {
+							patternId: pattern.id,
+							qualityScore,
+							threshold: input.options?.minQualityScore || 0.3,
+						});
+						return false;
+					}
 
-				return true;
-			}).map((pattern: any) => {
-				const rawPayload = pattern.payload || {};
-				return {
-					...pattern,
-					context: rawPayload.context || '',
-				};
-			});
+					// Note: Context filtering removed since we simplified the payload structure
+					// to focus only on reasoning steps and evaluation
+
+					return true;
+				})
+				.map((pattern: any) => {
+					const rawPayload = pattern.payload || {};
+					return {
+						...pattern,
+						context: rawPayload.context || '',
+					};
+				});
 
 			logger.debug('ReasoningPatternSearch: Search completed', {
 				query: input.query,

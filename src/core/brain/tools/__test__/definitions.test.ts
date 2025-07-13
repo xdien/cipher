@@ -202,7 +202,7 @@ describe('Tool Definitions', () => {
 			// Check based on environment setting
 			const { env } = await import('../../../env.js');
 			const expectedTotal = env.KNOWLEDGE_GRAPH_ENABLED ? 17 : 6;
-			
+
 			expect(result.total).toBe(expectedTotal);
 			expect(result.registered.length).toBe(0);
 			expect(result.failed.length).toBe(expectedTotal);

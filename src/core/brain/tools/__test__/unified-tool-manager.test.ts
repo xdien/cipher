@@ -202,7 +202,7 @@ describe('UnifiedToolManager', () => {
 			const formattedTools = await unifiedManager.getToolsForProvider('openai');
 
 			expect(Array.isArray(formattedTools)).toBe(true);
-			
+
 			// Check based on environment setting
 			const { env } = await import('../../../env.js');
 			if (env.KNOWLEDGE_GRAPH_ENABLED) {
@@ -226,7 +226,7 @@ describe('UnifiedToolManager', () => {
 			const formattedTools = await unifiedManager.getToolsForProvider('anthropic');
 
 			expect(Array.isArray(formattedTools)).toBe(true);
-			
+
 			// Check based on environment setting
 			const { env } = await import('../../../env.js');
 			if (env.KNOWLEDGE_GRAPH_ENABLED) {
@@ -248,7 +248,7 @@ describe('UnifiedToolManager', () => {
 			const formattedTools = await unifiedManager.getToolsForProvider('openrouter');
 
 			expect(Array.isArray(formattedTools)).toBe(true);
-			
+
 			// Check based on environment setting
 			const { env } = await import('../../../env.js');
 			if (env.KNOWLEDGE_GRAPH_ENABLED) {
