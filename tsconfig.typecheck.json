@@ -9,16 +9,7 @@
 		"noImplicitOverride": true,
 		"exactOptionalPropertyTypes": true,
 		"skipLibCheck": true
-		},
-    "include": [
-			"src/core/**/*",
-			"src/app/**/*", 
-			"**/*.test.ts", 
-			"**/*.spec.ts"
-		],
-    "exclude": [
-			"node_modules",
-			"dist",
-			"**/*.d.ts"
-		]
-} 
+	},
+	"include": ["src/core/**/*", "src/app/**/*", "**/*.test.ts", "**/*.spec.ts"],
+	"exclude": ["node_modules", "dist", "**/*.d.ts"]
+}

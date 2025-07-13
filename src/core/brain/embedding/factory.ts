@@ -13,7 +13,6 @@ import {
 	parseEmbeddingConfigFromEnv,
 	validateEmbeddingConfig,
 	type OpenAIEmbeddingConfig as ZodOpenAIEmbeddingConfig,
-	type EmbeddingConfig as ZodEmbeddingConfig,
 } from './config.js';
 import {
 	type Embedder,

@@ -10,10 +10,7 @@ import {
 	InternalTool,
 	InternalToolSet,
 	InternalToolCategory,
-	ToolRegistrationResult,
-	INTERNAL_TOOL_PREFIX,
 	createInternalToolName,
-	isInternalToolName,
 } from './types.js';
 
 /**
@@ -309,7 +306,7 @@ export class InternalToolRegistry {
 		}
 
 		// Tool name should not conflict with MCP naming conventions
-		if (tool.name.includes('.') && !tool.name.startsWith(INTERNAL_TOOL_PREFIX)) {
+		if (tool.name.includes('.') && !tool.name.startsWith('cipher_')) {
 			return { valid: false, error: 'Tool names with dots should start with cipher_ prefix' };
 		}
 

@@ -58,7 +58,7 @@ export function createContextManager(
 		// Get the appropriate formatter for the provider
 		const formatter = getFormatter(provider);
 		// Log successful creation
-		logger.info('Created context manager', {
+		logger.debug('Created context manager', {
 			provider: provider.toLowerCase(),
 			model: model.toLowerCase(),
 			formatterType: formatter.constructor.name,

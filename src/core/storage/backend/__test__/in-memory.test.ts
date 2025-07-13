@@ -5,7 +5,7 @@
  * Verifies both CacheBackend and DatabaseBackend functionality.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { InMemoryBackend } from '../in-memory.js';
 import { StorageError } from '../types.js';
 import { BACKEND_TYPES } from '../../constants.js';

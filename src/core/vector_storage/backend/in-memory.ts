@@ -20,7 +20,7 @@
 
 import type { VectorStore } from './vector-store.js';
 import type { SearchFilters, VectorStoreResult, InMemoryBackendConfig } from './types.js';
-import { VectorStoreError, VectorDimensionError, CollectionNotFoundError } from './types.js';
+import { VectorStoreError, VectorDimensionError } from './types.js';
 import { Logger, createLogger } from '../../logger/index.js';
 import { LOG_PREFIXES, DEFAULTS, ERROR_MESSAGES } from '../constants.js';
 
@@ -72,7 +72,7 @@ export class InMemoryBackend implements VectorStore {
 			level: process.env.LOG_LEVEL || 'info',
 		});
 
-		this.logger.info(`${LOG_PREFIXES.MEMORY} Initialized`, {
+		this.logger.debug(`${LOG_PREFIXES.MEMORY} Initialized`, {
 			collection: this.collectionName,
 			dimension: this.dimension,
 			maxVectors: this.maxVectors,
@@ -228,7 +228,7 @@ export class InMemoryBackend implements VectorStore {
 			});
 		}
 
-		this.logger.info(`${LOG_PREFIXES.INDEX} Inserted ${vectors.length} vectors`);
+		this.logger.debug(`${LOG_PREFIXES.INDEX} Inserted ${vectors.length} vectors`);
 	}
 
 	async search(
@@ -268,7 +268,7 @@ export class InMemoryBackend implements VectorStore {
 			score,
 		}));
 
-		this.logger.info(`${LOG_PREFIXES.SEARCH} Found ${formattedResults.length} results`);
+		this.logger.debug(`${LOG_PREFIXES.SEARCH} Found ${formattedResults.length} results`);
 
 		return formattedResults;
 	}
@@ -308,7 +308,7 @@ export class InMemoryBackend implements VectorStore {
 			payload: this.deepClone(payload),
 		});
 
-		this.logger.info(`${LOG_PREFIXES.BACKEND} Updated vector ${vectorId}`);
+		this.logger.debug(`${LOG_PREFIXES.BACKEND} Updated vector ${vectorId}`);
 	}
 
 	async delete(vectorId: number): Promise<void> {
@@ -322,7 +322,7 @@ export class InMemoryBackend implements VectorStore {
 		}
 
 		this.vectors.delete(vectorId);
-		this.logger.info(`${LOG_PREFIXES.BACKEND} Deleted vector ${vectorId}`);
+		this.logger.debug(`${LOG_PREFIXES.BACKEND} Deleted vector ${vectorId}`);
 	}
 
 	async deleteCollection(): Promise<void> {
@@ -373,7 +373,7 @@ export class InMemoryBackend implements VectorStore {
 
 		// In-memory doesn't need actual connection
 		this.connected = true;
-		this.logger.info(`${LOG_PREFIXES.MEMORY} Connected (in-memory)`);
+		this.logger.debug(`${LOG_PREFIXES.MEMORY} Connected (in-memory)`);
 	}
 
 	async disconnect(): Promise<void> {

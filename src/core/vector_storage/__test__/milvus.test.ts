@@ -25,6 +25,7 @@ const mockMilvusClient = {
 	query: vi.fn(),
 	search: vi.fn(),
 	deleteEntities: vi.fn(),
+	describeIndex: vi.fn(),
 };
 
 vi.mock('@zilliz/milvus2-sdk-node', () => ({
@@ -67,18 +68,68 @@ describe('MilvusBackend', () => {
 	describe('Connection Management', () => {
 		it('should connect successfully when collection exists', async () => {
 			mockMilvusClient.showCollections.mockResolvedValue({ data: [{ name: 'test_collection' }] });
+			mockMilvusClient.describeIndex.mockResolvedValue({
+				index_descriptions: [{ index_name: 'vector_index' }],
+			});
 			mockMilvusClient.loadCollection.mockResolvedValue({});
 
 			expect(backend.isConnected()).toBe(false);
 			await backend.connect();
 			expect(backend.isConnected()).toBe(true);
 			expect(mockMilvusClient.showCollections).toHaveBeenCalled();
+			expect(mockMilvusClient.describeIndex).toHaveBeenCalledWith({
+				collection_name: 'test_collection',
+				field_name: 'vector',
+			});
+			expect(mockMilvusClient.loadCollection).toHaveBeenCalled();
+		});
+
+		it('should create missing indexes for existing collection', async () => {
+			mockMilvusClient.showCollections.mockResolvedValue({ data: [{ name: 'test_collection' }] });
+			mockMilvusClient.describeIndex.mockResolvedValue({ index_descriptions: [] });
+			mockMilvusClient.createIndex.mockResolvedValue({});
+			mockMilvusClient.loadCollection.mockResolvedValue({});
+
+			await backend.connect();
+
+			expect(mockMilvusClient.showCollections).toHaveBeenCalled();
+			expect(mockMilvusClient.describeIndex).toHaveBeenCalledWith({
+				collection_name: 'test_collection',
+				field_name: 'vector',
+			});
+			expect(mockMilvusClient.createIndex).toHaveBeenCalledWith({
+				collection_name: 'test_collection',
+				field_name: 'vector',
+				index_name: 'vector_index',
+				index_type: 'AUTOINDEX',
+				metric_type: 'COSINE',
+			});
+			expect(mockMilvusClient.loadCollection).toHaveBeenCalled();
+		});
+
+		it('should handle describeIndex error by creating missing indexes', async () => {
+			mockMilvusClient.showCollections.mockResolvedValue({ data: [{ name: 'test_collection' }] });
+			mockMilvusClient.describeIndex.mockRejectedValue(new Error('Index not found'));
+			mockMilvusClient.createIndex.mockResolvedValue({});
+			mockMilvusClient.loadCollection.mockResolvedValue({});
+
+			await backend.connect();
+
+			expect(mockMilvusClient.showCollections).toHaveBeenCalled();
+			expect(mockMilvusClient.describeIndex).toHaveBeenCalled();
+			expect(mockMilvusClient.createIndex).toHaveBeenCalledWith({
+				collection_name: 'test_collection',
+				field_name: 'vector',
+				index_name: 'vector_index',
+				index_type: 'AUTOINDEX',
+				metric_type: 'COSINE',
+			});
+			expect(mockMilvusClient.loadCollection).toHaveBeenCalled();
 		});
 
 		it('should create collection if it does not exist', async () => {
 			mockMilvusClient.showCollections.mockResolvedValue({ data: [] });
 			mockMilvusClient.createCollection.mockResolvedValue({});
-			mockMilvusClient.createIndex.mockResolvedValue({});
 			mockMilvusClient.loadCollection.mockResolvedValue({});
 
 			await backend.connect();
@@ -87,8 +138,19 @@ describe('MilvusBackend', () => {
 			expect(mockMilvusClient.createCollection).toHaveBeenCalledWith({
 				collection_name: 'test_collection',
 				fields: expect.any(Array),
+				// Expect index parameters to be included during collection creation
+				index_params: [
+					{
+						field_name: 'vector',
+						index_name: 'vector_index',
+						index_type: 'AUTOINDEX',
+						metric_type: 'COSINE',
+					},
+				],
 			});
-			expect(mockMilvusClient.createIndex).toHaveBeenCalled();
+			// createIndex should NOT be called separately anymore
+			expect(mockMilvusClient.createIndex).not.toHaveBeenCalled();
+			expect(mockMilvusClient.loadCollection).toHaveBeenCalled();
 		});
 
 		it('should handle connection failures', async () => {
@@ -138,8 +200,8 @@ describe('MilvusBackend', () => {
 			expect(mockMilvusClient.insert).toHaveBeenCalledWith({
 				collection_name: 'test_collection',
 				data: [
-					{ id: '1', vector: [1, 2, 3], payload: { title: 'First' } },
-					{ id: '2', vector: [4, 5, 6], payload: { title: 'Second' } },
+					{ id: 1, vector: [1, 2, 3], payload: { title: 'First' } },
+					{ id: 2, vector: [4, 5, 6], payload: { title: 'Second' } },
 				],
 			});
 		});
@@ -150,7 +212,7 @@ describe('MilvusBackend', () => {
 			});
 			const result = await backend.get(1);
 			expect(result).toEqual({
-				id: '1',
+				id: 1,
 				vector: [1, 2, 3],
 				payload: { title: 'Test' },
 				score: 1.0,
@@ -168,7 +230,7 @@ describe('MilvusBackend', () => {
 			await backend.update(1, [1, 2, 3], { title: 'Updated' });
 			expect(mockMilvusClient.upsert).toHaveBeenCalledWith({
 				collection_name: 'test_collection',
-				data: [{ id: '1', vector: [1, 2, 3], payload: { title: 'Updated' } }],
+				data: [{ id: 1, vector: [1, 2, 3], payload: { title: 'Updated' } }],
 			});
 		});
 
@@ -177,7 +239,7 @@ describe('MilvusBackend', () => {
 			await backend.delete(1);
 			expect(mockMilvusClient.deleteEntities).toHaveBeenCalledWith({
 				collection_name: 'test_collection',
-				expr: 'id == "1"',
+				expr: 'id == 1',
 			});
 		});
 

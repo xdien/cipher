@@ -6,7 +6,6 @@
  */
 
 import { InternalTool, InternalToolContext } from '../../types.js';
-import { logger } from '../../../../logger/index.js';
 import type { GraphQuery } from '../../../../knowledge_graph/backend/types.js';
 
 /**

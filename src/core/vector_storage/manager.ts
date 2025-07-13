@@ -106,7 +106,8 @@ export class VectorStoreManager {
 			level: process.env.LOG_LEVEL || 'info',
 		});
 
-		this.logger.info(`${LOG_PREFIXES.MANAGER} Initialized with configuration`, {
+		// Use debug level to reduce redundant logging when used in dual collection setup
+		this.logger.debug(`${LOG_PREFIXES.MANAGER} Initialized with configuration`, {
 			type: this.config.type,
 			collection: this.config.collectionName,
 			dimension: this.config.dimension,
@@ -182,8 +183,8 @@ export class VectorStoreManager {
 		}
 
 		this.connectionAttempts++;
-		this.logger.info(
-			`${LOG_PREFIXES.MANAGER} Starting connection attempt ${this.connectionAttempts}`
+		this.logger.debug(
+			`${LOG_PREFIXES.MANAGER} Starting connection attempt ${this.connectionAttempts} for ${this.config.collectionName}`
 		);
 
 		try {
@@ -194,7 +195,7 @@ export class VectorStoreManager {
 				await this.store.connect();
 				this.usedFallback = false; // Not a fallback if primary backend succeeded
 
-				this.logger.info(`${LOG_PREFIXES.MANAGER} Connected successfully`, {
+				this.logger.debug(`${LOG_PREFIXES.MANAGER} Connected to ${this.config.collectionName}`, {
 					type: this.backendMetadata.type,
 					isFallback: this.backendMetadata.isFallback,
 					connectionTime: `${this.backendMetadata.connectionTime}ms`,
@@ -394,9 +395,9 @@ export class VectorStoreManager {
 
 			case BACKEND_TYPES.MILVUS: {
 				try {
-					// Lazy load Milvus module
+					// Lazy load Milvus module (shared across all instances)
 					if (!VectorStoreManager.milvusModule) {
-						this.logger.info(`${LOG_PREFIXES.MANAGER} Lazy loading Milvus module`);
+						this.logger.debug(`${LOG_PREFIXES.MANAGER} Lazy loading Milvus module`);
 						const { MilvusBackend } = await import('./backend/milvus.js');
 						VectorStoreManager.milvusModule = MilvusBackend;
 					}

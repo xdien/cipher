@@ -12,6 +12,7 @@ export * from './knowledge_graph/index.js';
 // Import types and utilities
 import type { InternalToolSet } from '../types.js';
 import { logger } from '../../../logger/index.js';
+import { env } from '../../../env.js';
 
 /**
  * Get all tools from all categories
@@ -20,13 +21,21 @@ export async function getAllToolDefinitions(): Promise<InternalToolSet> {
 	try {
 		logger.debug('Loading all tool definitions...');
 
-		// Import all tools dynamically
-		const [memoryTools, knowledgeGraphTools] = await Promise.all([
-			import('./memory/index.js').then(m => m.getMemoryTools()),
-			import('./knowledge_graph/index.js').then(m => m.getKnowledgeGraphTools()),
-		]);
+		// Always load memory tools
+		const memoryTools = await import('./memory/index.js').then(m => m.getMemoryTools());
 
-		// Combine all tools
+		// Conditionally load knowledge graph tools based on environment setting
+		let knowledgeGraphTools: InternalToolSet = {};
+		if (env.KNOWLEDGE_GRAPH_ENABLED) {
+			logger.debug('Knowledge graph enabled, loading knowledge graph tools');
+			knowledgeGraphTools = await import('./knowledge_graph/index.js').then(m =>
+				m.getKnowledgeGraphTools()
+			);
+		} else {
+			logger.debug('Knowledge graph disabled, skipping knowledge graph tools');
+		}
+
+		// Combine all tools (reasoning tools are already included in memoryTools now)
 		const allTools: InternalToolSet = {
 			...memoryTools,
 			...knowledgeGraphTools,
@@ -36,6 +45,7 @@ export async function getAllToolDefinitions(): Promise<InternalToolSet> {
 			totalTools: Object.keys(allTools).length,
 			memoryTools: Object.keys(memoryTools).length,
 			knowledgeGraphTools: Object.keys(knowledgeGraphTools).length,
+			knowledgeGraphEnabled: env.KNOWLEDGE_GRAPH_ENABLED,
 		});
 
 		return allTools;
@@ -104,10 +114,17 @@ export async function registerAllTools(toolManager: any): Promise<{
  */
 export const TOOL_CATEGORIES = {
 	memory: {
-		description: 'Tools for managing facts, memories, and knowledge storage',
-		tools: ['extract_and_operate_memory', 'memory_search'] as string[],
+		description: 'Tools for managing facts, memories, knowledge storage, and reasoning patterns',
+		tools: [
+			'extract_and_operate_memory',
+			'memory_search',
+			'store_reasoning_memory',
+			'extract_reasoning_steps',
+			'evaluate_reasoning',
+			'search_reasoning_patterns',
+		] as string[],
 		useCase:
-			'Use these tools to capture, search, and store important information for future reference',
+			'Use these tools to capture, search, and store important information and reasoning patterns for future reference',
 	},
 	knowledge_graph: {
 		description: 'Tools for managing and querying knowledge graphs',
@@ -137,15 +154,15 @@ export function getToolInfo(toolName: string): {
 	description: string;
 	useCase: string;
 } | null {
-	// Remove cipher_ prefix for lookup
-	const baseName = toolName.replace(/^cipher_/, '');
+	// Normalize the tool name (remove cipher_ prefix if present)
+	const normalizedName = toolName.replace(/^cipher_/, '');
 
-	for (const [category, info] of Object.entries(TOOL_CATEGORIES)) {
-		if (info.tools.includes(baseName)) {
+	for (const [categoryName, categoryInfo] of Object.entries(TOOL_CATEGORIES)) {
+		if (categoryInfo.tools.includes(normalizedName)) {
 			return {
-				category,
-				description: info.description,
-				useCase: info.useCase,
+				category: categoryName,
+				description: categoryInfo.description,
+				useCase: categoryInfo.useCase,
 			};
 		}
 	}
@@ -158,5 +175,10 @@ export function getToolInfo(toolName: string): {
  */
 export function getToolsByCategory(category: keyof typeof TOOL_CATEGORIES): string[] {
 	const categoryInfo = TOOL_CATEGORIES[category];
-	return categoryInfo ? categoryInfo.tools.map(tool => `cipher_${tool}`) : [];
+	if (!categoryInfo) {
+		return [];
+	}
+
+	// Return tool names with cipher_ prefix as they appear in the system
+	return categoryInfo.tools.map(toolName => `cipher_${toolName}`);
 }

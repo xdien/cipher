@@ -184,7 +184,7 @@ describe('MemAgent', () => {
 				},
 			];
 
-			invalidConfigs.forEach((config, index) => {
+			invalidConfigs.forEach((config, _index) => {
 				expect(() => {
 					AgentConfigSchema.parse(config);
 				}).toThrow(ZodError);
@@ -476,7 +476,10 @@ describe('MemAgent', () => {
 
 			const mockSession = {
 				id: 'test-session',
-				run: vi.fn().mockResolvedValue('Mock response'),
+				run: vi.fn().mockResolvedValue({
+					response: 'Mock response',
+					backgroundOperations: Promise.resolve(),
+				}),
 			};
 			mockServices.sessionManager.getSession.mockResolvedValue(mockSession);
 

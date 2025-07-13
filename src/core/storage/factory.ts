@@ -9,7 +9,7 @@
 
 import { StorageManager } from './manager.js';
 import type { StorageConfig, StorageBackends } from './types.js';
-import { Logger, createLogger } from '../logger/index.js';
+import { createLogger } from '../logger/index.js';
 import { LOG_PREFIXES } from './constants.js';
 import { env } from '../env.js';
 

@@ -16,15 +16,9 @@
 import { QdrantClient } from '@qdrant/js-client-rest';
 import type { VectorStore } from './vector-store.js';
 import type { SearchFilters, VectorStoreResult, QdrantBackendConfig } from './types.js';
-import {
-	VectorStoreError,
-	VectorStoreConnectionError,
-	VectorDimensionError,
-	CollectionNotFoundError,
-} from './types.js';
+import { VectorStoreError, VectorStoreConnectionError, VectorDimensionError } from './types.js';
 import { Logger, createLogger } from '../../logger/index.js';
 import { LOG_PREFIXES, DEFAULTS, ERROR_MESSAGES } from '../constants.js';
-import * as fs from 'node:fs';
 
 /**
  * Qdrant filter structure
@@ -104,7 +98,7 @@ export class QdrantBackend implements VectorStore {
 			this.client = new QdrantClient(params);
 		}
 
-		this.logger.info(`${LOG_PREFIXES.QDRANT} Initialized`, {
+		this.logger.debug(`${LOG_PREFIXES.QDRANT} Initialized`, {
 			collection: this.collectionName,
 			dimension: this.dimension,
 			host: config.host || config.url || 'local',
@@ -233,7 +227,7 @@ export class QdrantBackend implements VectorStore {
 
 			await this.client.upsert(this.collectionName, { points });
 
-			this.logger.info(`${LOG_PREFIXES.INDEX} Successfully inserted ${vectors.length} vectors`);
+			this.logger.debug(`${LOG_PREFIXES.INDEX} Successfully inserted ${vectors.length} vectors`);
 		} catch (error) {
 			this.logger.error(`${LOG_PREFIXES.INDEX} Insert failed`, { error });
 			throw new VectorStoreError('Failed to insert vectors', 'insert', error as Error);
@@ -278,7 +272,7 @@ export class QdrantBackend implements VectorStore {
 				payload: hit.payload,
 			}));
 
-			this.logger.info(`${LOG_PREFIXES.SEARCH} Found ${formattedResults.length} results`);
+			this.logger.debug(`${LOG_PREFIXES.SEARCH} Found ${formattedResults.length} results`);
 
 			return formattedResults;
 		} catch (error) {
@@ -345,7 +339,7 @@ export class QdrantBackend implements VectorStore {
 				points: [point],
 			});
 
-			this.logger.info(`${LOG_PREFIXES.BACKEND} Successfully updated vector ${vectorId}`);
+			this.logger.debug(`${LOG_PREFIXES.BACKEND} Successfully updated vector ${vectorId}`);
 		} catch (error) {
 			this.logger.error(`${LOG_PREFIXES.BACKEND} Update failed`, { error });
 			throw new VectorStoreError('Failed to update vector', 'update', error as Error);
@@ -365,7 +359,7 @@ export class QdrantBackend implements VectorStore {
 				points: [vectorId],
 			});
 
-			this.logger.info(`${LOG_PREFIXES.BACKEND} Successfully deleted vector ${vectorId}`);
+			this.logger.debug(`${LOG_PREFIXES.BACKEND} Successfully deleted vector ${vectorId}`);
 		} catch (error) {
 			this.logger.error(`${LOG_PREFIXES.BACKEND} Delete failed`, { error });
 			throw new VectorStoreError('Failed to delete vector', 'delete', error as Error);

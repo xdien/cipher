@@ -76,7 +76,7 @@ describe('Tool Definitions', () => {
 						getEmbedder: vi.fn().mockReturnValue({
 							embed: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
 						}),
-					};
+					} as any;
 
 					const mockVectorStoreManager = {
 						getStore: vi.fn().mockReturnValue({
@@ -85,11 +85,11 @@ describe('Tool Definitions', () => {
 							update: vi.fn().mockResolvedValue(undefined),
 							delete: vi.fn().mockResolvedValue(undefined),
 						}),
-					};
+					} as any;
 
 					const mockLlmService = {
 						directGenerate: vi.fn().mockResolvedValue('ADD'),
-					};
+					} as any;
 
 					const mockContext = {
 						toolName: 'extract_and_operate_memory',
@@ -128,22 +128,77 @@ describe('Tool Definitions', () => {
 		it('should load all tool definitions', async () => {
 			const tools = await getAllToolDefinitions();
 
-			expect(Object.keys(tools)).toHaveLength(13); // 2 memory + 11 knowledge graph tools
-			expect(tools['extract_and_operate_memory']).toBeDefined();
-			expect(tools['memory_search']).toBeDefined();
-			// Check that knowledge graph tools are also loaded
-			expect(tools['add_node']).toBeDefined();
-			expect(tools['search_graph']).toBeDefined();
+			// Check memory tools (always loaded)
+			expect(tools['cipher_extract_and_operate_memory']).toBeDefined();
+			expect(tools['cipher_memory_search']).toBeDefined();
+			expect(tools['cipher_store_reasoning_memory']).toBeDefined();
+			expect(tools['cipher_extract_reasoning_steps']).toBeDefined();
+			expect(tools['cipher_evaluate_reasoning']).toBeDefined();
+			expect(tools['cipher_search_reasoning_patterns']).toBeDefined();
+
+			// Check knowledge graph tools (conditionally loaded)
+			const { env } = await import('../../../env.js');
+			if (env.KNOWLEDGE_GRAPH_ENABLED) {
+				expect(Object.keys(tools)).toHaveLength(17); // 6 memory + 11 knowledge graph tools
+				expect(tools['add_node']).toBeDefined();
+				expect(tools['search_graph']).toBeDefined();
+			} else {
+				expect(Object.keys(tools)).toHaveLength(6); // Only 6 memory tools
+				expect(tools['add_node']).toBeUndefined();
+				expect(tools['search_graph']).toBeUndefined();
+			}
 		});
 
 		it('should register all tools successfully', async () => {
 			const result = await registerAllTools(manager);
 
-			expect(result.total).toBe(13);
-			expect(result.registered.length).toBe(13);
-			expect(result.failed.length).toBe(0);
-			expect(result.registered).toContain('extract_and_operate_memory');
-			expect(result.registered).toContain('memory_search');
+			// Check memory tools (always registered)
+			expect(result.registered).toContain('cipher_extract_and_operate_memory');
+			expect(result.registered).toContain('cipher_memory_search');
+			expect(result.registered).toContain('cipher_store_reasoning_memory');
+			expect(result.registered).toContain('cipher_extract_reasoning_steps');
+			expect(result.registered).toContain('cipher_evaluate_reasoning');
+			expect(result.registered).toContain('cipher_search_reasoning_patterns');
+
+			// Check knowledge graph tools (conditionally registered)
+			const { env } = await import('../../../env.js');
+			if (env.KNOWLEDGE_GRAPH_ENABLED) {
+				expect(result.total).toBe(17);
+				expect(result.registered.length).toBe(17);
+				expect(result.failed.length).toBe(0);
+			} else {
+				expect(result.total).toBe(6);
+				expect(result.registered.length).toBe(6);
+				expect(result.failed.length).toBe(0);
+			}
+
+			// Verify memory search tool is available (searches knowledge memory only)
+			const memorySearchTool = manager.getTool('cipher_memory_search');
+			expect(memorySearchTool).toBeDefined();
+			if (memorySearchTool) {
+				expect(memorySearchTool.parameters.properties.query).toBeDefined();
+				expect(memorySearchTool.parameters.properties.top_k).toBeDefined();
+				expect(memorySearchTool.parameters.properties.similarity_threshold).toBeDefined();
+				// Verify type parameter is removed (knowledge-only search)
+				expect(memorySearchTool.parameters.properties.type).toBeUndefined();
+			}
+		});
+
+		it('should validate memory search tool parameters', async () => {
+			const tools = await getAllToolDefinitions();
+			// Debug: Log available tool names
+			console.log('Available tool names:', Object.keys(tools));
+			const memorySearchTool = tools['cipher_memory_search'];
+
+			expect(memorySearchTool).toBeDefined();
+			if (memorySearchTool) {
+				expect(memorySearchTool.parameters.properties.query).toBeDefined();
+				expect(memorySearchTool.parameters.properties.top_k).toBeDefined();
+				expect(memorySearchTool.parameters.properties.similarity_threshold).toBeDefined();
+				expect(memorySearchTool.parameters.properties.include_metadata).toBeDefined();
+				// Verify type parameter is removed (knowledge-only search)
+				expect(memorySearchTool.parameters.properties.type).toBeUndefined();
+			}
 		});
 
 		it('should handle registration failures gracefully', async () => {
@@ -157,9 +212,13 @@ describe('Tool Definitions', () => {
 
 			const result = await registerAllTools(failingManager);
 
-			expect(result.total).toBe(13);
+			// Check based on environment setting
+			const { env } = await import('../../../env.js');
+			const expectedTotal = env.KNOWLEDGE_GRAPH_ENABLED ? 17 : 6;
+
+			expect(result.total).toBe(expectedTotal);
 			expect(result.registered.length).toBe(0);
-			expect(result.failed.length).toBe(13);
+			expect(result.failed.length).toBe(expectedTotal);
 			expect(result.failed?.[0]?.error).toBe('Simulated failure');
 		});
 	});
@@ -168,7 +227,7 @@ describe('Tool Definitions', () => {
 		it('should have correct category structure', () => {
 			expect(TOOL_CATEGORIES.memory).toBeDefined();
 
-			expect(TOOL_CATEGORIES.memory.tools).toHaveLength(2);
+			expect(TOOL_CATEGORIES.memory.tools).toHaveLength(6);
 		});
 
 		it('should get tool info by name', () => {
@@ -184,9 +243,13 @@ describe('Tool Definitions', () => {
 
 		it('should get tools by category', () => {
 			const memoryTools = getToolsByCategory('memory');
-			expect(memoryTools).toHaveLength(2);
+			expect(memoryTools).toHaveLength(6);
 			expect(memoryTools).toContain('cipher_extract_and_operate_memory');
 			expect(memoryTools).toContain('cipher_memory_search');
+			expect(memoryTools).toContain('cipher_store_reasoning_memory');
+			expect(memoryTools).toContain('cipher_extract_reasoning_steps');
+			expect(memoryTools).toContain('cipher_evaluate_reasoning');
+			expect(memoryTools).toContain('cipher_search_reasoning_patterns');
 		});
 	});
 

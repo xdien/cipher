@@ -20,7 +20,6 @@ import {
 	OperationStats,
 	MemoryOperation,
 } from './types.js';
-import { SQLITE_SCHEMA, POSTGRESQL_SCHEMA, QueryBuilder } from './schema.js';
 
 /**
  * Memory History Service Implementation

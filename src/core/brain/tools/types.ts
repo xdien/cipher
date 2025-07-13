@@ -6,7 +6,7 @@
  * session control, and system operations.
  */
 
-import { Tool, ToolParameters, ToolExecutionResult } from '../../mcp/types.js';
+import { Tool, ToolExecutionResult } from '../../mcp/types.js';
 import type { EmbeddingManager } from '../embedding/index.js';
 import type { VectorStoreManager } from '../../vector_storage/index.js';
 import type { ILLMService } from '../llm/index.js';
@@ -43,6 +43,14 @@ export interface InternalTool extends Tool {
 	 * Marker to identify this as an internal tool
 	 */
 	internal: true;
+
+	/**
+	 * Whether this tool should be accessible to agents
+	 * - true: Tool can be called by agents (e.g., search tools)
+	 * - false: Tool is internal-only, used for background processing (e.g., extraction, storage)
+	 * @default true
+	 */
+	agentAccessible?: boolean;
 
 	/**
 	 * Handler function that executes the tool

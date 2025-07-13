@@ -16,9 +16,7 @@ import {
 	InternalToolManagerConfig,
 	InternalToolContext,
 	ToolExecutionStats,
-	INTERNAL_TOOL_PREFIX,
 	createInternalToolName,
-	isInternalToolName,
 } from './types.js';
 
 /**
@@ -231,10 +229,13 @@ export class InternalToolManager implements IInternalToolManager {
 			sessionId: context?.sessionId,
 			userId: context?.userId || '',
 			metadata: context?.metadata,
-			services: this.services || {},
+			services: {
+				...this.services,
+				...context?.services,
+			},
 		};
 
-		logger.info(`InternalToolManager: Executing tool '${normalizedName}'`, {
+		logger.debug(`InternalToolManager: Executing tool '${normalizedName}'`, {
 			toolName: normalizedName,
 			category: tool.category,
 			hasArgs: !!args,
@@ -249,7 +250,7 @@ export class InternalToolManager implements IInternalToolManager {
 			const executionTime = Date.now() - startTime;
 			this.recordExecution(normalizedName, true, executionTime);
 
-			logger.info(`InternalToolManager: Tool '${normalizedName}' executed successfully`, {
+			logger.debug(`InternalToolManager: Tool '${normalizedName}' executed successfully`, {
 				toolName: normalizedName,
 				executionTime,
 			});
