@@ -11,9 +11,13 @@ export default defineConfig({
 	test: {
 		globals: true,
 		environment: 'node',
-		include: ['**/*.test.ts', '**/*.spec.ts'],
+		include: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
+		exclude: [
+			'**/node_modules/**',
+			'**/dist/**',
+			'**/build/**',
+			...(process.env.CI ? ['**/integration/**'] : []),
+		],
 		watch: true,
-		// Allow filtering tests by tags
-		exclude: process.env.CI ? ['**/integration/**'] : [],
 	},
 });

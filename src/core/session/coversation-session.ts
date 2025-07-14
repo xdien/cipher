@@ -390,11 +390,14 @@ export class ConversationSession {
 		}
 
 		try {
-			// Initialize reasoning content detector
+			// Initialize reasoning content detector with evaluation LLM config
+			const evalLlmConfig = this.services.stateManager.getEvalLLMConfig(this.id);
 			this.reasoningDetector = new ReasoningContentDetector(
 				this.services.promptManager,
 				this.services.mcpManager,
-				this.services.unifiedToolManager
+				this.services.unifiedToolManager,
+				undefined, // Use default options
+				evalLlmConfig
 			);
 
 			// Initialize search context manager
@@ -505,13 +508,8 @@ export class ConversationSession {
 			// Step 2: Evaluate the reasoning quality using a non-thinking model
 			let evaluationResult: any;
 			try {
-				// Use a non-thinking model for evaluation (e.g., claude-3-5-haiku)
-				const evalConfig = {
-					provider: 'anthropic',
-					model: 'claude-3-5-haiku-20241022', // Fast, non-thinking model
-					apiKey: process.env.ANTHROPIC_API_KEY,
-					maxIterations: 5,
-				};
+				// Use configured evaluation model or fallback to main LLM
+				const evalConfig = this.services.stateManager.getEvalLLMConfig(this.id);
 				const evalContextManager = createContextManager(evalConfig, this.services.promptManager);
 				const evalLLMService = createLLMService(
 					evalConfig,

@@ -7,6 +7,8 @@ import { McpServerConfig } from '../../mcp/types.js';
 export interface SessionOverride {
 	/** Override LLM config for this session */
 	llm?: Partial<LLMConfig>;
+	/** Override evaluation LLM config for this session */
+	evalLlm?: Partial<LLMConfig>;
 }
 
 export class MemAgentStateManager {
@@ -83,10 +85,20 @@ export class MemAgentStateManager {
 			return structuredClone(this.runtimeConfig);
 		}
 
-		return {
+		const result = {
 			...this.runtimeConfig,
 			llm: { ...this.runtimeConfig.llm, ...override.llm },
-		};
+		} as AgentConfig;
+
+		if (override.evalLlm && this.runtimeConfig.evalLlm) {
+			result.evalLlm = { ...this.runtimeConfig.evalLlm, ...override.evalLlm };
+		} else if (override.evalLlm) {
+			result.evalLlm = override.evalLlm as LLMConfig;
+		} else {
+			result.evalLlm = this.runtimeConfig.evalLlm;
+		}
+
+		return result;
 	}
 
 	public getLLMConfig(sessionId?: string): Readonly<LLMConfig> {
@@ -95,6 +107,53 @@ export class MemAgentStateManager {
 			...config.llm,
 			maxIterations: config.llm.maxIterations ?? 10, // Provide default value
 		};
+	}
+
+	/**
+	 * Get evaluation LLM configuration with fallback to main LLM config
+	 * Used for evaluation tasks that typically require non-thinking models
+	 */
+	public getEvalLLMConfig(sessionId?: string): Readonly<LLMConfig> {
+		const config = this.getRuntimeConfig(sessionId);
+		
+		// If evalLlm is provided and valid, use it
+		if (config.evalLlm) {
+			try {
+				// Validate the evalLlm configuration
+				const evalConfig = {
+					...config.evalLlm,
+					maxIterations: config.evalLlm.maxIterations ?? 5, // Default for eval tasks
+				};
+				
+				// Check if required fields are present
+				if (evalConfig.provider && evalConfig.model) {
+					logger.debug('Using configured evalLlm for evaluation tasks', {
+						provider: evalConfig.provider,
+						model: evalConfig.model,
+					});
+					return evalConfig;
+				}
+			} catch (error) {
+				logger.warn('Invalid evalLlm configuration, falling back to main LLM', {
+					error: error instanceof Error ? error.message : String(error),
+					sessionId,
+				});
+			}
+		}
+
+		// Fallback to main LLM configuration
+		const fallbackConfig = {
+			...config.llm,
+			maxIterations: 5, // Use lower iterations for eval tasks
+		};
+		
+		logger.debug('Using fallback LLM configuration for evaluation tasks', {
+			provider: fallbackConfig.provider,
+			model: fallbackConfig.model,
+			sessionId,
+		});
+		
+		return fallbackConfig;
 	}
 
 	/**
