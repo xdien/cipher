@@ -10,6 +10,7 @@
 
 <p align="center">
 <a href="LICENSE"><img src="https://img.shields.io/badge/License-Elastic%202.0-blue.svg" alt="License" /></a>
+<img src="https://img.shields.io/badge/Status-Beta-orange.svg" alt="Beta" />
 <a href="https://discord.com/invite/UMRrpNjh5W"><img src="https://img.shields.io/badge/Discord-Join%20Community-7289da" alt="Discord" /></a>
 </p>
 
