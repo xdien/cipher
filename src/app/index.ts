@@ -156,7 +156,7 @@ program
 
 			// Print OpenAI embedder dimension after agent is started
 			if (agent.services && agent.services.embeddingManager) {
-				// const _embedder = agent.services.embeddingManager.getEmbedder('default');
+				const _embedder = agent.services.embeddingManager.getEmbedder('default');
 			} else {
 				console.log('No embeddingManager found in agent.services');
 			}
