@@ -6,7 +6,7 @@
  */
 
 import { logger } from '../../logger/index.js';
-import { ILLMService } from '../llm/index.js';
+import { ILLMService, LLMConfig } from '../llm/index.js';
 import { createContextManager } from '../llm/messages/factory.js';
 import { createLLMService } from '../llm/services/factory.js';
 import { PromptManager } from '../systemPrompt/manager.js';
@@ -47,17 +47,22 @@ export class ReasoningContentDetector {
 	private mcpManager: MCPManager;
 	private unifiedToolManager: UnifiedToolManager;
 	private options: Required<ReasoningDetectionOptions>;
+	private evalLlmConfig?: LLMConfig;
 
 	constructor(
 		promptManager: PromptManager,
 		mcpManager: MCPManager,
 		unifiedToolManager: UnifiedToolManager,
-		options?: ReasoningDetectionOptions
+		options?: ReasoningDetectionOptions,
+		evalLlmConfig?: LLMConfig
 	) {
 		this.promptManager = promptManager;
 		this.mcpManager = mcpManager;
 		this.unifiedToolManager = unifiedToolManager;
 		this.options = { ...DEFAULT_OPTIONS, ...options };
+		if (evalLlmConfig) {
+			this.evalLlmConfig = evalLlmConfig;
+		}
 	}
 
 	/**
@@ -67,8 +72,8 @@ export class ReasoningContentDetector {
 		if (this.llmService) return;
 
 		try {
-			// Use a fast, non-thinking model for analysis
-			const evalConfig = {
+			// Use configured evaluation model or fallback to default non-thinking model
+			const evalConfig = this.evalLlmConfig || {
 				provider: 'anthropic',
 				model: 'claude-3-5-haiku-20241022', // Fast, non-thinking model
 				apiKey: process.env.ANTHROPIC_API_KEY,

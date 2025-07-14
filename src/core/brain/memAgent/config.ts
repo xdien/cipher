@@ -58,6 +58,9 @@ export const AgentConfigSchema = z
 			'Configurations for MCP (Model Context Protocol) servers used by the agent'
 		),
 		llm: LLMConfigSchema.describe('Core LLM configuration for the agent'),
+		evalLlm: LLMConfigSchema.optional().describe(
+			'Evaluation LLM configuration for non-thinking tasks (optional, falls back to main LLM if not provided)'
+		),
 		sessions: z
 			.object({
 				maxSessions: z
