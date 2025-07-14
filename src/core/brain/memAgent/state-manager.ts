@@ -115,7 +115,7 @@ export class MemAgentStateManager {
 	 */
 	public getEvalLLMConfig(sessionId?: string): Readonly<LLMConfig> {
 		const config = this.getRuntimeConfig(sessionId);
-		
+
 		// If evalLlm is provided and valid, use it
 		if (config.evalLlm) {
 			try {
@@ -124,7 +124,7 @@ export class MemAgentStateManager {
 					...config.evalLlm,
 					maxIterations: config.evalLlm.maxIterations ?? 5, // Default for eval tasks
 				};
-				
+
 				// Check if required fields are present
 				if (evalConfig.provider && evalConfig.model) {
 					logger.debug('Using configured evalLlm for evaluation tasks', {
@@ -146,13 +146,13 @@ export class MemAgentStateManager {
 			...config.llm,
 			maxIterations: 5, // Use lower iterations for eval tasks
 		};
-		
+
 		logger.debug('Using fallback LLM configuration for evaluation tasks', {
 			provider: fallbackConfig.provider,
 			model: fallbackConfig.model,
 			sessionId,
 		});
-		
+
 		return fallbackConfig;
 	}
 
