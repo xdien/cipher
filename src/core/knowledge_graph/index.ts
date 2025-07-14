@@ -6,4 +6,4 @@ export * from './manager.js';
 export * from './backend/knowledge-graph.js';
 export * from './backend/neo4j.js';
 export * from './backend/in-memory.js';
-export * from './backend/types.js'; 
+export * from './backend/types.js';
