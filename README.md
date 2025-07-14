@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-<a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License" /></a>
+<a href="LICENSE"><img src="https://img.shields.io/badge/License-Elastic%202.0-blue.svg" alt="License" /></a>
 <a href="https://discord.com/invite/UMRrpNjh5W"><img src="https://img.shields.io/badge/Discord-Join%20Community-7289da" alt="Discord" /></a>
 </p>
 
@@ -1803,4 +1803,4 @@ If you're enjoying this project, please give us a ⭐ on GitHub!
 
 ## License
 
-[Apache License 2.0](LICENSE)
+[Elastic License 2.0](LICENSE)
