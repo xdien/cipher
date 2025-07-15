@@ -279,24 +279,21 @@ To use Cipher as a local MCP agent in Cursor, follow these steps:
    ```bash
    cipher --mode mcp
    ```
+
    This will start the Cipher agent as a local MCP server, ready to accept connections from MCP-compatible clients like Cursor.
 
 2. **Configure Cursor to Connect to Cipher MCP Agent:**
-
    - Open (or create) the file `.cursor/mcp.json` in your home or project directory.
    - Add the following configuration:
 
    ```json
    {
-     "mcpServers": {
-       "cipher-agent": {
-         "command": "cipher",
-         "args": [
-           "--mode",
-           "mcp"
-         ]
-       }
-     }
+   	"mcpServers": {
+   		"cipher-agent": {
+   			"command": "cipher",
+   			"args": ["--mode", "mcp"]
+   		}
+   	}
    }
    ```
 
