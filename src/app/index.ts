@@ -9,6 +9,28 @@ import { handleCliOptionsError, validateCliOptions } from './cli/utils/options.j
 import { loadAgentConfig } from '../core/brain/memAgent/loader.js';
 import { startInteractiveCli, startMcpMode, startHeadlessCli } from './cli/cli.js';
 import { ApiServer } from './api/server.js';
+import path from 'path';
+import os from 'os';
+
+// ===== EARLY MCP MODE DETECTION AND LOG REDIRECTION =====
+// Following Saiki's best practices to prevent stdio interference
+// This must happen BEFORE any logging operations
+const detectAndRedirectMcpLogs = () => {
+	const args = process.argv;
+	const isMcpMode = args.includes('--mode') && args[args.indexOf('--mode') + 1] === 'mcp';
+
+	if (isMcpMode) {
+		// Redirect logs immediately to prevent stdout contamination
+		const logFile = process.env.CIPHER_MCP_LOG_FILE || path.join(os.tmpdir(), 'cipher-mcp.log');
+		logger.redirectToFile(logFile);
+
+		// Use stderr for critical startup messages only
+		process.stderr.write(`[CIPHER-MCP] Log redirection activated: ${logFile}\n`);
+	}
+};
+
+// Apply early redirection before any other operations
+detectAndRedirectMcpLogs();
 
 const program = new Command();
 
@@ -77,6 +99,8 @@ program
 			process.exit(1);
 		}
 
+		const opts = program.opts();
+
 		// Check if at least one API key is provided or Ollama is configured
 		if (
 			!env.OPENAI_API_KEY &&
@@ -84,14 +108,17 @@ program
 			!env.OPENROUTER_API_KEY &&
 			!env.OLLAMA_BASE_URL
 		) {
-			logger.error(
-				'No API key or Ollama configuration found, please set at least one of OPENAI_API_KEY, ANTHROPIC_API_KEY, OPENROUTER_API_KEY, or OLLAMA_BASE_URL in .env file'
-			);
-			logger.error('Available providers: OpenAI, Anthropic, OpenRouter, Ollama');
+			// Use MCP-safe error reporting
+			const errorMsg =
+				'No API key or Ollama configuration found, please set at least one of OPENAI_API_KEY, ANTHROPIC_API_KEY, OPENROUTER_API_KEY, or OLLAMA_BASE_URL in .env file\nAvailable providers: OpenAI, Anthropic, OpenRouter, Ollama';
+
+			if (opts.mode === 'mcp') {
+				process.stderr.write(`[CIPHER-MCP] ERROR: ${errorMsg}\n`);
+			} else {
+				logger.error(errorMsg);
+			}
 			process.exit(1);
 		}
-
-		const opts = program.opts();
 
 		// validate cli options
 		try {
@@ -109,13 +136,17 @@ program
 
 			// Check if config file exists
 			if (!existsSync(configPath)) {
-				logger.error(`Config file not found at ${configPath}`);
-				if (opts.agent === DEFAULT_CONFIG_PATH) {
-					logger.error(
-						'Please ensure the config file exists or create one based on memAgent/cipher.yml'
-					);
+				const configErrorMsg = `Config file not found at ${configPath}`;
+				const helpMsg =
+					opts.agent === DEFAULT_CONFIG_PATH
+						? 'Please ensure the config file exists or create one based on memAgent/cipher.yml'
+						: `Please ensure the specified config file exists at ${configPath}`;
+
+				if (opts.mode === 'mcp') {
+					process.stderr.write(`[CIPHER-MCP] ERROR: ${configErrorMsg}\n[CIPHER-MCP] ${helpMsg}\n`);
 				} else {
-					logger.error(`Please ensure the specified config file exists at ${configPath}`);
+					logger.error(configErrorMsg);
+					logger.error(helpMsg);
 				}
 				process.exit(1);
 			}
@@ -156,27 +187,41 @@ program
 
 			// Print OpenAI embedder dimension after agent is started
 			if (agent.services && agent.services.embeddingManager) {
-				const _embedder = agent.services.embeddingManager.getEmbedder('default');
+				agent.services.embeddingManager.getEmbedder('default');
 			} else {
 				console.log('No embeddingManager found in agent.services');
 			}
 		} catch (err) {
 			const errorMessage = err instanceof Error ? err.message : String(err);
+			const configPath = resolveConfigPath(opts.agent);
 
-			if (opts.strict) {
-				logger.error(
-					`Failed to load agent config from ${resolveConfigPath(opts.agent)} (strict mode enabled):`,
-					errorMessage
-				);
-				logger.error(
-					'Strict mode requires all MCP server connections to succeed. ' +
-						'Check your MCP server configurations or run without --strict flag to allow lenient connections.'
-				);
+			if (opts.mode === 'mcp') {
+				// Use stderr for MCP mode errors
+				if (opts.strict) {
+					process.stderr.write(
+						`[CIPHER-MCP] ERROR: Failed to load agent config from ${configPath} (strict mode enabled): ${errorMessage}\n`
+					);
+					process.stderr.write(
+						`[CIPHER-MCP] Strict mode requires all MCP server connections to succeed. Check your MCP server configurations or run without --strict flag.\n`
+					);
+				} else {
+					process.stderr.write(
+						`[CIPHER-MCP] ERROR: Failed to load agent config from ${configPath}: ${errorMessage}\n`
+					);
+				}
 			} else {
-				logger.error(
-					`Failed to load agent config from ${resolveConfigPath(opts.agent)}:`,
-					errorMessage
-				);
+				// Use logger for non-MCP modes
+				if (opts.strict) {
+					logger.error(
+						`Failed to load agent config from ${configPath} (strict mode enabled):`,
+						errorMessage
+					);
+					logger.error(
+						'Strict mode requires all MCP server connections to succeed. Check your MCP server configurations or run without --strict flag to allow lenient connections.'
+					);
+				} else {
+					logger.error(`Failed to load agent config from ${configPath}:`, errorMessage);
+				}
 			}
 			process.exit(1);
 		}
@@ -187,9 +232,14 @@ program
 				await startHeadlessCli(agent, headlessInput);
 				process.exit(0);
 			} catch (err) {
-				logger.error(
-					`Failed to execute headless command: ${err instanceof Error ? err.message : String(err)}`
-				);
+				const errorMessage = err instanceof Error ? err.message : String(err);
+				if (opts.mode === 'mcp') {
+					process.stderr.write(
+						`[CIPHER-MCP] ERROR: Failed to execute headless command: ${errorMessage}\n`
+					);
+				} else {
+					logger.error(`Failed to execute headless command: ${errorMessage}`);
+				}
 				process.exit(1);
 			}
 		}
@@ -216,7 +266,11 @@ program
 				logger.info(`API server is running and ready to accept requests`, null, 'green');
 			} catch (error) {
 				const errorMsg = error instanceof Error ? error.message : String(error);
-				logger.error(`Failed to start API server: ${errorMsg}`);
+				if (opts.mode === 'mcp') {
+					process.stderr.write(`[CIPHER-MCP] ERROR: Failed to start API server: ${errorMsg}\n`);
+				} else {
+					logger.error(`Failed to start API server: ${errorMsg}`);
+				}
 				process.exit(1);
 			}
 		}
@@ -232,9 +286,15 @@ program
 			case 'api':
 				await startApiMode(agent, opts);
 				break;
-			default:
-				logger.error(`Unknown mode '${opts.mode}'. Use cli, mcp, or api.`);
+			default: {
+				const errorMsg = `Unknown mode '${opts.mode}'. Use cli, mcp, or api.`;
+				if (opts.mode === 'mcp') {
+					process.stderr.write(`[CIPHER-MCP] ERROR: ${errorMsg}\n`);
+				} else {
+					logger.error(errorMsg);
+				}
 				process.exit(1);
+			}
 		}
 	});
 

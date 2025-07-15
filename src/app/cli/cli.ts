@@ -164,17 +164,20 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
  * Start MCP server mode for Model Context Protocol integration
  */
 export async function startMcpMode(agent: MemAgent): Promise<void> {
-	await _initCli(agent);
+	// DO NOT use console.log in MCP mode - it interferes with stdio protocol
+	// Log redirection is already done in index.ts before calling this function
 
-	console.log(chalk.cyan('🔗 Starting Cipher in MCP Server Mode...'));
-	console.log(chalk.gray('Ready to accept MCP client connections.'));
+	// Import MCP handler functions
+	const { createMcpTransport, initializeMcpServer, initializeAgentCardResource } = await import(
+		'../mcp/mcp_handler.js'
+	);
+
+	// Initialize CLI without additional logging
+	if (!agent) {
+		throw new Error('Agent is not initialized');
+	}
 
 	try {
-		// Import MCP handler functions
-		const { createMcpTransport, initializeMcpServer, initializeAgentCardResource } = await import(
-			'../mcp/mcp_handler.js'
-		);
-
 		// Get agent configuration for agent card
 		const config = agent.getEffectiveConfig();
 		// Filter out undefined properties to comply with exactOptionalPropertyTypes
@@ -195,15 +198,9 @@ export async function startMcpMode(agent: MemAgent): Promise<void> {
 
 		// Server is now running - the initializeMcpServer function keeps process alive
 		logger.info('[MCP Mode] Cipher agent is now running as MCP server');
-		console.log(chalk.green('✅ MCP server initialized successfully!'));
-		console.log(chalk.gray('🔧 Available tools: ask_cipher'));
-		console.log(chalk.gray('📊 Available resources: cipher://agent/card, cipher://agent/stats'));
-		console.log(chalk.gray('📝 Available prompts: system_prompt'));
-		console.log(chalk.gray('💡 Connect MCP clients to interact with the Cipher agent'));
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		logger.error(`[MCP Mode] Failed to start MCP server: ${errorMessage}`);
-		console.log(chalk.red(`❌ Failed to start MCP server: ${errorMessage}`));
 		process.exit(1);
 	}
 }

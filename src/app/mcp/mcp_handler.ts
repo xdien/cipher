@@ -134,11 +134,6 @@ export async function initializeMcpServer(
 	logger.info(`[MCP Handler] Connecting MCP server to ${transport.type} transport`);
 	await server.connect(transport.server);
 
-	// Set up logging redirection for stdio mode
-	if (transport.type === 'stdio') {
-		redirectLogsForStdio();
-	}
-
 	logger.info('[MCP Handler] MCP server initialized and connected successfully');
 	logger.info('[MCP Handler] Agent is now available as MCP server for external clients');
 
@@ -463,14 +458,16 @@ export function initializeAgentCardResource(agentCard: Partial<AgentCard>): Agen
 /**
  * Redirect logs to file when running in stdio mode to prevent interference
  */
-function redirectLogsForStdio(): void {
-	logger.info('[MCP Handler] Redirecting logs to prevent stdio interference');
-
-	// In stdio mode, we need to redirect console output to prevent interference with MCP protocol
-	// The MCP protocol uses stdio for communication, so any console.log will break the protocol
-
+export function redirectLogsForStdio(): void {
 	// Create a log file path
 	const logPath = './logs/mcp-server.log';
+
+	// Redirect logger to file FIRST - this prevents Winston from writing to stdout/stderr
+	logger.redirectToFile(logPath);
+
+	// Then redirect console methods as backup
+	// In stdio mode, we need to redirect console output to prevent interference with MCP protocol
+	// The MCP protocol uses stdio for communication, so any console.log will break the protocol
 
 	// Ensure logs directory exists
 	const logDir = path.dirname(logPath);
@@ -501,7 +498,7 @@ function redirectLogsForStdio(): void {
 		logStream.write(`[INFO] ${new Date().toISOString()} ${args.join(' ')}\n`);
 	};
 
-	// Log the redirection
+	// Log the redirection (this will go to the file now)
 	logStream.write(
 		`[INFO] ${new Date().toISOString()} Log redirection activated for MCP stdio mode\n`
 	);
