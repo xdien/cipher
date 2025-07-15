@@ -6,7 +6,7 @@ const isMcpMode =
 	process.argv.includes('--mode') && process.argv[process.argv.indexOf('--mode') + 1] === 'mcp';
 
 if (isMcpMode) {
-	// In MCP mode, skip .env file loading entirely since all environment variables 
+	// In MCP mode, skip .env file loading entirely since all environment variables
 	// are provided via the "env" field in the MCP configuration
 	// No need to load .env files as MCP host provides all required environment variables
 } else {
@@ -194,7 +194,8 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 export const validateEnv = () => {
 	// Critical validation: OPENAI_API_KEY is always required for embedding functionality
 	if (!process.env.OPENAI_API_KEY) {
-		const errorMsg = 'OPENAI_API_KEY is required for embedding functionality, even when using other LLM providers (Anthropic, OpenRouter, etc.)';
+		const errorMsg =
+			'OPENAI_API_KEY is required for embedding functionality, even when using other LLM providers (Anthropic, OpenRouter, etc.)';
 		if (isMcpMode) {
 			process.stderr.write(`[CIPHER-MCP] ERROR: ${errorMsg}\n`);
 		} else {
