@@ -24,8 +24,6 @@ export default defineConfig([
 			'pg', 
 			'neo4j-driver', 
 			'ioredis', 
-			// CLI dependencies
-			'commander',
 			// Node.js built-in modules to prevent bundling issues
 			'fs',
 			'path',
@@ -36,6 +34,6 @@ export default defineConfig([
 			'events',
 			'child_process'
 		],
-		noExternal: ['chalk', 'boxen'],
+		noExternal: ['chalk', 'boxen', 'commander'],
 	},
 ]);
