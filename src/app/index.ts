@@ -112,15 +112,17 @@ program
 		// Process prompt arguments for one-shot mode
 		const headlessInput = prompt.join(' ') || undefined;
 
-			// Check for .env file with proper path resolution (skip in MCP mode)
-	const opts = program.opts();
-	if (opts.mode !== 'mcp') {
-		const envPath = resolveEnvPath();
-		if (!existsSync(envPath)) {
-			const errorMsg = `No .env file found at ${envPath}, copy .env.example to .env and fill in the values`;
-			logger.error(errorMsg);
-			process.exit(1);
-		}
+		// Parse CLI options first
+		const opts = program.opts();
+
+		// Check for .env file with proper path resolution (skip in MCP mode)
+		if (opts.mode !== 'mcp') {
+			const envPath = resolveEnvPath();
+			if (!existsSync(envPath)) {
+				const errorMsg = `No .env file found at ${envPath}, copy .env.example to .env and fill in the values`;
+				logger.error(errorMsg);
+				process.exit(1);
+			}
 		}
 
 		// Check if at least one API key is provided or Ollama is configured

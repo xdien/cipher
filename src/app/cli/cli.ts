@@ -136,6 +136,11 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 				if (result && result.backgroundOperations) {
 					result.backgroundOperations.catch((error) => {
 						// Background operations failures are already logged, don't show to user
+					}).finally(() => {
+						// Small delay to ensure any error logs are fully written before redisplaying prompt
+						setTimeout(() => {
+							rl.prompt();
+						}, 100);
 					});
 				}
 			} else {
@@ -173,6 +178,11 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 					if (result && result.backgroundOperations) {
 						result.backgroundOperations.catch((error) => {
 							// Background operations failures are already logged, don't show to user
+						}).finally(() => {
+							// Small delay to ensure any error logs are fully written before redisplaying prompt
+							setTimeout(() => {
+								rl.prompt();
+							}, 100);
 						});
 					}
 				}
