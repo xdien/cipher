@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import { logger } from '../../../logger/index.js';
+import { KnowledgeGraph } from '@core/index.js';
 
 /**
  * Tool Result Formatter
@@ -129,6 +130,7 @@ export function formatToolResult(toolName: string, result: any): string {
 			toolName.includes('query_graph') ||
 			toolName.includes('get_neighbors')
 		) {
+			console.log('Knowledge graph result');
 			return formatKnowledgeGraphResult(result as KnowledgeGraphResult);
 		}
 
@@ -230,6 +232,7 @@ function formatMemorySearchResult(result: MemorySearchResult): string {
  */
 function formatKnowledgeGraphResult(result: KnowledgeGraphResult): string {
 	if (!result.success) {
+		console.log('Knowledge graph result', result.error);
 		return chalk.red(`❌ Graph query failed: ${result.error || 'Unknown error'}`);
 	}
 
