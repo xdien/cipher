@@ -1,0 +1,31 @@
+llm:
+  provider: anthropic
+  model: claude-3-5-haiku-20241022
+  apiKey: $ANTHROPIC_API_KEY
+  maxIterations: 25
+
+systemPrompt: |
+  You are a specialized coding assistant with enhanced memory.
+  Focus on Python and JavaScript programming help.
+
+mcpServers:
+  filesystem:
+    type: stdio
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "."]
+    connectionMode: strict
+
+sessions:
+  maxSessions: 50
+  sessionTTL: 1800
+
+agentCard:
+  name: CustomCoder
+  version: 2.0.0
+  description: "Specialized Python/JS coding assistant"
+
+agents:
+  - name: "Local MCP"
+    type: "mcp"
+    endpoint: "http://localhost:3000"
+    # Add any authentication or headers if required

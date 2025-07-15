@@ -268,6 +268,53 @@ The MCP server mode allows Cipher to integrate with any MCP-compatible tool or c
 
 This mode transforms Cipher into a reusable agent service that can be accessed by multiple tools simultaneously while maintaining persistent memory and learning capabilities.
 
+---
+
+## Connecting Cipher MCP Agent to Cursor
+
+To use Cipher as a local MCP agent in Cursor, follow these steps:
+
+1. **Start Cipher in MCP Server Mode:**
+
+   ```bash
+   cipher --mode mcp
+   ```
+   This will start the Cipher agent as a local MCP server, ready to accept connections from MCP-compatible clients like Cursor.
+
+2. **Configure Cursor to Connect to Cipher MCP Agent:**
+
+   - Open (or create) the file `.cursor/mcp.json` in your home or project directory.
+   - Add the following configuration:
+
+   ```json
+   {
+     "mcpServers": {
+       "cipher-agent": {
+         "command": "cipher",
+         "args": [
+           "--mode",
+           "mcp"
+         ]
+       }
+     }
+   }
+   ```
+
+   This tells Cursor to launch and connect to your local Cipher MCP agent.
+
+3. **Restart Cursor:**
+   - After saving the configuration, restart Cursor. You should now see the Cipher agent available as an MCP tool provider.
+
+**Note:** Ensure that the `cipher` command is available in your PATH. If not, you can run the agent directly using Node.js:
+
+```bash
+node dist/src/app/index.cjs --mode mcp
+```
+
+And update the `command` in your `.cursor/mcp.json` accordingly.
+
+---
+
 ### Prerequisites
 
 Before running cipher in any mode, ensure you have:
