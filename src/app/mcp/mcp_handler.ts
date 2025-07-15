@@ -186,7 +186,9 @@ async function registerAgentTools(server: Server, agent: MemAgent): Promise<void
 		});
 	}
 
-	logger.info(`[MCP Handler] Registering ${mcpTools.length} MCP tools: ${mcpTools.map(t => t.name).join(', ')}`);
+	logger.info(
+		`[MCP Handler] Registering ${mcpTools.length} MCP tools: ${mcpTools.map(t => t.name).join(', ')}`
+	);
 
 	// Register list tools handler
 	server.setRequestHandler(ListToolsRequestSchema, async () => {
