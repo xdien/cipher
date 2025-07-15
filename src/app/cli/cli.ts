@@ -132,13 +132,11 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 					console.log(chalk.gray('No response received.'));
 				}
 
-				// Wait for background operations to complete before showing next prompt
+				// Let background operations run in the background without blocking the UI
 				if (result && result.backgroundOperations) {
-					try {
-						await result.backgroundOperations;
-					} catch (error) {
+					result.backgroundOperations.catch((error) => {
 						// Background operations failures are already logged, don't show to user
-					}
+					});
 				}
 			} else {
 				const parsedInput = commandParser.parseInput(trimmedInput);
@@ -171,13 +169,11 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 						console.log(chalk.gray('No response received.'));
 					}
 
-					// Wait for background operations to complete before showing next prompt
+					// Let background operations run in the background without blocking the UI
 					if (result && result.backgroundOperations) {
-						try {
-							await result.backgroundOperations;
-						} catch (error) {
+						result.backgroundOperations.catch((error) => {
 							// Background operations failures are already logged, don't show to user
-						}
+						});
 					}
 				}
 			}

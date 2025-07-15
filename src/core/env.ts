@@ -1,46 +1,16 @@
 import { config } from 'dotenv';
 import { z } from 'zod';
 
-// Load environment variables from .env file - prevent stdout contamination in MCP mode
+// Load environment variables from .env file - skip entirely in MCP mode
 const isMcpMode =
 	process.argv.includes('--mode') && process.argv[process.argv.indexOf('--mode') + 1] === 'mcp';
 
 if (isMcpMode) {
-	// In MCP mode, suppress any output during dotenv loading
-	const originalConsole = {
-		log: console.log,
-		error: console.error,
-		warn: console.warn,
-		info: console.info,
-	};
-
-	// Also capture direct stdout/stderr writes
-	const originalStdoutWrite = process.stdout.write;
-	const originalStderrWrite = process.stderr.write;
-
-	// Temporarily silence console methods and direct stream writes
-	console.log = () => {};
-	console.error = () => {};
-	console.warn = () => {};
-	console.info = () => {};
-
-	// Suppress stdout/stderr writes during dotenv loading
-	process.stdout.write = () => true;
-	process.stderr.write = () => true;
-
-	try {
-		config();
-	} finally {
-		// Restore console methods and stream writes
-		console.log = originalConsole.log;
-		console.error = originalConsole.error;
-		console.warn = originalConsole.warn;
-		console.info = originalConsole.info;
-		process.stdout.write = originalStdoutWrite;
-		process.stderr.write = originalStderrWrite;
-	}
+	// In MCP mode, skip .env file loading entirely since all environment variables 
+	// are provided via the "env" field in the MCP configuration
+	// No need to load .env files as MCP host provides all required environment variables
 } else {
-	// Normal mode - allow normal dotenv output
+	// Normal mode - load environment variables from .env file
 	config();
 }
 
