@@ -142,54 +142,83 @@ export async function initializeMcpServer(
 }
 
 /**
- * Register agent tools as MCP tools
+ * Register agent tools as MCP tools (dynamic discovery)
  */
 async function registerAgentTools(server: Server, agent: MemAgent): Promise<void> {
-	logger.debug('[MCP Handler] Registering agent tools');
+	logger.debug('[MCP Handler] Registering agent tools (dynamic)');
+
+	// Get all agent-accessible tools from unifiedToolManager
+	const unifiedToolManager = agent.unifiedToolManager;
+	const combinedTools = await unifiedToolManager.getAllTools();
+
+	// Build MCP tool list
+	const mcpTools = Object.entries(combinedTools).map(([toolName, tool]) => ({
+		name: toolName,
+		description: (tool as any).description,
+		inputSchema: (tool as any).parameters,
+	}));
+
+	// For backward compatibility, ensure ask_cipher is always present
+	if (!mcpTools.find(t => t.name === 'ask_cipher')) {
+		mcpTools.push({
+			name: 'ask_cipher',
+			description: 'Chat with the Cipher AI agent. Send a message to interact with the agent.',
+			inputSchema: {
+				type: 'object',
+				properties: {
+					message: {
+						type: 'string',
+						description: 'The message or question to send to the Cipher agent',
+					},
+					session_id: {
+						type: 'string',
+						description: 'Optional session ID to maintain conversation context',
+						default: 'default',
+					},
+					stream: {
+						type: 'boolean',
+						description: 'Whether to stream the response (not supported via MCP)',
+						default: false,
+					},
+				},
+				required: ['message'],
+			},
+		});
+	}
+
+	logger.info(
+		`[MCP Handler] Registering ${mcpTools.length} MCP tools: ${mcpTools.map(t => t.name).join(', ')}`
+	);
 
 	// Register list tools handler
 	server.setRequestHandler(ListToolsRequestSchema, async () => {
-		return {
-			tools: [
-				{
-					name: 'ask_cipher',
-					description: 'Chat with the Cipher AI agent. Send a message to interact with the agent.',
-					inputSchema: {
-						type: 'object',
-						properties: {
-							message: {
-								type: 'string',
-								description: 'The message or question to send to the Cipher agent',
-							},
-							session_id: {
-								type: 'string',
-								description: 'Optional session ID to maintain conversation context',
-								default: 'default',
-							},
-							stream: {
-								type: 'boolean',
-								description: 'Whether to stream the response (not supported via MCP)',
-								default: false,
-							},
-						},
-						required: ['message'],
-					},
-				},
-			],
-		};
+		return { tools: mcpTools };
 	});
 
 	// Register call tool handler
 	server.setRequestHandler(CallToolRequestSchema, async request => {
 		const { name, arguments: args } = request.params;
-
 		logger.info(`[MCP Handler] Tool called: ${name}`, { toolName: name, args });
 
-		switch (name) {
-			case 'ask_cipher':
-				return await handleAskCipherTool(agent, args);
-			default:
-				throw new Error(`Unknown tool: ${name}`);
+		if (name === 'ask_cipher') {
+			return await handleAskCipherTool(agent, args);
+		}
+
+		// Route to unifiedToolManager for all other tools
+		try {
+			const result = await unifiedToolManager.executeTool(name, args);
+			return {
+				content: [
+					{
+						type: 'text',
+						text: typeof result === 'string' ? result : JSON.stringify(result),
+					},
+				],
+			};
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			logger.error(`[MCP Handler] Error in tool '${name}'`, { error: errorMessage });
+			throw new Error(`Tool execution failed: ${errorMessage}`);
 		}
 	});
 }
