@@ -6,6 +6,7 @@ import { ImageData } from '../messages/types.js';
 import { ILLMService, LLMServiceConfig } from './types.js';
 import OpenAI from 'openai';
 import { logger } from '../../../logger/index.js';
+import { formatToolResult } from '../utils/tool-result-formatter.js';
 
 export class OllamaService implements ILLMService {
 	private openai: OpenAI;
@@ -61,12 +62,18 @@ export class OllamaService implements ILLMService {
 					return responseText;
 				}
 
+				// Log thinking steps when assistant provides reasoning before tool calls
+				if (message.content && message.content.trim()) {
+					logger.info(`💭 ${message.content.trim()}`);
+				}
+
 				// Add assistant message with tool calls to history
 				await this.contextManager.addAssistantMessage(message.content, message.tool_calls);
 
 				// Handle tool calls
 				for (const toolCall of message.tool_calls) {
 					logger.debug(`Ollama tool call initiated: ${JSON.stringify(toolCall, null, 2)}`);
+					logger.info(`🔧 Using tool: ${toolCall.function.name}`);
 					const toolName = toolCall.function.name;
 					let args: any = {};
 
@@ -88,6 +95,10 @@ export class OllamaService implements ILLMService {
 						} else {
 							result = await this.mcpManager.executeTool(toolName, args);
 						}
+
+						// Display formatted tool result
+						const formattedResult = formatToolResult(toolName, result);
+						logger.info(`📋 Tool Result:\n${formattedResult}`);
 
 						// Add tool result to message manager
 						await this.contextManager.addToolResult(toolCall.id, toolName, result);

@@ -71,7 +71,7 @@ export class ContextManager {
 
 		// Store the message in history
 		this.messages.push(message);
-		logger.info(`Adding message to context: ${JSON.stringify(message, null, 2)}`);
+		logger.debug(`Adding message to context: ${JSON.stringify(message, null, 2)}`);
 		logger.debug(`Total messages in context: ${this.messages.length}`);
 	}
 
@@ -94,7 +94,7 @@ export class ContextManager {
 					},
 				]
 			: [{ type: 'text', text: textContent }];
-		logger.info(`Adding user message: ${JSON.stringify(messageParts, null, 2)}`);
+		logger.debug(`Adding user message: ${JSON.stringify(messageParts, null, 2)}`);
 		await this.addMessage({ role: 'user', content: messageParts });
 	}
 
