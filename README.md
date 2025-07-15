@@ -111,6 +111,7 @@ cipher --mode cli
 - Session management capabilities
 - Graceful exit with `exit` or `quit` commands
 - Signal handling (Ctrl+C) for clean shutdown
+- Smart logging: Shows AI thinking steps (💭) and tool usage (🔧) in info mode, detailed context in debug mode
 
 ### One-Shot Mode (Headless)
 
@@ -1415,6 +1416,11 @@ OLLAMA_BASE_URL=http://localhost:11434/v1  # Points to your local Ollama instanc
 # Logger Configuration (optional)
 CIPHER_LOG_LEVEL=info             # debug, info, warn, error
 REDACT_SECRETS=true               # true/false - redact sensitive info in logs
+
+# Logging Level Guide:
+# - info: Shows AI thinking steps (💭) and tool usage (🔧) for user-friendly output
+# - debug: Shows detailed message context and internal processing information
+# - warn/error: Shows warnings and errors only
 
 # Storage Configuration (optional)
 STORAGE_CACHE_TYPE=in-memory      # redis, in-memory

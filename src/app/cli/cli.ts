@@ -30,16 +30,16 @@ export async function startHeadlessCli(agent: MemAgent, input: string): Promise<
 		const response = await agent.run(message, undefined, undefined, false, {
 			memoryMetadata: metadata,
 		});
-		if (response) {
-			logger.displayAIResponse(response);
+		if (response && response.response) {
+			logger.displayAIResponse(response.response);
 		} else {
 			console.log(chalk.gray('No response received.'));
 		}
 	} else {
 		console.log(chalk.gray('🤔 Processing...'));
 		const response = await agent.run(input);
-		if (response) {
-			logger.displayAIResponse(response);
+		if (response && response.response) {
+			logger.displayAIResponse(response.response);
 		} else {
 			console.log(chalk.gray('No response received.'));
 		}
@@ -108,8 +108,8 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 				const response = await agent.run(message, undefined, undefined, false, {
 					memoryMetadata: metadata,
 				});
-				if (response) {
-					logger.displayAIResponse(response);
+				if (response && response.response) {
+					logger.displayAIResponse(response.response);
 				} else {
 					console.log(chalk.gray('No response received.'));
 				}
@@ -137,9 +137,9 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 					console.log(chalk.gray('🤔 Thinking...'));
 					const response = await agent.run(trimmedInput);
 
-					if (response) {
+					if (response && response.response) {
 						// Display the AI response with nice formatting
-						logger.displayAIResponse(response);
+						logger.displayAIResponse(response.response);
 					} else {
 						console.log(chalk.gray('No response received.'));
 					}

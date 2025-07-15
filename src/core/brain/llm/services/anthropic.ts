@@ -6,6 +6,7 @@ import { ContextManager } from '../messages/manager.js';
 import { ImageData } from '../messages/types.js';
 import { ILLMService, LLMServiceConfig } from './types.js';
 import { logger } from '../../../logger/index.js';
+import { formatToolResult } from '../utils/tool-result-formatter.js';
 
 export class AnthropicService implements ILLMService {
 	private anthropic: Anthropic;
@@ -72,6 +73,11 @@ export class AnthropicService implements ILLMService {
 					return textContent;
 				}
 
+				// Log thinking steps when assistant provides reasoning before tool calls
+				if (textContent && textContent.trim()) {
+					logger.info(`💭 ${textContent.trim()}`);
+				}
+
 				// Transform tool uses into the format expected by ContextManager
 				const formattedToolCalls = toolUses.map((toolUse: any) => ({
 					id: toolUse.id,
@@ -88,6 +94,7 @@ export class AnthropicService implements ILLMService {
 				// Handle tool uses
 				for (const toolUse of toolUses) {
 					logger.debug(`Tool call initiated: ${JSON.stringify(toolUse, null, 2)}`);
+					logger.info(`🔧 Using tool: ${toolUse.name}`);
 					const toolName = toolUse.name;
 					const args = toolUse.input;
 					const toolUseId = toolUse.id;
@@ -100,6 +107,10 @@ export class AnthropicService implements ILLMService {
 						} else {
 							result = await this.mcpManager.executeTool(toolName, args);
 						}
+
+						// Display formatted tool result
+						const formattedResult = formatToolResult(toolName, result);
+						logger.info(`📋 Tool Result:\n${formattedResult}`);
 
 						// Add tool result to message manager
 						await this.contextManager.addToolResult(toolUseId, toolName, result);
