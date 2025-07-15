@@ -35,7 +35,7 @@ export async function startHeadlessCli(agent: MemAgent, input: string): Promise<
 		} else {
 			console.log(chalk.gray('No response received.'));
 		}
-		
+
 		// Wait for background operations to complete before exiting
 		if (result && result.backgroundOperations) {
 			try {
@@ -52,7 +52,7 @@ export async function startHeadlessCli(agent: MemAgent, input: string): Promise<
 		} else {
 			console.log(chalk.gray('No response received.'));
 		}
-		
+
 		// Wait for background operations to complete before exiting
 		if (result && result.backgroundOperations) {
 			try {
@@ -131,7 +131,7 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 				} else {
 					console.log(chalk.gray('No response received.'));
 				}
-				
+
 				// Wait for background operations to complete before showing next prompt
 				if (result && result.backgroundOperations) {
 					try {
@@ -170,7 +170,7 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 					} else {
 						console.log(chalk.gray('No response received.'));
 					}
-					
+
 					// Wait for background operations to complete before showing next prompt
 					if (result && result.backgroundOperations) {
 						try {

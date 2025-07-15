@@ -203,12 +203,12 @@ Respond only with the JSON object, no additional text.`;
 			try {
 				// Clean the response to handle common LLM formatting issues
 				let cleanedResponse = response.trim();
-				
+
 				logger.debug('ReasoningContentDetector: Raw LLM response', {
 					rawResponse: response.substring(0, 300),
 					responseLength: response.length,
 				});
-				
+
 				// Remove markdown code block formatting if present
 				if (cleanedResponse.startsWith('```json')) {
 					cleanedResponse = cleanedResponse.replace(/^```json\s*/, '');
@@ -219,18 +219,18 @@ Respond only with the JSON object, no additional text.`;
 				if (cleanedResponse.endsWith('```')) {
 					cleanedResponse = cleanedResponse.replace(/\s*```$/, '');
 				}
-				
+
 				// Extract JSON if there's additional text around it
 				const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
 				if (jsonMatch) {
 					cleanedResponse = jsonMatch[0];
 				}
-				
+
 				logger.debug('ReasoningContentDetector: Cleaned response for JSON parsing', {
 					cleanedResponse: cleanedResponse.substring(0, 300),
 					cleanedLength: cleanedResponse.length,
 				});
-				
+
 				const result = JSON.parse(cleanedResponse);
 				return {
 					containsReasoning: result.containsReasoning || false,

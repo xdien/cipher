@@ -19,13 +19,13 @@ function resolveEnvPath(): string {
 	if (existsSync('.env')) {
 		return '.env';
 	}
-	
+
 	// Try relative to project root (where package.json is located)
 	const currentFileUrl = import.meta.url;
 	const currentFilePath = fileURLToPath(currentFileUrl);
 	const projectRoot = path.resolve(path.dirname(currentFilePath), '../..');
 	const envPath = path.resolve(projectRoot, '.env');
-	
+
 	return envPath;
 }
 
@@ -111,13 +111,13 @@ program
 	.action(async (prompt: string[] = []) => {
 		// Process prompt arguments for one-shot mode
 		const headlessInput = prompt.join(' ') || undefined;
-		
+
 		// Check for .env file with proper path resolution
 		const envPath = resolveEnvPath();
 		if (!existsSync(envPath)) {
 			const opts = program.opts();
 			const errorMsg = `No .env file found at ${envPath}, copy .env.example to .env and fill in the values`;
-			
+
 			if (opts.mode === 'mcp') {
 				process.stderr.write(`[CIPHER-MCP] ERROR: ${errorMsg}\n`);
 			} else {

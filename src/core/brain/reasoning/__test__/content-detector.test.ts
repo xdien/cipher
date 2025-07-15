@@ -31,7 +31,7 @@ describe('ReasoningContentDetector', () => {
 		mockPromptManager = {} as PromptManager;
 		mockMcpManager = {} as MCPManager;
 		mockUnifiedToolManager = {} as UnifiedToolManager;
-		
+
 		// Mock evalLlmConfig for testing
 		mockEvalLlmConfig = {
 			provider: 'openai',

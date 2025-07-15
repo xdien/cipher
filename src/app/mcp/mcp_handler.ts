@@ -486,7 +486,7 @@ export function redirectLogsForStdio(): void {
 		warn: console.warn,
 		info: console.info,
 		debug: console.debug,
-		trace: console.trace
+		trace: console.trace,
 	};
 
 	// Override console methods to write to log file instead of stdout/stderr
@@ -518,7 +518,7 @@ export function redirectLogsForStdio(): void {
 	const originalStdoutWrite = process.stdout.write;
 	const originalStderrWrite = process.stderr.write;
 
-	process.stdout.write = function(chunk: any, encoding?: any, callback?: any) {
+	process.stdout.write = function (chunk: any, encoding?: any, callback?: any) {
 		// Only allow JSON-RPC messages to stdout (they start with '{' and contain '"jsonrpc"')
 		const chunkStr = chunk.toString();
 		if (chunkStr.trim().startsWith('{') && chunkStr.includes('"jsonrpc"')) {
@@ -530,7 +530,7 @@ export function redirectLogsForStdio(): void {
 		}
 	};
 
-	process.stderr.write = function(chunk: any, encoding?: any, callback?: any) {
+	process.stderr.write = function (chunk: any, encoding?: any, callback?: any) {
 		// Allow stderr for MCP error reporting, but log it too
 		logStream.write(`[STDERR] ${new Date().toISOString()} ${chunk.toString()}`);
 		return originalStderrWrite.call(this, chunk, encoding, callback);
@@ -542,5 +542,7 @@ export function redirectLogsForStdio(): void {
 	(globalThis as any).__originalStderrWrite = originalStderrWrite;
 
 	// Log the redirection activation
-	logStream.write(`[MCP-PROTECTION] ${new Date().toISOString()} Console and stdout/stderr redirection activated\n`);
+	logStream.write(
+		`[MCP-PROTECTION] ${new Date().toISOString()} Console and stdout/stderr redirection activated\n`
+	);
 }
