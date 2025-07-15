@@ -3,7 +3,7 @@ import { logger } from '../../../logger/index.js';
 
 /**
  * Tool Result Formatter
- * 
+ *
  * This utility formats different types of tool results in a visually appealing way
  * for display to the user, replacing the raw JSON output with clean, readable formatting.
  */
@@ -11,6 +11,7 @@ import { logger } from '../../../logger/index.js';
 interface MemorySearchResult {
 	success: boolean;
 	query: string;
+	error?: string;
 	results: Array<{
 		id: string;
 		text: string;
@@ -34,6 +35,7 @@ interface MemorySearchResult {
 
 interface KnowledgeGraphResult {
 	success: boolean;
+	error?: string;
 	nodes?: Array<{
 		id: string;
 		name: string;
@@ -62,6 +64,7 @@ interface KnowledgeGraphResult {
 
 interface ReasoningResult {
 	success: boolean;
+	error?: string;
 	steps?: Array<{
 		type: string;
 		content: string;
@@ -121,12 +124,20 @@ export function formatToolResult(toolName: string, result: any): string {
 		}
 
 		// Knowledge graph search tools
-		if (toolName.includes('search_graph') || toolName.includes('query_graph') || toolName.includes('get_neighbors')) {
+		if (
+			toolName.includes('search_graph') ||
+			toolName.includes('query_graph') ||
+			toolName.includes('get_neighbors')
+		) {
 			return formatKnowledgeGraphResult(result as KnowledgeGraphResult);
 		}
 
 		// Reasoning tools
-		if (toolName.includes('reasoning') || toolName.includes('extract_reasoning') || toolName.includes('evaluate_reasoning')) {
+		if (
+			toolName.includes('reasoning') ||
+			toolName.includes('extract_reasoning') ||
+			toolName.includes('evaluate_reasoning')
+		) {
 			return formatReasoningResult(result as ReasoningResult);
 		}
 
@@ -136,7 +147,12 @@ export function formatToolResult(toolName: string, result: any): string {
 		}
 
 		// Knowledge graph modification tools
-		if (toolName.includes('add_node') || toolName.includes('add_edge') || toolName.includes('update_node') || toolName.includes('delete_node')) {
+		if (
+			toolName.includes('add_node') ||
+			toolName.includes('add_edge') ||
+			toolName.includes('update_node') ||
+			toolName.includes('delete_node')
+		) {
 			return formatKnowledgeGraphModificationResult(result);
 		}
 
@@ -157,11 +173,13 @@ function formatMemorySearchResult(result: MemorySearchResult): string {
 	}
 
 	const output = [];
-	
+
 	// Header
 	output.push(chalk.blue.bold(`🔍 Memory Search Results`));
 	output.push(chalk.gray(`Query: "${result.query}"`));
-	output.push(chalk.gray(`Found ${result.results.length} result(s) in ${result.metadata.searchTime}ms`));
+	output.push(
+		chalk.gray(`Found ${result.results.length} result(s) in ${result.metadata.searchTime}ms`)
+	);
 	output.push('');
 
 	// Results
@@ -169,7 +187,11 @@ function formatMemorySearchResult(result: MemorySearchResult): string {
 		output.push(chalk.yellow('No results found'));
 	} else {
 		result.results.forEach((item, index) => {
-			output.push(chalk.cyan(`${index + 1}. ${chalk.bold(item.text.substring(0, 80))}${item.text.length > 80 ? '...' : ''}`));
+			output.push(
+				chalk.cyan(
+					`${index + 1}. ${chalk.bold(item.text.substring(0, 80))}${item.text.length > 80 ? '...' : ''}`
+				)
+			);
 			output.push(chalk.gray(`   📊 Similarity: ${(item.similarity * 100).toFixed(1)}%`));
 			if (item.confidence) {
 				output.push(chalk.gray(`   🎯 Confidence: ${(item.confidence * 100).toFixed(1)}%`));
@@ -184,9 +206,17 @@ function formatMemorySearchResult(result: MemorySearchResult): string {
 
 		// Summary
 		output.push(chalk.gray(`📊 Summary:`));
-		output.push(chalk.gray(`   • Max similarity: ${(result.metadata.maxSimilarity * 100).toFixed(1)}%`));
-		output.push(chalk.gray(`   • Min similarity: ${(result.metadata.minSimilarity * 100).toFixed(1)}%`));
-		output.push(chalk.gray(`   • Average similarity: ${(result.metadata.averageSimilarity * 100).toFixed(1)}%`));
+		output.push(
+			chalk.gray(`   • Max similarity: ${(result.metadata.maxSimilarity * 100).toFixed(1)}%`)
+		);
+		output.push(
+			chalk.gray(`   • Min similarity: ${(result.metadata.minSimilarity * 100).toFixed(1)}%`)
+		);
+		output.push(
+			chalk.gray(
+				`   • Average similarity: ${(result.metadata.averageSimilarity * 100).toFixed(1)}%`
+			)
+		);
 		if (result.metadata.usedFallback) {
 			output.push(chalk.yellow(`   ⚠️  Used fallback search`));
 		}
@@ -204,7 +234,7 @@ function formatKnowledgeGraphResult(result: KnowledgeGraphResult): string {
 	}
 
 	const output = [];
-	
+
 	// Header
 	output.push(chalk.blue.bold(`🕸️  Knowledge Graph Results`));
 	if (result.message) {
@@ -219,7 +249,11 @@ function formatKnowledgeGraphResult(result: KnowledgeGraphResult): string {
 	if (result.nodes && result.nodes.length > 0) {
 		output.push(chalk.cyan.bold(`📍 Nodes (${result.nodes.length}):`));
 		result.nodes.slice(0, 10).forEach((node, index) => {
-			output.push(chalk.cyan(`  ${index + 1}. ${chalk.bold(node.name)} ${node.type ? chalk.gray(`(${node.type})`) : ''}`));
+			output.push(
+				chalk.cyan(
+					`  ${index + 1}. ${chalk.bold(node.name)} ${node.type ? chalk.gray(`(${node.type})`) : ''}`
+				)
+			);
 			if (node.score) {
 				output.push(chalk.gray(`     📊 Score: ${(node.score * 100).toFixed(1)}%`));
 			}
@@ -244,7 +278,11 @@ function formatKnowledgeGraphResult(result: KnowledgeGraphResult): string {
 	if (result.edges && result.edges.length > 0) {
 		output.push(chalk.magenta.bold(`🔗 Relationships (${result.edges.length}):`));
 		result.edges.slice(0, 10).forEach((edge, index) => {
-			output.push(chalk.magenta(`  ${index + 1}. ${chalk.bold(edge.source)} ${chalk.gray('→')} ${chalk.bold(edge.target)}`));
+			output.push(
+				chalk.magenta(
+					`  ${index + 1}. ${chalk.bold(edge.source)} ${chalk.gray('→')} ${chalk.bold(edge.target)}`
+				)
+			);
 			output.push(chalk.gray(`     🏷️  Type: ${edge.type}`));
 			if (edge.score) {
 				output.push(chalk.gray(`     📊 Score: ${(edge.score * 100).toFixed(1)}%`));
@@ -260,7 +298,11 @@ function formatKnowledgeGraphResult(result: KnowledgeGraphResult): string {
 	if (result.related && result.related.length > 0) {
 		output.push(chalk.yellow.bold(`🔗 Related Entities (${result.related.length}):`));
 		result.related.slice(0, 5).forEach((rel, index) => {
-			output.push(chalk.yellow(`  ${index + 1}. ${chalk.bold(rel.entity.name)} ${chalk.gray(`(distance: ${rel.distance})`)}`));
+			output.push(
+				chalk.yellow(
+					`  ${index + 1}. ${chalk.bold(rel.entity.name)} ${chalk.gray(`(distance: ${rel.distance})`)}`
+				)
+			);
 			output.push(chalk.gray(`     🔗 via ${rel.relationship.type}`));
 		});
 		if (result.related.length > 5) {
@@ -286,7 +328,7 @@ function formatReasoningResult(result: ReasoningResult): string {
 	}
 
 	const output = [];
-	
+
 	// Header
 	output.push(chalk.blue.bold(`🧠 Reasoning Analysis`));
 	output.push('');
@@ -297,7 +339,11 @@ function formatReasoningResult(result: ReasoningResult): string {
 		result.steps.forEach((step, index) => {
 			const typeIcon = getStepTypeIcon(step.type);
 			output.push(chalk.cyan(`  ${index + 1}. ${typeIcon} ${chalk.bold(step.type)}`));
-			output.push(chalk.gray(`     ${step.content.substring(0, 100)}${step.content.length > 100 ? '...' : ''}`));
+			output.push(
+				chalk.gray(
+					`     ${step.content.substring(0, 100)}${step.content.length > 100 ? '...' : ''}`
+				)
+			);
 		});
 		output.push('');
 	}
@@ -305,12 +351,19 @@ function formatReasoningResult(result: ReasoningResult): string {
 	// Evaluation
 	if (result.evaluation) {
 		output.push(chalk.yellow.bold(`📊 Quality Evaluation:`));
-		output.push(chalk.yellow(`  Quality Score: ${(result.evaluation.qualityScore * 100).toFixed(1)}%`));
-		
+		output.push(
+			chalk.yellow(`  Quality Score: ${(result.evaluation.qualityScore * 100).toFixed(1)}%`)
+		);
+
 		if (result.evaluation.issues && result.evaluation.issues.length > 0) {
 			output.push(chalk.red(`  Issues Found (${result.evaluation.issues.length}):`));
 			result.evaluation.issues.forEach((issue, index) => {
-				const severityColor = issue.severity === 'high' ? chalk.red : issue.severity === 'medium' ? chalk.yellow : chalk.gray;
+				const severityColor =
+					issue.severity === 'high'
+						? chalk.red
+						: issue.severity === 'medium'
+							? chalk.yellow
+							: chalk.gray;
 				output.push(severityColor(`    ${index + 1}. ${issue.description}`));
 			});
 		}
@@ -328,7 +381,11 @@ function formatReasoningResult(result: ReasoningResult): string {
 	if (result.patterns && result.patterns.length > 0) {
 		output.push(chalk.magenta.bold(`🔍 Similar Patterns (${result.patterns.length}):`));
 		result.patterns.slice(0, 3).forEach((pattern, index) => {
-			output.push(chalk.magenta(`  ${index + 1}. ${chalk.bold(pattern.context)} ${chalk.gray(`(${(pattern.similarity * 100).toFixed(1)}% match)`)}`));
+			output.push(
+				chalk.magenta(
+					`  ${index + 1}. ${chalk.bold(pattern.context)} ${chalk.gray(`(${(pattern.similarity * 100).toFixed(1)}% match)`)}`
+				)
+			);
 			output.push(chalk.gray(`     ${pattern.steps.length} steps`));
 		});
 		if (result.patterns.length > 3) {
@@ -349,7 +406,7 @@ function formatMemoryOperationResult(result: any): string {
 	}
 
 	const output = [];
-	
+
 	// Header
 	output.push(chalk.blue.bold(`💾 Memory Operation Results`));
 	output.push('');
@@ -362,7 +419,7 @@ function formatMemoryOperationResult(result: any): string {
 		if (ops.updated > 0) summary.push(chalk.yellow(`${ops.updated} updated`));
 		if (ops.deleted > 0) summary.push(chalk.red(`${ops.deleted} deleted`));
 		if (ops.unchanged > 0) summary.push(chalk.gray(`${ops.unchanged} unchanged`));
-		
+
 		if (summary.length > 0) {
 			output.push(chalk.cyan(`📊 Summary: ${summary.join(', ')}`));
 			output.push('');
@@ -374,7 +431,11 @@ function formatMemoryOperationResult(result: any): string {
 		output.push(chalk.cyan.bold(`📝 Memory Entries (${result.memories.length}):`));
 		result.memories.slice(0, 5).forEach((memory: any, index: number) => {
 			const eventIcon = getMemoryEventIcon(memory.event);
-			output.push(chalk.cyan(`  ${index + 1}. ${eventIcon} ${chalk.bold(memory.event)} - ${memory.text.substring(0, 60)}${memory.text.length > 60 ? '...' : ''}`));
+			output.push(
+				chalk.cyan(
+					`  ${index + 1}. ${eventIcon} ${chalk.bold(memory.event)} - ${memory.text.substring(0, 60)}${memory.text.length > 60 ? '...' : ''}`
+				)
+			);
 			if (memory.confidence) {
 				output.push(chalk.gray(`     🎯 Confidence: ${(memory.confidence * 100).toFixed(1)}%`));
 			}
@@ -382,7 +443,11 @@ function formatMemoryOperationResult(result: any): string {
 				output.push(chalk.gray(`     🏷️  Tags: ${memory.tags.join(', ')}`));
 			}
 			if (memory.reasoning) {
-				output.push(chalk.gray(`     💭 Reasoning: ${memory.reasoning.substring(0, 80)}${memory.reasoning.length > 80 ? '...' : ''}`));
+				output.push(
+					chalk.gray(
+						`     💭 Reasoning: ${memory.reasoning.substring(0, 80)}${memory.reasoning.length > 80 ? '...' : ''}`
+					)
+				);
 			}
 		});
 		if (result.memories.length > 5) {
@@ -403,7 +468,7 @@ function formatKnowledgeGraphModificationResult(result: any): string {
 	}
 
 	const output = [];
-	
+
 	// Header
 	output.push(chalk.blue.bold(`🕸️  Knowledge Graph Updated`));
 	if (result.message) {
@@ -413,7 +478,11 @@ function formatKnowledgeGraphModificationResult(result: any): string {
 
 	// Node/Edge details
 	if (result.node) {
-		output.push(chalk.green(`✅ Node: ${chalk.bold(result.node.name)} ${result.node.type ? chalk.gray(`(${result.node.type})`) : ''}`));
+		output.push(
+			chalk.green(
+				`✅ Node: ${chalk.bold(result.node.name)} ${result.node.type ? chalk.gray(`(${result.node.type})`) : ''}`
+			)
+		);
 		if (result.node.properties && Object.keys(result.node.properties).length > 0) {
 			const propStr = Object.entries(result.node.properties)
 				.slice(0, 3)
@@ -424,7 +493,11 @@ function formatKnowledgeGraphModificationResult(result: any): string {
 	}
 
 	if (result.edge) {
-		output.push(chalk.green(`✅ Relationship: ${chalk.bold(result.edge.source)} ${chalk.gray('→')} ${chalk.bold(result.edge.target)}`));
+		output.push(
+			chalk.green(
+				`✅ Relationship: ${chalk.bold(result.edge.source)} ${chalk.gray('→')} ${chalk.bold(result.edge.target)}`
+			)
+		);
 		output.push(chalk.gray(`   🏷️  Type: ${result.edge.type}`));
 		if (result.edge.properties && Object.keys(result.edge.properties).length > 0) {
 			const propStr = Object.entries(result.edge.properties)
@@ -460,7 +533,7 @@ function formatGenericResult(result: GenericToolResult): string {
 
 	const output = [];
 	output.push(chalk.green(`✅ ${result.message || 'Operation completed successfully'}`));
-	
+
 	if (result.data) {
 		// Try to format data in a readable way
 		if (typeof result.data === 'object' && result.data !== null) {
@@ -471,7 +544,11 @@ function formatGenericResult(result: GenericToolResult): string {
 				keys.slice(0, 5).forEach(key => {
 					const value = result.data[key];
 					const displayValue = typeof value === 'string' ? value : JSON.stringify(value);
-					output.push(chalk.gray(`   • ${key}: ${displayValue.substring(0, 50)}${displayValue.length > 50 ? '...' : ''}`));
+					output.push(
+						chalk.gray(
+							`   • ${key}: ${displayValue.substring(0, 50)}${displayValue.length > 50 ? '...' : ''}`
+						)
+					);
 				});
 				if (keys.length > 5) {
 					output.push(chalk.gray(`   ... and ${keys.length - 5} more fields`));
@@ -488,13 +565,20 @@ function formatGenericResult(result: GenericToolResult): string {
  */
 function getStepTypeIcon(type: string): string {
 	switch (type.toLowerCase()) {
-		case 'thought': return '💭';
-		case 'action': return '⚡';
-		case 'observation': return '👁️';
-		case 'decision': return '🎯';
-		case 'conclusion': return '🎓';
-		case 'reflection': return '🪞';
-		default: return '•';
+		case 'thought':
+			return '💭';
+		case 'action':
+			return '⚡';
+		case 'observation':
+			return '👁️';
+		case 'decision':
+			return '🎯';
+		case 'conclusion':
+			return '🎓';
+		case 'reflection':
+			return '🪞';
+		default:
+			return '•';
 	}
 }
 
@@ -503,10 +587,15 @@ function getStepTypeIcon(type: string): string {
  */
 function getMemoryEventIcon(event: string): string {
 	switch (event.toUpperCase()) {
-		case 'ADD': return '➕';
-		case 'UPDATE': return '✏️';
-		case 'DELETE': return '🗑️';
-		case 'NONE': return '⚪';
-		default: return '•';
+		case 'ADD':
+			return '➕';
+		case 'UPDATE':
+			return '✏️';
+		case 'DELETE':
+			return '🗑️';
+		case 'NONE':
+			return '⚪';
+		default:
+			return '•';
 	}
-} 
+}
