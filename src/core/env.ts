@@ -194,9 +194,12 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 export const validateEnv = () => {
 	// Critical validation: OPENAI_API_KEY is always required for embedding functionality
 	if (!process.env.OPENAI_API_KEY) {
-		console.error(
-			'OPENAI_API_KEY is required for embedding functionality, even when using other LLM providers (Anthropic, OpenRouter, etc.)'
-		);
+		const errorMsg = 'OPENAI_API_KEY is required for embedding functionality, even when using other LLM providers (Anthropic, OpenRouter, etc.)';
+		if (isMcpMode) {
+			process.stderr.write(`[CIPHER-MCP] ERROR: ${errorMsg}\n`);
+		} else {
+			console.error(errorMsg);
+		}
 		return false;
 	}
 
@@ -273,7 +276,12 @@ export const validateEnv = () => {
 	const result = envSchema.safeParse(envToValidate);
 	if (!result.success) {
 		// Note: logger might not be available during early initialization
-		console.error('Environment validation failed:', result.error.issues);
+		const errorMsg = `Environment validation failed: ${JSON.stringify(result.error.issues)}`;
+		if (isMcpMode) {
+			process.stderr.write(`[CIPHER-MCP] ERROR: ${errorMsg}\n`);
+		} else {
+			console.error('Environment validation failed:', result.error.issues);
+		}
 		return false;
 	}
 	return result.success;
