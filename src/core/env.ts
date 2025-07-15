@@ -1,46 +1,16 @@
 import { config } from 'dotenv';
 import { z } from 'zod';
 
-// Load environment variables from .env file - prevent stdout contamination in MCP mode
+// Load environment variables from .env file - skip entirely in MCP mode
 const isMcpMode =
 	process.argv.includes('--mode') && process.argv[process.argv.indexOf('--mode') + 1] === 'mcp';
 
 if (isMcpMode) {
-	// In MCP mode, suppress any output during dotenv loading
-	const originalConsole = {
-		log: console.log,
-		error: console.error,
-		warn: console.warn,
-		info: console.info,
-	};
-
-	// Also capture direct stdout/stderr writes
-	const originalStdoutWrite = process.stdout.write;
-	const originalStderrWrite = process.stderr.write;
-
-	// Temporarily silence console methods and direct stream writes
-	console.log = () => {};
-	console.error = () => {};
-	console.warn = () => {};
-	console.info = () => {};
-
-	// Suppress stdout/stderr writes during dotenv loading
-	process.stdout.write = () => true;
-	process.stderr.write = () => true;
-
-	try {
-		config();
-	} finally {
-		// Restore console methods and stream writes
-		console.log = originalConsole.log;
-		console.error = originalConsole.error;
-		console.warn = originalConsole.warn;
-		console.info = originalConsole.info;
-		process.stdout.write = originalStdoutWrite;
-		process.stderr.write = originalStderrWrite;
-	}
+	// In MCP mode, skip .env file loading entirely since all environment variables
+	// are provided via the "env" field in the MCP configuration
+	// No need to load .env files as MCP host provides all required environment variables
 } else {
-	// Normal mode - allow normal dotenv output
+	// Normal mode - load environment variables from .env file
 	config();
 }
 
@@ -224,9 +194,13 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 export const validateEnv = () => {
 	// Critical validation: OPENAI_API_KEY is always required for embedding functionality
 	if (!process.env.OPENAI_API_KEY) {
-		console.error(
-			'OPENAI_API_KEY is required for embedding functionality, even when using other LLM providers (Anthropic, OpenRouter, etc.)'
-		);
+		const errorMsg =
+			'OPENAI_API_KEY is required for embedding functionality, even when using other LLM providers (Anthropic, OpenRouter, etc.)';
+		if (isMcpMode) {
+			process.stderr.write(`[CIPHER-MCP] ERROR: ${errorMsg}\n`);
+		} else {
+			console.error(errorMsg);
+		}
 		return false;
 	}
 
@@ -303,7 +277,12 @@ export const validateEnv = () => {
 	const result = envSchema.safeParse(envToValidate);
 	if (!result.success) {
 		// Note: logger might not be available during early initialization
-		console.error('Environment validation failed:', result.error.issues);
+		const errorMsg = `Environment validation failed: ${JSON.stringify(result.error.issues)}`;
+		if (isMcpMode) {
+			process.stderr.write(`[CIPHER-MCP] ERROR: ${errorMsg}\n`);
+		} else {
+			console.error('Environment validation failed:', result.error.issues);
+		}
 		return false;
 	}
 	return result.success;
