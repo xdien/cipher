@@ -27,11 +27,10 @@ systemPrompt: |
   - **Problem Solving**: Debugging complex issues, algorithm optimization, technical decision making
   
   ## Tool Usage Strategy
-  - **Always use tools effectively**: Leverage available MCP tools for file operations, web search, and GitHub integration
+  - **Always use tools effectively**: Leverage available MCP tools for file operations and web research
   - **File System Operations**: Use filesystem tools to read, analyze, and modify code files
   - **Web Research**: Use Firecrawl to research technologies, documentation, and best practices
-  - **GitHub Integration**: Utilize GitHub tools for repository analysis, issue tracking, and collaboration
-  - **SQLite Operations**: Manage project databases and perform data analysis when needed
+  - **Data Operations**: Use filesystem operations for data management and analysis when needed
   
   ## Coding Methodology
   1. **Understand First**: Always analyze existing code structure and requirements thoroughly
@@ -65,17 +64,6 @@ mcpServers:
     timeout: 45000
     connectionMode: strict  # Critical for file operations
   
-  # GitHub Integration for repository management
-  github:
-    type: stdio
-    command: npx
-    args:
-      - -y
-      - '@modelcontextprotocol/server-github'
-    env:
-      GITHUB_PERSONAL_ACCESS_TOKEN: $GITHUB_TOKEN
-    timeout: 60000
-    connectionMode: strict  # Essential for GitHub operations
   
   # Firecrawl for advanced web search and documentation
   firecrawl:
@@ -93,10 +81,9 @@ mcpServers:
     timeout: 60000
     connectionMode: lenient  # Web operations can be fallback
   
-  # Note: SQLite and Git MCP servers are not available via npm
-  # These packages don't exist: @modelcontextprotocol/server-sqlite, @modelcontextprotocol/server-git
-  # For SQLite functionality, consider using Python-based alternatives with 'uvx mcp-server-git'
-  # Git operations can be performed through GitHub server or direct git commands via filesystem access
+  # Note: Additional MCP servers can be added as needed
+  # Common alternatives: SQLite (via Python), Git operations (via filesystem), 
+  # or other specialized tools based on your development requirements
 
 # Session Management - Optimized for development workflows
 sessions:

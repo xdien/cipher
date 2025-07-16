@@ -15,7 +15,7 @@ Key advantages of Kimi K2:
 - **Extended Context Window**: Handles large codebases and maintains context across long development sessions
 - **Multi-language Expertise**: Strong performance across Python, JavaScript, TypeScript, Go, Rust, and more
 
-The setup includes a comprehensive suite of MCP (Model Context Protocol) servers that provide seamless integration with your development environment, from file system operations to GitHub management and advanced web research.
+The setup includes essential MCP (Model Context Protocol) servers that provide seamless integration with your development environment, from file system operations to advanced web research.
 
 ## Key Features Demonstrated
 
@@ -28,12 +28,7 @@ The setup includes a comprehensive suite of MCP (Model Context Protocol) servers
    - Get your API key from the dashboard
    - Ensure you have credits for Kimi K2 model usage
 
-2. **GitHub Personal Access Token**
-   - Go to GitHub Settings > Developer settings > Personal access tokens
-   - Create a token with `repo`, `user`, and `project` scopes
-   - For organization repos, ensure appropriate permissions
-
-3. **Firecrawl API Key**
+2. **Firecrawl API Key**
    - Sign up at [firecrawl.dev](https://firecrawl.dev)
    - Get your API key from the dashboard
    - Used for advanced web scraping and documentation research
@@ -62,7 +57,6 @@ Set these environment variables:
 ```bash
 # Required
 OPENROUTER_API_KEY=your_openrouter_api_key_here
-GITHUB_TOKEN=your_github_personal_access_token
 FIRECRAWL_API_KEY=your_firecrawl_api_key_here
 
 # Optional - for enhanced logging
@@ -85,9 +79,6 @@ Once launched, test the key capabilities:
 ```bash
 # Test file system access
 cipher> Can you analyze the structure of my current project?
-
-# Test GitHub integration
-cipher> Show me the recent issues in this repository
 
 # Test web research
 cipher> Research the latest best practices for React Server Components
@@ -124,14 +115,6 @@ filesystem:
 ```
 **Capabilities**: Secure file read/write operations with configurable access controls
 
-#### GitHub Server
-```yaml
-github:
-  type: stdio
-  command: npx -y @modelcontextprotocol/server-github
-  connectionMode: strict  # Essential for repository operations
-```
-**Capabilities**: Repository management, file operations, issue tracking, pull request creation
 
 #### Firecrawl Server
 ```yaml
@@ -165,15 +148,15 @@ The assistant will:
 - Provide detailed recommendations with code examples
 - Remember your security preferences for future reviews
 
-#### 2. **GitHub Repository Management**
+#### 2. **Code Architecture Analysis**
 ```bash
-cipher> Create a new feature branch for user authentication, then show me all open issues related to authentication.
+cipher> Analyze my current authentication system and suggest improvements for security and maintainability.
 ```
 
 The assistant will:
-- Use Git tools to create and switch to the new branch
-- Query GitHub API for authentication-related issues
-- Provide a summary and suggest prioritization
+- Read and analyze your authentication-related files
+- Research current security best practices
+- Provide detailed recommendations with implementation steps
 
 #### 3. **Research-Driven Development**
 ```bash
@@ -199,14 +182,14 @@ The assistant will:
 
 ### Advanced Usage Patterns
 
-#### Multi-File Refactoring
+#### Multi-File Code Analysis
 ```bash
-cipher> Refactor the user authentication system to use JWT tokens instead of sessions. Update all related files and maintain backward compatibility.
+cipher> Analyze my entire authentication system across multiple files and suggest a comprehensive refactoring plan.
 ```
 
-#### API Integration Development
+#### Research-Driven Implementation
 ```bash
-cipher> Research the Stripe payment API documentation and implement a complete payment flow with error handling and webhooks.
+cipher> Research the latest authentication best practices and help me implement a secure JWT-based system with proper error handling.
 ```
 
 #### Performance Optimization
@@ -230,18 +213,7 @@ npx -y @modelcontextprotocol/server-github --help
 - Check internet connectivity for npm packages
 - Verify API keys are correctly set in environment
 
-#### 2. **GitHub Token Issues**
-```bash
-# Test your GitHub token
-curl -H "Authorization: token YOUR_TOKEN" https://api.github.com/user
-```
-
-**Solutions:**
-- Ensure token has correct scopes (`repo`, `user`, `project`)
-- Check token hasn't expired
-- Verify organization permissions if working with org repos
-
-#### 3. **Firecrawl API Errors**
+#### 2. **Firecrawl API Errors**
 **Solutions:**
 - Check API key validity at [firecrawl.dev/app/api-keys](https://firecrawl.dev/app/api-keys)
 - Verify account has sufficient credits
