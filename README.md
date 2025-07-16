@@ -197,6 +197,37 @@ cipher --new-session [id]           # Start with new session
 /help                               # Show help
 ```
 
+## Use Case: Claude Code with Cipher MCP
+
+Cipher integrates seamlessly with Claude Code through MCP, providing persistent memory that enhances your coding experience. Here's how it works:
+
+### Memory Retrieval
+
+<img src="./assets/cipher_retrieve_memory.png" alt="Cipher retrieving previous conversation context" />
+
+When you ask Claude Code to recall previous conversations, Cipher's memory layer instantly retrieves relevant context, allowing you to continue where you left off without losing important details.
+
+### Memory Storage
+
+<img src="./assets/cipher_store_memory.png" alt="Cipher storing conversation context" />
+
+Every interaction with Claude Code is automatically stored in Cipher's dual memory system, capturing both programming concepts and reasoning patterns to improve future assistance.
+
+### Getting Started with Claude Code
+
+```bash
+# Install Cipher globally
+npm install -g @byterover/cipher
+
+# Add to Claude Code MCP configuration
+claude mcp add cipher -s user \
+  -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
+  -e OPENAI_API_KEY=$OPENAI_API_KEY \
+  -- npx -y cipher --mode mcp --agent ./cipher.yml
+```
+
+For detailed configuration instructions, see the [CLI Coding Agents guide](./examples/02-cli-coding-agents/README.md).
+
 ## Next Steps
 
 For detailed documentation, visit:
