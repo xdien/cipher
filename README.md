@@ -19,7 +19,7 @@
 
 ## Overview
 
-Cipher is an opensource memory layer specifically designed for coding agents. Compatible with Cursor, Claude Code, and other MCP-based tools using [Model Context Protocol](https://modelcontextprotocol.io/introduction).
+Cipher is an opensource memory layer specifically designed for coding agents. Compatible with Cursor, Claude Code, and other MCP-based tools.
 
 **Key Features:**
 
