@@ -19,11 +19,11 @@
 
 ## Overview
 
-Cipher is an opensource memory layer specifically designed for coding agents. Compatible with Cursor, Claude Code, and Gemini CLI, ... via MCP.
+Cipher is an opensource memory layer specifically designed for coding agents. Compatible with Cursor, Claude Code, and Gemini CLI, ... through MCP.
 
 **Key Features:**
 
-- Connect with your favorite IDEs through MCP
+- Connect with your favorite IDEs through MCP.
 - Dual Memory Layer that captures **System 1** (programming concepts & Business Logic & Past Interaction) and **System 2** (reasoning steps of the model when generating code).
 - Install on your IDE with zero configuration needed.
 - Switch seamlessly between IDEs without losing memory.
