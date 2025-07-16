@@ -73,7 +73,7 @@ pnpm i && pnpm run build && npm link
 cipher
 
 # One-shot command
-cipher "What is binary search?"
+cipher "Add this to memory as common causes of 'CORS error' in local dev with Vite + Express."
 
 # API server mode
 cipher --mode api
