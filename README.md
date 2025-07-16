@@ -22,9 +22,10 @@
 Cipher is a simple, composable framework to build memory for agents using [Model Context Protocol](https://modelcontextprotocol.io/introduction).
 
 **Key Features:**
+
 - Handles MCP server connection lifecycle management
 - Layered memory system that improves with every run
-- Memory aligned with cognitive structures 
+- Memory aligned with cognitive structures
 - Reflection mechanisms for agent learning
 - Zero configuration changes required for memory improvements
 
@@ -78,7 +79,7 @@ cipher "What is binary search?"
 # API server mode
 cipher --mode api
 
-# MCP server mode  
+# MCP server mode
 cipher --mode mcp
 ```
 
@@ -91,7 +92,7 @@ Configure Cipher using environment variables and YAML config:
 ```bash
 # Required: At least one API key (except Ollama)
 OPENAI_API_KEY=your_openai_api_key
-ANTHROPIC_API_KEY=your_anthropic_api_key  
+ANTHROPIC_API_KEY=your_anthropic_api_key
 OPENROUTER_API_KEY=your_openrouter_api_key
 
 # Ollama (self-hosted, no API key needed)
@@ -107,11 +108,11 @@ NODE_ENV=production
 ```yaml
 # LLM Configuration
 llm:
-  provider: openai  # openai, anthropic, openrouter, ollama
+  provider: openai # openai, anthropic, openrouter, ollama
   model: gpt-4-turbo
   apiKey: $OPENAI_API_KEY
 
-# System Prompt  
+# System Prompt
 systemPrompt: 'You are a helpful AI assistant with memory capabilities.'
 
 # MCP Servers (optional)
@@ -127,7 +128,7 @@ mcpServers:
 - **Multiple Operation Modes**: CLI interactive, one-shot commands, REST API server, MCP server
 - **Session Management**: Create, switch, and manage multiple conversation sessions
 - **Memory Integration**: Persistent memory that learns from every interaction
-- **MCP Protocol Support**: Full Model Context Protocol integration for tools and resources  
+- **MCP Protocol Support**: Full Model Context Protocol integration for tools and resources
 - **Multi-LLM Support**: OpenAI, Anthropic, OpenRouter, and Ollama compatibility
 - **Knowledge Graph**: Structured memory with entity relationships (Neo4j, in-memory)
 - **Real-time Learning**: Memory layers that improve automatically with usage
@@ -137,6 +138,7 @@ mcpServers:
 Cipher supports multiple LLM providers:
 
 ### OpenAI
+
 ```yaml
 llm:
   provider: openai
@@ -144,7 +146,8 @@ llm:
   apiKey: $OPENAI_API_KEY
 ```
 
-### Anthropic Claude  
+### Anthropic Claude
+
 ```yaml
 llm:
   provider: anthropic
@@ -153,24 +156,27 @@ llm:
 ```
 
 ### OpenRouter (200+ Models)
+
 ```yaml
 llm:
   provider: openrouter
-  model: openai/gpt-4-turbo  # Any OpenRouter model
+  model: openai/gpt-4-turbo # Any OpenRouter model
   apiKey: $OPENROUTER_API_KEY
 ```
 
 ### Ollama (Self-Hosted, No API Key)
+
 ```yaml
 llm:
   provider: ollama
-  model: qwen2.5:32b  # Recommended for best performance
+  model: qwen2.5:32b # Recommended for best performance
   baseURL: $OLLAMA_BASE_URL
 ```
 
 **Recommended Ollama Models:**
+
 - **High Performance**: `qwen2.5:32b`, `llama3.1:70b`
-- **Balanced**: `qwen2.5:8b`, `llama3.1:8b`  
+- **Balanced**: `qwen2.5:8b`, `llama3.1:8b`
 - **Lightweight**: `phi3:mini`, `granite3-dense:2b`
 
 ## CLI Reference
@@ -180,7 +186,7 @@ llm:
 cipher                              # Interactive CLI mode
 cipher "Your prompt here"           # One-shot mode
 
-# Server modes  
+# Server modes
 cipher --mode api                   # REST API server
 cipher --mode mcp                   # MCP server
 
@@ -191,7 +197,7 @@ cipher --new-session [id]           # Start with new session
 
 # CLI commands
 /session list                       # List sessions
-/session new [id]                   # Create session  
+/session new [id]                   # Create session
 /session switch <id>                # Switch session
 /config                             # Show config
 /stats                              # Show statistics
@@ -201,6 +207,7 @@ cipher --new-session [id]           # Start with new session
 ## Next Steps
 
 For detailed documentation, visit:
+
 - [Quick Start Guide](https://docs.byterover.dev/cipher/quickstart)
 - [Configuration Guide](https://docs.byterover.dev/cipher/configuration)
 - [Complete Documentation](https://docs.byterover.dev/cipher/overview)
