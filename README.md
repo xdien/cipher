@@ -90,7 +90,7 @@ Configure Cipher using environment variables and YAML config:
 ### Environment Variables (.env)
 
 ```bash
-# Required: At least one API key (except OpenAI is always required for embedding)
+# Required: At least one API key (except OPENAI_API_KEY is always required for embedding)
 OPENAI_API_KEY=your_openai_api_key
 ANTHROPIC_API_KEY=your_anthropic_api_key
 OPENROUTER_API_KEY=your_openrouter_api_key
