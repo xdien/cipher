@@ -585,33 +585,33 @@ function formatGenericResult(result: GenericToolResult): string {
 	const isExplicitSuccess = result.success === true;
 	
 	if (isExplicitSuccess || hasData) {
-		const output = [];
-		output.push(chalk.green(`✅ ${result.message || 'Operation completed successfully'}`));
+	const output = [];
+	output.push(chalk.green(`✅ ${result.message || 'Operation completed successfully'}`));
 
-		if (result.data) {
-			// Try to format data in a readable way
-			if (typeof result.data === 'object' && result.data !== null) {
-				const keys = Object.keys(result.data);
-				if (keys.length > 0) {
-					output.push('');
-					output.push(chalk.gray('📄 Data:'));
-					keys.slice(0, 5).forEach(key => {
-						const value = result.data[key];
-						const displayValue = typeof value === 'string' ? value : JSON.stringify(value);
-						output.push(
-							chalk.gray(
-								`   • ${key}: ${displayValue.substring(0, 50)}${displayValue.length > 50 ? '...' : ''}`
-							)
-						);
-					});
-					if (keys.length > 5) {
-						output.push(chalk.gray(`   ... and ${keys.length - 5} more fields`));
-					}
+	if (result.data) {
+		// Try to format data in a readable way
+		if (typeof result.data === 'object' && result.data !== null) {
+			const keys = Object.keys(result.data);
+			if (keys.length > 0) {
+				output.push('');
+				output.push(chalk.gray('📄 Data:'));
+				keys.slice(0, 5).forEach(key => {
+					const value = result.data[key];
+					const displayValue = typeof value === 'string' ? value : JSON.stringify(value);
+					output.push(
+						chalk.gray(
+							`   • ${key}: ${displayValue.substring(0, 50)}${displayValue.length > 50 ? '...' : ''}`
+						)
+					);
+				});
+				if (keys.length > 5) {
+					output.push(chalk.gray(`   ... and ${keys.length - 5} more fields`));
 				}
 			}
 		}
+	}
 
-		return output.join('\n');
+	return output.join('\n');
 	}
 
 	// If no clear success/failure indicators, treat as successful

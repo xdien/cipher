@@ -93,28 +93,10 @@ mcpServers:
     timeout: 60000
     connectionMode: lenient  # Web operations can be fallback
   
-  # SQLite for database operations and project data
-  sqlite:
-    type: stdio
-    command: npx
-    args:
-      - -y
-      - '@modelcontextprotocol/server-sqlite'
-      - './development.db'  # Local development database
-    timeout: 30000
-    connectionMode: lenient  # Optional for most coding tasks
-  
-  # Git operations for version control
-  git:
-    type: stdio
-    command: npx
-    args:
-      - -y
-      - '@modelcontextprotocol/server-git'
-      - --repository
-      - '.'  # Current repository
-    timeout: 45000
-    connectionMode: lenient  # Fallback for advanced git operations
+  # Note: SQLite and Git MCP servers are not available via npm
+  # These packages don't exist: @modelcontextprotocol/server-sqlite, @modelcontextprotocol/server-git
+  # For SQLite functionality, consider using Python-based alternatives with 'uvx mcp-server-git'
+  # Git operations can be performed through GitHub server or direct git commands via filesystem access
 
 # Session Management - Optimized for development workflows
 sessions:

@@ -4,33 +4,20 @@
 
 ## Overview
 
-This configuration showcases Cipher as a high-performance coding assistant using Moonshot AI's Kimi K2 model via OpenRouter. Kimi K2 is specifically optimized for coding tasks, reasoning, and tool calling, making it an excellent choice for software development workflows.
+This configuration showcases Cipher as a high-performance coding assistant using Moonshot AI's Kimi K2 model via OpenRouter. 
+
+Kimi K2 is Moonshot AI's latest model that delivers exceptional performance in coding tasks, reasoning, and tool calling. Built with advanced transformer architecture and trained on extensive code repositories, Kimi K2 excels at understanding complex software architectures, debugging intricate issues, and generating high-quality code across multiple programming languages. Learn more about Kimi K2 on [GitHub](https://github.com/MoonshotAI/Kimi-K2).
+
+Key advantages of Kimi K2:
+- **Superior Code Comprehension**: Deep understanding of programming patterns, frameworks, and best practices
+- **Advanced Reasoning**: Exceptional logical thinking for complex problem-solving and architectural decisions  
+- **Tool Integration**: Native optimization for seamless integration with development tools and APIs
+- **Extended Context Window**: Handles large codebases and maintains context across long development sessions
+- **Multi-language Expertise**: Strong performance across Python, JavaScript, TypeScript, Go, Rust, and more
 
 The setup includes a comprehensive suite of MCP (Model Context Protocol) servers that provide seamless integration with your development environment, from file system operations to GitHub management and advanced web research.
 
 ## Key Features Demonstrated
-
-### 🧠 **Advanced AI Model**
-- **Kimi K2**: Moonshot AI's latest model optimized for coding and reasoning tasks
-- **Tool Calling Excellence**: Superior performance in using development tools effectively
-- **Extended Context**: Handles large codebases and complex architectural discussions
-
-### 🔧 **Comprehensive Development Tools**
-- **File System Operations**: Read, write, and analyze code files with security controls
-- **GitHub Integration**: Repository management, issue tracking, pull request operations
-- **Web Research**: Advanced documentation lookup and technology research via Firecrawl
-- **Database Operations**: SQLite integration for project data management
-- **Git Version Control**: Advanced git operations and repository analysis
-
-### 🧠 **Intelligent Memory System**
-- **Persistent Learning**: Remembers your coding patterns, preferences, and project context
-- **Architecture Memory**: Builds understanding of your codebase structure over time
-- **Reasoning Patterns**: Stores successful problem-solving approaches for reuse
-
-### ⚡ **Performance Optimizations**
-- **Dual LLM Strategy**: Kimi K2 for complex reasoning, GPT-4o-mini for quick evaluations
-- **Extended Sessions**: 4-hour session TTL for long coding sessions
-- **High Iteration Count**: 75 max iterations for complex multi-step tasks
 
 ## Prerequisites
 
@@ -89,11 +76,7 @@ CIPHER_LOG_LEVEL=info
 cd examples/01-kimi-k2-coding-assistant
 
 # Start Cipher with this configuration
-cipher --agent ./cipher.yml --new-session coding-session
-
-# Or use API mode for integration with other tools
-cipher --mode api --agent ./cipher.yml --port 3000
-```
+cipher --agent ./cipher.yml
 
 ### 3. Test the Setup
 
@@ -161,12 +144,11 @@ firecrawl:
 
 #### SQLite Server
 ```yaml
-sqlite:
-  type: stdio
-  command: npx -y @modelcontextprotocol/server-sqlite
-  connectionMode: lenient  # Optional for most tasks
+# Note: @modelcontextprotocol/server-sqlite is not available on npm
+# For SQLite functionality, use Python-based alternatives:
+# uvx mcp-server-git (provides both git and sqlite capabilities)
 ```
-**Capabilities**: Database operations, project data management, business intelligence
+**Note**: SQLite MCP server is not available via npm. Consider using filesystem operations or Python-based alternatives for database needs.
 
 ## Usage Examples
 
