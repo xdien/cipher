@@ -19,7 +19,7 @@
 
 ## Overview
 
-Cipher is a simple, composable framework to build memory for agents using [Model Context Protocol](https://modelcontextprotocol.io/introduction).
+Cipher is an opensource memory layer specifically designed for coding agents. Compatible with Cursor, Claude Code, and other MCP-based tools using [Model Context Protocol](https://modelcontextprotocol.io/introduction).
 
 **Key Features:**
 
@@ -90,7 +90,7 @@ Configure Cipher using environment variables and YAML config:
 ### Environment Variables (.env)
 
 ```bash
-# Required: At least one API key (except Ollama)
+# Required: At least one API key (except OpenAI is always required for embedding)
 OPENAI_API_KEY=your_openai_api_key
 ANTHROPIC_API_KEY=your_anthropic_api_key
 OPENROUTER_API_KEY=your_openrouter_api_key
