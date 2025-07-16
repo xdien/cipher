@@ -19,7 +19,7 @@
 
 ## Overview
 
-Cipher is an opensource memory layer specifically designed for coding agents. Compatible with Cursor, Claude Code, and Gemini CLI, ... through MCP.
+Cipher is an opensource memory layer specifically designed for coding agents. Compatible with **Cursor, Claude Code, and Gemini CLI**, ... through MCP, and coding agents, such as **Kimi K2**. (see more on [examples](./examples))
 
 **Key Features:**
 
