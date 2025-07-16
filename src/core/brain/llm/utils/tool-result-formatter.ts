@@ -158,7 +158,11 @@ export function formatToolResult(toolName: string, result: any): string {
 		}
 
 		// MCP file tools (read_file, write_file, list_files, etc.)
-		if (toolName.includes('read_file') || toolName.includes('write_file') || toolName.includes('list_files')) {
+		if (
+			toolName.includes('read_file') ||
+			toolName.includes('write_file') ||
+			toolName.includes('list_files')
+		) {
 			return formatMCPFileResult(toolName, result);
 		}
 
@@ -547,7 +551,7 @@ function formatMCPFileResult(toolName: string, result: any): string {
 	if (result.content) {
 		const output = [];
 		output.push(chalk.green(`✅ ${toolName} completed successfully`));
-		
+
 		if (toolName.includes('read_file') && Array.isArray(result.content)) {
 			// For read_file, show content summary
 			const textContent = result.content.find((item: any) => item.type === 'text');
@@ -562,7 +566,7 @@ function formatMCPFileResult(toolName: string, result: any): string {
 			const dirs = result.content.filter((item: any) => item.type === 'directory').length;
 			output.push(chalk.gray(`📁 Listed: ${files} files, ${dirs} directories`));
 		}
-		
+
 		return output.join('\n');
 	}
 
@@ -583,35 +587,35 @@ function formatGenericResult(result: GenericToolResult): string {
 	// treat them as successful if they contain data
 	const hasData = result.data || (result.content && !result.error);
 	const isExplicitSuccess = result.success === true;
-	
-	if (isExplicitSuccess || hasData) {
-	const output = [];
-	output.push(chalk.green(`✅ ${result.message || 'Operation completed successfully'}`));
 
-	if (result.data) {
-		// Try to format data in a readable way
-		if (typeof result.data === 'object' && result.data !== null) {
-			const keys = Object.keys(result.data);
-			if (keys.length > 0) {
-				output.push('');
-				output.push(chalk.gray('📄 Data:'));
-				keys.slice(0, 5).forEach(key => {
-					const value = result.data[key];
-					const displayValue = typeof value === 'string' ? value : JSON.stringify(value);
-					output.push(
-						chalk.gray(
-							`   • ${key}: ${displayValue.substring(0, 50)}${displayValue.length > 50 ? '...' : ''}`
-						)
-					);
-				});
-				if (keys.length > 5) {
-					output.push(chalk.gray(`   ... and ${keys.length - 5} more fields`));
+	if (isExplicitSuccess || hasData) {
+		const output = [];
+		output.push(chalk.green(`✅ ${result.message || 'Operation completed successfully'}`));
+
+		if (result.data) {
+			// Try to format data in a readable way
+			if (typeof result.data === 'object' && result.data !== null) {
+				const keys = Object.keys(result.data);
+				if (keys.length > 0) {
+					output.push('');
+					output.push(chalk.gray('📄 Data:'));
+					keys.slice(0, 5).forEach(key => {
+						const value = result.data[key];
+						const displayValue = typeof value === 'string' ? value : JSON.stringify(value);
+						output.push(
+							chalk.gray(
+								`   • ${key}: ${displayValue.substring(0, 50)}${displayValue.length > 50 ? '...' : ''}`
+							)
+						);
+					});
+					if (keys.length > 5) {
+						output.push(chalk.gray(`   ... and ${keys.length - 5} more fields`));
+					}
 				}
 			}
 		}
-	}
 
-	return output.join('\n');
+		return output.join('\n');
 	}
 
 	// If no clear success/failure indicators, treat as successful
