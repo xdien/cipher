@@ -23,11 +23,9 @@ Cipher is an opensource memory layer specifically designed for coding agents. Co
 
 **Key Features:**
 
-- Handles MCP server connection lifecycle management
-- Layered memory system that improves with every run
-- Memory aligned with cognitive structures
-- Reflection mechanisms for agent learning
-- Zero configuration changes required for memory improvements
+- Persistent memory for coding agents
+- Gets smarter with every conversation
+- Works with any MCP tool
 
 Cipher is the simplest way to add persistent memory to MCP-compatible agents.
 
