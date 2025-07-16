@@ -24,6 +24,7 @@ Cipher is an opensource memory layer specifically designed for coding agents. Co
 **Key Features:**
 
 - Connect with your favorite IDEs through MCP.
+- Auto-generated memories that scale with your codebase.
 - Dual Memory Layer that captures **System 1** (Programming Concepts & Business Logic & Past Interaction) and **System 2** (reasoning steps of the model when generating code).
 - Install on your IDE with zero configuration needed.
 - Switch seamlessly between IDEs without losing memory.
