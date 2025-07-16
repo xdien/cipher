@@ -19,17 +19,15 @@
 
 ## Overview
 
-Cipher is an opensource memory layer specifically designed for coding agents. Compatible with Cursor, Claude Code, and MCP.
+Cipher is an opensource memory layer specifically designed for coding agents. Compatible with **Cursor, Windsurf, Claude Desktop, Claude Code, and Gemini CLI, VS Code, Roo Code** through MCP, and coding agents, such as **Kimi K2**. (see more on [examples](./examples))
 
 **Key Features:**
 
-- Handles MCP server connection lifecycle management
-- Layered memory system that improves with every run
-- Memory aligned with cognitive structures
-- Reflection mechanisms for agent learning
-- Zero configuration changes required for memory improvements
-
-Cipher is the simplest way to add persistent memory to MCP-compatible agents.
+- Connect with your favorite IDEs through MCP.
+- Dual Memory Layer that captures **System 1** (Programming Concepts & Business Logic & Past Interaction) and **System 2** (reasoning steps of the model when generating code).
+- Install on your IDE with zero configuration needed.
+- Switch seamlessly between IDEs without losing memory.
+- Shared memory workpace across the team in real time.
 
 ## Quick Start
 
@@ -173,12 +171,6 @@ llm:
   baseURL: $OLLAMA_BASE_URL
 ```
 
-**Recommended Ollama Models:**
-
-- **High Performance**: `qwen2.5:32b`, `llama3.1:70b`
-- **Balanced**: `qwen2.5:8b`, `llama3.1:8b`
-- **Lightweight**: `phi3:mini`, `granite3-dense:2b`
-
 ## CLI Reference
 
 ```bash
@@ -203,6 +195,24 @@ cipher --new-session [id]           # Start with new session
 /stats                              # Show statistics
 /help                               # Show help
 ```
+
+## Use Case: Claude Code with Cipher MCP
+
+Cipher integrates seamlessly with Claude Code through MCP, providing persistent memory that enhances your coding experience. Here's how it works:
+
+### Memory Storage
+
+<img src="./assets/cipher_store_memory.png" alt="Cipher storing conversation context" />
+
+Every interaction with Claude Code can be automatically stored in Cipher's dual memory system, capturing both programming concepts and reasoning patterns to improve future assistance.
+
+### Memory Retrieval
+
+<img src="./assets/cipher_retrieve_memory.png" alt="Cipher retrieving previous conversation context" />
+
+When you ask Claude Code to recall previous conversations, Cipher's memory layer instantly retrieves relevant context, allowing you to continue where you left off without losing important details.
+
+For detailed configuration instructions, see the [CLI Coding Agents guide](./examples/02-cli-coding-agents/README.md).
 
 ## Next Steps
 
