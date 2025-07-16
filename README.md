@@ -201,17 +201,17 @@ cipher --new-session [id]           # Start with new session
 
 Cipher integrates seamlessly with Claude Code through MCP, providing persistent memory that enhances your coding experience. Here's how it works:
 
-### Memory Retrieval
-
-<img src="./assets/cipher_retrieve_memory.png" alt="Cipher retrieving previous conversation context" />
-
-When you ask Claude Code to recall previous conversations, Cipher's memory layer instantly retrieves relevant context, allowing you to continue where you left off without losing important details.
-
 ### Memory Storage
 
 <img src="./assets/cipher_store_memory.png" alt="Cipher storing conversation context" />
 
 Every interaction with Claude Code is automatically stored in Cipher's dual memory system, capturing both programming concepts and reasoning patterns to improve future assistance.
+
+### Memory Retrieval
+
+<img src="./assets/cipher_retrieve_memory.png" alt="Cipher retrieving previous conversation context" />
+
+When you ask Claude Code to recall previous conversations, Cipher's memory layer instantly retrieves relevant context, allowing you to continue where you left off without losing important details.
 
 ### Getting Started with Claude Code
 
