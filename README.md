@@ -29,7 +29,6 @@ Cipher is an opensource memory layer specifically designed for coding agents. Co
 - Switch seamlessly between IDEs without losing memory.
 - Shared memory workpace across the team in real time.
 
-
 ## Quick Start
 
 ### NPM Package (Recommended for Most Users)
