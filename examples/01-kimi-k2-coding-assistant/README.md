@@ -11,7 +11,6 @@ Kimi K2 is Moonshot AI's latest model that delivers exceptional performance in c
 Key advantages of Kimi K2:
 - **Superior Code Comprehension**: Deep understanding of programming patterns, frameworks, and best practices
 - **Tool Integration**: Native optimization for seamless integration with development tools and APIs
-- **Extended Context Window**: Handles large codebases and maintains context across long development sessions
 - **Multi-language Expertise**: Strong performance across Python, JavaScript, TypeScript, Go, Rust, and more
 
 
