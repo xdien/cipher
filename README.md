@@ -172,12 +172,6 @@ llm:
   baseURL: $OLLAMA_BASE_URL
 ```
 
-**Recommended Ollama Models:**
-
-- **High Performance**: `qwen2.5:32b`, `llama3.1:70b`
-- **Balanced**: `qwen2.5:8b`, `llama3.1:8b`
-- **Lightweight**: `phi3:mini`, `granite3-dense:2b`
-
 ## CLI Reference
 
 ```bash
