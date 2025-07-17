@@ -8,23 +8,23 @@ import { PromptManager } from '../../systemPrompt/manager.js';
 import { IConversationHistoryProvider } from './history/types.js';
 
 function getFormatter(provider: string): IMessageFormatter {
-  const normalizedProvider = provider.toLowerCase();
-  let formatter: IMessageFormatter;
-  switch (normalizedProvider) {
-    case 'openai':
-    case 'openrouter':
-    case 'ollama':
-      formatter = new OpenAIMessageFormatter();
-      break;
-    case 'anthropic':
-      formatter = new AnthropicMessageFormatter();
-      break;
-    default:
-      throw new Error(
-        `Unsupported provider: ${provider}. Supported providers: openai, anthropic, openrouter, ollama`
-      );
-  }
-  return formatter;
+	const normalizedProvider = provider.toLowerCase();
+	let formatter: IMessageFormatter;
+	switch (normalizedProvider) {
+		case 'openai':
+		case 'openrouter':
+		case 'ollama':
+			formatter = new OpenAIMessageFormatter();
+			break;
+		case 'anthropic':
+			formatter = new AnthropicMessageFormatter();
+			break;
+		default:
+			throw new Error(
+				`Unsupported provider: ${provider}. Supported providers: openai, anthropic, openrouter, ollama`
+			);
+	}
+	return formatter;
 }
 
 /**
@@ -37,37 +37,37 @@ function getFormatter(provider: string): IMessageFormatter {
  * @throws Error if the config is invalid or the provider is unsupported
  */
 export function createContextManager(
-  config: LLMConfig,
-  promptManager: PromptManager,
-  historyProvider?: IConversationHistoryProvider,
-  sessionId?: string
+	config: LLMConfig,
+	promptManager: PromptManager,
+	historyProvider?: IConversationHistoryProvider,
+	sessionId?: string
 ): ContextManager {
-  try {
-    LLMConfigSchema.parse(config);
-  } catch (error) {
-    logger.error('Invalid LLM configuration provided to createContextManager', {
-      config,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    throw new Error(
-      `Invalid LLM configuration: ${error instanceof Error ? error.message : String(error)}`
-    );
-  }
-  const { provider, model } = config;
-  try {
-    const formatter = getFormatter(provider);
-    logger.debug('Created context manager', {
-      provider: provider.toLowerCase(),
-      model: model.toLowerCase(),
-      formatterType: formatter.constructor.name,
-    });
-    return new ContextManager(formatter, promptManager, historyProvider, sessionId);
-  } catch (error) {
-    logger.error('Failed to create context manager', {
-      provider,
-      model,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    throw error;
-  }
+	try {
+		LLMConfigSchema.parse(config);
+	} catch (error) {
+		logger.error('Invalid LLM configuration provided to createContextManager', {
+			config,
+			error: error instanceof Error ? error.message : String(error),
+		});
+		throw new Error(
+			`Invalid LLM configuration: ${error instanceof Error ? error.message : String(error)}`
+		);
+	}
+	const { provider, model } = config;
+	try {
+		const formatter = getFormatter(provider);
+		logger.debug('Created context manager', {
+			provider: provider.toLowerCase(),
+			model: model.toLowerCase(),
+			formatterType: formatter.constructor.name,
+		});
+		return new ContextManager(formatter, promptManager, historyProvider, sessionId);
+	} catch (error) {
+		logger.error('Failed to create context manager', {
+			provider,
+			model,
+			error: error instanceof Error ? error.message : String(error),
+		});
+		throw error;
+	}
 }

@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
 // Mock StorageManager and Logger for test
 vi.mock('../factory', () => ({
-  createDatabaseHistoryProvider: vi.fn(() => ({
-    getHistory: vi.fn(),
-    saveMessage: vi.fn(),
-    clearHistory: vi.fn(),
-  }))
+	createDatabaseHistoryProvider: vi.fn(() => ({
+		getHistory: vi.fn(),
+		saveMessage: vi.fn(),
+		clearHistory: vi.fn(),
+	})),
 }));
 import { createDatabaseHistoryProvider } from '../factory.js';
 // import { StorageManager } from '../../../../storage/manager.ts'; // Disabled: module resolution issue in Vitest/ESM
@@ -13,7 +13,7 @@ import { createDatabaseHistoryProvider } from '../factory.js';
 
 // NOTE: Test disabled due to unresolved StorageManager/createLogger in this environment.
 describe.skip('createDatabaseHistoryProvider', () => {
-  it('should create a DatabaseHistoryProvider instance', () => {
-    // Test logic disabled
-  });
+	it('should create a DatabaseHistoryProvider instance', () => {
+		// Test logic disabled
+	});
 });

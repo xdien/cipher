@@ -588,11 +588,11 @@ describe('ConversationSession', () => {
 			await session.init();
 
 			expect(mockCreateContextManager).toHaveBeenCalledWith(
-  anthropicConfig,
-  mockPromptManager,
-  undefined,
-  sessionId
-);
+				anthropicConfig,
+				mockPromptManager,
+				undefined,
+				sessionId
+			);
 			expect(mockCreateLLMService).toHaveBeenCalledWith(
 				anthropicConfig,
 				mockMcpManager,
