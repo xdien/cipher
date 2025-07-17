@@ -207,17 +207,17 @@ To use Cipher as an MCP server in your MCP client configuration:
 
 ```json
 {
-  "mcpServers": {
-    "cipher": {
-      "type": "stdio",
-      "command": "cipher",
-      "args": ["--mode", "mcp"],
-      "env": {
-        "OPENAI_API_KEY": "your_openai_api_key",
-        "ANTHROPIC_API_KEY": "your_anthropic_api_key"
-      }
-    }
-  }
+	"mcpServers": {
+		"cipher": {
+			"type": "stdio",
+			"command": "cipher",
+			"args": ["--mode", "mcp"],
+			"env": {
+				"OPENAI_API_KEY": "your_openai_api_key",
+				"ANTHROPIC_API_KEY": "your_anthropic_api_key"
+			}
+		}
+	}
 }
 ```
 
@@ -229,17 +229,17 @@ Add to your Claude Desktop MCP configuration file:
 
 ```json
 {
-  "mcpServers": {
-    "cipher": {
-      "type": "stdio",
-      "command": "cipher",
-      "args": ["--mode", "mcp"],
-      "env": {
-        "OPENAI_API_KEY": "sk-your-openai-key",
-        "ANTHROPIC_API_KEY": "sk-ant-your-anthropic-key"
-      }
-    }
-  }
+	"mcpServers": {
+		"cipher": {
+			"type": "stdio",
+			"command": "cipher",
+			"args": ["--mode", "mcp"],
+			"env": {
+				"OPENAI_API_KEY": "sk-your-openai-key",
+				"ANTHROPIC_API_KEY": "sk-ant-your-anthropic-key"
+			}
+		}
+	}
 }
 ```
 
@@ -249,17 +249,17 @@ Add to your MCP settings:
 
 ```json
 {
-  "mcpServers": {
-    "cipher-memory": {
-      "type": "stdio", 
-      "command": "cipher",
-      "args": ["--mode", "mcp", "--agent", "memAgent/cipher.yml"],
-      "env": {
-        "OPENAI_API_KEY": "sk-your-openai-key",
-        "CIPHER_LOG_LEVEL": "info"
-      }
-    }
-  }
+	"mcpServers": {
+		"cipher-memory": {
+			"type": "stdio",
+			"command": "cipher",
+			"args": ["--mode", "mcp", "--agent", "memAgent/cipher.yml"],
+			"env": {
+				"OPENAI_API_KEY": "sk-your-openai-key",
+				"CIPHER_LOG_LEVEL": "info"
+			}
+		}
+	}
 }
 ```
 
@@ -267,20 +267,20 @@ Add to your MCP settings:
 
 ```json
 {
-  "mcpServers": {
-    "cipher": {
-      "type": "stdio",
-      "command": "cipher", 
-      "args": ["--mode", "mcp", "--agent", "/path/to/custom-config.yml", "--strict"],
-      "env": {
-        "OPENAI_API_KEY": "sk-your-openai-key",
-        "ANTHROPIC_API_KEY": "sk-ant-your-anthropic-key",
-        "OPENROUTER_API_KEY": "sk-or-your-openrouter-key",
-        "CIPHER_LOG_LEVEL": "debug",
-        "NODE_ENV": "production"
-      }
-    }
-  }
+	"mcpServers": {
+		"cipher": {
+			"type": "stdio",
+			"command": "cipher",
+			"args": ["--mode", "mcp", "--agent", "/path/to/custom-config.yml", "--strict"],
+			"env": {
+				"OPENAI_API_KEY": "sk-your-openai-key",
+				"ANTHROPIC_API_KEY": "sk-ant-your-anthropic-key",
+				"OPENROUTER_API_KEY": "sk-or-your-openrouter-key",
+				"CIPHER_LOG_LEVEL": "debug",
+				"NODE_ENV": "production"
+			}
+		}
+	}
 }
 ```
 
@@ -305,14 +305,17 @@ NODE_ENV=production
 When running as an MCP server, Cipher exposes:
 
 **Tools:**
+
 - `ask_cipher` - Chat interface with the memory-powered agent
 - Dynamic tool discovery from your agent configuration
 
 **Resources:**
+
 - `cipher://agent/card` - Agent metadata and information
 - `cipher://agent/stats` - Runtime statistics and metrics
 
 **Prompts:**
+
 - `system_prompt` - Current system prompt used by the agent
 
 ### Configuration Options
