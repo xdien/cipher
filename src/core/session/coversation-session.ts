@@ -51,7 +51,7 @@ export class ConversationSession {
 	private llmService!: ILLMService;
 	private reasoningDetector?: ReasoningContentDetector;
 	private searchContextManager?: SearchContextManager;
-	private historyProvider?: IConversationHistoryProvider;
+	private historyProvider: IConversationHistoryProvider | undefined;
 	private historyEnabled: boolean = true;
 	private historyBackend: 'database' | 'memory' = 'database';
 
@@ -141,8 +141,11 @@ export class ConversationSession {
 		if (this.historyEnabled) {
 			try {
 				if (this.historyBackend === 'database') {
-					// Use a default (empty) storage config for now
-					const storageConfig = {};
+					// Use a valid storage config with both database and cache
+					const storageConfig = {
+						database: { type: 'in-memory' as const },
+						cache: { type: 'in-memory' as const }
+					};
 					const storageManager = new StorageManager(storageConfig);
 					await storageManager.connect();
 					historyProvider = createDatabaseHistoryProvider(storageManager);
