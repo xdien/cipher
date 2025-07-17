@@ -3,16 +3,33 @@ import { logger } from '../../../logger/index.js';
 import { InternalMessage, ImageData } from './types.js';
 import { getImageData } from './utils.js';
 import { PromptManager } from '../../../brain/systemPrompt/manager.js';
+import { IConversationHistoryProvider } from './history/types.js';
 
 export class ContextManager {
 	private promptManager: PromptManager;
 	private formatter: IMessageFormatter;
 	private messages: InternalMessage[] = [];
+	private historyProvider: IConversationHistoryProvider | undefined;
+	private sessionId: string | undefined;
+	private fallbackToMemory: boolean = false;
 
-	constructor(formatter: IMessageFormatter, promptManager: PromptManager) {
+	/**
+	 * @param formatter - Message formatter
+	 * @param promptManager - Prompt manager
+	 * @param historyProvider - Optional conversation history provider (persistent)
+	 * @param sessionId - Optional session ID for history isolation
+	 */
+	constructor(
+		formatter: IMessageFormatter,
+		promptManager: PromptManager,
+		historyProvider: IConversationHistoryProvider | undefined,
+		sessionId: string | undefined
+	) {
 		if (!formatter) throw new Error('formatter is required');
 		this.formatter = formatter;
 		this.promptManager = promptManager;
+		this.historyProvider = historyProvider;
+		this.sessionId = sessionId;
 		logger.debug('ContextManager initialized with formatter', { formatter });
 	}
 
@@ -69,8 +86,20 @@ export class ContextManager {
 				throw new Error(`Unknown message role: ${(message as any).role}`);
 		}
 
-		// Store the message in history
-		this.messages.push(message);
+		// Store the message in persistent history if available, else fallback to memory
+		if (this.historyProvider && this.sessionId && !this.fallbackToMemory) {
+			try {
+				await this.historyProvider.saveMessage(this.sessionId, message);
+				// Optionally, update in-memory cache for fast access in this instance
+				this.messages.push(message);
+			} catch (err) {
+				logger.error(`History provider failed, falling back to in-memory: ${err}`);
+				this.fallbackToMemory = true;
+				this.messages.push(message);
+			}
+		} else {
+			this.messages.push(message);
+		}
 		logger.debug(`Adding message to context: ${JSON.stringify(message, null, 2)}`);
 		logger.debug(`Total messages in context: ${this.messages.length}`);
 	}
@@ -220,7 +249,6 @@ export class ContextManager {
 	 * Process a stream response from the LLM
 	 * @param response - The stream response from the LLM
 	 */
-
 	async processLLMStreamResponse(response: any): Promise<void> {
 		if (this.formatter.parseStreamResponse) {
 			const msgs = (await this.formatter.parseStreamResponse(response)) ?? [];
@@ -240,7 +268,6 @@ export class ContextManager {
 	 * Process a response from the LLM
 	 * @param response - The response from the LLM
 	 */
-
 	async processLLMResponse(response: any): Promise<void> {
 		const msgs = this.formatter.parseResponse(response) ?? [];
 		for (const msg of msgs) {
@@ -253,9 +280,47 @@ export class ContextManager {
 	}
 
 	/**
-	 * Get the raw messages array (for inspection, debugging, or deduplication)
+	 * Returns the raw message history for this context.
+	 * If a history provider is available and not in fallback, retrieves from persistent storage.
+	 * Otherwise, returns the in-memory array.
 	 */
-	public getRawMessages(): InternalMessage[] {
+	async getRawMessages(): Promise<InternalMessage[]> {
+		if (this.historyProvider && this.sessionId && !this.fallbackToMemory) {
+			try {
+				const history = await this.historyProvider.getHistory(this.sessionId);
+				return history;
+			} catch (err) {
+				logger.error(`History provider failed in getRawMessages, falling back to in-memory: ${err}`);
+				this.fallbackToMemory = true;
+				return this.messages;
+			}
+		} else {
+			return this.messages;
+		}
+	}
+
+	/**
+	 * Get the raw messages array synchronously (for backward compatibility)
+	 * @deprecated Use getRawMessages() for persistent storage support
+	 */
+	public getRawMessagesSync(): InternalMessage[] {
 		return this.messages;
+	}
+
+	/**
+	 * Restore conversation history from persistent storage
+	 */
+	public async restoreHistory(): Promise<void> {
+		if (this.historyProvider && this.sessionId && !this.fallbackToMemory) {
+			try {
+				const history = await this.historyProvider.getHistory(this.sessionId);
+				// Replace in-memory messages with persistent history
+				this.messages = history;
+				logger.debug(`ContextManager: Restored ${history.length} messages from persistent storage`);
+			} catch (err) {
+				logger.error(`ContextManager: Failed to restore history, falling back to in-memory: ${err}`);
+				this.fallbackToMemory = true;
+			}
+		}
 	}
 }

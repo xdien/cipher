@@ -32,12 +32,17 @@ function getFormatter(provider: string): IMessageFormatter {
 /**
  * Creates a new ContextManager instance with the appropriate formatter for the specified LLM config
  * @param config - The LLM configuration
+ * @param promptManager - The prompt manager
+ * @param historyProvider - Optional conversation history provider
+ * @param sessionId - Optional session ID for history isolation
  * @returns A new ContextManager instance
  * @throws Error if the config is invalid or the provider is unsupported
  */
 export function createContextManager(
 	config: LLMConfig,
-	promptManager: PromptManager
+	promptManager: PromptManager,
+	historyProvider?: any,
+	sessionId?: string
 ): ContextManager {
 	// Validate config using schema
 	try {
@@ -65,7 +70,7 @@ export function createContextManager(
 		});
 
 		// Create and return the ContextManager
-		return new ContextManager(formatter, promptManager);
+		return new ContextManager(formatter, promptManager, historyProvider, sessionId);
 	} catch (error) {
 		logger.error('Failed to create context manager', {
 			provider,
