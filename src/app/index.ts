@@ -299,6 +299,25 @@ program
 			}
 		}
 
+		// After agent is started and before entering CLI loop, add:
+		if (opts.mode === 'cli') {
+			const eventManager = agent.services?.eventManager;
+			if (eventManager) {
+				const handleExit = async () => {
+					try {
+						// Emit a session-ended event for the current session
+						const sessionId = agent.getCurrentActiveSessionId() || 'default';
+						eventManager.emitSessionEvent(sessionId, 'session:expired', { sessionId, timestamp: Date.now() });
+						// Give time for event to be persisted
+						await new Promise(res => setTimeout(res, 200));
+					} catch (e) {}
+					process.exit(0);
+				};
+				process.on('SIGINT', handleExit);
+				process.on('SIGTERM', handleExit);
+			}
+		}
+
 		// ——— Dispatch based on --mode ———
 		switch (opts.mode) {
 			case 'cli':

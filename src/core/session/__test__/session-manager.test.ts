@@ -57,6 +57,10 @@ describe('SessionManager', () => {
 			stateManager: mockStateManager,
 			promptManager: mockPromptManager,
 			mcpManager: mockMcpManager,
+			eventManager: {
+				emitSessionEvent: vi.fn(),
+				emitServiceEvent: vi.fn(),
+			},
 		};
 
 		// Create SessionManager with default config

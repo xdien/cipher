@@ -18,6 +18,9 @@ import {
 	ToolExecutionStats,
 	createInternalToolName,
 } from './types.js';
+import { EventManager } from '../../events/event-manager.js';
+import { SessionEvents } from '../../events/event-types.js';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Cache entry for tool execution statistics
@@ -47,6 +50,7 @@ export class InternalToolManager implements IInternalToolManager {
 	private initialized = false;
 	private stats = new Map<string, StatsEntry>();
 	private readonly maxExecutionHistorySize = 100;
+	private eventManager?: EventManager;
 	private services?: {
 		embeddingManager?: any;
 		vectorStoreManager?: any;
@@ -215,6 +219,7 @@ export class InternalToolManager implements IInternalToolManager {
 
 		const startTime = Date.now();
 		const normalizedName = createInternalToolName(toolName);
+		const executionId = uuidv4();
 
 		// Get the tool
 		const tool = this.registry.getTool(normalizedName);
@@ -235,11 +240,27 @@ export class InternalToolManager implements IInternalToolManager {
 			},
 		};
 
+		// Emit tool execution started event
+		if (this.eventManager && execContext.sessionId) {
+			this.eventManager.emitSessionEvent(
+				execContext.sessionId,
+				SessionEvents.TOOL_EXECUTION_STARTED,
+				{
+					toolName: normalizedName,
+					toolType: 'internal',
+					sessionId: execContext.sessionId,
+					executionId,
+					timestamp: startTime,
+				}
+			);
+		}
+
 		logger.debug(`InternalToolManager: Executing tool '${normalizedName}'`, {
 			toolName: normalizedName,
 			category: tool.category,
 			hasArgs: !!args,
 			sessionId: execContext.sessionId,
+			executionId,
 		});
 
 		try {
@@ -250,9 +271,27 @@ export class InternalToolManager implements IInternalToolManager {
 			const executionTime = Date.now() - startTime;
 			this.recordExecution(normalizedName, true, executionTime);
 
+			// Emit tool execution completed event
+			if (this.eventManager && execContext.sessionId) {
+				this.eventManager.emitSessionEvent(
+					execContext.sessionId,
+					SessionEvents.TOOL_EXECUTION_COMPLETED,
+					{
+						toolName: normalizedName,
+						toolType: 'internal',
+						sessionId: execContext.sessionId,
+						executionId,
+						duration: executionTime,
+						success: true,
+						timestamp: Date.now(),
+					}
+				);
+			}
+
 			logger.debug(`InternalToolManager: Tool '${normalizedName}' executed successfully`, {
 				toolName: normalizedName,
 				executionTime,
+				executionId,
 			});
 
 			return result;
@@ -262,10 +301,29 @@ export class InternalToolManager implements IInternalToolManager {
 			this.recordExecution(normalizedName, false, executionTime);
 
 			const errorMessage = error instanceof Error ? error.message : String(error);
+
+			// Emit tool execution failed event
+			if (this.eventManager && execContext.sessionId) {
+				this.eventManager.emitSessionEvent(
+					execContext.sessionId,
+					SessionEvents.TOOL_EXECUTION_FAILED,
+					{
+						toolName: normalizedName,
+						toolType: 'internal',
+						sessionId: execContext.sessionId,
+						executionId,
+						error: errorMessage,
+						duration: executionTime,
+						timestamp: Date.now(),
+					}
+				);
+			}
+
 			logger.error(`InternalToolManager: Tool '${normalizedName}' execution failed`, {
 				toolName: normalizedName,
 				error: errorMessage,
 				executionTime,
+				executionId,
 			});
 
 			throw new Error(`Internal tool execution failed: ${errorMessage}`);
@@ -513,5 +571,12 @@ export class InternalToolManager implements IInternalToolManager {
 			hasLlmService: !!services.llmService,
 			hasKnowledgeGraphManager: !!services.knowledgeGraphManager,
 		});
+	}
+
+	/**
+	 * Set the event manager for emitting tool execution events
+	 */
+	setEventManager(eventManager: EventManager): void {
+		this.eventManager = eventManager;
 	}
 }

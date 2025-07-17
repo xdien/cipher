@@ -7,6 +7,9 @@ import { ImageData } from '../messages/types.js';
 import { ILLMService, LLMServiceConfig } from './types.js';
 import { logger } from '../../../logger/index.js';
 import { formatToolResult } from '../utils/tool-result-formatter.js';
+import { EventManager } from '../../../events/event-manager.js';
+import { SessionEvents } from '../../../events/event-types.js';
+import { v4 as uuidv4 } from 'uuid';
 
 export class AnthropicService implements ILLMService {
 	private anthropic: Anthropic;
@@ -15,6 +18,7 @@ export class AnthropicService implements ILLMService {
 	private unifiedToolManager: UnifiedToolManager | undefined;
 	private contextManager: ContextManager;
 	private maxIterations: number;
+	private eventManager?: EventManager;
 
 	constructor(
 		anthropic: Anthropic,
@@ -32,8 +36,28 @@ export class AnthropicService implements ILLMService {
 		this.maxIterations = maxIterations;
 	}
 
-	async generate(userInput: string, imageData?: ImageData): Promise<string> {
+	/**
+	 * Set the event manager for emitting LLM response events
+	 */
+	setEventManager(eventManager: EventManager): void {
+		this.eventManager = eventManager;
+	}
+
+	async generate(userInput: string, imageData?: ImageData, sessionId?: string): Promise<string> {
 		await this.contextManager.addUserMessage(userInput, imageData);
+
+		const messageId = uuidv4();
+		const startTime = Date.now();
+
+		// Emit LLM response started event
+		if (this.eventManager && sessionId) {
+			this.eventManager.emitSessionEvent(sessionId, SessionEvents.LLM_RESPONSE_STARTED, {
+				sessionId,
+				messageId,
+				model: this.model,
+				timestamp: startTime,
+			});
+		}
 
 		// Use unified tool manager if available, otherwise fall back to MCP manager
 		let formattedTools: any[];
@@ -70,12 +94,33 @@ export class AnthropicService implements ILLMService {
 				if (toolUses.length === 0) {
 					// Add assistant message to history
 					await this.contextManager.addAssistantMessage(textContent);
+
+					// Emit LLM response completed event
+					if (this.eventManager && sessionId) {
+						this.eventManager.emitSessionEvent(sessionId, SessionEvents.LLM_RESPONSE_COMPLETED, {
+							sessionId,
+							messageId,
+							model: this.model,
+							duration: Date.now() - startTime,
+							timestamp: Date.now(),
+						});
+					}
+
 					return textContent;
 				}
 
 				// Log thinking steps when assistant provides reasoning before tool calls
 				if (textContent && textContent.trim()) {
 					logger.info(`💭 ${textContent.trim()}`);
+
+					// Emit thinking event
+					if (this.eventManager && sessionId) {
+						this.eventManager.emitSessionEvent(sessionId, SessionEvents.LLM_THINKING, {
+							sessionId,
+							messageId,
+							timestamp: Date.now(),
+						});
+					}
 				}
 
 				// Transform tool uses into the format expected by ContextManager
@@ -135,6 +180,17 @@ export class AnthropicService implements ILLMService {
 		} catch (error) {
 			// Handle API errors
 			const errorMessage = error instanceof Error ? error.message : String(error);
+
+			// Emit LLM response error event
+			if (this.eventManager && sessionId) {
+				this.eventManager.emitSessionEvent(sessionId, SessionEvents.LLM_RESPONSE_ERROR, {
+					sessionId,
+					messageId,
+					model: this.model,
+					error: errorMessage,
+					timestamp: Date.now(),
+				});
+			}
 			logger.error(`Error in Anthropic service API call: ${errorMessage}`, { error });
 			await this.contextManager.addAssistantMessage(`Error processing request: ${errorMessage}`);
 			return `Error processing request: ${errorMessage}`;
