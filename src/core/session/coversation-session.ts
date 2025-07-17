@@ -144,7 +144,7 @@ export class ConversationSession {
 					// Use a valid storage config with both database and cache
 					const storageConfig = {
 						database: { type: 'in-memory' as const },
-						cache: { type: 'in-memory' as const }
+						cache: { type: 'in-memory' as const },
 					};
 					const storageManager = new StorageManager(storageConfig);
 					await storageManager.connect();
