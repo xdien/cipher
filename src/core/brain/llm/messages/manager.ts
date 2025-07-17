@@ -13,6 +13,12 @@ export class ContextManager {
 	private messages: InternalMessage[] = [];
 	private fallbackToMemory: boolean = false;
 
+	/**
+	 * @param formatter - Message formatter
+	 * @param promptManager - Prompt manager
+	 * @param historyProvider - Optional conversation history provider (persistent)
+	 * @param sessionId - Optional session ID for history isolation
+	 */
 	constructor(
 		formatter: IMessageFormatter,
 		promptManager: PromptManager,
@@ -79,7 +85,8 @@ export class ContextManager {
 		if (this.historyProvider && this.sessionId && !this.fallbackToMemory) {
 			try {
 				await this.historyProvider.saveMessage(this.sessionId, message);
-				this.messages.push(message); // Keep in-memory for fast access in this instance
+				// Optionally, update in-memory cache for fast access in this instance
+				this.messages.push(message);
 			} catch (err) {
 				logger.error(`History provider failed, falling back to in-memory: ${err}`);
 				this.fallbackToMemory = true;
@@ -201,7 +208,23 @@ export class ContextManager {
 		}
 	}
 
-	public getRawMessages(): InternalMessage[] {
-		return this.messages;
+	/**
+	 * Returns the raw message history for this context.
+	 * If a history provider is available and not in fallback, retrieves from persistent storage.
+	 * Otherwise, returns the in-memory array.
+	 */
+	async getRawMessages(): Promise<InternalMessage[]> {
+		if (this.historyProvider && this.sessionId && !this.fallbackToMemory) {
+			try {
+				const history = await this.historyProvider.getHistory(this.sessionId);
+				return history;
+			} catch (err) {
+				logger.error(`History provider failed in getRawMessages, falling back to in-memory: ${err}`);
+				this.fallbackToMemory = true;
+				return this.messages;
+			}
+		} else {
+			return this.messages;
+		}
 	}
 }
