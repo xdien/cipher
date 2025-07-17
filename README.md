@@ -380,13 +380,7 @@ Thanks to all these amazing people for contributing to cipher!
 
 ## Star History
 
-<a href="https://star-history.com/#campfirein/cipher&Date">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=campfirein/cipher&type=Date&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=campfirein/cipher&type=Date" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=campfirein/cipher&type=Date" />
-  </picture>
-</a>
+[![Star History Chart](https://api.star-history.com/svg?repos=campfirein/cipher&type=Date)](https://star-history.com/#campfirein/cipher&Date)
 
 ## License
 
