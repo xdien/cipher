@@ -15,8 +15,6 @@ import { Logger } from '../logger/index.js';
 import type { ZodSchema } from 'zod';
 import { setImmediate } from 'timers';
 import { IConversationHistoryProvider } from '../brain/llm/messages/history/types.js';
-import { StorageManager } from '../storage/manager.js';
-import { createDatabaseHistoryProvider } from '../brain/llm/messages/history/factory.js';
 
 function extractReasoningContentBlocks(aiResponse: any): string {
 	// If the response is an object with a content array (Anthropic API best practice)
