@@ -174,12 +174,7 @@ describe('ConversationSession', () => {
 			await session.init();
 
 			expect(mockStateManager.getLLMConfig).toHaveBeenCalledWith(sessionId);
-			expect(mockCreateContextManager).toHaveBeenCalledWith(
-				mockLLMConfig,
-				mockPromptManager,
-				undefined,
-				sessionId
-			);
+			expect(mockCreateContextManager).toHaveBeenCalledWith(mockLLMConfig, mockPromptManager);
 			expect(mockCreateLLMService).toHaveBeenCalledWith(
 				mockLLMConfig,
 				mockMcpManager,
@@ -222,7 +217,7 @@ describe('ConversationSession', () => {
 
 			expect(result.response).toBe(expectedResponse);
 			expect(result.backgroundOperations).toBeInstanceOf(Promise);
-			expect(mockLLMService.generate).toHaveBeenCalledWith(input, undefined, false);
+			expect(mockLLMService.generate).toHaveBeenCalledWith(input, undefined, undefined);
 		});
 
 		it('should run session with image data input', async () => {
@@ -236,7 +231,7 @@ describe('ConversationSession', () => {
 
 			expect(result.response).toBe(expectedResponse);
 			expect(result.backgroundOperations).toBeInstanceOf(Promise);
-			expect(mockLLMService.generate).toHaveBeenCalledWith(input, imageData, false);
+			expect(mockLLMService.generate).toHaveBeenCalledWith(input, imageData, undefined);
 		});
 
 		it('should run session with streaming enabled', async () => {
@@ -264,7 +259,7 @@ describe('ConversationSession', () => {
 
 			expect(result.response).toBe(expectedResponse);
 			expect(result.backgroundOperations).toBeInstanceOf(Promise);
-			expect(mockLLMService.generate).toHaveBeenCalledWith(input, imageData, true);
+			expect(mockLLMService.generate).toHaveBeenCalledWith(input, imageData, stream);
 		});
 
 		it('should handle LLM service generation errors', async () => {
@@ -564,9 +559,7 @@ describe('ConversationSession', () => {
 			expect(mockStateManager.getLLMConfig).toHaveBeenCalledWith(sessionId);
 			expect(mockCreateContextManager).toHaveBeenCalledWith(
 				sessionSpecificConfig,
-				mockPromptManager,
-				undefined,
-				sessionId
+				mockPromptManager
 			);
 			expect(mockCreateLLMService).toHaveBeenCalledWith(
 				sessionSpecificConfig,
@@ -587,12 +580,7 @@ describe('ConversationSession', () => {
 
 			await session.init();
 
-			expect(mockCreateContextManager).toHaveBeenCalledWith(
-				anthropicConfig,
-				mockPromptManager,
-				undefined,
-				sessionId
-			);
+			expect(mockCreateContextManager).toHaveBeenCalledWith(anthropicConfig, mockPromptManager);
 			expect(mockCreateLLMService).toHaveBeenCalledWith(
 				anthropicConfig,
 				mockMcpManager,
@@ -679,7 +667,7 @@ describe('ConversationSession', () => {
 
 			expect(result.response).toBe(expectedResponse);
 			expect(result.backgroundOperations).toBeInstanceOf(Promise);
-			expect(mockLLMService.generate).toHaveBeenCalledWith(longInput, undefined, false);
+			expect(mockLLMService.generate).toHaveBeenCalledWith(longInput, undefined, undefined);
 		});
 
 		it('should handle special characters and unicode', async () => {
@@ -692,7 +680,7 @@ describe('ConversationSession', () => {
 
 			expect(result.response).toBe(expectedResponse);
 			expect(result.backgroundOperations).toBeInstanceOf(Promise);
-			expect(mockLLMService.generate).toHaveBeenCalledWith(specialInput, undefined, false);
+			expect(mockLLMService.generate).toHaveBeenCalledWith(specialInput, undefined, undefined);
 		});
 	});
 });
