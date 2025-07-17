@@ -9,6 +9,9 @@ import { createLLMService } from '../brain/llm/services/factory.js';
 import { MemAgentStateManager } from '../brain/memAgent/state-manager.js';
 import { ReasoningContentDetector } from '../brain/reasoning/content-detector.js';
 import { SearchContextManager } from '../brain/reasoning/search-context-manager.js';
+import { createDatabaseHistoryProvider } from '../brain/llm/messages/history/factory.js';
+import { StorageManager } from '../storage/manager.js';
+import { Logger } from '../logger/index.js';
 import type { ZodSchema } from 'zod';
 import { setImmediate } from 'timers';
 import { IConversationHistoryProvider } from '../brain/llm/messages/history/types.js';
@@ -63,11 +66,6 @@ export class ConversationSession {
 		context: Record<string, any>
 	) => void;
 
-	/**
-	 * @param services - Required dependencies for the session, including unifiedToolManager
-	 * @param id - Session identifier
-	 * @param options - Optional advanced metadata options
-	 */
 	/**
 	 * @param services - Required dependencies for the session, including unifiedToolManager
 	 * @param id - Session identifier
@@ -138,7 +136,6 @@ export class ConversationSession {
 	 * Initializes the services for the session, including the history provider.
 	 */
 	private async initializeServices(): Promise<void> {
-		// Get current effective configuration for this session from state manager
 		const llmConfig = this.services.stateManager.getLLMConfig(this.id);
 		let historyProvider: IConversationHistoryProvider | undefined = undefined;
 		if (this.historyEnabled) {
@@ -173,58 +170,9 @@ export class ConversationSession {
 			this.contextManager,
 			this.services.unifiedToolManager
 		);
-
 		logger.debug(`ChatSession ${this.id}: Services initialized`);
 	}
 
-	/**
-	 * Extract session-level metadata, merging defaults, session, and per-run metadata.
-	 * Uses custom merge and validation if provided.
-	 * Now supports environment and extensible context.
-	 */
-	private getSessionMetadata(customMetadata?: Record<string, any>): Record<string, any> {
-		const base = {
-			sessionId: this.id,
-			source: 'conversation-session',
-			timestamp: new Date().toISOString(),
-			environment: process.env.NODE_ENV || 'development',
-			...this.getSessionContext(),
-		};
-		const sessionMeta = this.sessionMemoryMetadata || {};
-		const customMeta =
-			customMetadata && typeof customMetadata === 'object' && !Array.isArray(customMetadata)
-				? customMetadata
-				: {};
-		let merged = this.mergeMetadata
-			? this.mergeMetadata(sessionMeta, customMeta)
-			: { ...base, ...sessionMeta, ...customMeta };
-		if (this.metadataSchema && !this.metadataSchema.safeParse(merged).success) {
-			logger.warn(
-				'ConversationSession: Metadata validation failed, using session-level metadata only.'
-			);
-			merged = { ...base, ...sessionMeta };
-		}
-		return merged;
-	}
-
-	/**
-	 * Optionally override to provide additional session context for metadata.
-	 */
-	protected getSessionContext(): Record<string, any> {
-		return {};
-	}
-
-	/**
-	 * Run a conversation session with input, optional image data, streaming, and custom options.
-	 * @param input - User input string
-	 * @param imageDataInput - Optional image data
-	 * @param stream - Optional stream flag
-	 * @param options - Optional parameters for memory extraction:
-	 *   - memoryMetadata: Custom metadata to attach to memory extraction (merged with session defaults)
-	 *   - contextOverrides: Overrides for context fields passed to memory extraction
-	 *   - historyTracking: Enable/disable history tracking
-	 * @returns An object containing the response and a promise for background operations
-	 */
 	/**
 	 * Extract session-level metadata, merging defaults, session, and per-run metadata.
 	 * Uses custom merge and validation if provided.
@@ -277,19 +225,14 @@ export class ConversationSession {
 		input: string,
 		imageDataInput?: { image: string; mimeType: string },
 		stream?: boolean,
-		stream?: boolean,
 		options?: {
 			memoryMetadata?: Record<string, any>;
 			contextOverrides?: Record<string, any>;
 			historyTracking?: boolean;
-			historyTracking?: boolean;
 		}
 	): Promise<{ response: string; backgroundOperations: Promise<void> }> {
 		// --- Input validation ---
-	): Promise<{ response: string; backgroundOperations: Promise<void> }> {
-		// --- Input validation ---
 		if (typeof input !== 'string' || input.trim() === '') {
-			logger.error('ConversationSession.run: input must be a non-empty string');
 			logger.error('ConversationSession.run: input must be a non-empty string');
 			throw new Error('Input must be a non-empty string');
 		}
@@ -302,29 +245,13 @@ export class ConversationSession {
 
 		// --- imageDataInput validation ---
 		if (imageDataInput !== undefined) {
-
-		// --- Session initialization check ---
-		if (!this.llmService || !this.contextManager) {
-			logger.error('ConversationSession.run: Session not initialized. Call init() before run().');
-			throw new Error('ConversationSession is not initialized. Call init() before run().');
-		}
-
-		// --- imageDataInput validation ---
-		if (imageDataInput !== undefined) {
 			if (
-				typeof imageDataInput !== 'object' ||
-				!imageDataInput.image ||
 				typeof imageDataInput !== 'object' ||
 				!imageDataInput.image ||
 				typeof imageDataInput.image !== 'string' ||
 				!imageDataInput.mimeType ||
 				typeof imageDataInput.mimeType !== 'string'
-				!imageDataInput.mimeType ||
-				typeof imageDataInput.mimeType !== 'string'
 			) {
-				logger.error(
-					'ConversationSession.run: imageDataInput must have image and mimeType as non-empty strings'
-				);
 				logger.error(
 					'ConversationSession.run: imageDataInput must have image and mimeType as non-empty strings'
 				);
@@ -336,56 +263,7 @@ export class ConversationSession {
 		if (stream !== undefined && typeof stream !== 'boolean') {
 			logger.warn('ConversationSession.run: stream should be a boolean. Coercing to boolean.');
 			stream = Boolean(stream);
-
-		// --- stream validation ---
-		if (stream !== undefined && typeof stream !== 'boolean') {
-			logger.warn('ConversationSession.run: stream should be a boolean. Coercing to boolean.');
-			stream = Boolean(stream);
 		}
-
-		// --- options validation ---
-		if (options && typeof options === 'object') {
-			const allowedKeys = ['memoryMetadata', 'contextOverrides', 'historyTracking'];
-			const unknownKeys = Object.keys(options).filter(k => !allowedKeys.includes(k));
-			if (unknownKeys.length > 0) {
-				logger.warn(
-					`ConversationSession.run: Unknown option keys provided: ${unknownKeys.join(', ')}`
-				);
-			}
-		}
-
-		logger.debug('ConversationSession.run called');
-		logger.debug(
-			`Running session ${this.id} with input: ${input} and imageDataInput: ${imageDataInput} and stream: ${stream}`
-		);
-
-		// Initialize reasoning detector and search context manager if not already done
-		await this.initializeReasoningServices();
-
-		// Generate response
-		const response = await this.llmService.generate(input, imageDataInput, stream);
-
-		// PROGRAMMATIC ENFORCEMENT: Run memory extraction asynchronously in background AFTER response is returned
-		// This ensures users see the response immediately without waiting for memory operations
-		const backgroundOperations = new Promise<void>(resolve => {
-			setImmediate(async () => {
-				logger.debug('Starting background memory operations', { sessionId: this.id });
-				try {
-					await this.enforceMemoryExtraction(input, response, options);
-					logger.debug('Background memory operations completed successfully', {
-						sessionId: this.id,
-					});
-				} catch (error) {
-					logger.debug('Background memory extraction failed', {
-						sessionId: this.id,
-						error: error instanceof Error ? error.message : String(error),
-					});
-					// Silently continue - memory extraction failures shouldn't affect user experience
-				}
-				resolve();
-			});
-		});
-
 
 		// --- options validation ---
 		if (options && typeof options === 'object') {
@@ -980,12 +858,8 @@ export class ConversationSession {
 	}
 
 	public getLLMService(): ILLMService {
-
-	public getLLMService(): ILLMService {
 		return this.llmService;
 	}
-
-	public getUnifiedToolManager(): UnifiedToolManager {
 
 	public getUnifiedToolManager(): UnifiedToolManager {
 		return this.services.unifiedToolManager;
