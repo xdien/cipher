@@ -255,7 +255,7 @@ describe('ConversationSession', () => {
 
 			expect(result.response).toBe(expectedResponse);
 			expect(result.backgroundOperations).toBeInstanceOf(Promise);
-			expect(mockLLMService.generate).toHaveBeenCalledWith(input, imageData, stream);
+			expect(mockLLMService.generate).toHaveBeenCalledWith(input, imageData, true);
 		});
 
 		it('should handle LLM service generation errors', async () => {
