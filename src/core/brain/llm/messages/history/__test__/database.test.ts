@@ -32,6 +32,7 @@ describe('DatabaseHistoryProvider', () => {
 		const many = Array(1005).fill(message);
 		mockStorage.get.mockResolvedValueOnce(many);
 		await provider.saveMessage(sessionId, message);
+		expect(mockStorage.set).toHaveBeenCalled();
 		const saved = mockStorage.set.mock.calls[0][1];
 		expect(saved.length).toBeLessThanOrEqual(1000);
 	});

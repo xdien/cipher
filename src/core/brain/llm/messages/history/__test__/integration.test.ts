@@ -1,29 +1,27 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { DatabaseHistoryProvider } from '../database.js';
-// import { StorageManager } from '../../../../storage/manager.ts'; // Disabled: module resolution issue in Vitest/ESM
-// import { createLogger } from '../../../../logger/logger.ts'; // Disabled: module resolution issue in Vitest/ESM
-// import { StorageManager } from '../../../../storage/manager'; // Disabled: module resolution issue in Vitest/ESM
-
-// import { Logger } from '../../../../logger'; // Disabled: module resolution issue in Vitest/ESM
-
+import { StorageManager } from '../../../../../storage/manager.js';
 import type { InternalMessage } from '../../types.js';
 
-// NOTE: Integration test disabled due to module resolution issues with StorageManager/Logger in Vitest/ESM. To enable, uncomment imports above and run tests on compiled output or adjust test runner config.
-// NOTE: Test disabled due to unresolved StorageManager/createLogger in this environment.
+const mockLogger = { error: () => {}, warn: () => {}, debug: () => {} };
+
 describe.skip('DatabaseHistoryProvider integration', () => {
 	let provider: DatabaseHistoryProvider;
 	let sessionId: string;
 	let message: InternalMessage;
 
-	const storageConfig = {
+	const storageConfig: any = {
 		cache: { type: 'in-memory' },
 		database: { type: 'in-memory' },
 	};
 
-	beforeEach(() => {
+	beforeEach(async () => {
 		sessionId = 'integration-session';
 		message = { role: 'user', content: 'integration test' };
-		provider = new DatabaseHistoryProvider(new StorageManager(storageConfig), createLogger());
+		const storageManager = new StorageManager(storageConfig);
+		await storageManager.connect();
+		const backends = storageManager.getBackends();
+		provider = new DatabaseHistoryProvider(backends!.database, mockLogger as any);
 	});
 
 	it('should save and retrieve messages with real storage', async () => {
