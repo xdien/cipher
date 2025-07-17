@@ -197,6 +197,140 @@ cipher --new-session [id]           # Start with new session
 /help                               # Show help
 ```
 
+## MCP Server Usage
+
+Cipher can run as an MCP (Model Context Protocol) server, allowing integration with MCP-compatible clients like Claude Desktop, Cursor, Windsurf, and other AI coding assistants.
+
+### Quick Setup
+
+To use Cipher as an MCP server in your MCP client configuration:
+
+```json
+{
+  "mcpServers": {
+    "cipher": {
+      "type": "stdio",
+      "command": "cipher",
+      "args": ["--mode", "mcp"],
+      "env": {
+        "OPENAI_API_KEY": "your_openai_api_key",
+        "ANTHROPIC_API_KEY": "your_anthropic_api_key"
+      }
+    }
+  }
+}
+```
+
+### Example Configurations
+
+#### Claude Desktop Configuration
+
+Add to your Claude Desktop MCP configuration file:
+
+```json
+{
+  "mcpServers": {
+    "cipher": {
+      "type": "stdio",
+      "command": "cipher",
+      "args": ["--mode", "mcp"],
+      "env": {
+        "OPENAI_API_KEY": "sk-your-openai-key",
+        "ANTHROPIC_API_KEY": "sk-ant-your-anthropic-key"
+      }
+    }
+  }
+}
+```
+
+#### Cursor/Windsurf Configuration
+
+Add to your MCP settings:
+
+```json
+{
+  "mcpServers": {
+    "cipher-memory": {
+      "type": "stdio", 
+      "command": "cipher",
+      "args": ["--mode", "mcp", "--agent", "memAgent/cipher.yml"],
+      "env": {
+        "OPENAI_API_KEY": "sk-your-openai-key",
+        "CIPHER_LOG_LEVEL": "info"
+      }
+    }
+  }
+}
+```
+
+#### With Custom Configuration
+
+```json
+{
+  "mcpServers": {
+    "cipher": {
+      "type": "stdio",
+      "command": "cipher", 
+      "args": ["--mode", "mcp", "--agent", "/path/to/custom-config.yml", "--strict"],
+      "env": {
+        "OPENAI_API_KEY": "sk-your-openai-key",
+        "ANTHROPIC_API_KEY": "sk-ant-your-anthropic-key",
+        "OPENROUTER_API_KEY": "sk-or-your-openrouter-key",
+        "CIPHER_LOG_LEVEL": "debug",
+        "NODE_ENV": "production"
+      }
+    }
+  }
+}
+```
+
+### Environment Variables
+
+The MCP server requires at least one LLM provider API key:
+
+```bash
+# Required (at least one)
+OPENAI_API_KEY=your_openai_api_key      # Always required for embedding
+ANTHROPIC_API_KEY=your_anthropic_api_key
+OPENROUTER_API_KEY=your_openrouter_api_key
+
+# Optional
+OLLAMA_BASE_URL=http://localhost:11434/v1
+CIPHER_LOG_LEVEL=info
+NODE_ENV=production
+```
+
+### Available Capabilities
+
+When running as an MCP server, Cipher exposes:
+
+**Tools:**
+- `ask_cipher` - Chat interface with the memory-powered agent
+- Dynamic tool discovery from your agent configuration
+
+**Resources:**
+- `cipher://agent/card` - Agent metadata and information
+- `cipher://agent/stats` - Runtime statistics and metrics
+
+**Prompts:**
+- `system_prompt` - Current system prompt used by the agent
+
+### Configuration Options
+
+```bash
+# Basic MCP server
+cipher --mode mcp
+
+# With custom agent config
+cipher --mode mcp --agent /path/to/custom-config.yml
+
+# Strict mode (all MCP connections must succeed)
+cipher --mode mcp --strict
+
+# With new session
+cipher --mode mcp --new-session my-session-id
+```
+
 ## Use Case: Claude Code with Cipher MCP
 
 Cipher integrates seamlessly with Claude Code through MCP, providing persistent memory that enhances your coding experience. Here's how it works:
