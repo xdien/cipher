@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { vi } from 'vitest';
 // Mock StorageManager and Logger for test
 vi.mock('../factory', () => ({
 	createDatabaseHistoryProvider: vi.fn(() => ({

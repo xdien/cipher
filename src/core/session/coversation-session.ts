@@ -73,10 +73,7 @@ export class ConversationSession {
 		if (options?.enableHistory !== false && services.storageManager && services.logger) {
 			const backends = services.storageManager.getBackends();
 			if (backends) {
-				this.historyProvider = createDatabaseHistoryProvider(
-					backends.database,
-					services.logger
-				);
+				this.historyProvider = createDatabaseHistoryProvider(backends.database, services.logger);
 			}
 		}
 	}
