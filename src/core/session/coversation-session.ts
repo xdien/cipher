@@ -134,7 +134,7 @@ export class ConversationSession {
 		}
 		// Coerce stream to boolean
 		if (typeof stream !== 'boolean') {
-			// eslint-disable-next-line no-console
+			 
 			console.warn('stream parameter should be boolean; coercing to boolean.');
 			stream = !!stream;
 		}
@@ -143,7 +143,7 @@ export class ConversationSession {
 			options &&
 			Object.keys(options).some(k => !['memoryMetadata', 'contextOverrides'].includes(k))
 		) {
-			// eslint-disable-next-line no-console
+			 
 			console.warn('Unknown option keys passed to ConversationSession.run:', Object.keys(options));
 		}
 		// Call llmService.generate
