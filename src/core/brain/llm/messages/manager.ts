@@ -243,7 +243,9 @@ export class ContextManager {
 				const history = await this.historyProvider.getHistory(this.sessionId);
 				return history;
 			} catch (err) {
-				logger.error(`History provider failed in getRawMessages, falling back to in-memory: ${err}`);
+				logger.error(
+					`History provider failed in getRawMessages, falling back to in-memory: ${err}`
+				);
 				this.fallbackToMemory = true;
 				return this.messages;
 			}

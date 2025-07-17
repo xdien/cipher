@@ -157,7 +157,9 @@ export class ConversationSession {
 					logger.debug(`Session ${this.id}: In-memory history provider selected.`);
 				}
 			} catch (err) {
-				logger.warn(`Session ${this.id}: Failed to initialize history provider, falling back to in-memory. Error: ${err}`);
+				logger.warn(
+					`Session ${this.id}: Failed to initialize history provider, falling back to in-memory. Error: ${err}`
+				);
 				historyProvider = undefined;
 			}
 		}
@@ -406,11 +408,11 @@ export class ConversationSession {
 				totalMemoryActions: memoryResult.memory?.length || 0,
 				actionBreakdown: memoryResult.memory
 					? {
-						ADD: memoryResult.memory.filter((a: any) => a.event === 'ADD').length,
-						UPDATE: memoryResult.memory.filter((a: any) => a.event === 'UPDATE').length,
-						DELETE: memoryResult.memory.filter((a: any) => a.event === 'DELETE').length,
-						NONE: memoryResult.memory.filter((a: any) => a.event === 'NONE').length,
-					}
+							ADD: memoryResult.memory.filter((a: any) => a.event === 'ADD').length,
+							UPDATE: memoryResult.memory.filter((a: any) => a.event === 'UPDATE').length,
+							DELETE: memoryResult.memory.filter((a: any) => a.event === 'DELETE').length,
+							NONE: memoryResult.memory.filter((a: any) => a.event === 'NONE').length,
+						}
 					: {},
 			});
 
@@ -653,7 +655,10 @@ export class ConversationSession {
 	 * Extract comprehensive interaction data including tool calls and results
 	 * This captures the complete technical workflow, not just user input and final response
 	 */
-	private async extractComprehensiveInteractionData(userInput: string, aiResponse: string): Promise<string[]> {
+	private async extractComprehensiveInteractionData(
+		userInput: string,
+		aiResponse: string
+	): Promise<string[]> {
 		const interactionData: string[] = [];
 
 		// Start with the user input
