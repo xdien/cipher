@@ -12,6 +12,36 @@ import { SearchContextManager } from '../brain/reasoning/search-context-manager.
 import type { ZodSchema } from 'zod';
 import { setImmediate } from 'timers';
 
+function extractReasoningContentBlocks(aiResponse: any): string {
+	// If the response is an object with a content array (Anthropic API best practice)
+	if (aiResponse && Array.isArray(aiResponse.content)) {
+		// Extract all 'thinking' and 'redacted_thinking' blocks
+		const reasoningBlocks = aiResponse.content
+			.filter((block: any) => block.type === 'thinking' || block.type === 'redacted_thinking')
+			.map((block: any) => block.thinking)
+			.filter(Boolean);
+		if (reasoningBlocks.length > 0) {
+			return reasoningBlocks.join('\n\n');
+		}
+		// Fallback: join all text blocks if no thinking blocks found
+		const textBlocks = aiResponse.content
+			.filter((block: any) => block.type === 'text' && block.text)
+			.map((block: any) => block.text);
+		if (textBlocks.length > 0) {
+			return textBlocks.join('\n\n');
+		}
+		return '';
+	}
+	// Fallback: support legacy string input (regex for <thinking> tags)
+	if (typeof aiResponse === 'string') {
+		const matches = Array.from(aiResponse.matchAll(/<thinking>([\s\S]*?)<\/thinking>/gi));
+		if (matches.length > 0) {
+			return matches.map(m => m[1]?.trim() || '').join('\n\n');
+		}
+		return aiResponse;
+	}
+	return '';
+}
 export class ConversationSession {
 	private contextManager!: ContextManager;
 	private llmService!: ILLMService;
@@ -329,11 +359,11 @@ export class ConversationSession {
 				totalMemoryActions: memoryResult.memory?.length || 0,
 				actionBreakdown: memoryResult.memory
 					? {
-							ADD: memoryResult.memory.filter((a: any) => a.event === 'ADD').length,
-							UPDATE: memoryResult.memory.filter((a: any) => a.event === 'UPDATE').length,
-							DELETE: memoryResult.memory.filter((a: any) => a.event === 'DELETE').length,
-							NONE: memoryResult.memory.filter((a: any) => a.event === 'NONE').length,
-						}
+						ADD: memoryResult.memory.filter((a: any) => a.event === 'ADD').length,
+						UPDATE: memoryResult.memory.filter((a: any) => a.event === 'UPDATE').length,
+						DELETE: memoryResult.memory.filter((a: any) => a.event === 'DELETE').length,
+						NONE: memoryResult.memory.filter((a: any) => a.event === 'NONE').length,
+					}
 					: {},
 			});
 
@@ -387,7 +417,7 @@ export class ConversationSession {
 	 */
 	private async enforceReflectionMemoryProcessing(
 		userInput: string,
-		_aiResponse: string
+		aiResponse: string
 	): Promise<void> {
 		try {
 			logger.debug('ConversationSession: Enforcing reflection memory processing');
@@ -642,7 +672,7 @@ export class ConversationSession {
 						// Summarize key arguments for memory (avoid storing full large content)
 						const keyArgs = this.summarizeToolArguments(toolName, parsedArgs);
 						args = keyArgs ? ` with ${keyArgs}` : '';
-					} catch {
+					} catch (_e) {
 						// If parsing fails, just note that there were arguments
 						args = ' with arguments';
 					}
@@ -720,7 +750,7 @@ export class ConversationSession {
 			}
 
 			return 'result received';
-		} catch {
+		} catch (_e) {
 			// If parsing fails, provide a basic summary
 			const contentStr = String(content);
 			return contentStr.length > 100 ? `${contentStr.substring(0, 100)}...` : contentStr;
