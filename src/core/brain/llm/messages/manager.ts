@@ -8,16 +8,16 @@ import { IConversationHistoryProvider } from './history/types.js';
 export class ContextManager {
 	private promptManager: PromptManager;
 	private formatter: IMessageFormatter;
-	private historyProvider?: IConversationHistoryProvider;
+	private historyProvider: IConversationHistoryProvider | undefined;
+	private sessionId: string | undefined;
 	private messages: InternalMessage[] = [];
-	private sessionId?: string;
 	private fallbackToMemory: boolean = false;
 
 	constructor(
 		formatter: IMessageFormatter,
 		promptManager: PromptManager,
-		historyProvider?: IConversationHistoryProvider,
-		sessionId?: string
+		historyProvider: IConversationHistoryProvider | undefined,
+		sessionId: string | undefined
 	) {
 		if (!formatter) throw new Error('formatter is required');
 		this.formatter = formatter;

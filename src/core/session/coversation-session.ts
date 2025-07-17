@@ -134,7 +134,6 @@ export class ConversationSession {
 		}
 		// Coerce stream to boolean
 		if (typeof stream !== 'boolean') {
-			 
 			console.warn('stream parameter should be boolean; coercing to boolean.');
 			stream = !!stream;
 		}
@@ -143,20 +142,15 @@ export class ConversationSession {
 			options &&
 			Object.keys(options).some(k => !['memoryMetadata', 'contextOverrides'].includes(k))
 		) {
-			 
 			console.warn('Unknown option keys passed to ConversationSession.run:', Object.keys(options));
 		}
 		// Call llmService.generate
-		try {
-			const responsePromise = this.llmService.generate(input, imageDataInput, stream);
-			// Optionally, handle background operations (e.g., memory extraction, etc.)
-			// For now, just return a resolved promise as placeholder
-			const backgroundOperations = Promise.resolve();
-			const response = await responsePromise;
-			return { response, backgroundOperations };
-		} catch (error) {
-			throw error;
-		}
+		const responsePromise = this.llmService.generate(input, imageDataInput, stream);
+		// Optionally, handle background operations (e.g., memory extraction, etc.)
+		// For now, just return a resolved promise as placeholder
+		const backgroundOperations = Promise.resolve();
+		const response = await responsePromise;
+		return { response, backgroundOperations };
 	}
 
 	public getContextManager() {
