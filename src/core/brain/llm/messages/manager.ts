@@ -3,15 +3,11 @@ import { logger } from '../../../logger/index.js';
 import { InternalMessage, ImageData } from './types.js';
 import { getImageData } from './utils.js';
 import { PromptManager } from '../../../brain/systemPrompt/manager.js';
-import { IConversationHistoryProvider } from './history/types.js';
 
 export class ContextManager {
 	private promptManager: PromptManager;
 	private formatter: IMessageFormatter;
-	private historyProvider: IConversationHistoryProvider | undefined;
-	private sessionId: string | undefined;
 	private messages: InternalMessage[] = [];
-	private fallbackToMemory: boolean = false;
 
 	/**
 	 * @param formatter - Message formatter
@@ -28,17 +24,20 @@ export class ContextManager {
 		if (!formatter) throw new Error('formatter is required');
 		this.formatter = formatter;
 		this.promptManager = promptManager;
-		this.historyProvider = historyProvider;
-		this.sessionId = sessionId;
 		logger.debug('ContextManager initialized with formatter', { formatter });
 	}
 
 	async getSystemPrompt(): Promise<string> {
+		// Use the complete system prompt that includes both user instruction and built-in tool instructions
 		const prompt = await this.promptManager.getCompleteSystemPrompt();
 		logger.debug(`[SystemPrompt] Built complete system prompt:\n${prompt}`);
 		return prompt;
 	}
 
+	/**
+	 * Add a message to the context
+	 * @param message - The message to add to the context
+	 */
 	async addMessage(message: InternalMessage): Promise<void> {
 		if (!message.role) {
 			throw new Error('Role is required for a message');
@@ -99,18 +98,11 @@ export class ContextManager {
 		logger.debug(`Total messages in context: ${this.messages.length}`);
 	}
 
-	async restoreHistory(): Promise<void> {
-		if (this.historyProvider && this.sessionId) {
-			try {
-				this.messages = await this.historyProvider.getHistory(this.sessionId);
-				logger.debug(`Restored ${this.messages.length} messages from persistent history.`);
-			} catch (err) {
-				logger.error(`Failed to restore history from provider: ${err}`);
-				this.fallbackToMemory = true;
-			}
-		}
-	}
-
+	/**
+	 * Add a user message to the context
+	 * @param textContent - The text content of the message
+	 * @param imageData - The image data to add to the message
+	 */
 	async addUserMessage(textContent: string, imageData?: ImageData): Promise<void> {
 		if (typeof textContent !== 'string' || textContent.trim() === '') {
 			throw new Error('Content must be a non-empty string.');
@@ -129,10 +121,16 @@ export class ContextManager {
 		await this.addMessage({ role: 'user', content: messageParts });
 	}
 
+	/**
+	 * Add an assistant message to the context
+	 * @param content - The content of the message
+	 * @param toolCalls - The tool calls to add to the message
+	 */
 	async addAssistantMessage(
 		content: string | null,
 		toolCalls?: InternalMessage['toolCalls']
 	): Promise<void> {
+		// Validate that either content or toolCalls is provided
 		if (content === null && (!toolCalls || toolCalls.length === 0)) {
 			throw new Error('Must provide content or toolCalls.');
 		}
@@ -143,12 +141,21 @@ export class ContextManager {
 		});
 	}
 
+	/**
+	 * Add a tool result to the context
+	 * @param toolCallId - The ID of the tool call
+	 * @param name - The name of the tool
+	 * @param result - The result of the tool call
+	 */
 	async addToolResult(toolCallId: string, name: string, result: any): Promise<void> {
 		if (!toolCallId || !name) {
 			throw new Error('addToolResult: toolCallId and name are required.');
 		}
+
+		// Simplest image detection: if result has an 'image' field, treat as ImagePart
 		let content: InternalMessage['content'];
 		if (result && typeof result === 'object' && 'image' in result) {
+			// Use shared helper to get base64/URL
 			const imagePart = result as {
 				image: string | Uint8Array | Buffer | ArrayBuffer | URL;
 				mimeType?: string;
@@ -163,15 +170,25 @@ export class ContextManager {
 		} else if (typeof result === 'string') {
 			content = result;
 		} else if (Array.isArray(result)) {
+			// Assume array of parts already
 			content = result;
 		} else {
+			// Fallback: stringify all other values
 			content = JSON.stringify(result ?? '');
 		}
+
 		await this.addMessage({ role: 'tool', content, toolCallId, name });
 	}
 
+	/**
+	 * Get formatted messages including conversation history
+	 * @param message - The current message (already added to context by the service)
+	 * @returns The formatted messages array including conversation history
+	 */
 	async getFormattedMessage(_message: InternalMessage): Promise<any[]> {
 		try {
+			// Don't add the message again - it's already been added by the service
+			// Just return all formatted messages from the existing conversation history
 			return this.getAllFormattedMessages();
 		} catch (error) {
 			logger.error('Failed to get formatted messages', { error });
@@ -181,14 +198,27 @@ export class ContextManager {
 		}
 	}
 
+	/**
+	 * Get all formatted messages from conversation history
+	 * @returns The formatted messages array
+	 */
 	async getAllFormattedMessages(): Promise<any[]> {
 		try {
+			// Get the system prompt
 			const prompt = await this.getSystemPrompt();
+
+			// Format all messages in conversation history
 			const formattedMessages: any[] = [];
+
+			// Add system prompt as first message - for both OpenAI and Anthropic
 			if (prompt) {
 				formattedMessages.push({ role: 'system', content: prompt });
 			}
+
+			// Format each message in history
 			for (const msg of this.messages) {
+				// Don't pass system prompt to individual message formatting
+				// The system prompt has already been added above
 				const formatted = this.formatter.format(msg, null);
 				if (Array.isArray(formatted)) {
 					formattedMessages.push(...formatted);
@@ -196,6 +226,7 @@ export class ContextManager {
 					formattedMessages.push(formatted);
 				}
 			}
+
 			logger.debug(
 				`Formatted ${formattedMessages.length} messages from history of ${this.messages.length} messages`
 			);
