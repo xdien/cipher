@@ -19,7 +19,7 @@ export class ContextManager {
 	async getSystemPrompt(): Promise<string> {
 		// Use the complete system prompt that includes both user instruction and built-in tool instructions
 		const prompt = await this.promptManager.getCompleteSystemPrompt();
-		logger.debug(`[SystemPrompt] Built complete system prompt:\n${prompt}`);
+		logger.debug(`[SystemPrompt] Built complete system prompt (${prompt.length} chars)`);
 		return prompt;
 	}
 
