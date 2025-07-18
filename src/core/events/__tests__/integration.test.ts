@@ -32,7 +32,11 @@ class MockVectorStore {
 		return this.connected;
 	}
 
-	async insert(_vectors: number[][], _ids: number[], _payloads: Record<string, any>[]): Promise<void> {
+	async insert(
+		_vectors: number[][],
+		_ids: number[],
+		_payloads: Record<string, any>[]
+	): Promise<void> {
 		// Simulate some processing time
 		await new Promise(resolve => setTimeout(resolve, 10));
 	}

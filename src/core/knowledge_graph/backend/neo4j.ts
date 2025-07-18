@@ -967,7 +967,9 @@ export class Neo4jBackend implements KnowledgeGraph {
 				}
 				if ('all' in filter && Array.isArray(filter.all)) {
 					// For 'all' filter, check if the property (assumed to be array) contains all values
-					constraints.push(`all(x IN $${paramKey} WHERE x IN ${prefix}.${Object.keys(params).length})`);
+					constraints.push(
+						`all(x IN $${paramKey} WHERE x IN ${prefix}.${Object.keys(params).length})`
+					);
 					params[paramKey] = filter.all;
 				}
 			} else {
