@@ -19,16 +19,16 @@
 
 ## Overview
 
-Cipher is an opensource memory layer specifically designed for coding agents. Compatible with **Cursor, Windsurf, Claude Desktop, Claude Code, Gemini CLI, VS Code, and Roo Code** through MCP, and coding agents, such as **Kimi K2**. (see more on [examples](./examples))
+Cipher is an opensource memory layer specifically designed for coding agents. Compatible with **Cursor, Windsurf, Claude Desktop, Claude Code, Gemini CLI, AWS's Kiro, VS Code, and Roo Code** through MCP, and coding agents, such as **Kimi K2**. (see more on [examples](./examples))
 
 **Key Features:**
 
-- Connect with your favorite IDEs through MCP.
-- Auto-generated memories that scale with your codebase.
-- Dual Memory Layer that captures **System 1** (Programming Concepts & Business Logic & Past Interaction) and **System 2** (reasoning steps of the model when generating code).
-- Install on your IDE with zero configuration needed.
-- Switch seamlessly between IDEs without losing memory.
-- Shared memory workspace across the team in real time.
+- ⁠MCP integration with any IDE you want.
+- ⁠Auto-generate AI coding memories that scale with your codebase.
+- ⁠Switch seamlessly between IDEs without losing memory and context.
+- ⁠Easily share coding memories across your dev team in real time.
+- ⁠Dual Memory Layer that captures System 1 (Programming Concepts & Business Logic & Past Interaction) and System 2 (reasoning steps of the model when generating code).
+- ⁠Install on your IDE with zero configuration needed.
 
 ## Quick Start
 
