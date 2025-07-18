@@ -32,7 +32,7 @@ export class SessionEventBus extends TypedEventEmitter<SessionEventMap> {
 		this.createdAt = Date.now();
 		this.enablePersistence = options.enablePersistence ?? false;
 		this.maxHistorySize = options.maxHistorySize ?? 1000;
-		this.eventPersistence = options.eventPersistence;
+		this.eventPersistence = options.eventPersistence!;
 
 		logger.debug('SessionEventBus initialized', {
 			sessionId: this.sessionId,
@@ -161,10 +161,9 @@ export class SessionEventBus extends TypedEventEmitter<SessionEventMap> {
 			event => event.metadata.timestamp >= oneMinuteAgo
 		).length;
 		const eventsInLastHour = recentEvents.length;
-		const lastEventTime =
-			this.eventHistory.length > 0
-				? this.eventHistory[this.eventHistory.length - 1].metadata.timestamp
-				: undefined;
+		const lastEvent =
+			this.eventHistory.length > 0 ? this.eventHistory[this.eventHistory.length - 1] : undefined;
+		const lastEventTime = lastEvent ? lastEvent.metadata.timestamp : undefined;
 
 		return {
 			sessionId: this.sessionId,
@@ -173,7 +172,7 @@ export class SessionEventBus extends TypedEventEmitter<SessionEventMap> {
 			eventTypes,
 			activeListeners,
 			recentActivity: {
-				lastEventTime,
+				...(lastEventTime !== undefined ? { lastEventTime } : {}),
 				eventsInLastMinute,
 				eventsInLastHour,
 			},
@@ -214,7 +213,7 @@ export class SessionEventBus extends TypedEventEmitter<SessionEventMap> {
 	/**
 	 * Dispose of the session event bus
 	 */
-	dispose(): void {
+	public override dispose(): void {
 		if (this.isDisposed) {
 			return;
 		}

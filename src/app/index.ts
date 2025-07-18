@@ -307,7 +307,10 @@ program
 					try {
 						// Emit a session-ended event for the current session
 						const sessionId = agent.getCurrentActiveSessionId() || 'default';
-						eventManager.emitSessionEvent(sessionId, 'session:expired', { sessionId, timestamp: Date.now() });
+						eventManager.emitSessionEvent(sessionId, 'session:expired', {
+							sessionId,
+							timestamp: Date.now(),
+						});
 						// Give time for event to be persisted
 						await new Promise(res => setTimeout(res, 200));
 					} catch (e) {}

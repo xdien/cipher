@@ -124,7 +124,9 @@ export class EventFilterManager {
 			// Apply filters in priority order
 			for (const filterConfig of enabledFilters) {
 				const filterStartTime = Date.now();
-				this.stats.filterStats[filterConfig.name].eventsProcessed++;
+				if (this.stats.filterStats[filterConfig.name]) {
+					this.stats.filterStats[filterConfig.name]!.eventsProcessed++;
+				}
 
 				try {
 					const shouldPass = filterConfig.filter(event);
@@ -132,15 +134,19 @@ export class EventFilterManager {
 					// Update filter-specific stats
 					const filterExecutionTime = Date.now() - filterStartTime;
 					const filterStats = this.stats.filterStats[filterConfig.name];
-					const totalTime =
-						filterStats.averageExecutionTime * (filterStats.eventsProcessed - 1) +
-						filterExecutionTime;
-					filterStats.averageExecutionTime = totalTime / filterStats.eventsProcessed;
+					if (filterStats) {
+						filterStats.averageExecutionTime =
+							(filterStats.averageExecutionTime * (filterStats.eventsProcessed - 1) +
+								filterExecutionTime) /
+							filterStats.eventsProcessed;
+					}
 
 					if (!shouldPass) {
 						// Event was filtered out by this filter
 						this.stats.totalEventsFiltered++;
-						this.stats.filterStats[filterConfig.name].eventsFiltered++;
+						if (this.stats.filterStats[filterConfig.name]) {
+							this.stats.filterStats[filterConfig.name]!.eventsFiltered++;
+						}
 						this.updateOverallStats(Date.now() - startTime);
 						return false;
 					}
@@ -259,7 +265,7 @@ export class CommonFilters {
 	 * Filter events by source
 	 */
 	static bySource(...allowedSources: string[]): EventFilter {
-		return (event: EventEnvelope) => allowedSources.includes(event.metadata.source);
+		return (event: EventEnvelope) => allowedSources.includes(event.metadata.source ?? '');
 	}
 
 	/**
@@ -306,7 +312,7 @@ export class CommonFilters {
 			const windowStart = now - windowMs;
 
 			// Remove events outside the window
-			while (eventTimes.length > 0 && eventTimes[0] < windowStart) {
+			while (eventTimes.length > 0 && eventTimes[0]! < windowStart) {
 				eventTimes.shift();
 			}
 
@@ -505,7 +511,7 @@ export class OptimizedFilterChain {
 		const enabledFilters = this.filters.filter(f => f.enabled).map(f => f.filter);
 
 		if (enabledFilters.length === 0) {
-			this.compiledFilter = undefined;
+			this.compiledFilter = undefined as unknown as EventFilter;
 			return;
 		}
 
@@ -521,6 +527,6 @@ export class OptimizedFilterChain {
 	}
 
 	private invalidateCompiledFilter(): void {
-		this.compiledFilter = undefined;
+		this.compiledFilter = undefined as unknown as EventFilter;
 	}
 }

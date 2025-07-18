@@ -20,3 +20,4 @@ export * from './replay.js';
 
 // Vector store integration
 export { EventAwareVectorStore } from '../vector_storage/event-aware-store.js';
+export { EventFilter } from './event-types.js';

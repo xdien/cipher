@@ -114,6 +114,7 @@ describe('Event System Performance Tests', () => {
 						sessionId,
 						executionId: `exec-${sessionIndex}-${eventIndex}`,
 						duration: Math.random() * 1000,
+						success: true,
 						timestamp: Date.now(),
 					});
 				}
@@ -144,7 +145,9 @@ describe('Event System Performance Tests', () => {
 			const setupStart = Date.now();
 			for (let i = 0; i < listenerCount; i++) {
 				serviceEventBus.on(ServiceEvents.SERVICE_STARTED, data => {
-					receivedCounts[i]++;
+					if (Array.isArray(receivedCounts) && typeof receivedCounts[i] !== 'undefined') {
+						receivedCounts[i]!++;
+					}
 				});
 			}
 			const setupTime = Date.now() - setupStart;
@@ -184,7 +187,9 @@ describe('Event System Performance Tests', () => {
 				serviceEventBus.on(ServiceEvents.SERVICE_STARTED, async data => {
 					// Simulate async work
 					await new Promise(resolve => setTimeout(resolve, Math.random() * 10));
-					completedCounts[i]++;
+					if (Array.isArray(completedCounts) && typeof completedCounts[i] !== 'undefined') {
+						completedCounts[i]!++;
+					}
 				});
 			}
 
@@ -482,18 +487,21 @@ describe('Event System Performance Tests', () => {
 			// Performance should not degrade dramatically with scale
 			const firstMeasurement = measurements[0];
 			const lastMeasurement = measurements[measurements.length - 1];
-			const performanceDegradation =
-				(firstMeasurement.eventsPerSecond - lastMeasurement.eventsPerSecond) /
-				firstMeasurement.eventsPerSecond;
 
-			console.log(`Performance degradation: ${(performanceDegradation * 100).toFixed(1)}%`);
+			if (firstMeasurement && lastMeasurement) {
+				const performanceDegradation =
+					(firstMeasurement.eventsPerSecond - lastMeasurement.eventsPerSecond) /
+					firstMeasurement.eventsPerSecond;
 
-			// Performance degradation should be less than 80%
-			if (!isNaN(performanceDegradation)) {
-				expect(performanceDegradation).toBeLessThan(2.0);
+				console.log(`Performance degradation: ${(performanceDegradation * 100).toFixed(1)}%`);
+
+				// Performance degradation should be less than 80%
+				if (!isNaN(performanceDegradation)) {
+					expect(performanceDegradation).toBeLessThan(2.0);
+				}
+				// Should still maintain minimum performance at scale
+				expect(lastMeasurement.eventsPerSecond).toBeGreaterThan(50);
 			}
-			// Should still maintain minimum performance at scale
-			expect(lastMeasurement.eventsPerSecond).toBeGreaterThan(50);
 		});
 
 		test('should handle concurrent event emission from multiple sources', async () => {

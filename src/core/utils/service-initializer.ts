@@ -21,6 +21,7 @@ import {
 import { KnowledgeGraphManager } from '../knowledge_graph/manager.js';
 import { createKnowledgeGraphFromEnv } from '../knowledge_graph/factory.js';
 import { EventManager } from '../events/event-manager.js';
+import { EventPersistenceConfig } from '../events/persistence.js';
 import { env } from '../env.js';
 
 export type AgentServices = {
@@ -65,7 +66,7 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 		maxSessionHistorySize: 1000,
 		sessionCleanupInterval: 300000, // 5 minutes
 		// Pass through eventPersistenceConfig for use by persistence provider
-		eventPersistenceConfig,
+		eventPersistenceConfig: eventPersistenceConfig as Partial<EventPersistenceConfig>,
 	});
 
 	// Register filter for filtered event types

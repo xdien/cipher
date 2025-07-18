@@ -291,7 +291,7 @@ describe('Event System Integration Tests', () => {
 			});
 
 			expect(events.length).toBeGreaterThan(0);
-			expect(events[0].type).toBe(ServiceEvents.SERVICE_STARTED);
+			expect(events[0]?.type).toBe(ServiceEvents.SERVICE_STARTED);
 		});
 	});
 
@@ -333,6 +333,7 @@ describe('Event System Integration Tests', () => {
 				sessionId,
 				executionId: 'exec-metrics',
 				duration: 150,
+				success: true,
 				timestamp: Date.now(),
 			});
 
@@ -595,6 +596,7 @@ describe('Event System Integration Tests', () => {
 				sessionId,
 				executionId: 'complex-exec-1',
 				duration: 250,
+				success: true,
 				timestamp: Date.now(),
 			});
 
@@ -623,9 +625,8 @@ describe('Event System Integration Tests', () => {
 			// 6. Memory operations
 			eventManager.emitSessionEvent(sessionId, SessionEvents.MEMORY_STORED, {
 				sessionId,
-				operation: 'insert',
-				vectorCount: 1,
-				duration: 45,
+				type: 'knowledge',
+				size: 1024,
 				timestamp: Date.now(),
 			});
 

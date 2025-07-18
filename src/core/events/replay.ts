@@ -85,8 +85,10 @@ export class EventReplay {
 			logger.info('Event replay started', {
 				eventCount: events.length,
 				timeRange: {
-					start: new Date(events[0].metadata.timestamp).toISOString(),
-					end: new Date(events[events.length - 1].metadata.timestamp).toISOString(),
+					start: events[0] ? new Date(events[0].metadata.timestamp).toISOString() : 'unknown',
+					end: events[events.length - 1]
+						? new Date(events[events.length - 1]!.metadata.timestamp).toISOString()
+						: 'unknown',
 				},
 				options,
 			});
@@ -95,7 +97,13 @@ export class EventReplay {
 			await this.executeReplay();
 		} catch (error) {
 			this.isReplaying = false;
-			this.currentReplay = undefined;
+			this.currentReplay = undefined as unknown as {
+				events: EventEnvelope<any>[];
+				options: ReplayOptions;
+				startTime: number;
+				abortController: AbortController;
+				currentIndex: number;
+			};
 			logger.error('Failed to start event replay', {
 				error: error instanceof Error ? error.message : String(error),
 			});
@@ -114,7 +122,13 @@ export class EventReplay {
 		logger.info('Stopping event replay');
 		this.currentReplay.abortController.abort();
 		this.isReplaying = false;
-		this.currentReplay = undefined;
+		this.currentReplay = undefined as unknown as {
+			events: EventEnvelope<any>[];
+			options: ReplayOptions;
+			startTime: number;
+			abortController: AbortController;
+			currentIndex: number;
+		};
 	}
 
 	/**
@@ -179,13 +193,20 @@ export class EventReplay {
 		lastReplayEventCount?: number;
 	} {
 		// This could be enhanced to track replay history
-		return {
+		const result: {
+			totalReplays: number;
+			lastReplayDuration?: number;
+			lastReplayEventCount?: number;
+		} = {
 			totalReplays: 0, // Would track in persistent state
-			lastReplayDuration: this.currentReplay
-				? Date.now() - this.currentReplay.startTime
-				: undefined,
-			lastReplayEventCount: this.currentReplay?.events.length,
 		};
+
+		if (this.currentReplay) {
+			result.lastReplayDuration = Date.now() - this.currentReplay.startTime;
+			result.lastReplayEventCount = this.currentReplay.events.length;
+		}
+
+		return result;
 	}
 
 	private async executeReplay(): Promise<void> {
@@ -207,7 +228,8 @@ export class EventReplay {
 
 				// Calculate delay if not skipping timestamps
 				if (!options.skipTimestamps && i > 0) {
-					const realTimeDelta = event.metadata.timestamp - lastEventTime;
+					const realTimeDelta =
+						event?.metadata.timestamp !== undefined ? event.metadata.timestamp - lastEventTime : 0;
 					const speed = options.speed || 1.0;
 					const adjustedDelay = realTimeDelta / speed;
 
@@ -217,8 +239,10 @@ export class EventReplay {
 				}
 
 				// Emit the replayed event
-				await this.emitReplayedEvent(event);
-				lastEventTime = event.metadata.timestamp;
+				if (event) {
+					await this.emitReplayedEvent(event);
+					lastEventTime = event.metadata.timestamp;
+				}
 
 				// Log progress occasionally
 				if (i % 100 === 0 || i === events.length - 1) {
@@ -241,7 +265,13 @@ export class EventReplay {
 			throw error;
 		} finally {
 			this.isReplaying = false;
-			this.currentReplay = undefined;
+			this.currentReplay = undefined as unknown as {
+				events: EventEnvelope<any>[];
+				options: ReplayOptions;
+				startTime: number;
+				abortController: AbortController;
+				currentIndex: number;
+			};
 		}
 	}
 
@@ -355,11 +385,19 @@ export class ReplayAnalyzer {
 		}
 
 		const timeSpan = {
-			start: new Date(sortedEvents[0].metadata.timestamp).toISOString(),
-			end: new Date(sortedEvents[sortedEvents.length - 1].metadata.timestamp).toISOString(),
+			start: new Date(
+				sortedEvents[0]?.metadata.timestamp ? sortedEvents[0].metadata.timestamp : Date.now()
+			).toISOString(),
+			end: new Date(
+				sortedEvents[sortedEvents.length - 1]?.metadata.timestamp
+					? sortedEvents[sortedEvents.length - 1]!.metadata.timestamp
+					: Date.now()
+			).toISOString(),
 			duration:
-				sortedEvents[sortedEvents.length - 1].metadata.timestamp -
-				sortedEvents[0].metadata.timestamp,
+				sortedEvents[sortedEvents.length - 1] && sortedEvents[0]
+					? sortedEvents[sortedEvents.length - 1]!.metadata.timestamp -
+						sortedEvents[0]!.metadata.timestamp
+					: 0,
 		};
 
 		// Analyze patterns

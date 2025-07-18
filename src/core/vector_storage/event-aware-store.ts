@@ -22,8 +22,8 @@ export class EventAwareVectorStore implements VectorStore {
 
 	constructor(store: VectorStore, eventManager?: EventManager, sessionId?: string) {
 		this.store = store;
-		this.eventManager = eventManager;
-		this.sessionId = sessionId;
+		this.eventManager = eventManager!;
+		this.sessionId = sessionId!;
 	}
 
 	/**
@@ -50,9 +50,8 @@ export class EventAwareVectorStore implements VectorStore {
 			if (this.eventManager && this.sessionId) {
 				this.eventManager.emitSessionEvent(this.sessionId, SessionEvents.MEMORY_STORED, {
 					sessionId: this.sessionId,
-					operation: 'insert',
-					vectorCount: vectors.length,
-					duration: Date.now() - startTime,
+					type: 'knowledge',
+					size: vectors.length,
 					timestamp: Date.now(),
 				});
 			}
@@ -86,10 +85,8 @@ export class EventAwareVectorStore implements VectorStore {
 			if (this.eventManager && this.sessionId) {
 				this.eventManager.emitSessionEvent(this.sessionId, SessionEvents.MEMORY_SEARCHED, {
 					sessionId: this.sessionId,
-					operation: 'search',
+					query: 'vector_search',
 					resultCount: results.length,
-					limit: limit || 10,
-					hasFilters: !!filters && Object.keys(filters).length > 0,
 					duration: Date.now() - startTime,
 					timestamp: Date.now(),
 				});
@@ -123,10 +120,8 @@ export class EventAwareVectorStore implements VectorStore {
 			if (this.eventManager && this.sessionId) {
 				this.eventManager.emitSessionEvent(this.sessionId, SessionEvents.MEMORY_RETRIEVED, {
 					sessionId: this.sessionId,
-					operation: 'get',
-					vectorId: vectorId.toString(),
-					found: !!result,
-					duration: Date.now() - startTime,
+					type: 'knowledge',
+					count: result ? 1 : 0,
 					timestamp: Date.now(),
 				});
 			}
@@ -159,9 +154,8 @@ export class EventAwareVectorStore implements VectorStore {
 			if (this.eventManager && this.sessionId) {
 				this.eventManager.emitSessionEvent(this.sessionId, SessionEvents.MEMORY_STORED, {
 					sessionId: this.sessionId,
-					operation: 'update',
-					vectorId: vectorId.toString(),
-					duration: Date.now() - startTime,
+					type: 'knowledge',
+					size: 1,
 					timestamp: Date.now(),
 				});
 			}
@@ -191,9 +185,8 @@ export class EventAwareVectorStore implements VectorStore {
 			if (this.eventManager && this.sessionId) {
 				this.eventManager.emitSessionEvent(this.sessionId, SessionEvents.MEMORY_STORED, {
 					sessionId: this.sessionId,
-					operation: 'delete',
-					vectorId: vectorId.toString(),
-					duration: Date.now() - startTime,
+					type: 'knowledge',
+					size: 1,
 					timestamp: Date.now(),
 				});
 			}

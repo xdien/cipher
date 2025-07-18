@@ -48,8 +48,8 @@ describe('ServiceEventBus', () => {
 
 			const history = serviceBus.getEventHistory();
 			expect(history).toHaveLength(1);
-			expect(history[0].type).toBe(ServiceEvents.SERVICE_STARTED);
-			expect(history[0].data).toEqual(eventData);
+			expect(history[0]?.type).toBe(ServiceEvents.SERVICE_STARTED);
+			expect(history[0]?.data).toEqual(eventData);
 		});
 
 		it('should filter event history by type', () => {

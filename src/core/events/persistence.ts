@@ -44,13 +44,13 @@ export class FileEventStorage implements EventStorageProvider {
 
 	constructor(config: EventPersistenceConfig) {
 		this.config = {
-			enabled: true,
-			storageType: 'file',
 			maxEvents: 100000,
 			rotationSize: 10 * 1024 * 1024, // 10MB
 			retentionDays: 30,
 			filePath: './data/events',
 			...config,
+			enabled: true,
+			storageType: 'file',
 		};
 	}
 
@@ -261,13 +261,13 @@ export class MemoryEventStorage implements EventStorageProvider {
 
 	constructor(config: EventPersistenceConfig) {
 		this.config = {
+			maxEvents: 10000,
+			retentionDays: 7,
+			rotationSize: config.rotationSize ?? 0,
+			filePath: config.filePath ?? '',
+			...config,
 			enabled: true,
 			storageType: 'memory',
-			maxEvents: 10000,
-			rotationSize: 0,
-			retentionDays: 1,
-			filePath: '',
-			...config,
 		};
 	}
 

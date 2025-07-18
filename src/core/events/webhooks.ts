@@ -122,7 +122,7 @@ export class WebhookForwarder {
 			}
 
 			// Handle batching
-			if (config.batchSize > 1) {
+			if ((config.batchSize ?? 1) > 1) {
 				await this.addToBatch(webhookId, event, config);
 			} else {
 				await this.queueDelivery(webhookId, event, config);
@@ -168,7 +168,7 @@ export class WebhookForwarder {
 
 		for (const delivery of failedDeliveries) {
 			delivery.status = 'pending';
-			delivery.error = undefined;
+			delivery.error = undefined as unknown as string;
 			this.deliveryQueue.push(delivery);
 		}
 
@@ -222,7 +222,7 @@ export class WebhookForwarder {
 			return {
 				success: response.ok,
 				latency,
-				error: response.ok ? undefined : `HTTP ${response.status}: ${response.statusText}`,
+				...(response.ok ? {} : { error: `HTTP ${response.status}: ${response.statusText}` }),
 			};
 		} catch (error) {
 			const latency = Date.now() - startTime;
@@ -255,7 +255,7 @@ export class WebhookForwarder {
 	private async addToBatch(
 		webhookId: string,
 		event: EventEnvelope,
-		config: Required<WebhookConfig>
+		config: WebhookConfig
 	): Promise<void> {
 		if (!this.batchQueues.has(webhookId)) {
 			this.batchQueues.set(webhookId, []);
@@ -265,7 +265,7 @@ export class WebhookForwarder {
 		batch.push(event);
 
 		// Check if batch is full
-		if (batch.length >= config.batchSize) {
+		if (batch.length >= (config.batchSize || 1)) {
 			await this.flushBatch(webhookId, config);
 			return;
 		}
@@ -279,7 +279,7 @@ export class WebhookForwarder {
 		}
 	}
 
-	private async flushBatch(webhookId: string, config: Required<WebhookConfig>): Promise<void> {
+	private async flushBatch(webhookId: string, config: WebhookConfig): Promise<void> {
 		const batch = this.batchQueues.get(webhookId);
 		if (!batch || batch.length === 0) return;
 
@@ -307,7 +307,7 @@ export class WebhookForwarder {
 	private async queueDelivery(
 		webhookId: string,
 		event: EventEnvelope,
-		config: Required<WebhookConfig>
+		config: WebhookConfig
 	): Promise<void> {
 		const delivery: WebhookDelivery = {
 			id: `delivery-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -369,7 +369,7 @@ export class WebhookForwarder {
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 
-			if (delivery.attempts >= config.retries) {
+			if ((delivery.attempts ?? 0) >= (config.retries ?? 0)) {
 				delivery.status = 'failed';
 				delivery.error = errorMessage;
 				this.updateStats(delivery.webhookId, stats => {
@@ -379,9 +379,12 @@ export class WebhookForwarder {
 			} else {
 				delivery.status = 'pending';
 				// Add delay before retry
-				setTimeout(() => {
-					delivery.status = 'pending';
-				}, config.retryDelay * delivery.attempts);
+				setTimeout(
+					() => {
+						delivery.status = 'pending';
+					},
+					(config.retryDelay ?? 0) * delivery.attempts
+				);
 			}
 
 			logger.warn('Webhook delivery failed', {
@@ -397,10 +400,7 @@ export class WebhookForwarder {
 		}
 	}
 
-	private async deliverEvent(
-		config: Required<WebhookConfig>,
-		event: EventEnvelope
-	): Promise<Response> {
+	private async deliverEvent(config: WebhookConfig, event: EventEnvelope): Promise<Response> {
 		const body = JSON.stringify(event);
 		const headers = { ...config.headers };
 
@@ -412,10 +412,10 @@ export class WebhookForwarder {
 		}
 
 		return fetch(config.url, {
-			method: config.method,
+			method: config.method || 'POST',
 			headers,
 			body,
-			signal: AbortSignal.timeout(config.timeout),
+			signal: AbortSignal.timeout(config.timeout || 30000),
 		});
 	}
 

@@ -28,7 +28,7 @@ export class ServiceEventBus extends TypedEventEmitter<ServiceEventMap> {
 		this.instanceId = uuidv4();
 		this.startTime = Date.now();
 		this.enablePersistence = options.enablePersistence ?? false;
-		this.eventPersistence = options.eventPersistence;
+		this.eventPersistence = options.eventPersistence!;
 
 		logger.info('ServiceEventBus initialized', {
 			instanceId: this.instanceId,
@@ -156,7 +156,7 @@ export class ServiceEventBus extends TypedEventEmitter<ServiceEventMap> {
 	/**
 	 * Dispose of the service event bus
 	 */
-	dispose(): void {
+	public override dispose(): void {
 		this.clearHistory();
 		super.dispose();
 		logger.info('ServiceEventBus disposed', {

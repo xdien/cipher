@@ -58,8 +58,3 @@ systemPrompt: |
   - Explaining complex technical concepts
   - Reasoning through programming challenges
 
-  eventPersistence:
-    enabled: true
-    storageType: file
-    filePath: ./data/events
-    retentionDays: 7

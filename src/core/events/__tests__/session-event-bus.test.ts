@@ -70,9 +70,9 @@ describe('SessionEventBus', () => {
 
 			const history = sessionBus.getEventHistory();
 			expect(history).toHaveLength(1);
-			expect(history[0].type).toBe(SessionEvents.SESSION_CREATED);
-			expect(history[0].data).toEqual(eventData);
-			expect(history[0].metadata.sessionId).toBe(testSessionId);
+			expect(history[0]?.type).toBe(SessionEvents.SESSION_CREATED);
+			expect(history[0]?.data).toEqual(eventData);
+			expect(history[0]?.metadata.sessionId).toBe(testSessionId);
 		});
 
 		it('should filter event history by type', () => {

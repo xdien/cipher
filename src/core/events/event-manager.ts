@@ -47,8 +47,12 @@ export class EventManager {
 				storageType: this.options.eventPersistenceConfig.storageType || 'file',
 				filePath: this.options.eventPersistenceConfig.filePath || './data/events',
 				retentionDays: this.options.eventPersistenceConfig.retentionDays || 7,
-				maxEvents: this.options.eventPersistenceConfig.maxEvents,
-				rotationSize: this.options.eventPersistenceConfig.rotationSize,
+				...(this.options.eventPersistenceConfig.maxEvents !== undefined
+					? { maxEvents: this.options.eventPersistenceConfig.maxEvents }
+					: {}),
+				...(this.options.eventPersistenceConfig.rotationSize !== undefined
+					? { rotationSize: this.options.eventPersistenceConfig.rotationSize }
+					: {}),
 			});
 		}
 
@@ -60,7 +64,7 @@ export class EventManager {
 			enableLogging: this.options.enableLogging,
 			enablePersistence: this.options.enablePersistence,
 			maxListeners: this.options.maxServiceListeners,
-			eventPersistence: this.eventPersistence,
+			...(this.eventPersistence ? { eventPersistence: this.eventPersistence } : {}),
 		});
 
 		// Set up session cleanup interval
@@ -93,7 +97,7 @@ export class EventManager {
 				enablePersistence: this.options.enablePersistence,
 				maxListeners: this.options.maxSessionListeners,
 				maxHistorySize: this.options.maxSessionHistorySize,
-				eventPersistence: this.eventPersistence,
+				...(this.eventPersistence ? { eventPersistence: this.eventPersistence } : {}),
 			});
 
 			this.sessionEventBuses.set(sessionId, sessionBus);
@@ -320,8 +324,9 @@ export class EventManager {
 		for (const sessionBus of sessionBuses) {
 			if (sessionBus) {
 				let events = sessionBus.getEventHistory({
-					eventType: filter.eventType,
-					since: filter.since,
+					...(filter.eventType !== undefined ? { eventType: filter.eventType } : {}),
+					...(filter.since !== undefined ? { since: filter.since } : {}),
+					...(filter.limit !== undefined ? { limit: filter.limit } : {}),
 				});
 
 				if (filter.pattern) {
