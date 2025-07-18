@@ -354,7 +354,9 @@ When you ask Claude Code to recall previous conversations, Cipher's memory layer
 
 ### 🚀 Demo Video: Claude Code + Cipher MCP Server
 
-[![Watch the demo](assets/demo_claude_code.png)](https://drive.google.com/file/d/1az9t9jFOHAhRN21VMnuHPybRYwA0q0aF/view?usp=drive_link)
+<a href="https://drive.google.com/file/d/1az9t9jFOHAhRN21VMnuHPybRYwA0q0aF/view?usp=drive_link" target="_blank">
+  <img src="assets/demo_claude_code.png" alt="Watch the demo" width="80%" />
+</a>
 
 > **Click the image above to watch a short demo of Claude Code using Cipher as an MCP server.**
 
