@@ -350,6 +350,14 @@ Every interaction with Claude Code can be automatically stored in Cipher's dual 
 
 When you ask Claude Code to recall previous conversations, Cipher's memory layer instantly retrieves relevant context, allowing you to continue where you left off without losing important details.
 
+---
+
+### 🚀 Demo Video: Claude Code + Cipher MCP Server
+
+[![Watch the demo](https://img.youtube.com/vi/1az9t9jFOHA/0.jpg)](https://drive.google.com/file/d/1az9t9jFOHAhRN21VMnuHPybRYwA0q0aF/view?usp=drive_link)
+
+> **Click the image above to watch a short demo of Claude Code using Cipher as an MCP server.**
+
 For detailed configuration instructions, see the [CLI Coding Agents guide](./examples/02-cli-coding-agents/README.md).
 
 ## Next Steps
