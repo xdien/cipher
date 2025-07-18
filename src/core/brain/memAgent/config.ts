@@ -46,6 +46,14 @@ export const AgentCardSchema = z
 			]),
 	})
 	.strict();
+export const EventPersistenceConfigSchema = z.object({
+	enabled: z.boolean().default(true),
+	storageType: z.enum(['file', 'memory', 'database']).default('file'),
+	maxEvents: z.number().optional(),
+	rotationSize: z.number().optional(),
+	retentionDays: z.number().optional(),
+	filePath: z.string().optional(),
+});
 export const AgentConfigSchema = z
 	.object({
 		agentCard: AgentCardSchema.describe('Configuration for the agent card').optional(),
@@ -81,6 +89,7 @@ export const AgentConfigSchema = z
 				sessionTTL: 3600000,
 			})
 			.describe('Session management configuration'),
+		eventPersistence: EventPersistenceConfigSchema.optional(),
 	})
 	.strict()
 	.describe('Main configuration for an agent, including its LLM and server connections');

@@ -47,6 +47,18 @@ export default [
 				localStorage: 'readonly',
 				FileReader: 'readonly',
 				WebSocket: 'readonly',
+				// Test globals
+				describe: 'readonly',
+				test: 'readonly',
+				it: 'readonly',
+				expect: 'readonly',
+				beforeEach: 'readonly',
+				afterEach: 'readonly',
+				beforeAll: 'readonly',
+				afterAll: 'readonly',
+				vi: 'readonly',
+				setImmediate: 'readonly',
+				clearImmediate: 'readonly',
 			},
 		},
 		plugins: {

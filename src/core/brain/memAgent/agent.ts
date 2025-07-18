@@ -375,4 +375,8 @@ export class MemAgent {
 			? this.stateManager.getRuntimeConfig(sessionId)
 			: this.stateManager.getRuntimeConfig();
 	}
+
+	public getCurrentActiveSessionId() {
+		return this.currentActiveSessionId;
+	}
 }

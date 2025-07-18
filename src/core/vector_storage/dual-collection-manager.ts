@@ -10,6 +10,7 @@ import { VectorStore } from './backend/vector-store.js';
 import type { VectorStoreConfig } from './types.js';
 import { Logger, createLogger } from '../logger/index.js';
 import { env } from '../env.js';
+import { EventManager } from '../events/event-manager.js';
 
 /**
  * Collection type identifier
@@ -57,6 +58,7 @@ export class DualCollectionVectorManager {
 	private readonly reflectionManager: VectorStoreManager | null;
 	private readonly logger: Logger;
 	private readonly reflectionEnabled: boolean;
+	private eventManager?: EventManager;
 
 	constructor(baseConfig: VectorStoreConfig) {
 		this.logger = createLogger({
@@ -92,6 +94,17 @@ export class DualCollectionVectorManager {
 				knowledgeCollection: baseConfig.collectionName,
 				dimension: baseConfig.dimension,
 			});
+		}
+	}
+
+	/**
+	 * Set the event manager for emitting memory operation events
+	 */
+	setEventManager(eventManager: EventManager): void {
+		this.eventManager = eventManager;
+		this.knowledgeManager.setEventManager(eventManager);
+		if (this.reflectionManager) {
+			this.reflectionManager.setEventManager(eventManager);
 		}
 	}
 
@@ -147,6 +160,24 @@ export class DualCollectionVectorManager {
 					return null;
 				}
 				return this.reflectionManager.getStore();
+			default:
+				throw new Error(`Unknown collection type: ${type}`);
+		}
+	}
+
+	/**
+	 * Get an event-aware vector store by collection type for a specific session
+	 */
+	getEventAwareStore(type: CollectionType, sessionId: string): VectorStore | null {
+		switch (type) {
+			case 'knowledge':
+				return this.knowledgeManager.getEventAwareStore(sessionId);
+			case 'reflection':
+				if (!this.reflectionEnabled || !this.reflectionManager) {
+					this.logger.debug('DualCollectionVectorManager: Reflection memory is disabled');
+					return null;
+				}
+				return this.reflectionManager.getEventAwareStore(sessionId);
 			default:
 				throw new Error(`Unknown collection type: ${type}`);
 		}

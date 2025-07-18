@@ -1,8 +1,8 @@
 import { InternalTool, InternalToolContext } from '../../types.js';
 import { logger } from '../../../../logger/index.js';
 // Import payload migration utilities
-import { KnowledgePayload, ReasoningPayload } from './payloads.js';
-import { env } from '../../../../env.js';
+import { KnowledgePayload } from './payloads.js';
+// import { env } from '../../../../env.js';
 
 /**
  * Memory Search Tool Result Interface
@@ -112,7 +112,7 @@ export const searchMemoryTool: InternalTool = {
 			const query = args.query.trim();
 			const topK = Math.max(1, Math.min(50, args.top_k || 5));
 			const similarityThreshold = Math.max(0.0, Math.min(1.0, args.similarity_threshold || 0.3));
-			const includeMetadata = args.include_metadata !== false;
+			// const includeMetadata = args.include_metadata !== false;
 
 			// Get required services from context
 			if (!context?.services) {
@@ -150,7 +150,7 @@ export const searchMemoryTool: InternalTool = {
 			const searchStartTime = Date.now();
 			let allResults: any[] = [];
 			let knowledgeResultCount = 0;
-			let reflectionResultCount = 0; // Always 0 for knowledge-only search
+			// let reflectionResultCount = 0; // Always 0 for knowledge-only search
 			let usedFallback = false;
 
 			// Check if we have a DualCollectionVectorManager

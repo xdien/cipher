@@ -484,7 +484,7 @@ export class CommandParser {
 								`  ${chalk.gray('Sample Tools:')} ${toolNames.join(', ')}${toolCount > 5 ? '...' : ''}`
 							);
 						}
-					} catch (_error) {
+					} catch {
 						console.log(`  ${chalk.gray('Tool Count:')} Error retrieving tools`);
 					}
 					console.log('');

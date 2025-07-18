@@ -11,6 +11,9 @@ import type { VectorStore, VectorStoreConfig } from './types.js';
 import { VectorStoreSchema } from './config.js';
 import { Logger, createLogger } from '../logger/index.js';
 import { LOG_PREFIXES, ERROR_MESSAGES, TIMEOUTS, BACKEND_TYPES } from './constants.js';
+import { EventManager } from '../events/event-manager.js';
+import { ServiceEvents } from '../events/event-types.js';
+import { EventAwareVectorStore } from './event-aware-store.js';
 
 /**
  * Health check result for vector store backend
@@ -64,6 +67,7 @@ export class VectorStoreManager {
 	private connected = false;
 	private readonly config: VectorStoreConfig;
 	private readonly logger: Logger;
+	private eventManager?: EventManager;
 
 	// Connection tracking
 	private connectionAttempts = 0;
@@ -115,6 +119,13 @@ export class VectorStoreManager {
 	}
 
 	/**
+	 * Set the event manager for emitting memory operation events
+	 */
+	setEventManager(eventManager: EventManager): void {
+		this.eventManager = eventManager;
+	}
+
+	/**
 	 * Get the current vector storage configuration
 	 *
 	 * @returns The vector storage configuration
@@ -153,6 +164,26 @@ export class VectorStoreManager {
 			return null;
 		}
 
+		return this.store;
+	}
+
+	/**
+	 * Get an event-aware vector store for a specific session
+	 *
+	 * @param sessionId - The session ID to associate with memory operations
+	 * @returns Event-aware vector store or null if not connected
+	 */
+	public getEventAwareStore(sessionId: string): VectorStore | null {
+		if (!this.connected || !this.store) {
+			return null;
+		}
+
+		// Return event-aware wrapper if EventManager is available
+		if (this.eventManager) {
+			return new EventAwareVectorStore(this.store, this.eventManager, sessionId);
+		}
+
+		// Fallback to regular store if no event manager
 		return this.store;
 	}
 
@@ -234,6 +265,14 @@ export class VectorStoreManager {
 
 			this.connected = true;
 
+			// Emit vector store connected event
+			if (this.eventManager) {
+				this.eventManager.emitServiceEvent(ServiceEvents.VECTOR_STORE_CONNECTED, {
+					provider: this.backendMetadata.type,
+					timestamp: Date.now(),
+				});
+			}
+
 			this.logger.info(`${LOG_PREFIXES.MANAGER} Vector storage system connected`, {
 				backend: this.backendMetadata.type,
 				totalConnectionTime: `${this.backendMetadata.connectionTime}ms`,
@@ -282,9 +321,27 @@ export class VectorStoreManager {
 					),
 				]);
 
+				// Emit vector store disconnected event
+				if (this.eventManager) {
+					this.eventManager.emitServiceEvent(ServiceEvents.VECTOR_STORE_DISCONNECTED, {
+						provider: this.backendMetadata.type,
+						reason: 'Normal disconnection',
+						timestamp: Date.now(),
+					});
+				}
+
 				this.logger.info(`${LOG_PREFIXES.MANAGER} Disconnected successfully`);
 			}
 		} catch (error) {
+			// Emit vector store error event
+			if (this.eventManager) {
+				this.eventManager.emitServiceEvent(ServiceEvents.VECTOR_STORE_ERROR, {
+					provider: this.backendMetadata.type,
+					error: error instanceof Error ? error.message : String(error),
+					timestamp: Date.now(),
+				});
+			}
+
 			this.logger.error(`${LOG_PREFIXES.MANAGER} Disconnect error`, { error });
 			throw error;
 		} finally {

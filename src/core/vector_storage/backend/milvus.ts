@@ -70,7 +70,7 @@ export class MilvusBackend implements VectorStore {
 			});
 		} catch (error) {
 			this.logger.error(`${LOG_PREFIXES.MILVUS} Milvus connection failed inside milvus.ts file`, {
-				error,
+				error: error,
 			});
 			throw new VectorStoreConnectionError(
 				ERROR_MESSAGES.CONNECTION_FAILED,
@@ -85,7 +85,7 @@ export class MilvusBackend implements VectorStore {
 		});
 	}
 
-	private validateDimension(vector: number[], operation: string): void {
+	private validateDimension(vector: number[], _operation: string): void {
 		if (vector.length !== this.dimension) {
 			throw new VectorDimensionError(
 				`${ERROR_MESSAGES.INVALID_DIMENSION}: expected ${this.dimension}, got ${vector.length}`,
@@ -149,7 +149,7 @@ export class MilvusBackend implements VectorStore {
 						this.logger.debug(`${LOG_PREFIXES.MILVUS} Creating missing vector index`);
 						await this.createMissingIndexes();
 					}
-				} catch (error) {
+				} catch {
 					this.logger.debug(`${LOG_PREFIXES.MILVUS} Creating missing vector index`);
 					await this.createMissingIndexes();
 				}
@@ -160,7 +160,7 @@ export class MilvusBackend implements VectorStore {
 			this.connected = true;
 			this.logger.debug(`${LOG_PREFIXES.MILVUS} Successfully connected`);
 		} catch (error) {
-			this.logger.error(`${LOG_PREFIXES.MILVUS} Connection failed`, { error });
+			this.logger.error(`${LOG_PREFIXES.MILVUS} Connection failed`, { error: error });
 			if (error instanceof VectorStoreConnectionError) {
 				throw error;
 			}
@@ -244,7 +244,7 @@ export class MilvusBackend implements VectorStore {
 			});
 			this.logger.debug(`Inserted ${vectors.length} vectors`);
 		} catch (error) {
-			this.logger.error(`Insert failed`, { error });
+			this.logger.error(`Insert failed`, { error: error });
 			throw new VectorStoreError('Failed to insert vectors', 'insert', error as Error);
 		}
 	}
@@ -274,7 +274,7 @@ export class MilvusBackend implements VectorStore {
 				payload: hit.payload,
 			}));
 		} catch (error) {
-			this.logger.error(`Search failed`, { error });
+			this.logger.error(`Search failed`, { error: error });
 			throw new VectorStoreError(ERROR_MESSAGES.SEARCH_FAILED, 'search', error as Error);
 		}
 	}
@@ -298,7 +298,7 @@ export class MilvusBackend implements VectorStore {
 				score: 1.0,
 			};
 		} catch (error) {
-			this.logger.error(`Get failed`, { error });
+			this.logger.error(`Get failed`, { error: error });
 			throw new VectorStoreError('Failed to retrieve vector', 'get', error as Error);
 		}
 	}
@@ -314,7 +314,7 @@ export class MilvusBackend implements VectorStore {
 			});
 			this.logger.debug(`${LOG_PREFIXES.MILVUS} Updated vector ${vectorId}`);
 		} catch (error) {
-			this.logger.error(`Update failed`, { error });
+			this.logger.error(`Update failed`, { error: error });
 			throw new VectorStoreError('Failed to update vector', 'update', error as Error);
 		}
 	}
@@ -329,7 +329,7 @@ export class MilvusBackend implements VectorStore {
 			});
 			this.logger.debug(`${LOG_PREFIXES.MILVUS} Deleted vector ${vectorId}`);
 		} catch (error) {
-			this.logger.error(`Delete failed`, { error });
+			this.logger.error(`Delete failed`, { error: error });
 			throw new VectorStoreError('Failed to delete vector', 'delete', error as Error);
 		}
 	}
@@ -341,7 +341,7 @@ export class MilvusBackend implements VectorStore {
 			await this.client.dropCollection({ collection_name: this.collectionName });
 			this.logger.info(`Deleted collection ${this.collectionName}`);
 		} catch (error) {
-			this.logger.error(`Delete collection failed`, { error });
+			this.logger.error(`Delete collection failed`, { error: error });
 			throw new VectorStoreError('Failed to delete collection', 'deleteCollection', error as Error);
 		}
 	}
@@ -373,7 +373,7 @@ export class MilvusBackend implements VectorStore {
 				.filter(Boolean);
 			return [results, results.length];
 		} catch (error) {
-			this.logger.error(`List failed`, { error });
+			this.logger.error(`List failed`, { error: error });
 			throw new VectorStoreError('Failed to list vectors', 'list', error as Error);
 		}
 	}

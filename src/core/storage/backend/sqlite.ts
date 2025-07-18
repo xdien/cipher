@@ -121,7 +121,7 @@ export class SqliteBackend implements DatabaseBackend {
 
 		try {
 			// Close prepared statements
-			Object.values(this.statements).forEach(stmt => {
+			Object.values(this.statements).forEach(_stmt => {
 				try {
 					// better-sqlite3 statements don't need explicit finalization
 					// They are automatically cleaned up when the database is closed
