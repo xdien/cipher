@@ -25,7 +25,6 @@ build/
 .DS_Store
 
 data/
-TASK.md
 # Logs
 logs/
 *.log
