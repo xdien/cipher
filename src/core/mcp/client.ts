@@ -651,7 +651,7 @@ export class MCPClient implements IMCPClient {
 			if (fs.existsSync(bundledPath)) {
 				return bundledPath;
 			}
-		} catch (error) {
+		} catch {
 			// Ignore errors from import.meta.url resolution
 		}
 
@@ -697,10 +697,10 @@ export class MCPClient implements IMCPClient {
 		if (this.client) {
 			try {
 				await this.client.close();
-			} catch (error) {
+			} catch (_error) {
 				// Log but don't throw cleanup errors
 				this.logger.warn(`${LOG_PREFIXES.CONNECT} Error during client cleanup`, {
-					error: error instanceof Error ? error.message : String(error),
+					error: _error instanceof Error ? _error.message : String(_error),
 				});
 			}
 			this.client = null;
@@ -709,10 +709,10 @@ export class MCPClient implements IMCPClient {
 		if (this.transport) {
 			try {
 				await this.transport.close();
-			} catch (error) {
+			} catch (_error) {
 				// Log but don't throw cleanup errors
 				this.logger.warn(`${LOG_PREFIXES.CONNECT} Error during transport cleanup`, {
-					error: error instanceof Error ? error.message : String(error),
+					error: _error instanceof Error ? _error.message : String(_error),
 				});
 			}
 			this.transport = null;

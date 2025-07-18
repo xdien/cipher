@@ -351,8 +351,8 @@ export class UnifiedToolManager {
 	 */
 	private handleToolConflict(
 		toolName: string,
-		internalTool: any,
-		existingTools: CombinedToolSet
+		_internalTool: any,
+		_existingTools: CombinedToolSet
 	): boolean {
 		switch (this.config.conflictResolution) {
 			case 'prefix-internal':

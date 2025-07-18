@@ -170,7 +170,7 @@ export class FileEventStorage implements EventStorageProvider {
 	private async ensureDirectory(): Promise<void> {
 		try {
 			await fs.mkdir(this.config.filePath, { recursive: true });
-		} catch (error) {
+		} catch {
 			// Directory might already exist
 		}
 	}
@@ -190,7 +190,7 @@ export class FileEventStorage implements EventStorageProvider {
 				// Force new file creation
 				this.currentFile = '';
 			}
-		} catch (error) {
+		} catch {
 			// File might not exist yet
 		}
 	}
@@ -218,7 +218,7 @@ export class FileEventStorage implements EventStorageProvider {
 			}
 
 			return relevantFiles;
-		} catch (error) {
+		} catch {
 			return [];
 		}
 	}
@@ -240,13 +240,13 @@ export class FileEventStorage implements EventStorageProvider {
 					if (query.until && event.metadata.timestamp > query.until) continue;
 
 					events.push(event);
-				} catch (parseError) {
+				} catch {
 					// Skip invalid JSON lines
 				}
 			}
 
 			return events;
-		} catch (error) {
+		} catch {
 			return [];
 		}
 	}

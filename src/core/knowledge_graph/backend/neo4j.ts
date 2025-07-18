@@ -938,41 +938,41 @@ export class Neo4jBackend implements KnowledgeGraph {
 	): string {
 		const constraints: string[] = [];
 
-		for (const [key, filter] of Object.entries(filters)) {
-			const paramKey = `${prefix}_${key}_${Object.keys(params).length}`;
+		for (const [, filter] of Object.entries(filters)) {
+			const paramKey = `${prefix}_${Object.keys(params).length}`;
 
 			if (typeof filter === 'object' && filter !== null && !Array.isArray(filter)) {
 				// Range filters
 				if ('gte' in filter) {
-					constraints.push(`${prefix}.${key} >= $${paramKey}_gte`);
+					constraints.push(`${prefix}.${Object.keys(params).length} >= $${paramKey}_gte`);
 					params[`${paramKey}_gte`] = filter.gte;
 				}
 				if ('gt' in filter) {
-					constraints.push(`${prefix}.${key} > $${paramKey}_gt`);
+					constraints.push(`${prefix}.${Object.keys(params).length} > $${paramKey}_gt`);
 					params[`${paramKey}_gt`] = filter.gt;
 				}
 				if ('lte' in filter) {
-					constraints.push(`${prefix}.${key} <= $${paramKey}_lte`);
+					constraints.push(`${prefix}.${Object.keys(params).length} <= $${paramKey}_lte`);
 					params[`${paramKey}_lte`] = filter.lte;
 				}
 				if ('lt' in filter) {
-					constraints.push(`${prefix}.${key} < $${paramKey}_lt`);
+					constraints.push(`${prefix}.${Object.keys(params).length} < $${paramKey}_lt`);
 					params[`${paramKey}_lt`] = filter.lt;
 				}
 
 				// Array filters
 				if ('any' in filter && Array.isArray(filter.any)) {
-					constraints.push(`${prefix}.${key} IN $${paramKey}`);
+					constraints.push(`${prefix}.${Object.keys(params).length} IN $${paramKey}`);
 					params[paramKey] = filter.any;
 				}
 				if ('all' in filter && Array.isArray(filter.all)) {
 					// For 'all' filter, check if the property (assumed to be array) contains all values
-					constraints.push(`all(x IN $${paramKey} WHERE x IN ${prefix}.${key})`);
+					constraints.push(`all(x IN $${paramKey} WHERE x IN ${prefix}.${Object.keys(params).length})`);
 					params[paramKey] = filter.all;
 				}
 			} else {
 				// Direct equality
-				constraints.push(`${prefix}.${key} = $${paramKey}`);
+				constraints.push(`${prefix}.${Object.keys(params).length} = $${paramKey}`);
 				params[paramKey] = filter;
 			}
 		}
@@ -997,15 +997,15 @@ export class Neo4jBackend implements KnowledgeGraph {
 			);
 
 			this.logger.debug(`${LOG_PREFIXES.NEO4J} Created indexes`);
-		} catch (error) {
-			console.log(error);
-			this.logger.warn(`${LOG_PREFIXES.NEO4J} Could not create indexes:`, error);
+		} catch (_error) {
+			console.log(_error);
+			this.logger.warn(`${LOG_PREFIXES.NEO4J} Could not create indexes:`, _error);
 		} finally {
 			await session.close();
 		}
 	}
 
-	private async executeNodeQuery(query: GraphQuery, session: Session): Promise<GraphResult> {
+	private async executeNodeQuery(query: GraphQuery, _session: Session): Promise<GraphResult> {
 		const { pattern, limit } = query;
 		const labels = pattern?.labels;
 		const properties = pattern?.properties;
@@ -1022,7 +1022,7 @@ export class Neo4jBackend implements KnowledgeGraph {
 		};
 	}
 
-	private async executeEdgeQuery(query: GraphQuery, session: Session): Promise<GraphResult> {
+	private async executeEdgeQuery(query: GraphQuery, _session: Session): Promise<GraphResult> {
 		const { pattern, limit } = query;
 		const edgeType = pattern?.type;
 		const properties = pattern?.properties;
@@ -1039,7 +1039,7 @@ export class Neo4jBackend implements KnowledgeGraph {
 		};
 	}
 
-	private async executePathQuery(query: GraphQuery, session: Session): Promise<GraphResult> {
+	private async executePathQuery(query: GraphQuery, _session: Session): Promise<GraphResult> {
 		const { pattern, parameters } = query;
 		const startNode = pattern?.startNode;
 		const endNode = pattern?.endNode;
@@ -1091,7 +1091,7 @@ export class Neo4jBackend implements KnowledgeGraph {
 
 		// Extract nodes and edges from result
 		for (const record of result.records) {
-			for (const [key, value] of record.entries()) {
+			for (const [, value] of record.entries()) {
 				if (value && typeof value === 'object') {
 					// Check if it's a node
 					if ('labels' in value && 'properties' in value) {

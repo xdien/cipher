@@ -22,7 +22,7 @@ export async function startHeadlessCli(agent: MemAgent, input: string): Promise<
 			if (metaStr) {
 				metadata = parseMetaString(metaStr);
 			}
-		} catch (_err) {
+		} catch {
 			console.log(chalk.red('❌ Invalid metadata format. Use key=value,key2=value2 ...'));
 			return;
 		}
@@ -40,7 +40,7 @@ export async function startHeadlessCli(agent: MemAgent, input: string): Promise<
 		if (result && result.backgroundOperations) {
 			try {
 				await result.backgroundOperations;
-			} catch (error) {
+			} catch {
 				// Background operations failures are already logged, don't show to user
 			}
 		}
@@ -57,7 +57,7 @@ export async function startHeadlessCli(agent: MemAgent, input: string): Promise<
 		if (result && result.backgroundOperations) {
 			try {
 				await result.backgroundOperations;
-			} catch (error) {
+			} catch {
 				// Background operations failures are already logged, don't show to user
 			}
 		}
@@ -117,7 +117,7 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 					if (metaStr) {
 						metadata = parseMetaString(metaStr);
 					}
-				} catch (_err) {
+				} catch {
 					console.log(chalk.red('❌ Invalid metadata format. Use key=value,key2=value2 ...'));
 					rl.prompt();
 					return;
@@ -135,7 +135,7 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 				// Let background operations run in the background without blocking the UI
 				if (result && result.backgroundOperations) {
 					result.backgroundOperations
-						.catch(error => {
+						.catch(() => {
 							// Background operations failures are already logged, don't show to user
 						})
 						.finally(() => {
@@ -178,10 +178,10 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 
 					// Let background operations run in the background without blocking the UI
 					if (result && result.backgroundOperations) {
-						result.backgroundOperations
-							.catch(error => {
-								// Background operations failures are already logged, don't show to user
-							})
+											result.backgroundOperations
+						.catch(() => {
+							// Background operations failures are already logged, don't show to user
+						})
 							.finally(() => {
 								// Small delay to ensure any error logs are fully written before redisplaying prompt
 								setTimeout(() => {

@@ -10,14 +10,6 @@
 
 import { Logger, createLogger } from '../logger/logger.js';
 import type { KnowledgeGraph } from './backend/knowledge-graph.js';
-import type {
-	GraphNode,
-	GraphEdge,
-	GraphQuery,
-	GraphResult,
-	NodeFilters,
-	EdgeFilters,
-} from './backend/types.js';
 import { KnowledgeGraphConnectionError } from './backend/types.js';
 import type { KnowledgeGraphConfig } from './config.js';
 import { BACKEND_TYPES, DEFAULTS, ERROR_MESSAGES, LOG_PREFIXES, TIMEOUTS } from './constants.js';

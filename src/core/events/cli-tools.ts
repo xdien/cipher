@@ -313,8 +313,8 @@ export class EventCliTools {
 	/**
 	 * Clean up old events
 	 */
-	async cleanupOldEvents(days: number = 7): Promise<void> {
-		const retentionMs = days * 24 * 60 * 60 * 1000;
+	async cleanupOldEvents(_days: number = 7): Promise<void> {
+		// const retentionMs = days * 24 * 60 * 60 * 1000;
 		// If this.persistence.cleanup does not exist, replace with correct method or comment out.
 		// const deletedCount = await this.persistence.cleanup(retentionMs);
 		// logger.info(`Cleaned up ${deletedCount} events older than ${days} days`);

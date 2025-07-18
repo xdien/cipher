@@ -370,7 +370,7 @@ Respond ONLY with the JSON object:`;
  */
 async function determineSearchType(
 	processedQuery: any,
-	llmService?: any
+	_llmService?: any
 ): Promise<'nodes' | 'edges' | 'both'> {
 	// Simple heuristics for search type determination
 	if (processedQuery.type === 'semantic' || processedQuery.type === 'natural') {

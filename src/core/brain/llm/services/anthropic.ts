@@ -43,7 +43,7 @@ export class AnthropicService implements ILLMService {
 		this.eventManager = eventManager;
 	}
 
-	async generate(userInput: string, imageData?: ImageData, stream?: boolean): Promise<string> {
+	async generate(userInput: string, imageData?: ImageData, _stream?: boolean): Promise<string> {
 		await this.contextManager.addUserMessage(userInput, imageData);
 
 		const messageId = uuidv4();

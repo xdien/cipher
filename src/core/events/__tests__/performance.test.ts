@@ -5,8 +5,9 @@
  */
 
 import { EventManager } from '../event-manager.js';
-import { EventFilterManager, CommonFilters } from '../filtering.js';
-import { EventPersistence, MemoryEventStorage } from '../persistence.js';
+// import { EventFilterManager, CommonFilters } from '../filtering.js';
+import { EventPersistence } from '../persistence.js';
+// import { MemoryEventStorage } from '../persistence.js';
 import { ServiceEvents, SessionEvents } from '../event-types.js';
 
 describe('Event System Performance Tests', () => {
@@ -144,7 +145,7 @@ describe('Event System Performance Tests', () => {
 			// Add many listeners
 			const setupStart = Date.now();
 			for (let i = 0; i < listenerCount; i++) {
-				serviceEventBus.on(ServiceEvents.SERVICE_STARTED, data => {
+				serviceEventBus.on(ServiceEvents.SERVICE_STARTED, _data => {
 					if (Array.isArray(receivedCounts) && typeof receivedCounts[i] !== 'undefined') {
 						receivedCounts[i]!++;
 					}
@@ -184,7 +185,7 @@ describe('Event System Performance Tests', () => {
 
 			// Add async listeners with simulated delay
 			for (let i = 0; i < asyncListenerCount; i++) {
-				serviceEventBus.on(ServiceEvents.SERVICE_STARTED, async data => {
+				serviceEventBus.on(ServiceEvents.SERVICE_STARTED, async _data => {
 					// Simulate async work
 					await new Promise(resolve => setTimeout(resolve, Math.random() * 10));
 					if (Array.isArray(completedCounts) && typeof completedCounts[i] !== 'undefined') {

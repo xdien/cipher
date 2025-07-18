@@ -313,7 +313,9 @@ program
 						});
 						// Give time for event to be persisted
 						await new Promise(res => setTimeout(res, 200));
-					} catch (e) {}
+					} catch {
+						// Ignore errors during shutdown
+					}
 					process.exit(0);
 				};
 				process.on('SIGINT', handleExit);

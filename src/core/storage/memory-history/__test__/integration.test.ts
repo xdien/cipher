@@ -111,15 +111,11 @@ describe('Memory History Service Integration Tests', () => {
 		});
 
 		it('should handle concurrent operations safely', async () => {
-			const concurrentOperations = 50;
-			const operationsPerConcurrent = 20;
-
-			// Create multiple concurrent operation streams
-			const promises = Array.from({ length: concurrentOperations }, async (_, index) => {
+			const promises = Array.from({ length: 50 }, async (_, index) => {
 				const sessionId = `concurrent-session-${index}`;
 				const entries: MemoryHistoryEntry[] = [];
 
-				for (let i = 0; i < operationsPerConcurrent; i++) {
+				for (let i = 0; i < 20; i++) {
 					const entry = createMemoryHistoryEntry({
 						operation: 'ADD' as MemoryOperation,
 						projectId: 'concurrent-project',
@@ -142,19 +138,18 @@ describe('Memory History Service Integration Tests', () => {
 			});
 
 			// Wait for all concurrent operations to complete
-			const allEntries = await Promise.all(promises);
-			const totalExpected = concurrentOperations * operationsPerConcurrent;
+			await Promise.all(promises);
 
 			// Verify all operations were recorded
 			const recorded = await service.getHistory({});
-			expect(recorded).toHaveLength(totalExpected);
+			expect(recorded).toHaveLength(50 * 20);
 
 			// Verify data integrity - each session should have correct number of entries
-			for (let i = 0; i < concurrentOperations; i++) {
+			for (let i = 0; i < 50; i++) {
 				const sessionEntries = await service.getHistory({
 					sessionId: `concurrent-session-${i}`,
 				});
-				expect(sessionEntries).toHaveLength(operationsPerConcurrent);
+				expect(sessionEntries).toHaveLength(20);
 			}
 		});
 
@@ -349,9 +344,6 @@ describe('Memory History Service Integration Tests', () => {
 
 		it('should handle large-scale concurrent operations', async () => {
 			// PostgreSQL should handle much higher concurrency than SQLite
-			const concurrentOperations = 200;
-			const operationsPerConcurrent = 100;
-
 			// Implementation similar to in-memory test but with higher load
 		});
 

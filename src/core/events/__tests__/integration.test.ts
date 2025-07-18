@@ -5,8 +5,10 @@
  */
 
 import { EventManager } from '../event-manager.js';
-import { EventFilterManager, CommonFilters } from '../filtering.js';
-import { EventPersistence, MemoryEventStorage } from '../persistence.js';
+// import { EventFilterManager } from '../filtering.js';
+import { CommonFilters } from '../filtering.js';
+import { EventPersistence } from '../persistence.js';
+// import { MemoryEventStorage } from '../persistence.js';
 import { EventMetricsCollector } from '../metrics.js';
 import { WebhookForwarder } from '../webhooks.js';
 import { EventReplay } from '../replay.js';
@@ -30,12 +32,12 @@ class MockVectorStore {
 		return this.connected;
 	}
 
-	async insert(vectors: number[][], ids: number[], payloads: Record<string, any>[]): Promise<void> {
+	async insert(_vectors: number[][], _ids: number[], _payloads: Record<string, any>[]): Promise<void> {
 		// Simulate some processing time
 		await new Promise(resolve => setTimeout(resolve, 10));
 	}
 
-	async search(query: number[], limit?: number): Promise<any[]> {
+	async search(_query: number[], _limit?: number): Promise<any[]> {
 		await new Promise(resolve => setTimeout(resolve, 5));
 		return [{ id: 1, score: 0.95, payload: { title: 'Test Document' } }];
 	}
@@ -44,11 +46,11 @@ class MockVectorStore {
 		return { id: vectorId, score: 1.0, payload: { title: 'Retrieved Document' } };
 	}
 
-	async update(vectorId: number, vector: number[], payload: Record<string, any>): Promise<void> {
+	async update(_vectorId: number, _vector: number[], _payload: Record<string, any>): Promise<void> {
 		await new Promise(resolve => setTimeout(resolve, 8));
 	}
 
-	async delete(vectorId: number): Promise<void> {
+	async delete(_vectorId: number): Promise<void> {
 		await new Promise(resolve => setTimeout(resolve, 3));
 	}
 
@@ -254,7 +256,7 @@ describe('Event System Integration Tests', () => {
 
 	describe('Event Persistence Integration', () => {
 		test('should persist and query events correctly', async () => {
-			const sessionId = 'test-session-persistence';
+			// const sessionId = 'test-session-persistence';
 
 			// Setup persistence integration with the service event bus
 			const serviceEventBus = eventManager.getServiceEventBus();

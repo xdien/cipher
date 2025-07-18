@@ -168,7 +168,7 @@ export class TypedEventEmitter<EventMap extends Record<string, any>> {
 	private wrapListener<K extends keyof EventMap>(
 		listener: EventListener<EventMap[K]>,
 		event: string,
-		options: EventListenerOptions
+		_options: EventListenerOptions
 	): (data: EventMap[K]) => void {
 		return (data: EventMap[K]) => {
 			try {

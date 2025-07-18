@@ -4,7 +4,7 @@
  * Tests for the factory functions that create and initialize storage systems.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import {
 	createStorageBackends,
 	createDefaultStorage,

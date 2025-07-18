@@ -925,7 +925,7 @@ function parseLLMDecision(response: string): any {
 							targetMemoryId: safeConvertId(obj.targetMemoryId || obj.target_id || obj.id),
 						};
 					}
-				} catch (e) {
+				} catch {
 					// Not valid JSON, continue
 				}
 			}

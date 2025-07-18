@@ -7,6 +7,9 @@
 import { EventEnvelope, EventFilter } from './event-types.js';
 import { logger } from '../logger/logger.js';
 
+// Import fetch and Response for Node.js compatibility
+import { fetch, Response } from 'undici';
+
 export interface WebhookConfig {
 	url: string;
 	method?: 'POST' | 'PUT' | 'PATCH';

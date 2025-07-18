@@ -352,7 +352,7 @@ export class EventManager {
 	 * Clean up inactive sessions
 	 */
 	private cleanupInactiveSessions(): void {
-		const now = Date.now();
+		// const now = Date.now();
 		const maxAge = 24 * 60 * 60 * 1000; // 24 hours
 		const inactiveSessionIds: string[] = [];
 
@@ -512,7 +512,7 @@ export class EventManager {
 		}
 
 		// Dispose all session event buses
-		for (const [sessionId, sessionBus] of this.sessionEventBuses) {
+		for (const [, sessionBus] of this.sessionEventBuses) {
 			sessionBus.dispose();
 		}
 		this.sessionEventBuses.clear();

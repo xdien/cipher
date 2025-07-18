@@ -5,7 +5,6 @@
  */
 
 import { EventEnvelope, ServiceEventMap, SessionEventMap } from './event-types.js';
-import { logger } from '../logger/logger.js';
 
 export interface MetricValue {
 	count: number;
@@ -203,7 +202,7 @@ export class EventMetricsCollector {
 				this.updateSessionDuration(event);
 				break;
 
-			case 'tool:executionStarted':
+			case 'tool:executionStarted': {
 				this.sessionMetrics.toolExecutionCount++;
 				const toolData = event.data as any;
 				if (toolData.toolType) {
@@ -211,6 +210,7 @@ export class EventMetricsCollector {
 						(this.sessionMetrics.toolExecutionsByType[toolData.toolType] || 0) + 1;
 				}
 				break;
+			}
 
 			case 'tool:executionCompleted':
 				this.sessionMetrics.toolExecutionSuccessCount++;
@@ -232,7 +232,7 @@ export class EventMetricsCollector {
 				this.sessionMetrics.llmThinkingCount++;
 				break;
 
-			case 'llm:responseStarted':
+			case 'llm:responseStarted': {
 				this.sessionMetrics.llmResponseCount++;
 				const responseData = event.data as any;
 				if (responseData.model) {
@@ -240,6 +240,7 @@ export class EventMetricsCollector {
 						(this.sessionMetrics.llmResponsesByModel[responseData.model] || 0) + 1;
 				}
 				break;
+			}
 
 			case 'llm:responseCompleted':
 				this.sessionMetrics.llmResponseSuccessCount++;

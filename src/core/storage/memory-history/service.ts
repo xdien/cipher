@@ -228,7 +228,7 @@ export class MemoryHistoryStorageService implements MemoryHistoryService {
 		try {
 			await this.ensureSchemaInitialized();
 
-			const backends = await this.storageManager!.getBackends();
+			// const backends = await this.storageManager!.getBackends();
 
 			// Get all matching entries
 			const filters: HistoryFilters = {};

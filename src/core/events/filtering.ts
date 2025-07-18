@@ -5,7 +5,7 @@
  * and enable selective event processing.
  */
 
-import { EventEnvelope, ServiceEventMap, SessionEventMap } from './event-types.js';
+import { EventEnvelope } from './event-types.js';
 import { logger } from '../logger/logger.js';
 
 export type EventFilter = (event: EventEnvelope) => boolean;
@@ -307,7 +307,7 @@ export class CommonFilters {
 	static rateLimit(maxEvents: number, windowMs: number): EventFilter {
 		const eventTimes: number[] = [];
 
-		return (event: EventEnvelope) => {
+		return (_event: EventEnvelope) => {
 			const now = Date.now();
 			const windowStart = now - windowMs;
 
@@ -349,9 +349,9 @@ export class CommonFilters {
 	/**
 	 * Filter for performance - only allow events during normal business hours
 	 */
-	static businessHoursOnly(timezone: string = 'UTC'): EventFilter {
-		return (event: EventEnvelope) => {
-			const eventTime = new Date(event.metadata.timestamp);
+	static businessHoursOnly(_timezone: string = 'UTC'): EventFilter {
+		return () => {
+			const eventTime = new Date();
 			const hours = eventTime.getHours();
 
 			// Allow events between 8 AM and 6 PM

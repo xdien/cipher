@@ -66,7 +66,7 @@ export class InternalToolManager implements IInternalToolManager {
 		this.services = {
 			embeddingManager: {
 				getEmbedder: () => ({
-					embed: async (text: string) =>
+					embed: async (_text: string) =>
 						Array(128)
 							.fill(0)
 							.map(() => Math.random()),
@@ -74,29 +74,29 @@ export class InternalToolManager implements IInternalToolManager {
 			},
 			vectorStoreManager: {
 				getStore: () => ({
-					search: async (embedding: number[], maxResults: number = 5) => [
+					search: async (_embedding: number[], _maxResults: number = 5) => [
 						{
 							id: 1,
 							score: 0.7,
 							payload: { text: 'Similar existing memory', tags: ['programming'] },
 						},
 					],
-					insert: async (embeddings: number[][], ids: number[], payloads: any[]) => {
+					insert: async (_embeddings: number[][], _ids: number[], _payloads: any[]) => {
 						// Mock successful insert
 						return;
 					},
-					update: async (id: number, embedding: number[], payload: any) => {
+					update: async (_id: number, _embedding: number[], _payload: any) => {
 						// Mock successful update
 						return;
 					},
-					delete: async (id: number) => {
+					delete: async (_id: number) => {
 						// Mock successful delete
 						return;
 					},
 				}),
 			},
 			llmService: {
-				directGenerate: async (prompt: string) =>
+				directGenerate: async (_prompt: string) =>
 					'Operation: ADD\nConfidence: 0.8\nReasoning: New technical information to store',
 			},
 		};
