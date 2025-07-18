@@ -37,4 +37,9 @@ export interface InternalMessage {
 	}>;
 	toolCallId?: string;
 	name?: string;
+	// Enhanced fields for token management (optional for backward compatibility)
+	priority?: 'critical' | 'high' | 'normal' | 'low';
+	preserveInCompression?: boolean;
+	tokenCount?: number;
+	timestamp?: number;
 }

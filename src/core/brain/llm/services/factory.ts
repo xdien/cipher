@@ -135,11 +135,19 @@ function _createLLMService(
 	}
 }
 
-export function createLLMService(
+export async function createLLMService(
 	config: LLMConfig,
 	mcpManager: MCPManager,
 	contextManager: ContextManager,
 	unifiedToolManager?: UnifiedToolManager
-): ILLMService {
+): Promise<ILLMService> {
+	// Initialize token management if enabled
+	try {
+		await contextManager.initializeTokenManagement(config.provider, config.model);
+		logger.debug('Token management initialized for LLM service');
+	} catch (error) {
+		logger.warn('Failed to initialize token management', { error });
+	}
+
 	return _createLLMService(config, mcpManager, contextManager, unifiedToolManager);
 }
