@@ -446,7 +446,7 @@ async function findRelatedEntities(
 async function processEntityOperations(
 	analysis: any,
 	existingEntities: GraphNode[],
-	options: ProcessingOptions,
+	_options: ProcessingOptions,
 	kgManager: any,
 	_llmService: any,
 	result: ProcessingResult
@@ -537,10 +537,10 @@ async function processRelationshipOperations(
 		properties?: Record<string, any>;
 	}>,
 	result: ProcessingResult,
-	kgManager: any,
+	_kgManager: any,
 	_llmService: any
 ): Promise<void> {
-	const graph = kgManager?.getGraph();
+	const graph = _kgManager?.getGraph();
 	if (!graph) return;
 
 	for (const relData of relationships) {
@@ -605,8 +605,8 @@ async function processRelationshipOperations(
  */
 async function resolveConflicts(
 	conflicts: Array<{ type: string; description: string; resolution?: string }>,
-	options: ProcessingOptions,
-	kgManager: any,
+	_options: ProcessingOptions,
+	_kgManager: any,
 	_llmService: any
 ): Promise<void> {
 	for (const conflict of conflicts) {

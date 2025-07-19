@@ -20,6 +20,9 @@ import {
 } from '../vector_storage/factory.js';
 import { KnowledgeGraphManager } from '../knowledge_graph/manager.js';
 import { createKnowledgeGraphFromEnv } from '../knowledge_graph/factory.js';
+import { EventManager } from '../events/event-manager.js';
+import { EventPersistenceConfig } from '../events/persistence.js';
+import { env } from '../env.js';
 
 export type AgentServices = {
 	mcpManager: MCPManager;
@@ -30,6 +33,7 @@ export type AgentServices = {
 	unifiedToolManager: UnifiedToolManager;
 	embeddingManager: EmbeddingManager;
 	vectorStoreManager: VectorStoreManager | DualCollectionVectorManager;
+	eventManager: EventManager;
 	llmService?: ILLMService;
 	knowledgeGraphManager?: KnowledgeGraphManager;
 };
@@ -38,7 +42,55 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 	// 1. Initialize agent config
 	const config = agentConfig;
 
+	// 1.1. Initialize event manager first (other services will use it)
+	logger.debug('Initializing event manager...');
+
+	// Use eventPersistence config if present
+	const eventPersistenceConfig = config.eventPersistence || {};
+
+	// Support EVENT_FILTERING_ENABLED env variable
+	const enableFiltering = process.env.EVENT_FILTERING_ENABLED === 'true';
+
+	// Support EVENT_FILTERED_TYPES env variable (comma-separated)
+	const filteredTypes = (process.env.EVENT_FILTERED_TYPES || '')
+		.split(',')
+		.map(s => s.trim())
+		.filter(Boolean);
+
+	const eventManager = new EventManager({
+		enableLogging: true,
+		enablePersistence: eventPersistenceConfig.enabled ?? true,
+		enableFiltering,
+		maxServiceListeners: 300,
+		maxSessionListeners: 150,
+		maxSessionHistorySize: 1000,
+		sessionCleanupInterval: 300000, // 5 minutes
+		// Pass through eventPersistenceConfig for use by persistence provider
+		eventPersistenceConfig: eventPersistenceConfig as Partial<EventPersistenceConfig>,
+	});
+
+	// Register filter for filtered event types
+	if (enableFiltering && filteredTypes.length > 0) {
+		eventManager.registerFilter({
+			name: 'env-filtered-types',
+			description: 'Block event types from EVENT_FILTERED_TYPES',
+			enabled: true,
+			filter: event => !filteredTypes.includes(event.type),
+		});
+	}
+
+	// Emit cipher startup event
+	eventManager.emitServiceEvent('cipher:started', {
+		timestamp: Date.now(),
+		version: process.env.npm_package_version || '1.0.0',
+	});
+
+	logger.info('Event manager initialized successfully');
+
 	const mcpManager = new MCPManager();
+
+	// Set event manager for connection lifecycle events
+	mcpManager.setEventManager(eventManager);
 
 	// Parse and validate the MCP server configurations to ensure required fields are present
 	// The ServerConfigsSchema.parse() will transform input types to output types with required fields
@@ -52,6 +104,12 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 		logger.debug(`Client manager initialized with ${mcpServerCount} MCP server(s)`);
 	}
 
+	// Emit MCP manager initialization event
+	eventManager.emitServiceEvent('cipher:serviceStarted', {
+		serviceType: 'MCPManager',
+		timestamp: Date.now(),
+	});
+
 	// 2. Initialize embedding manager with environment configuration
 	logger.debug('Initializing embedding manager...');
 	const embeddingManager = new EmbeddingManager();
@@ -64,6 +122,12 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 				provider: embeddingResult.info.provider,
 				model: embeddingResult.info.model,
 				dimension: embeddingResult.info.dimension,
+			});
+
+			// Emit embedding manager initialization event
+			eventManager.emitServiceEvent('cipher:serviceStarted', {
+				serviceType: 'EmbeddingManager',
+				timestamp: Date.now(),
 			});
 		} else {
 			logger.warn(
@@ -84,9 +148,6 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 
 	try {
 		// Check if reflection memory is enabled to determine which manager to use
-		const { env } = await import('../env.js');
-
-		// Use dual collection manager if reflection memory is not disabled and reflection collection is configured
 		const reflectionEnabled =
 			!env.DISABLE_REFLECTION_MEMORY &&
 			env.REFLECTION_VECTOR_STORE_COLLECTION &&
@@ -96,6 +157,9 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 			logger.debug('Reflection memory enabled, using dual collection vector manager');
 			const { manager } = await createDualCollectionVectorStoreFromEnv();
 			vectorStoreManager = manager;
+
+			// Set event manager for memory operation events
+			(vectorStoreManager as DualCollectionVectorManager).setEventManager(eventManager);
 
 			const info = (vectorStoreManager as DualCollectionVectorManager).getInfo();
 			logger.info('Dual collection vector storage manager initialized successfully', {
@@ -111,6 +175,9 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 			logger.debug('Reflection memory disabled, using single collection vector manager');
 			const { manager } = await createVectorStoreFromEnv();
 			vectorStoreManager = manager;
+
+			// Set event manager for memory operation events
+			(vectorStoreManager as VectorStoreManager).setEventManager(eventManager);
 
 			logger.info('Vector storage manager initialized successfully', {
 				backend: vectorStoreManager.getInfo().backend.type,
@@ -198,6 +265,9 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 
 	await internalToolManager.initialize();
 
+	// Set event manager for internal tool execution events
+	internalToolManager.setEventManager(eventManager);
+
 	// Register all internal tools
 	const toolRegistrationResult = await registerAllTools(internalToolManager);
 	logger.info('Internal tools registration completed', {
@@ -227,6 +297,9 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 		conflictResolution: 'prefix-internal',
 	});
 
+	// Set event manager for tool execution events
+	unifiedToolManager.setEventManager(eventManager);
+
 	logger.debug('Unified tool manager initialized');
 
 	// 11. Create session manager with unified tool manager
@@ -236,6 +309,7 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 			promptManager,
 			mcpManager,
 			unifiedToolManager,
+			eventManager,
 		},
 		sessionConfig
 	);
@@ -244,6 +318,12 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 	await sessionManager.init();
 
 	logger.debug('Session manager with unified tools initialized');
+
+	// Emit session manager initialization event
+	eventManager.emitServiceEvent('cipher:serviceStarted', {
+		serviceType: 'SessionManager',
+		timestamp: Date.now(),
+	});
 
 	// 12. Return the core services
 	const services: AgentServices = {
@@ -255,6 +335,7 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 		unifiedToolManager,
 		embeddingManager,
 		vectorStoreManager,
+		eventManager,
 		llmService: llmService || {
 			generate: async () => '',
 			directGenerate: async () => '',
@@ -267,6 +348,13 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 	if (knowledgeGraphManager) {
 		services.knowledgeGraphManager = knowledgeGraphManager;
 	}
+
+	// Emit all services ready event
+	const serviceTypes = Object.keys(services).filter(key => services[key as keyof AgentServices]);
+	eventManager.emitServiceEvent('cipher:allServicesReady', {
+		timestamp: Date.now(),
+		services: serviceTypes,
+	});
 
 	return services;
 }

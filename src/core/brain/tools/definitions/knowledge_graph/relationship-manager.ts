@@ -674,8 +674,8 @@ async function executeConditionalUpdate(
  */
 async function resolveOperationConflicts(
 	conflicts: Array<{ type: string; description: string; resolution?: string }>,
-	graph: any,
-	llmService: any
+	_graph: any,
+	_llmService: any
 ): Promise<void> {
 	for (const conflict of conflicts) {
 		try {

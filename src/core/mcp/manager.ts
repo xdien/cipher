@@ -20,6 +20,8 @@ import { ERROR_MESSAGES, LOG_PREFIXES, CONNECTION_MODES } from './constants.js';
 
 import { MCPClient } from './client.js';
 import { Logger, createLogger } from '../logger/index.js';
+import { EventManager } from '../events/event-manager.js';
+import { ServiceEvents } from '../events/event-types.js';
 
 /**
  * Cache entry for tools, prompts, and resources.
@@ -49,6 +51,7 @@ export class MCPManager implements IMCPManager {
 	private clients = new Map<string, ClientRegistryEntry>();
 	private failedConnections: Record<string, string> = {};
 	private logger: Logger;
+	private eventManager?: EventManager;
 
 	// O(1) lookup caches
 	private toolCache = new Map<string, CacheEntry<any>>();
@@ -65,6 +68,13 @@ export class MCPManager implements IMCPManager {
 	constructor() {
 		this.logger = createLogger({ level: 'info' });
 		this.logger.info(`${LOG_PREFIXES.MANAGER} MCPManager initialized`);
+	}
+
+	/**
+	 * Set the event manager for emitting connection lifecycle events
+	 */
+	setEventManager(eventManager: EventManager): void {
+		this.eventManager = eventManager;
 	}
 
 	/**
@@ -501,6 +511,15 @@ export class MCPManager implements IMCPManager {
 			// Clear any previous failure record
 			delete this.failedConnections[name];
 
+			// Emit MCP client connected event
+			if (this.eventManager) {
+				this.eventManager.emitServiceEvent(ServiceEvents.MCP_CLIENT_CONNECTED, {
+					clientId: name,
+					serverName: name,
+					timestamp: Date.now(),
+				});
+			}
+
 			this.logger.info(`${LOG_PREFIXES.MANAGER} Successfully connected to server: ${name}`, {
 				serverName: name,
 			});
@@ -511,6 +530,16 @@ export class MCPManager implements IMCPManager {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			this.failedConnections[name] = errorMessage;
 			this._updateClientFailure(name);
+
+			// Emit MCP client connection error event
+			if (this.eventManager) {
+				this.eventManager.emitServiceEvent(ServiceEvents.MCP_CLIENT_ERROR, {
+					clientId: name,
+					serverName: name,
+					error: errorMessage,
+					timestamp: Date.now(),
+				});
+			}
 
 			this.logger.error(`${LOG_PREFIXES.MANAGER} Failed to connect to server: ${name}`, {
 				serverName: name,
@@ -569,6 +598,16 @@ export class MCPManager implements IMCPManager {
 				`${LOG_PREFIXES.MANAGER} Error disconnecting client during removal: ${name}`,
 				{ clientName: name, error: error instanceof Error ? error.message : String(error) }
 			);
+		}
+
+		// Emit MCP client disconnected event
+		if (this.eventManager) {
+			this.eventManager.emitServiceEvent(ServiceEvents.MCP_CLIENT_DISCONNECTED, {
+				clientId: name,
+				serverName: name,
+				reason: 'Client removed',
+				timestamp: Date.now(),
+			});
 		}
 
 		// Remove from registry

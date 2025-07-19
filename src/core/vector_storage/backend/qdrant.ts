@@ -161,7 +161,7 @@ export class QdrantBackend implements VectorStore {
 	/**
 	 * Validate vector dimension
 	 */
-	private validateDimension(vector: number[], operation: string): void {
+	private validateDimension(vector: number[], _operation: any): void {
 		if (vector.length !== this.dimension) {
 			throw new VectorDimensionError(
 				`${ERROR_MESSAGES.INVALID_DIMENSION}: expected ${this.dimension}, got ${vector.length}`,

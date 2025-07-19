@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MCPManager } from '../manager.js';
 import type { ServerConfigs, IMCPClient, ToolSet, McpServerConfig } from '../types.js';
-import { ERROR_MESSAGES, CONNECTION_MODES } from '../constants.js';
+import { ERROR_MESSAGES } from '../constants.js';
 
 // Mock the MCPClient to avoid actual connections in tests
 vi.mock('../client.js', () => ({

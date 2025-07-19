@@ -10,6 +10,9 @@ import { MCPManager } from '../../mcp/manager.js';
 import { InternalToolManager } from './manager.js';
 import { ToolExecutionResult } from '../../mcp/types.js';
 import { isInternalToolName } from './types.js';
+import { EventManager } from '../../events/event-manager.js';
+import { SessionEvents } from '../../events/event-types.js';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Configuration for the unified tool manager
@@ -58,6 +61,7 @@ export class UnifiedToolManager {
 	private mcpManager: MCPManager;
 	private internalToolManager: InternalToolManager;
 	private config: Required<UnifiedToolManagerConfig>;
+	private eventManager?: EventManager;
 
 	constructor(
 		mcpManager: MCPManager,
@@ -73,6 +77,13 @@ export class UnifiedToolManager {
 			executionTimeout: 30000,
 			...config,
 		};
+	}
+
+	/**
+	 * Set the event manager for emitting tool execution events
+	 */
+	setEventManager(eventManager: EventManager): void {
+		this.eventManager = eventManager;
 	}
 
 	/**
@@ -152,12 +163,32 @@ export class UnifiedToolManager {
 	/**
 	 * Execute a tool by routing to the appropriate manager
 	 */
-	async executeTool(toolName: string, args: any): Promise<ToolExecutionResult> {
+	async executeTool(toolName: string, args: any, sessionId?: string): Promise<ToolExecutionResult> {
+		const executionId = uuidv4();
+		const startTime = Date.now();
+		const toolType =
+			this.config.enableInternalTools && isInternalToolName(toolName) ? 'internal' : 'mcp';
+
+		// Emit tool execution started event
+		if (this.eventManager && sessionId) {
+			this.eventManager.emitSessionEvent(sessionId, SessionEvents.TOOL_EXECUTION_STARTED, {
+				toolName,
+				toolType,
+				sessionId,
+				executionId,
+				timestamp: startTime,
+			});
+		}
+
 		try {
 			logger.debug(`UnifiedToolManager: Executing tool '${toolName}'`, {
 				toolName,
 				hasArgs: !!args,
+				sessionId,
+				executionId,
 			});
+
+			let result: ToolExecutionResult;
 
 			// Determine which manager should handle this tool
 			if (this.config.enableInternalTools && isInternalToolName(toolName)) {
@@ -167,19 +198,52 @@ export class UnifiedToolManager {
 				}
 
 				logger.debug(`UnifiedToolManager: Routing '${toolName}' to internal tool manager`);
-				return await this.internalToolManager.executeTool(toolName, args);
+				result = await this.internalToolManager.executeTool(toolName, args);
 			} else if (this.config.enableMcpTools) {
 				// MCP tool execution
 				logger.debug(`UnifiedToolManager: Routing '${toolName}' to MCP manager`);
-				return await this.mcpManager.executeTool(toolName, args);
+				result = await this.mcpManager.executeTool(toolName, args);
 			} else {
 				throw new Error(`Tool '${toolName}' not available - no suitable manager enabled`);
 			}
+
+			// Emit tool execution completed event
+			if (this.eventManager && sessionId) {
+				this.eventManager.emitSessionEvent(sessionId, SessionEvents.TOOL_EXECUTION_COMPLETED, {
+					toolName,
+					toolType,
+					sessionId,
+					executionId,
+					duration: Date.now() - startTime,
+					success: true,
+					timestamp: Date.now(),
+				});
+			}
+
+			return result;
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
+			const duration = Date.now() - startTime;
+
+			// Emit tool execution failed event
+			if (this.eventManager && sessionId) {
+				this.eventManager.emitSessionEvent(sessionId, SessionEvents.TOOL_EXECUTION_FAILED, {
+					toolName,
+					toolType,
+					sessionId,
+					executionId,
+					error: errorMessage,
+					duration,
+					timestamp: Date.now(),
+				});
+			}
+
 			logger.error(`UnifiedToolManager: Tool execution failed for '${toolName}'`, {
 				toolName,
 				error: errorMessage,
+				sessionId,
+				executionId,
+				duration,
 			});
 			throw error;
 		}
@@ -287,8 +351,8 @@ export class UnifiedToolManager {
 	 */
 	private handleToolConflict(
 		toolName: string,
-		internalTool: any,
-		existingTools: CombinedToolSet
+		_internalTool: any,
+		_existingTools: CombinedToolSet
 	): boolean {
 		switch (this.config.conflictResolution) {
 			case 'prefix-internal':

@@ -5,6 +5,8 @@ import { ConversationSession } from './coversation-session.js';
 import { MCPManager } from '../mcp/manager.js';
 import { UnifiedToolManager } from '../brain/tools/unified-tool-manager.js';
 import { logger } from '@core/logger/index.js';
+import { EventManager } from '../events/event-manager.js';
+import { SessionEvents } from '../events/event-types.js';
 
 export interface SessionManagerConfig {
 	maxSessions?: number;
@@ -32,6 +34,7 @@ export class SessionManager {
 			promptManager: PromptManager;
 			mcpManager: MCPManager;
 			unifiedToolManager: UnifiedToolManager;
+			eventManager: EventManager;
 		},
 		config: SessionManagerConfig = {}
 	) {
@@ -109,6 +112,12 @@ export class SessionManager {
 			createdAt: now,
 		});
 
+		// Emit session created event
+		this.services.eventManager.emitSessionEvent(sessionId, SessionEvents.SESSION_CREATED, {
+			sessionId,
+			timestamp: now,
+		});
+
 		logger.debug(`Created new session: ${sessionId}`);
 		return session;
 	}
@@ -116,7 +125,15 @@ export class SessionManager {
 	private async updateSessionActivity(sessionId: string): Promise<void> {
 		const sessionMetadata = this.sessions.get(sessionId);
 		if (sessionMetadata) {
-			sessionMetadata.lastActivity = Date.now();
+			const now = Date.now();
+			sessionMetadata.lastActivity = now;
+
+			// Emit session activated event
+			this.services.eventManager.emitSessionEvent(sessionId, SessionEvents.SESSION_ACTIVATED, {
+				sessionId,
+				timestamp: now,
+			});
+
 			logger.debug(`Updated activity for session: ${sessionId}`);
 		}
 	}
@@ -143,8 +160,15 @@ export class SessionManager {
 	public async removeSession(sessionId: string): Promise<boolean> {
 		await this.ensureInitialized();
 
+		const sessionMetadata = this.sessions.get(sessionId);
 		const removed = this.sessions.delete(sessionId);
-		if (removed) {
+		if (removed && sessionMetadata) {
+			// Emit session deleted event
+			this.services.eventManager.emitSessionEvent(sessionId, SessionEvents.SESSION_DELETED, {
+				sessionId,
+				timestamp: Date.now(),
+			});
+
 			logger.debug(`Removed session: ${sessionId}`);
 		}
 		return removed;
@@ -205,6 +229,12 @@ export class SessionManager {
 		}
 
 		for (const sessionId of expiredSessionIds) {
+			// Emit session expired event before removing
+			this.services.eventManager.emitSessionEvent(sessionId, SessionEvents.SESSION_EXPIRED, {
+				sessionId,
+				timestamp: Date.now(),
+			});
+
 			await this.removeSession(sessionId);
 		}
 

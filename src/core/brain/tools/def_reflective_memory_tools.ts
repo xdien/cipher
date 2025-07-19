@@ -250,7 +250,7 @@ async function extractReasoningFromContent(
  */
 async function extractTaskContextFromContent(
 	userInput: string,
-	reasoningContent: string // Keep parameter for backward compatibility but only use userInput
+	_reasoningContent: string // Keep parameter for backward compatibility but only use userInput
 ): Promise<{
 	goal?: string;
 	input?: string;

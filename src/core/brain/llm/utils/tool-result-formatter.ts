@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import { logger } from '../../../logger/index.js';
-import { KnowledgeGraph } from '@core/index.js';
+// import { KnowledgeGraph } from '@core/index.js';
 
 /**
  * Tool Result Formatter

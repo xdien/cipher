@@ -385,7 +385,7 @@ export const storeReasoningMemoryTool: InternalTool = {
 			// Calculate derived metrics using validated steps
 			// Note: confidence field removed from steps as per new requirements
 
-			const stepTypes = Array.from(new Set(validSteps.map((step: any) => step.type))) as string[];
+			// const stepTypes = Array.from(new Set(validSteps.map((step: any) => step.type))) as string[];
 
 			// Create simplified searchable content focusing on reasoning steps and evaluation
 			const searchableContent = [
@@ -503,7 +503,7 @@ export const storeReasoningMemoryTool: InternalTool = {
 
 			// Validate embedding contains valid numbers
 			const invalidEmbeddingElements = embedding.filter(
-				(val, idx) => typeof val !== 'number' || isNaN(val) || !isFinite(val)
+				(val, _idx) => typeof val !== 'number' || isNaN(val) || !isFinite(val)
 			);
 			if (invalidEmbeddingElements.length > 0) {
 				const errorMsg = `Invalid embedding: contains ${invalidEmbeddingElements.length} non-numeric/invalid values`;
