@@ -174,7 +174,12 @@ describe('ConversationSession', () => {
 			await session.init();
 
 			expect(mockStateManager.getLLMConfig).toHaveBeenCalledWith(sessionId);
-			expect(mockCreateContextManager).toHaveBeenCalledWith(mockLLMConfig, mockPromptManager, undefined, sessionId);
+			expect(mockCreateContextManager).toHaveBeenCalledWith(
+				mockLLMConfig,
+				mockPromptManager,
+				undefined,
+				sessionId
+			);
 			expect(mockCreateLLMService).toHaveBeenCalledWith(
 				mockLLMConfig,
 				mockMcpManager,
@@ -578,7 +583,12 @@ describe('ConversationSession', () => {
 
 			await session.init();
 
-			expect(mockCreateContextManager).toHaveBeenCalledWith(anthropicConfig, mockPromptManager, undefined, sessionId);
+			expect(mockCreateContextManager).toHaveBeenCalledWith(
+				anthropicConfig,
+				mockPromptManager,
+				undefined,
+				sessionId
+			);
 			expect(mockCreateLLMService).toHaveBeenCalledWith(
 				anthropicConfig,
 				mockMcpManager,

@@ -99,8 +99,6 @@ export class ContextManager {
 		logger.debug(`Total messages in context: ${this.messages.length}`);
 	}
 
-
-
 	async addUserMessage(textContent: string, imageData?: ImageData): Promise<void> {
 		if (typeof textContent !== 'string' || textContent.trim() === '') {
 			throw new Error('Content must be a non-empty string.');
@@ -273,7 +271,9 @@ export class ContextManager {
 				this.messages = history;
 				logger.debug(`ContextManager: Restored ${history.length} messages from persistent storage`);
 			} catch (err) {
-				logger.error(`ContextManager: Failed to restore history, falling back to in-memory: ${err}`);
+				logger.error(
+					`ContextManager: Failed to restore history, falling back to in-memory: ${err}`
+				);
 				this.fallbackToMemory = true;
 			}
 		}

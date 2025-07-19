@@ -144,7 +144,7 @@ export class ConversationSession {
 					// Use a default in-memory storage config for now
 					const storageConfig = {
 						cache: { type: 'in-memory' as const },
-						database: { type: 'in-memory' as const }
+						database: { type: 'in-memory' as const },
 					};
 					const storageManager = new StorageManager(storageConfig);
 					await storageManager.connect();
@@ -555,7 +555,12 @@ export class ConversationSession {
 			try {
 				// Use configured evaluation model or fallback to main LLM
 				const evalConfig = this.services.stateManager.getEvalLLMConfig(this.id);
-				const evalContextManager = createContextManager(evalConfig, this.services.promptManager, undefined, undefined);
+				const evalContextManager = createContextManager(
+					evalConfig,
+					this.services.promptManager,
+					undefined,
+					undefined
+				);
 				const evalLLMService = createLLMService(
 					evalConfig,
 					this.services.mcpManager,
