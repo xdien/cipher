@@ -127,18 +127,6 @@ export interface AggregatorConfig extends BaseServerConfig {
 	 * @default false
 	 */
 	autoDiscovery?: boolean;
-
-	/**
-	 * Port for the aggregator server to listen on.
-	 * @default 3000
-	 */
-	port?: number;
-
-	/**
-	 * Host for the aggregator server to bind to.
-	 * @default 'localhost'
-	 */
-	host?: string;
 }
 
 /**

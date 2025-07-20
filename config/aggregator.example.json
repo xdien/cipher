@@ -1,40 +1,38 @@
 {
-  "type": "aggregator",
-  "servers": {
-    "filesystem": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["@modelcontextprotocol/server-filesystem", "/tmp"],
-      "env": {},
-      "timeout": 30000,
-      "connectionMode": "lenient"
-    },
-    "firecrawl": {
-      "type": "stdio", 
-      "command": "uvx",
-      "args": ["mcp-server-firecrawl"],
+  "mcpServers": {
+    "cipher": {
+      "command": "cipher",
+      "args": [
+        "--mode",
+        "mcp"
+      ],
       "env": {
-        "FIRECRAWL_API_KEY": "${FIRECRAWL_API_KEY}"
-      },
-      "timeout": 30000,
-      "connectionMode": "lenient"
-    },
-    "web-search": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-web-search"],
-      "env": {
-        "GOOGLE_API_KEY": "${GOOGLE_API_KEY}",
-        "GOOGLE_SEARCH_ENGINE_ID": "${GOOGLE_SEARCH_ENGINE_ID}"
-      },
-      "timeout": 30000,
-      "connectionMode": "lenient"
+        "MCP_SERVER_MODE": "aggregator",
+        "AGGREGATOR_SERVERS": {
+          "filesystem": {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
+          },
+          "firecrawl": {
+            "command": "npx",
+            "args": ["-y", "firecrawl-mcp"],
+            "env": {
+              "FIRECRAWL_API_KEY": "fc-7ab1cce5b4c341d8bf2831e9578a4d5d",
+              "FIRECRAWL_RETRY_MAX_ATTEMPTS": "3",
+              "FIRECRAWL_RETRY_INITIAL_DELAY": "1000",
+              "FIRECRAWL_RETRY_MAX_DELAY": "10000",
+              "FIRECRAWL_RETRY_BACKOFF_FACTOR": "2"
+            }
+          }
+        },
+        "AGGREGATOR_CONFLICT_RESOLUTION": "prefix",
+        "AGGREGATOR_AUTO_DISCOVERY": "false",
+        "AGGREGATOR_TIMEOUT": "60000",
+        "AGGREGATOR_CONNECTION_MODE": "lenient",
+        "OPENAI_API_KEY": "your-openai-api-key",
+        "VECTOR_STORE_TYPE": "milvus",
+        "VECTOR_STORE_URL": "your-vector-store-url"
+      }
     }
-  },
-  "conflictResolution": "prefix",
-  "autoDiscovery": false,
-  "port": 3000,
-  "host": "localhost",
-  "timeout": 60000,
-  "connectionMode": "lenient"
+  }
 }

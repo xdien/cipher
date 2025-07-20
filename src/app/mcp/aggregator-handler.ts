@@ -2,40 +2,32 @@
  * Aggregator MCP Handler for exposing aggregated tools as a unified MCP server.
  *
  * This file contains the handler for running Cipher in aggregator mode,
- * where it connects to multiple MCP servers and exposes their combined tools
- * through a single MCP interface.
+ * using the same working connection logic as default mode but exposing all tools.
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
 	CallToolRequestSchema,
 	ListToolsRequestSchema,
-	ListResourcesRequestSchema,
-	ReadResourceRequestSchema,
-	GetPromptRequestSchema,
-	ListPromptsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 
-import { AggregatorMCPManager } from '@core/mcp/aggregator.js';
-import { createToolArgumentValidator, validateToolArguments } from '@core/mcp/schema-converter.js';
 import { logger } from '@core/logger/index.js';
-import type { AggregatorConfig, ToolRegistryEntry } from '@core/mcp/types.js';
+import type { AggregatorConfig } from '@core/mcp/types.js';
+import { createMcpTransport } from './mcp_handler.js';
+import type { MemAgent } from '@core/brain/memAgent/agent.js';
 
 /**
  * Initialize aggregator MCP server
  * @param config - Aggregator configuration
+ * @param agent - MemAgent instance for handling built-in tools
  */
-export async function initializeAggregatorServer(config: AggregatorConfig): Promise<void> {
-	logger.info('[Aggregator Handler] Initializing aggregator MCP server');
+export async function initializeAggregatorServer(config: AggregatorConfig, agent: MemAgent): Promise<void> {
+	logger.info('[Aggregator Handler] Initializing aggregator MCP server (using unified tool manager)', {
+		conflictResolution: config.conflictResolution,
+		timeout: config.timeout,
+	});
 
-	// Create aggregator manager
-	const aggregatorManager = new AggregatorMCPManager();
-
-	// Start the aggregator (connects to downstream servers)
-	await aggregatorManager.startServer(config);
-
-	// Create MCP server instance
+	// Create MCP server instance (same as default mode)
 	const server = new Server(
 		{
 			name: 'cipher-aggregator',
@@ -44,37 +36,31 @@ export async function initializeAggregatorServer(config: AggregatorConfig): Prom
 		{
 			capabilities: {
 				tools: {},
-				resources: {},
-				prompts: {},
 			},
 		}
 	);
 
-	// Register aggregated capabilities
-	await registerAggregatedTools(server, aggregatorManager);
-	await registerAggregatedResources(server, aggregatorManager);
-	await registerAggregatedPrompts(server, aggregatorManager);
+	// Register tools using unified tool manager (like default mode)
+	await registerAggregatedTools(server, agent, config);
 
-	// Create transport
-	const transport = new StdioServerTransport();
+	// Create transport (using same utility as default MCP handler)
+	const transport = await createMcpTransport('stdio');
 
 	// Connect server to transport
 	logger.info('[Aggregator Handler] Connecting aggregator server to stdio transport');
-	await server.connect(transport);
+	await server.connect(transport.server);
 
 	logger.info('[Aggregator Handler] Aggregator MCP server initialized and connected successfully');
-	logger.info('[Aggregator Handler] Aggregated tools are now available to external clients');
+	logger.info('[Aggregator Handler] All tools are now available to external clients');
 
 	// Handle shutdown gracefully
 	process.on('SIGINT', async () => {
 		logger.info('[Aggregator Handler] Shutting down aggregator server');
-		await aggregatorManager.stopServer();
 		process.exit(0);
 	});
 
 	process.on('SIGTERM', async () => {
 		logger.info('[Aggregator Handler] Shutting down aggregator server');
-		await aggregatorManager.stopServer();
 		process.exit(0);
 	});
 
@@ -83,83 +69,146 @@ export async function initializeAggregatorServer(config: AggregatorConfig): Prom
 }
 
 /**
- * Register aggregated tools as MCP tools
+ * Handle the ask_cipher tool execution
  */
-async function registerAggregatedTools(
-	server: Server,
-	aggregatorManager: AggregatorMCPManager
-): Promise<void> {
-	logger.debug('[Aggregator Handler] Registering aggregated tools');
+async function handleAskCipherTool(agent: MemAgent, args: any): Promise<any> {
+	const { message, session_id = 'default' } = args;
 
-	// Get all aggregated tools
-	const tools = await aggregatorManager.getAllTools();
-	const toolRegistry = aggregatorManager.getToolRegistry();
+	if (!message || typeof message !== 'string') {
+		throw new Error('Message parameter is required and must be a string');
+	}
 
-	// Build MCP tool list with enhanced metadata
-	const mcpTools = Object.entries(tools).map(([toolName, tool]) => {
-		const registryEntry = toolRegistry.get(toolName);
-		return {
-			name: toolName,
-			description: `${tool.description}${registryEntry ? ` (from ${registryEntry.clientName})` : ''}`,
-			inputSchema: tool.parameters,
-		};
+	logger.info('[Aggregator Handler] Processing ask_cipher request', {
+		sessionId: session_id,
+		messageLength: message.length,
 	});
+
+	try {
+		const result = await agent.run(message, session_id);
+
+		return {
+			content: [
+				{
+					type: 'text',
+					text: result?.response || 'No response generated',
+				},
+			],
+		};
+	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		logger.error('[Aggregator Handler] Error in ask_cipher tool', { error: errorMessage });
+		throw new Error(`Agent execution failed: ${errorMessage}`);
+	}
+}
+
+/**
+ * Register aggregated tools as MCP tools (using default mode's working logic)
+ */
+async function registerAggregatedTools(server: Server, agent: MemAgent, config: AggregatorConfig): Promise<void> {
+	logger.debug('[Aggregator Handler] Registering all tools (built-in + MCP servers)');
+
+	// Get all agent-accessible tools from unifiedToolManager (like default mode)
+	const unifiedToolManager = agent.unifiedToolManager;
+	const combinedTools = await unifiedToolManager.getAllTools();
+
+	// Apply conflict resolution if needed
+	const resolvedTools = new Map<string, any>();
+	const conflictResolution = config?.conflictResolution || 'prefix';
+	
+	Object.entries(combinedTools).forEach(([toolName, tool]) => {
+		let resolvedName = toolName;
+		
+		// Check for conflicts and resolve based on strategy
+		if (resolvedTools.has(toolName)) {
+			switch (conflictResolution) {
+				case 'prefix':
+					resolvedName = `cipher.${toolName}`;
+					logger.info(`[Aggregator Handler] Tool name conflict resolved: ${toolName} -> ${resolvedName}`);
+					break;
+				case 'first-wins':
+					logger.warn(`[Aggregator Handler] Tool name conflict: ${toolName} already exists, skipping`);
+					return; // Skip this tool
+				case 'error':
+					throw new Error(`Tool name conflict: ${toolName} exists multiple times`);
+				default:
+					resolvedName = toolName;
+			}
+		}
+		
+		resolvedTools.set(resolvedName, tool);
+	});
+
+	// Build MCP tool list from resolved tools
+	const mcpTools = Array.from(resolvedTools.entries()).map(([toolName, tool]) => ({
+		name: toolName,
+		description: (tool as any).description,
+		inputSchema: (tool as any).parameters,
+	}));
+
+	// For backward compatibility, ensure ask_cipher is always present
+	if (!mcpTools.find(t => t.name === 'ask_cipher')) {
+		mcpTools.push({
+			name: 'ask_cipher',
+			description: 'Chat with the Cipher AI agent. Send a message to interact with the agent.',
+			inputSchema: {
+				type: 'object',
+				properties: {
+					message: {
+						type: 'string',
+						description: 'The message or question to send to the Cipher agent',
+					},
+					session_id: {
+						type: 'string',
+						description: 'Optional session ID to maintain conversation context',
+						default: 'default',
+					},
+					stream: {
+						type: 'boolean',
+						description: 'Whether to stream the response (not supported via MCP)',
+						default: false,
+					},
+				},
+				required: ['message'],
+			},
+		});
+	}
 
 	logger.info(
-		`[Aggregator Handler] Registering ${mcpTools.length} aggregated tools: ${mcpTools.map(t => t.name).join(', ')}`
+		`[Aggregator Handler] Registering ${mcpTools.length} tools: ${mcpTools.map(t => t.name).join(', ')}`
 	);
 
-	// Register list tools handler
+	// Register list tools handler (using default mode's working logic)
 	server.setRequestHandler(ListToolsRequestSchema, async () => {
-		// Refresh tools on each request to ensure latest state
-		const currentTools = await aggregatorManager.getAllTools();
-		const currentRegistry = aggregatorManager.getToolRegistry();
-
-		const refreshedMcpTools = Object.entries(currentTools).map(([toolName, tool]) => {
-			const registryEntry = currentRegistry.get(toolName);
-			return {
-				name: toolName,
-				description: `${tool.description}${registryEntry ? ` (from ${registryEntry.clientName})` : ''}`,
-				inputSchema: tool.parameters,
-			};
-		});
-
-		return { tools: refreshedMcpTools };
+		return { tools: mcpTools };
 	});
 
-	// Register call tool handler
+	// Register call tool handler (using default mode's working logic)
 	server.setRequestHandler(CallToolRequestSchema, async request => {
 		const { name, arguments: args } = request.params;
 		logger.info(`[Aggregator Handler] Tool called: ${name}`, { toolName: name, args });
 
+		if (name === 'ask_cipher') {
+			return await handleAskCipherTool(agent, args);
+		}
+
+		// Route to unifiedToolManager for all other tools (like default mode)
 		try {
-			// Get tool definition for validation
-			const currentTools = await aggregatorManager.getAllTools();
-			const toolDef = currentTools[name];
-
-			if (!toolDef) {
-				throw new Error(`Tool '${name}' not found in aggregated tools`);
-			}
-
-			// Validate arguments if schema is available
-			if (toolDef.parameters) {
-				const validator = createToolArgumentValidator(toolDef.parameters);
-				const validation = validateToolArguments(args || {}, validator);
-
-				if (!validation.success) {
-					throw new Error(`Invalid arguments for tool '${name}': ${validation.error}`);
-				}
-			}
-
-			// Execute the tool through the aggregator
-			const result = await aggregatorManager.executeTool(name, args);
-
-			// Format response for MCP
+			const unifiedToolManager = agent.unifiedToolManager;
+			
+			// Apply timeout if configured
+			const timeout = config?.timeout || 60000;
+			const result = await Promise.race([
+				unifiedToolManager.executeTool(name, args),
+				new Promise((_, reject) => 
+					setTimeout(() => reject(new Error(`Tool execution timed out after ${timeout}ms`)), timeout)
+				)
+			]);
+			
 			return {
 				content: [
 					{
 						type: 'text',
-						text: typeof result === 'string' ? result : JSON.stringify(result, null, 2),
+						text: typeof result === 'string' ? result : JSON.stringify(result),
 					},
 				],
 			};
@@ -171,222 +220,3 @@ async function registerAggregatedTools(
 	});
 }
 
-/**
- * Register aggregated resources as MCP resources
- */
-async function registerAggregatedResources(
-	server: Server,
-	aggregatorManager: AggregatorMCPManager
-): Promise<void> {
-	logger.debug('[Aggregator Handler] Registering aggregated resources');
-
-	// Register list resources handler
-	server.setRequestHandler(ListResourcesRequestSchema, async () => {
-		try {
-			// Get resources from all connected servers
-			const resources = await aggregatorManager.listAllResources();
-
-			// Add aggregator-specific resources
-			const aggregatorResources = [
-				{
-					uri: 'aggregator://stats',
-					name: 'Aggregator Statistics',
-					description: 'Statistics and metrics for the aggregator server',
-					mimeType: 'application/json',
-				},
-				{
-					uri: 'aggregator://registry',
-					name: 'Tool Registry',
-					description: 'Complete registry of aggregated tools with metadata',
-					mimeType: 'application/json',
-				},
-			];
-
-			// Convert resource URIs to resource objects
-			const mcpResources = resources.map(uri => ({
-				uri,
-				name: uri.split('/').pop() || uri,
-				description: `Aggregated resource: ${uri}`,
-				mimeType: 'application/octet-stream',
-			}));
-
-			return {
-				resources: [...mcpResources, ...aggregatorResources],
-			};
-		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			logger.error('[Aggregator Handler] Error listing resources', { error: errorMessage });
-			return { resources: [] };
-		}
-	});
-
-	// Register read resource handler
-	server.setRequestHandler(ReadResourceRequestSchema, async request => {
-		const { uri } = request.params;
-		logger.info(`[Aggregator Handler] Resource requested: ${uri}`);
-
-		// Handle aggregator-specific resources
-		if (uri.startsWith('aggregator://')) {
-			return await handleAggregatorResource(uri, aggregatorManager);
-		}
-
-		// Delegate to aggregated servers
-		try {
-			return await aggregatorManager.readResource(uri);
-		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			logger.error(`[Aggregator Handler] Error reading resource '${uri}'`, { error: errorMessage });
-			throw new Error(`Failed to read resource: ${errorMessage}`);
-		}
-	});
-}
-
-/**
- * Register aggregated prompts as MCP prompts
- */
-async function registerAggregatedPrompts(
-	server: Server,
-	aggregatorManager: AggregatorMCPManager
-): Promise<void> {
-	logger.debug('[Aggregator Handler] Registering aggregated prompts');
-
-	// Register list prompts handler
-	server.setRequestHandler(ListPromptsRequestSchema, async () => {
-		try {
-			const prompts = await aggregatorManager.listAllPrompts();
-
-			const mcpPrompts = prompts.map(name => ({
-				name,
-				description: `Aggregated prompt: ${name}`,
-			}));
-
-			return { prompts: mcpPrompts };
-		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			logger.error('[Aggregator Handler] Error listing prompts', { error: errorMessage });
-			return { prompts: [] };
-		}
-	});
-
-	// Register get prompt handler
-	server.setRequestHandler(GetPromptRequestSchema, async request => {
-		const { name, arguments: args } = request.params;
-		logger.info(`[Aggregator Handler] Prompt requested: ${name}`);
-
-		try {
-			return await aggregatorManager.getPrompt(name, args);
-		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			logger.error(`[Aggregator Handler] Error getting prompt '${name}'`, { error: errorMessage });
-			throw new Error(`Failed to get prompt: ${errorMessage}`);
-		}
-	});
-}
-
-/**
- * Handle aggregator-specific resources
- */
-async function handleAggregatorResource(
-	uri: string,
-	aggregatorManager: AggregatorMCPManager
-): Promise<any> {
-	switch (uri) {
-		case 'aggregator://stats':
-			return await getAggregatorStats(aggregatorManager);
-		case 'aggregator://registry':
-			return await getToolRegistry(aggregatorManager);
-		default:
-			throw new Error(`Unknown aggregator resource: ${uri}`);
-	}
-}
-
-/**
- * Get aggregator statistics resource
- */
-async function getAggregatorStats(aggregatorManager: AggregatorMCPManager): Promise<any> {
-	try {
-		const stats = aggregatorManager.getStats();
-		const clients = aggregatorManager.getClients();
-		const failedConnections = aggregatorManager.getFailedConnections();
-
-		const enhancedStats = {
-			...stats,
-			connectedClients: Array.from(clients.keys()),
-			failedConnections,
-			timestamp: new Date().toISOString(),
-		};
-
-		return {
-			contents: [
-				{
-					uri: 'aggregator://stats',
-					mimeType: 'application/json',
-					text: JSON.stringify(enhancedStats, null, 2),
-				},
-			],
-		};
-	} catch (error) {
-		const errorMessage = error instanceof Error ? error.message : String(error);
-		logger.error('[Aggregator Handler] Error getting aggregator stats', { error: errorMessage });
-
-		const errorStats = {
-			error: `Failed to retrieve stats: ${errorMessage}`,
-			timestamp: new Date().toISOString(),
-		};
-
-		return {
-			contents: [
-				{
-					uri: 'aggregator://stats',
-					mimeType: 'application/json',
-					text: JSON.stringify(errorStats, null, 2),
-				},
-			],
-		};
-	}
-}
-
-/**
- * Get tool registry resource
- */
-async function getToolRegistry(aggregatorManager: AggregatorMCPManager): Promise<any> {
-	try {
-		const registry = aggregatorManager.getToolRegistry();
-		const registryData = Array.from(registry.entries()).map(([name, entry]) => ({
-			name,
-			originalName: entry.originalName,
-			clientName: entry.clientName,
-			registeredName: entry.registeredName,
-			timestamp: entry.timestamp,
-			description: entry.tool.description,
-		}));
-
-		return {
-			contents: [
-				{
-					uri: 'aggregator://registry',
-					mimeType: 'application/json',
-					text: JSON.stringify(registryData, null, 2),
-				},
-			],
-		};
-	} catch (error) {
-		const errorMessage = error instanceof Error ? error.message : String(error);
-		logger.error('[Aggregator Handler] Error getting tool registry', { error: errorMessage });
-
-		const errorRegistry = {
-			error: `Failed to retrieve registry: ${errorMessage}`,
-			timestamp: new Date().toISOString(),
-		};
-
-		return {
-			contents: [
-				{
-					uri: 'aggregator://registry',
-					mimeType: 'application/json',
-					text: JSON.stringify(errorRegistry, null, 2),
-				},
-			],
-		};
-	}
-}

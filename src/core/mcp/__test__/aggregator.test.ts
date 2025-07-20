@@ -52,8 +52,6 @@ describe('AggregatorMCPManager', () => {
 			},
 			conflictResolution: 'prefix',
 			autoDiscovery: false,
-			port: 3000,
-			host: 'localhost',
 		};
 	});
 

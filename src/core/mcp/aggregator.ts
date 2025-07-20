@@ -53,8 +53,7 @@ export class AggregatorMCPManager extends MCPManager implements IAggregatorManag
 		this.startTime = Date.now();
 
 		this.logger.info(`${LOG_PREFIXES.MANAGER} Starting aggregator server`, {
-			port: config.port || 3000,
-			host: config.host || 'localhost',
+			transport: 'stdio',
 			serverCount: Object.keys(config.servers).length,
 		});
 

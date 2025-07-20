@@ -55,22 +55,11 @@ export async function initializeMcpServer(agent: MemAgent, agentCard: AgentCard)
  * Register agent tools as MCP tools (dynamic discovery)
  */
 async function registerAgentTools(server: Server, agent: MemAgent): Promise<void> {
-	logger.debug('[MCP Handler] Registering agent tools (dynamic)');
+	logger.debug('[MCP Handler] Registering agent tools (default mode - ask_cipher only)');
 
-	// Get all agent-accessible tools from unifiedToolManager
-	const unifiedToolManager = agent.unifiedToolManager;
-	const combinedTools = await unifiedToolManager.getAllTools();
-
-	// Build MCP tool list
-	const mcpTools = Object.entries(combinedTools).map(([toolName, tool]) => ({
-		name: toolName,
-		description: (tool as any).description,
-		inputSchema: (tool as any).parameters,
-	}));
-
-	// For backward compatibility, ensure ask_cipher is always present
-	if (!mcpTools.find(t => t.name === 'ask_cipher')) {
-		mcpTools.push({
+	// Default mode: Only expose ask_cipher tool (simplified)
+	const mcpTools = [
+		{
 			name: 'ask_cipher',
 			description: 'Chat with the Cipher AI agent. Send a message to interact with the agent.',
 			inputSchema: {
@@ -93,8 +82,8 @@ async function registerAgentTools(server: Server, agent: MemAgent): Promise<void
 				},
 				required: ['message'],
 			},
-		});
-	}
+		}
+	];
 
 	logger.info(
 		`[MCP Handler] Registering ${mcpTools.length} MCP tools: ${mcpTools.map(t => t.name).join(', ')}`
@@ -114,22 +103,8 @@ async function registerAgentTools(server: Server, agent: MemAgent): Promise<void
 			return await handleAskCipherTool(agent, args);
 		}
 
-		// Route to unifiedToolManager for all other tools
-		try {
-			const result = await unifiedToolManager.executeTool(name, args);
-			return {
-				content: [
-					{
-						type: 'text',
-						text: typeof result === 'string' ? result : JSON.stringify(result),
-					},
-				],
-			};
-		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			logger.error(`[MCP Handler] Error in tool '${name}'`, { error: errorMessage });
-			throw new Error(`Tool execution failed: ${errorMessage}`);
-		}
+		// Default mode only supports ask_cipher
+		throw new Error(`Tool '${name}' not available in default mode. Use aggregator mode for access to all tools.`);
 	});
 }
 
@@ -392,6 +367,25 @@ export function initializeAgentCardResource(agentCard: Partial<AgentCard>): Agen
 	};
 
 	return processedCard;
+}
+
+/**
+ * Create MCP transport for stdio communication
+ * @param type - Transport type (currently only 'stdio' is supported)
+ * @returns Transport object with server property
+ */
+export async function createMcpTransport(type: string): Promise<{ server: any }> {
+	if (type !== 'stdio') {
+		throw new Error(`Unsupported transport type: ${type}. Only 'stdio' is currently supported.`);
+	}
+
+	// Import stdio transport from MCP SDK
+	const { StdioServerTransport } = await import('@modelcontextprotocol/sdk/server/stdio.js');
+	
+	logger.info('[MCP Handler] Creating stdio transport');
+	const transport = new StdioServerTransport();
+	
+	return { server: transport };
 }
 
 /**
