@@ -74,8 +74,8 @@ export class ApiServer {
 
 			// Initialize MCP server instance with appropriate mode
 			this.mcpServer = await initializeMcpServer(
-				this.agent, 
-				agentCardData, 
+				this.agent,
+				agentCardData,
 				mcpServerMode as 'default' | 'aggregator',
 				aggregatorConfig
 			);

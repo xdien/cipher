@@ -26,8 +26,8 @@ export type AgentCard = z.infer<typeof AgentCardSchema>;
  * @param aggregatorConfig - Configuration for aggregator mode (optional)
  */
 export async function initializeMcpServer(
-	agent: MemAgent, 
-	agentCard: AgentCard, 
+	agent: MemAgent,
+	agentCard: AgentCard,
 	mode: 'default' | 'aggregator' = 'default',
 	aggregatorConfig?: AggregatorConfig
 ): Promise<Server> {
@@ -126,8 +126,8 @@ async function registerAgentTools(server: Server, agent: MemAgent): Promise<void
  * Register aggregated tools as MCP tools (aggregator mode - all tools)
  */
 async function registerAggregatedTools(
-	server: Server, 
-	agent: MemAgent, 
+	server: Server,
+	agent: MemAgent,
 	config?: AggregatorConfig
 ): Promise<void> {
 	logger.debug('[MCP Handler] Registering all tools (aggregator mode - built-in + MCP servers)');
@@ -148,14 +148,10 @@ async function registerAggregatedTools(
 			switch (conflictResolution) {
 				case 'prefix':
 					resolvedName = `cipher.${toolName}`;
-					logger.info(
-						`[MCP Handler] Tool name conflict resolved: ${toolName} -> ${resolvedName}`
-					);
+					logger.info(`[MCP Handler] Tool name conflict resolved: ${toolName} -> ${resolvedName}`);
 					break;
 				case 'first-wins':
-					logger.warn(
-						`[MCP Handler] Tool name conflict: ${toolName} already exists, skipping`
-					);
+					logger.warn(`[MCP Handler] Tool name conflict: ${toolName} already exists, skipping`);
 					return; // Skip this tool
 				case 'error':
 					throw new Error(`Tool name conflict: ${toolName} exists multiple times`);
@@ -525,10 +521,10 @@ export async function createMcpTransport(type: string): Promise<{ server: any }>
 
 	// Import stdio transport from MCP SDK
 	const { StdioServerTransport } = await import('@modelcontextprotocol/sdk/server/stdio.js');
-	
+
 	logger.info('[MCP Handler] Creating stdio transport');
 	const transport = new StdioServerTransport();
-	
+
 	return { server: transport };
 }
 
