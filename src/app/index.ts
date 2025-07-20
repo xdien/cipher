@@ -136,7 +136,7 @@ program
 		) {
 			// Use MCP-safe error reporting
 			const errorMsg =
-				'No API key or Ollama configuration found, please set at least one of OPENAI_API_KEY, ANTHROPIC_API_KEY, OPENROUTER_API_KEY, or OLLAMA_BASE_URL in .env file\nAvailable providers: OpenAI, Anthropic, OpenRouter, Ollama';
+				'No API key or Ollama configuration found, please set at least one of OPENAI_API_KEY, ANTHROPIC_API_KEY, OPENROUTER_API_KEY, or OLLAMA_BASE_URL in your environment variables \nAvailable providers: OpenAI, Anthropic, OpenRouter, Ollama';
 
 			if (opts.mode === 'mcp') {
 				process.stderr.write(`[CIPHER-MCP] ERROR: ${errorMsg}\n`);
