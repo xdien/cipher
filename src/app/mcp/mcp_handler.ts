@@ -1,5 +1,4 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
 	CallToolRequestSchema,
 	ListToolsRequestSchema,
@@ -19,95 +18,14 @@ import * as path from 'path';
 export type AgentCard = z.infer<typeof AgentCardSchema>;
 
 /**
- * Transport types for MCP server
- */
-export type McpTransportType = 'stdio' | 'http' | 'sse';
-
-/**
- * MCP Server transport interface
- */
-export interface McpTransport {
-	type: McpTransportType;
-	server: any; // Transport-specific server instance
-}
-
-/**
- * Create MCP transport for the server
- * @param transportType - Type of transport to create
- * @param options - Transport-specific options
- * @returns MCP transport instance
- */
-export async function createMcpTransport(
-	transportType: McpTransportType,
-	options?: any
-): Promise<McpTransport> {
-	logger.info(`[MCP Handler] Creating ${transportType} transport`);
-
-	switch (transportType) {
-		case 'stdio':
-			return createStdioTransport();
-		case 'sse':
-			return createSseTransport(options);
-		case 'http':
-			return createHttpTransport(options);
-		default:
-			throw new Error(`Unsupported transport type: ${transportType}`);
-	}
-}
-
-/**
- * Create stdio transport for MCP server
- */
-async function createStdioTransport(): Promise<McpTransport> {
-	logger.debug('[MCP Handler] Creating stdio transport for server mode');
-
-	const transport = new StdioServerTransport();
-
-	return {
-		type: 'stdio',
-		server: transport,
-	};
-}
-
-/**
- * Create SSE transport for MCP server
- */
-async function createSseTransport(
-	options: { port?: number; host?: string } = {}
-): Promise<McpTransport> {
-	const { port = 3001, host = 'localhost' } = options;
-
-	logger.debug(`[MCP Handler] Creating SSE transport for server mode on ${host}:${port}`);
-
-	// TODO: Implement proper SSE server transport
-	// SSE transport requires HTTP server setup and proper endpoint configuration
-	throw new Error(
-		'SSE transport not yet fully implemented for MCP server mode. Use stdio transport instead.'
-	);
-}
-
-/**
- * Create HTTP transport for MCP server
- */
-async function createHttpTransport(
-	_options: { port?: number; host?: string } = {}
-): Promise<McpTransport> {
-	// Note: HTTP transport may not be available in all MCP SDK versions
-	// This is a placeholder for future implementation
-	throw new Error('HTTP transport not yet implemented for MCP server mode');
-}
-
-/**
  * Initialize MCP server with agent capabilities
  * @param agent - The MemAgent instance to expose
  * @param agentCard - Agent metadata/card information
- * @param transport - MCP transport instance
  */
 export async function initializeMcpServer(
 	agent: MemAgent,
-	agentCard: AgentCard,
-	transport: McpTransport
-): Promise<void> {
+	agentCard: AgentCard
+): Promise<Server> {
 	logger.info('[MCP Handler] Initializing MCP server with agent capabilities');
 
 	// Create MCP server instance
@@ -130,15 +48,10 @@ export async function initializeMcpServer(
 	await registerAgentResources(server, agent, agentCard);
 	await registerAgentPrompts(server, agent);
 
-	// Connect server to transport
-	logger.info(`[MCP Handler] Connecting MCP server to ${transport.type} transport`);
-	await server.connect(transport.server);
-
-	logger.info('[MCP Handler] MCP server initialized and connected successfully');
+	logger.info('[MCP Handler] MCP server initialized successfully');
 	logger.info('[MCP Handler] Agent is now available as MCP server for external clients');
 
-	// Keep the process alive in server mode
-	process.stdin.resume();
+	return server;
 }
 
 /**

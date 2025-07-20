@@ -7,7 +7,7 @@ import { DEFAULT_CONFIG_PATH, logger, MemAgent } from '@core/index.js';
 import { resolveConfigPath } from '@core/utils/path.js';
 import { handleCliOptionsError, validateCliOptions } from './cli/utils/options.js';
 import { loadAgentConfig } from '../core/brain/memAgent/loader.js';
-import { startInteractiveCli, startMcpMode, startHeadlessCli } from './cli/cli.js';
+import { startInteractiveCli, startHeadlessCli } from './cli/cli.js';
 import { ApiServer } from './api/server.js';
 import path from 'path';
 import os from 'os';
@@ -65,7 +65,9 @@ program
 	.option('--new-session [sessionId]', 'Start with a new session (optionally specify session ID)')
 	.option('--mode <mode>', 'The application mode for cipher memory agent - cli | mcp | api', 'cli')
 	.option('--port <port>', 'Port for API server (only used with --mode api)', '3000')
-	.option('--host <host>', 'Host for API server (only used with --mode api)', 'localhost');
+	.option('--host <host>', 'Host for API server (only used with --mode api)', 'localhost')
+	.option('--mcp-transport-type <type>', 'MCP transport type (stdio, sse, http)', 'stdio')
+	.option('--mcp-port <port>', 'Port for MCP server (only used with sse, http)', '3000');
 
 program
 	.description(
@@ -274,16 +276,20 @@ program
 		async function startApiMode(agent: MemAgent, options: any): Promise<void> {
 			const port = parseInt(options.port) || 3000;
 			const host = options.host || 'localhost';
+			const mcpTransportType = options.mcpTransportType || undefined; // Pass through from CLI options
+			const mcpPort = options.mcpPort ? parseInt(options.mcpPort, 10) : undefined; // Pass through from CLI options
 
 			logger.info(`Starting API server on ${host}:${port}`, null, 'green');
 
-			const apiServer = new ApiServer(agent, {
-				port,
-				host,
-				corsOrigins: ['http://localhost:3000', 'http://localhost:3001'], // Default CORS origins
-				rateLimitWindowMs: 15 * 60 * 1000, // 15 minutes
-				rateLimitMaxRequests: 100, // 100 requests per window
-			});
+		const apiServer = new ApiServer(agent, {
+			port,
+			host,
+			corsOrigins: ['http://localhost:3000', 'http://localhost:3001'], // Default CORS origins
+			rateLimitWindowMs: 15 * 60 * 1000, // 15 minutes
+			rateLimitMaxRequests: 100, // 100 requests per window
+			...(mcpTransportType && { mcpTransportType }), // Only include if defined
+			...(mcpPort !== undefined && { mcpPort }), // Only include if defined
+		});
 
 			try {
 				await apiServer.start();
@@ -328,9 +334,7 @@ program
 			case 'cli':
 				await startInteractiveCli(agent);
 				break;
-			case 'mcp':
-				await startMcpMode(agent);
-				break;
+			case 'mcp': // Fall through to api mode for MCP server via HTTP
 			case 'api':
 				await startApiMode(agent, opts);
 				break;
