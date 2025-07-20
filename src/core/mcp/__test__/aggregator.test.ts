@@ -4,7 +4,6 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AggregatorMCPManager } from '../aggregator.js';
-import { MCPClient } from '../client.js';
 import type { AggregatorConfig, ToolSet } from '../types.js';
 
 // Mock the logger

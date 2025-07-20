@@ -11,41 +11,9 @@ import { ReasoningContentDetector } from '../brain/reasoning/content-detector.js
 import { SearchContextManager } from '../brain/reasoning/search-context-manager.js';
 import { createDatabaseHistoryProvider } from '../brain/llm/messages/history/factory.js';
 import { StorageManager } from '../storage/manager.js';
-import { Logger } from '../logger/index.js';
 import type { ZodSchema } from 'zod';
 import { setImmediate } from 'timers';
 import { IConversationHistoryProvider } from '../brain/llm/messages/history/types.js';
-
-function extractReasoningContentBlocks(aiResponse: any): string {
-	// If the response is an object with a content array (Anthropic API best practice)
-	if (aiResponse && Array.isArray(aiResponse.content)) {
-		// Extract all 'thinking' and 'redacted_thinking' blocks
-		const reasoningBlocks = aiResponse.content
-			.filter((block: any) => block.type === 'thinking' || block.type === 'redacted_thinking')
-			.map((block: any) => block.thinking)
-			.filter(Boolean);
-		if (reasoningBlocks.length > 0) {
-			return reasoningBlocks.join('\n\n');
-		}
-		// Fallback: join all text blocks if no thinking blocks found
-		const textBlocks = aiResponse.content
-			.filter((block: any) => block.type === 'text' && block.text)
-			.map((block: any) => block.text);
-		if (textBlocks.length > 0) {
-			return textBlocks.join('\n\n');
-		}
-		return '';
-	}
-	// Fallback: support legacy string input (regex for <thinking> tags)
-	if (typeof aiResponse === 'string') {
-		const matches = Array.from(aiResponse.matchAll(/<thinking>([\s\S]*?)<\/thinking>/gi));
-		if (matches.length > 0) {
-			return matches.map(m => m[1]?.trim() || '').join('\n\n');
-		}
-		return aiResponse;
-	}
-	return '';
-}
 export class ConversationSession {
 	private contextManager!: ContextManager;
 	private llmService!: ILLMService;
@@ -464,7 +432,7 @@ export class ConversationSession {
 	 */
 	private async enforceReflectionMemoryProcessing(
 		userInput: string,
-		aiResponse: string
+		_aiResponse: string
 	): Promise<void> {
 		try {
 			logger.debug('ConversationSession: Enforcing reflection memory processing');
@@ -727,7 +695,7 @@ export class ConversationSession {
 						// Summarize key arguments for memory (avoid storing full large content)
 						const keyArgs = this.summarizeToolArguments(toolName, parsedArgs);
 						args = keyArgs ? ` with ${keyArgs}` : '';
-					} catch (_e) {
+					} catch {
 						// If parsing fails, just note that there were arguments
 						args = ' with arguments';
 					}
@@ -805,7 +773,7 @@ export class ConversationSession {
 			}
 
 			return 'result received';
-		} catch (_e) {
+		} catch {
 			// If parsing fails, provide a basic summary
 			const contentStr = String(content);
 			return contentStr.length > 100 ? `${contentStr.substring(0, 100)}...` : contentStr;

@@ -50,7 +50,7 @@ export function jsonSchemaToZod(schema: any): z.ZodType<any> {
 
 	// Handle primitive types
 	switch (type) {
-		case 'string':
+		case 'string': {
 			let stringSchema = z.string();
 			if (schema.minLength !== undefined) {
 				stringSchema = stringSchema.min(schema.minLength);
@@ -71,9 +71,10 @@ export function jsonSchemaToZod(schema: any): z.ZodType<any> {
 				stringSchema = stringSchema.uuid();
 			}
 			return stringSchema;
+		}
 
 		case 'number':
-		case 'integer':
+		case 'integer': {
 			let numberSchema = type === 'integer' ? z.number().int() : z.number();
 			if (schema.minimum !== undefined) {
 				numberSchema = numberSchema.min(schema.minimum);
@@ -85,6 +86,7 @@ export function jsonSchemaToZod(schema: any): z.ZodType<any> {
 				numberSchema = numberSchema.multipleOf(schema.multipleOf);
 			}
 			return numberSchema;
+		}
 
 		case 'boolean':
 			return z.boolean();
@@ -92,7 +94,7 @@ export function jsonSchemaToZod(schema: any): z.ZodType<any> {
 		case 'null':
 			return z.null();
 
-		case 'array':
+		case 'array': {
 			const itemSchema = items ? jsonSchemaToZod(items) : z.any();
 			let arraySchema = z.array(itemSchema);
 			if (schema.minItems !== undefined) {
@@ -102,8 +104,9 @@ export function jsonSchemaToZod(schema: any): z.ZodType<any> {
 				arraySchema = arraySchema.max(schema.maxItems);
 			}
 			return arraySchema;
+		}
 
-		case 'object':
+		case 'object': {
 			if (!properties || typeof properties !== 'object') {
 				return z.record(z.any());
 			}
@@ -135,6 +138,7 @@ export function jsonSchemaToZod(schema: any): z.ZodType<any> {
 			}
 
 			return objectSchema;
+		}
 
 		default:
 			// Handle unknown types or missing type
@@ -198,7 +202,7 @@ export function createSafeValidator(parameters: ToolParameters): (args: any) => 
 		if (result.success) {
 			return { success: true, data: result.data };
 		} else {
-			return { success: false, error: result.error };
+			return { success: false, error: (result as { success: false; error: string }).error };
 		}
 	};
 }

@@ -7,7 +7,6 @@
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import {
 	CallToolRequestSchema,
 	ListToolsRequestSchema,
@@ -26,8 +25,7 @@ import type {
 } from './types.js';
 
 import { MCPManager } from './manager.js';
-import { ERROR_MESSAGES, LOG_PREFIXES } from './constants.js';
-import { Logger, createLogger } from '../logger/index.js';
+import { LOG_PREFIXES } from './constants.js';
 
 /**
  * Implementation of the IAggregatorManager interface for MCP server aggregation.
@@ -221,7 +219,7 @@ export class AggregatorMCPManager extends MCPManager implements IAggregatorManag
 	/**
 	 * Resolve tool name conflicts based on configuration strategy.
 	 */
-	private _resolveToolNameConflict(toolName: string, clientName: string, toolDef: any): string {
+	private _resolveToolNameConflict(toolName: string, clientName: string, _toolDef: any): string {
 		const strategy = this.config?.conflictResolution || 'prefix';
 
 		// Check if tool already exists
@@ -236,15 +234,16 @@ export class AggregatorMCPManager extends MCPManager implements IAggregatorManag
 
 		// Handle conflict based on strategy
 		switch (strategy) {
-			case 'first-wins':
+			case 'first-wins': {
 				this.logger.warn(
 					`${LOG_PREFIXES.MANAGER} Tool name conflict: ${toolName} already exists, skipping from ${clientName}`,
 					{ toolName, clientName, strategy }
 				);
 				this.conflictCount++;
 				return `${clientName}__conflict__${toolName}__${Date.now()}`;
+			}
 
-			case 'error':
+			case 'error': {
 				this.conflictCount++;
 				const errorMsg = `Tool name conflict: ${toolName} exists in both ${existingEntry.clientName} and ${clientName}`;
 				this.logger.error(`${LOG_PREFIXES.MANAGER} ${errorMsg}`, {
@@ -253,9 +252,10 @@ export class AggregatorMCPManager extends MCPManager implements IAggregatorManag
 					strategy,
 				});
 				throw new Error(errorMsg);
+			}
 
 			case 'prefix':
-			default:
+			default: {
 				this.conflictCount++;
 				const prefixedName = `${clientName}.${toolName}`;
 				this.logger.info(
@@ -263,6 +263,7 @@ export class AggregatorMCPManager extends MCPManager implements IAggregatorManag
 					{ toolName, clientName, resolvedName: prefixedName, strategy }
 				);
 				return prefixedName;
+			}
 		}
 	}
 
@@ -358,7 +359,7 @@ export class AggregatorMCPManager extends MCPManager implements IAggregatorManag
 	/**
 	 * Start the server transport based on configuration.
 	 */
-	private async _startServerTransport(config: AggregatorConfig): Promise<void> {
+	private async _startServerTransport(_config: AggregatorConfig): Promise<void> {
 		if (!this.server) {
 			throw new Error('Server not initialized');
 		}
