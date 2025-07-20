@@ -207,51 +207,6 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 }
 
 /**
- * Start MCP server mode for Model Context Protocol integration
- */
-export async function startMcpMode(agent: MemAgent): Promise<void> {
-	// DO NOT use console.log in MCP mode - it interferes with stdio protocol
-	// Log redirection is already done in index.ts before calling this function
-
-	// Import MCP handler functions
-	const { createMcpTransport, initializeMcpServer, initializeAgentCardResource } = await import(
-		'../mcp/mcp_handler.js'
-	);
-
-	// Initialize CLI without additional logging
-	if (!agent) {
-		throw new Error('Agent is not initialized');
-	}
-
-	try {
-		// Get agent configuration for agent card
-		const config = agent.getEffectiveConfig();
-		// Filter out undefined properties to comply with exactOptionalPropertyTypes
-		const agentCardInput = config.agentCard
-			? Object.fromEntries(
-					Object.entries(config.agentCard).filter(([, value]) => value !== undefined)
-				)
-			: {};
-		const agentCardData = initializeAgentCardResource(agentCardInput);
-
-		// Create stdio transport (primary transport for MCP mode)
-		logger.info('[MCP Mode] Creating stdio transport for MCP server');
-		const mcpTransport = await createMcpTransport('stdio');
-
-		// Initialize MCP server with agent capabilities
-		logger.info('[MCP Mode] Initializing MCP server with agent capabilities');
-		await initializeMcpServer(agent, agentCardData, mcpTransport);
-
-		// Server is now running - the initializeMcpServer function keeps process alive
-		logger.info('[MCP Mode] Cipher agent is now running as MCP server');
-	} catch (error) {
-		const errorMessage = error instanceof Error ? error.message : String(error);
-		logger.error(`[MCP Mode] Failed to start MCP server: ${errorMessage}`);
-		process.exit(1);
-	}
-}
-
-/**
  * Common CLI initialization logic
  */
 async function _initCli(agent: MemAgent): Promise<void> {
