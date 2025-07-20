@@ -1,0 +1,40 @@
+{
+  "type": "aggregator",
+  "servers": {
+    "filesystem": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-filesystem", "/tmp"],
+      "env": {},
+      "timeout": 30000,
+      "connectionMode": "lenient"
+    },
+    "firecrawl": {
+      "type": "stdio", 
+      "command": "uvx",
+      "args": ["mcp-server-firecrawl"],
+      "env": {
+        "FIRECRAWL_API_KEY": "${FIRECRAWL_API_KEY}"
+      },
+      "timeout": 30000,
+      "connectionMode": "lenient"
+    },
+    "web-search": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-web-search"],
+      "env": {
+        "GOOGLE_API_KEY": "${GOOGLE_API_KEY}",
+        "GOOGLE_SEARCH_ENGINE_ID": "${GOOGLE_SEARCH_ENGINE_ID}"
+      },
+      "timeout": 30000,
+      "connectionMode": "lenient"
+    }
+  },
+  "conflictResolution": "prefix",
+  "autoDiscovery": false,
+  "port": 3000,
+  "host": "localhost",
+  "timeout": 60000,
+  "connectionMode": "lenient"
+}
