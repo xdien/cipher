@@ -6,10 +6,7 @@
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import {
-	CallToolRequestSchema,
-	ListToolsRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
+import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 
 import { logger } from '@core/logger/index.js';
 import type { AggregatorConfig } from '@core/mcp/types.js';
@@ -21,11 +18,17 @@ import type { MemAgent } from '@core/brain/memAgent/agent.js';
  * @param config - Aggregator configuration
  * @param agent - MemAgent instance for handling built-in tools
  */
-export async function initializeAggregatorServer(config: AggregatorConfig, agent: MemAgent): Promise<void> {
-	logger.info('[Aggregator Handler] Initializing aggregator MCP server (using unified tool manager)', {
-		conflictResolution: config.conflictResolution,
-		timeout: config.timeout,
-	});
+export async function initializeAggregatorServer(
+	config: AggregatorConfig,
+	agent: MemAgent
+): Promise<void> {
+	logger.info(
+		'[Aggregator Handler] Initializing aggregator MCP server (using unified tool manager)',
+		{
+			conflictResolution: config.conflictResolution,
+			timeout: config.timeout,
+		}
+	);
 
 	// Create MCP server instance (same as default mode)
 	const server = new Server(
@@ -104,7 +107,11 @@ async function handleAskCipherTool(agent: MemAgent, args: any): Promise<any> {
 /**
  * Register aggregated tools as MCP tools (using default mode's working logic)
  */
-async function registerAggregatedTools(server: Server, agent: MemAgent, config: AggregatorConfig): Promise<void> {
+async function registerAggregatedTools(
+	server: Server,
+	agent: MemAgent,
+	config: AggregatorConfig
+): Promise<void> {
 	logger.debug('[Aggregator Handler] Registering all tools (built-in + MCP servers)');
 
 	// Get all agent-accessible tools from unifiedToolManager (like default mode)
@@ -114,19 +121,23 @@ async function registerAggregatedTools(server: Server, agent: MemAgent, config: 
 	// Apply conflict resolution if needed
 	const resolvedTools = new Map<string, any>();
 	const conflictResolution = config?.conflictResolution || 'prefix';
-	
+
 	Object.entries(combinedTools).forEach(([toolName, tool]) => {
 		let resolvedName = toolName;
-		
+
 		// Check for conflicts and resolve based on strategy
 		if (resolvedTools.has(toolName)) {
 			switch (conflictResolution) {
 				case 'prefix':
 					resolvedName = `cipher.${toolName}`;
-					logger.info(`[Aggregator Handler] Tool name conflict resolved: ${toolName} -> ${resolvedName}`);
+					logger.info(
+						`[Aggregator Handler] Tool name conflict resolved: ${toolName} -> ${resolvedName}`
+					);
 					break;
 				case 'first-wins':
-					logger.warn(`[Aggregator Handler] Tool name conflict: ${toolName} already exists, skipping`);
+					logger.warn(
+						`[Aggregator Handler] Tool name conflict: ${toolName} already exists, skipping`
+					);
 					return; // Skip this tool
 				case 'error':
 					throw new Error(`Tool name conflict: ${toolName} exists multiple times`);
@@ -134,7 +145,7 @@ async function registerAggregatedTools(server: Server, agent: MemAgent, config: 
 					resolvedName = toolName;
 			}
 		}
-		
+
 		resolvedTools.set(resolvedName, tool);
 	});
 
@@ -194,16 +205,19 @@ async function registerAggregatedTools(server: Server, agent: MemAgent, config: 
 		// Route to unifiedToolManager for all other tools (like default mode)
 		try {
 			const unifiedToolManager = agent.unifiedToolManager;
-			
+
 			// Apply timeout if configured
 			const timeout = config?.timeout || 60000;
 			const result = await Promise.race([
 				unifiedToolManager.executeTool(name, args),
-				new Promise((_, reject) => 
-					setTimeout(() => reject(new Error(`Tool execution timed out after ${timeout}ms`)), timeout)
-				)
+				new Promise((_, reject) =>
+					setTimeout(
+						() => reject(new Error(`Tool execution timed out after ${timeout}ms`)),
+						timeout
+					)
+				),
 			]);
-			
+
 			return {
 				content: [
 					{
@@ -219,4 +233,3 @@ async function registerAggregatedTools(server: Server, agent: MemAgent, config: 
 		}
 	});
 }
-

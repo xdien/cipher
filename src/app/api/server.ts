@@ -62,8 +62,23 @@ export class ApiServer {
 				: {};
 			const agentCardData = initializeAgentCardResource(agentCardInput);
 
-			// Initialize MCP server instance
-			this.mcpServer = await initializeMcpServer(this.agent, agentCardData);
+			// Check MCP_SERVER_MODE environment variable to determine server type
+			const mcpServerMode = process.env.MCP_SERVER_MODE || 'default';
+			logger.info(`[API Server] MCP server mode: ${mcpServerMode}`);
+
+			// Load aggregator configuration if needed
+			let aggregatorConfig;
+			if (mcpServerMode === 'aggregator') {
+				aggregatorConfig = await this.loadAggregatorConfig();
+			}
+
+			// Initialize MCP server instance with appropriate mode
+			this.mcpServer = await initializeMcpServer(
+				this.agent, 
+				agentCardData, 
+				mcpServerMode as 'default' | 'aggregator',
+				aggregatorConfig
+			);
 
 			if (transportType === 'sse') {
 				this.setupMcpSseRoutes(); // Renamed for clarity as it sets up both GET and POST
@@ -86,6 +101,27 @@ export class ApiServer {
 				`[API Server] Failed to set up MCP server: ${error instanceof Error ? error.message : String(error)}`
 			);
 		}
+	}
+
+	/**
+	 * Load aggregator configuration from environment variables
+	 * Aggregator mode now uses agent's unifiedToolManager which automatically includes MCP servers from cipher.yml
+	 */
+	private async loadAggregatorConfig(): Promise<any> {
+		const defaultConfig = {
+			type: 'aggregator' as const,
+			servers: {}, // No longer needed - using unifiedToolManager
+			conflictResolution: (process.env.AGGREGATOR_CONFLICT_RESOLUTION as any) || 'prefix',
+			autoDiscovery: false,
+			timeout: parseInt(process.env.AGGREGATOR_TIMEOUT || '60000'),
+			connectionMode: 'lenient' as const,
+		};
+
+		logger.info('[API Server] Using aggregator configuration with env vars', {
+			conflictResolution: defaultConfig.conflictResolution,
+			timeout: defaultConfig.timeout,
+		});
+		return defaultConfig;
 	}
 
 	private setupMcpSseRoutes(): void {
