@@ -281,15 +281,15 @@ program
 
 			logger.info(`Starting API server on ${host}:${port}`, null, 'green');
 
-		const apiServer = new ApiServer(agent, {
-			port,
-			host,
-			corsOrigins: ['http://localhost:3000', 'http://localhost:3001'], // Default CORS origins
-			rateLimitWindowMs: 15 * 60 * 1000, // 15 minutes
-			rateLimitMaxRequests: 100, // 100 requests per window
-			...(mcpTransportType && { mcpTransportType }), // Only include if defined
-			...(mcpPort !== undefined && { mcpPort }), // Only include if defined
-		});
+			const apiServer = new ApiServer(agent, {
+				port,
+				host,
+				corsOrigins: ['http://localhost:3000', 'http://localhost:3001'], // Default CORS origins
+				rateLimitWindowMs: 15 * 60 * 1000, // 15 minutes
+				rateLimitMaxRequests: 100, // 100 requests per window
+				...(mcpTransportType && { mcpTransportType }), // Only include if defined
+				...(mcpPort !== undefined && { mcpPort }), // Only include if defined
+			});
 
 			try {
 				await apiServer.start();

@@ -22,10 +22,7 @@ export type AgentCard = z.infer<typeof AgentCardSchema>;
  * @param agent - The MemAgent instance to expose
  * @param agentCard - Agent metadata/card information
  */
-export async function initializeMcpServer(
-	agent: MemAgent,
-	agentCard: AgentCard
-): Promise<Server> {
+export async function initializeMcpServer(agent: MemAgent, agentCard: AgentCard): Promise<Server> {
 	logger.info('[MCP Handler] Initializing MCP server with agent capabilities');
 
 	// Create MCP server instance

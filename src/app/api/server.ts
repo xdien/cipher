@@ -14,7 +14,6 @@ import { Server as McpServer } from '@modelcontextprotocol/sdk/server/index.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { initializeMcpServer, initializeAgentCardResource } from '@app/mcp/mcp_handler.js';
 
-
 // Import route handlers
 import { createMessageRoutes } from './routes/message.js';
 import { createSessionRoutes } from './routes/session.js';
@@ -50,18 +49,17 @@ export class ApiServer {
 		// Note: MCP setup is now handled in start() method to properly handle async operations
 	}
 
-	private async setupMcpServer(transportType: 'stdio' | 'sse' | 'http', port?: number): Promise<void> {
+	private async setupMcpServer(
+		transportType: 'stdio' | 'sse' | 'http',
+		port?: number
+	): Promise<void> {
 		logger.info(`[API Server] Setting up MCP server with transport type: ${transportType}`);
 		try {
-		// Initialize agent card data
-		const agentCard = this.agent.getEffectiveConfig().agentCard;
-		const agentCardInput = agentCard
-			? Object.fromEntries(
-					Object.entries(agentCard).filter(
-						([, value]) => value !== undefined
-					)
-				)
-			: {};
+			// Initialize agent card data
+			const agentCard = this.agent.getEffectiveConfig().agentCard;
+			const agentCardInput = agentCard
+				? Object.fromEntries(Object.entries(agentCard).filter(([, value]) => value !== undefined))
+				: {};
 			const agentCardData = initializeAgentCardResource(agentCardInput);
 
 			// Initialize MCP server instance
@@ -73,14 +71,20 @@ export class ApiServer {
 				// For stdio, we need to explicitly connect the server to a StdioServerTransport
 				// This usually means the process runs as a standalone MCP server, not integrated into Express
 				// This case is typically handled by the CLI directly, not via ApiServer
-				logger.warn(`[API Server] MCP transport type 'stdio' is typically handled by the CLI directly and not integrated into the API server.`);
+				logger.warn(
+					`[API Server] MCP transport type 'stdio' is typically handled by the CLI directly and not integrated into the API server.`
+				);
 				// If a StdioServerTransport needs to be managed by ApiServer, its lifecycle would be handled here.
 				// For now, we assume 'stdio' mode implies a different execution path.
 			} else {
-				logger.warn(`[API Server] MCP transport type '${transportType}' not fully implemented for API server integration yet.`);
+				logger.warn(
+					`[API Server] MCP transport type '${transportType}' not fully implemented for API server integration yet.`
+				);
 			}
 		} catch (error) {
-			logger.error(`[API Server] Failed to set up MCP server: ${error instanceof Error ? error.message : String(error)}`);
+			logger.error(
+				`[API Server] Failed to set up MCP server: ${error instanceof Error ? error.message : String(error)}`
+			);
 		}
 	}
 
@@ -107,16 +111,22 @@ export class ApiServer {
 
 			// Store the transport keyed by its session ID
 			this.activeMcpSseTransports.set(sseTransport.sessionId, sseTransport);
-			logger.info(`[API Server] MCP SSE client connected with session ID: ${sseTransport.sessionId}`);
+			logger.info(
+				`[API Server] MCP SSE client connected with session ID: ${sseTransport.sessionId}`
+			);
 			logger.debug(`[API Server] Active SSE transports count: ${this.activeMcpSseTransports.size}`);
 
 			// Handle client disconnect
 			req.on('close', () => {
-				logger.info(`[API Server] MCP SSE client with session ID ${sseTransport.sessionId} disconnected.`);
+				logger.info(
+					`[API Server] MCP SSE client with session ID ${sseTransport.sessionId} disconnected.`
+				);
 				logger.debug('[API Server] Cleaning up SSE transport and connection');
 				sseTransport.close(); // Close the transport when client disconnects
 				this.activeMcpSseTransports.delete(sseTransport.sessionId); // Remove from active transports
-				logger.debug(`[API Server] Active SSE transports count after cleanup: ${this.activeMcpSseTransports.size}`);
+				logger.debug(
+					`[API Server] Active SSE transports count after cleanup: ${this.activeMcpSseTransports.size}`
+				);
 			});
 		});
 
@@ -140,33 +150,60 @@ export class ApiServer {
 			if (!sessionId) {
 				logger.error('[API Server] MCP POST request received without session ID.');
 				logger.debug('[API Server] Available query parameters:', Object.keys(req.query));
-				return errorResponse(res, ERROR_CODES.BAD_REQUEST, 'Missing sessionId in query parameters', 400);
+				return errorResponse(
+					res,
+					ERROR_CODES.BAD_REQUEST,
+					'Missing sessionId in query parameters',
+					400
+				);
 			}
 
 			logger.debug(`[API Server] Looking for SSE transport with session ID: ${sessionId}`);
-			logger.debug(`[API Server] Available session IDs: ${Array.from(this.activeMcpSseTransports.keys()).join(', ')}`);
+			logger.debug(
+				`[API Server] Available session IDs: ${Array.from(this.activeMcpSseTransports.keys()).join(', ')}`
+			);
 
 			const sseTransport = this.activeMcpSseTransports.get(sessionId);
 
 			if (!sseTransport) {
 				logger.error(`[API Server] No active MCP SSE transport found for session ID: ${sessionId}`);
-				return errorResponse(res, ERROR_CODES.NOT_FOUND, `No active session found for ID: ${sessionId}`, 404);
+				return errorResponse(
+					res,
+					ERROR_CODES.NOT_FOUND,
+					`No active session found for ID: ${sessionId}`,
+					404
+				);
 			}
 
 			try {
-				logger.debug(`[API Server] Delegating POST message to SSE transport for session: ${sessionId}`);
+				logger.debug(
+					`[API Server] Delegating POST message to SSE transport for session: ${sessionId}`
+				);
 				// Delegate handling of the POST message to the specific SSEServerTransport instance
 				// Pass req.body as the third parameter since Express has already parsed it
 				await sseTransport.handlePostMessage(req, res, req.body);
 				logger.debug(`[API Server] POST message handled successfully for session: ${sessionId}`);
 			} catch (error) {
-				logger.error(`[API Server] Error handling MCP POST request for session ${sessionId}: ${error instanceof Error ? error.message : String(error)}`);
-				logger.debug(`[API Server] POST error stack:`, error instanceof Error ? error.stack : 'No stack available');
-				errorResponse(res, ERROR_CODES.INTERNAL_ERROR, 'Error processing MCP request', 500, error instanceof Error ? error.stack : undefined);
+				logger.error(
+					`[API Server] Error handling MCP POST request for session ${sessionId}: ${error instanceof Error ? error.message : String(error)}`
+				);
+				logger.debug(
+					`[API Server] POST error stack:`,
+					error instanceof Error ? error.stack : 'No stack available'
+				);
+				errorResponse(
+					res,
+					ERROR_CODES.INTERNAL_ERROR,
+					'Error processing MCP request',
+					500,
+					error instanceof Error ? error.stack : undefined
+				);
 			}
 		});
 
-		logger.info('[API Server] MCP SSE (GET /mcp/sse) and POST (/mcp?sessionId=...) routes registered.');
+		logger.info(
+			'[API Server] MCP SSE (GET /mcp/sse) and POST (/mcp?sessionId=...) routes registered.'
+		);
 	}
 
 	private setupMiddleware(): void {
@@ -289,7 +326,9 @@ export class ApiServer {
 				await this.setupMcpServer(this.config.mcpTransportType, this.config.mcpPort);
 				logger.info(`[API Server] MCP server setup completed successfully`);
 			} catch (error) {
-				logger.error(`[API Server] Failed to setup MCP server: ${error instanceof Error ? error.message : String(error)}`);
+				logger.error(
+					`[API Server] Failed to setup MCP server: ${error instanceof Error ? error.message : String(error)}`
+				);
 				throw error;
 			}
 		}
@@ -306,7 +345,11 @@ export class ApiServer {
 						'green'
 					);
 					if (this.config.mcpTransportType) {
-						logger.info(`[API Server] MCP SSE endpoints available at /mcp/sse and /mcp`, null, 'green');
+						logger.info(
+							`[API Server] MCP SSE endpoints available at /mcp/sse and /mcp`,
+							null,
+							'green'
+						);
 					}
 					resolve();
 				});
