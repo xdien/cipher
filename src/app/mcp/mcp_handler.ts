@@ -33,6 +33,13 @@ export async function initializeMcpServer(
 ): Promise<Server> {
 	logger.info(`[MCP Handler] Initializing MCP server with agent capabilities (mode: ${mode})`);
 
+	// Inject MCP-specific system prompt (does not affect CLI mode)
+	if (mode === 'default') {
+		agent.promptManager.load(
+			`When running as an MCP server, Cipher should focus solely on EITHER storage OR retrieval using its own tools. For each interaction, perform ONLY ONE operation: either retrieval OR storage. For storage tasks, do NOT use retrieval tools. For retrieval tasks, use search tools as needed. This behavior is only expected in MCP server mode.`
+		);
+	}
+
 	// Create MCP server instance
 	const server = new Server(
 		{
@@ -271,8 +278,12 @@ async function handleAskCipherTool(agent: MemAgent, args: any): Promise<any> {
 			session_id,
 			stream
 		);
-		// In MCP mode, always wait for background operations to complete before returning response
-		await backgroundOperations;
+		// In MCP mode, return response immediately, let background operations run asynchronously
+		if (backgroundOperations) {
+			backgroundOperations.catch(() => {
+				// Errors are already logged, do not throw
+			});
+		}
 
 		return {
 			content: [
