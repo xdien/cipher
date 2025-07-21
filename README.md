@@ -243,7 +243,6 @@ Add to your Claude Desktop MCP configuration file:
 }
 ```
 
-
 ### Environment Variables
 
 The MCP server requires at least one LLM provider API key:
@@ -260,10 +259,9 @@ CIPHER_LOG_LEVEL=info
 NODE_ENV=production
 ```
 
-
 ### MCP Aggregator Mode
 
-Cipher now supports a new **MCP Aggregator Mode** that exposes all available tools (not just `ask_cipher`) to MCP clients, including all built-in tools for cipher, such as ``cipher_search_memory`` and MCP server tools specified in ``cipher.yml``. This is controlled by the `MCP_SERVER_MODE` environment variable.
+Cipher now supports a new **MCP Aggregator Mode** that exposes all available tools (not just `ask_cipher`) to MCP clients, including all built-in tools for cipher, such as `cipher_search_memory` and MCP server tools specified in `cipher.yml`. This is controlled by the `MCP_SERVER_MODE` environment variable.
 
 #### Modes
 
@@ -291,9 +289,7 @@ AGGREGATOR_TIMEOUT=60000
 		"cipher-aggregator": {
 			"type": "stdio",
 			"command": "cipher",
-			"args": [
-				"--mode", "mcp"
-			],
+			"args": ["--mode", "mcp"],
 			"env": {
 				"OPENAI_API_KEY": "sk-your-openai-key",
 				"MCP_SERVER_MODE": "aggregator",
