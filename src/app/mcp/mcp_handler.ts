@@ -34,7 +34,7 @@ export async function initializeMcpServer(
 	logger.info(`[MCP Handler] Initializing MCP server with agent capabilities (mode: ${mode})`);
 
 	// Inject MCP-specific system prompt (does not affect CLI mode)
-	if (mode === 'default' || mode === 'aggregator') {
+	if (mode === 'default') {
 		agent.promptManager.load(
 			`When running as an MCP server, Cipher should focus solely on EITHER storage OR retrieval using its own tools. For each interaction, perform ONLY ONE operation: either retrieval OR storage. For storage tasks, do NOT use retrieval tools. For retrieval tasks, use search tools as needed. This behavior is only expected in MCP server mode.`
 		);
