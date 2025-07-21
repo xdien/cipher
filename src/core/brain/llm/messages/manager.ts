@@ -6,45 +6,52 @@ import { PromptManager } from '../../../brain/systemPrompt/manager.js';
 import { ITokenizer, createTokenizer, getTokenizerConfigForModel } from '../tokenizer/index.js';
 import { ICompressionStrategy, createCompressionStrategy, getCompressionConfigForProvider, EnhancedInternalMessage, CompressionResult, CompressionLevel } from '../compression/index.js';
 import { assignMessagePriorities, calculateTotalTokens } from '../compression/utils.js';
+import { IConversationHistoryProvider } from './history/types.js';
 
 export class ContextManager {
 	private promptManager: PromptManager;
 	private formatter: IMessageFormatter;
+	private historyProvider: IConversationHistoryProvider | undefined;
+	private sessionId: string | undefined;
 	private messages: InternalMessage[] = [];
-	
-	// Token-aware compression components
 	private tokenizer?: ITokenizer;
 	private compressionStrategy?: ICompressionStrategy;
 	private enableCompression: boolean = false;
-	
-	// Token tracking
 	private currentTokenCount: number = 0;
 	private compressionHistory: CompressionResult[] = [];
 	private lastCompressionCheck: number = 0;
-	
-	// Configuration
 	private compressionConfig = {
 		checkInterval: 5000, // Check every 5 seconds
 		maxCompressionHistory: 10
 	};
+	private fallbackToMemory: boolean = false;
 
-	constructor(formatter: IMessageFormatter, promptManager: PromptManager) {
+	/**
+	 * @param formatter - Message formatter
+	 * @param promptManager - Prompt manager
+	 * @param historyProvider - Optional conversation history provider (persistent)
+	 * @param sessionId - Optional session ID for history isolation
+	 */
+	constructor(
+		formatter: IMessageFormatter,
+		promptManager: PromptManager,
+		historyProvider: IConversationHistoryProvider | undefined,
+		sessionId: string | undefined
+	) {
 		if (!formatter) throw new Error('formatter is required');
 		this.formatter = formatter;
 		this.promptManager = promptManager;
+		this.historyProvider = historyProvider;
+		this.sessionId = sessionId;
 		logger.debug('ContextManager initialized with formatter', { formatter });
 	}
 
 	async getSystemPrompt(): Promise<string> {
-		// Use the complete system prompt that includes both user instruction and built-in tool instructions
 		const prompt = await this.promptManager.getCompleteSystemPrompt();
-		logger.debug(`[SystemPrompt] Built complete system prompt:\n${prompt}`);
+		logger.debug(`[SystemPrompt] Built complete system prompt (${prompt.length} chars)`);
 		return prompt;
 	}
 
-	/**
-	 * Add a message to the context
-	 */
 	async addMessage(message: InternalMessage): Promise<void> {
 		if (!message.role) {
 			throw new Error('Role is required for a message');
@@ -87,7 +94,21 @@ export class ContextManager {
 				throw new Error(`Unknown message role: ${(message as any).role}`);
 		}
 
-		this.messages.push(message);
+		// Store the message in persistent history if available, else fallback to memory
+		if (this.historyProvider && this.sessionId && !this.fallbackToMemory) {
+			try {
+				await this.historyProvider.saveMessage(this.sessionId, message);
+				// Optionally, update in-memory cache for fast access in this instance
+				this.messages.push(message);
+			} catch (err) {
+				logger.error(`History provider failed, falling back to in-memory: ${err}`);
+				this.fallbackToMemory = true;
+				this.messages.push(message);
+			}
+		} else {
+			this.messages.push(message);
+		}
+
 		logger.debug(`Adding message to context: ${JSON.stringify(message, null, 2)}`);
 		logger.debug(`Total messages in context: ${this.messages.length}`);
 
@@ -97,11 +118,6 @@ export class ContextManager {
 		}
 	}
 
-	/**
-	 * Add a user message to the context
-	 * @param textContent - The text content of the message
-	 * @param imageData - The image data to add to the message
-	 */
 	async addUserMessage(textContent: string, imageData?: ImageData): Promise<void> {
 		if (typeof textContent !== 'string' || textContent.trim() === '') {
 			throw new Error('Content must be a non-empty string.');
@@ -120,16 +136,10 @@ export class ContextManager {
 		await this.addMessage({ role: 'user', content: messageParts });
 	}
 
-	/**
-	 * Add an assistant message to the context
-	 * @param content - The content of the message
-	 * @param toolCalls - The tool calls to add to the message
-	 */
 	async addAssistantMessage(
 		content: string | null,
 		toolCalls?: InternalMessage['toolCalls']
 	): Promise<void> {
-		// Validate that either content or toolCalls is provided
 		if (content === null && (!toolCalls || toolCalls.length === 0)) {
 			throw new Error('Must provide content or toolCalls.');
 		}
@@ -140,21 +150,12 @@ export class ContextManager {
 		});
 	}
 
-	/**
-	 * Add a tool result to the context
-	 * @param toolCallId - The ID of the tool call
-	 * @param name - The name of the tool
-	 * @param result - The result of the tool call
-	 */
 	async addToolResult(toolCallId: string, name: string, result: any): Promise<void> {
 		if (!toolCallId || !name) {
 			throw new Error('addToolResult: toolCallId and name are required.');
 		}
-
-		// Simplest image detection: if result has an 'image' field, treat as ImagePart
 		let content: InternalMessage['content'];
 		if (result && typeof result === 'object' && 'image' in result) {
-			// Use shared helper to get base64/URL
 			const imagePart = result as {
 				image: string | Uint8Array | Buffer | ArrayBuffer | URL;
 				mimeType?: string;
@@ -169,19 +170,11 @@ export class ContextManager {
 		} else if (typeof result === 'string') {
 			content = result;
 		} else if (Array.isArray(result)) {
-			// Assume array of parts already
 			content = result;
 		} else {
-			// For objects or other types, JSON stringify for now
-			content = JSON.stringify(result, null, 2);
+			content = JSON.stringify(result ?? '');
 		}
-
-		await this.addMessage({
-			role: 'tool',
-			content,
-			toolCallId,
-			name,
-		});
+		await this.addMessage({ role: 'tool', content, toolCallId, name });
 	}
 
 	async getFormattedMessage(_message: InternalMessage): Promise<any[]> {
@@ -194,6 +187,7 @@ export class ContextManager {
 			);
 		}
 	}
+
 	async getAllFormattedMessages(): Promise<any[]> {
 		try {
 			const prompt = await this.getSystemPrompt();
@@ -228,6 +222,7 @@ export class ContextManager {
 	/**
 	 * Get the raw messages array (for inspection, debugging, or deduplication)
 	 */
+
 	public getRawMessages(): InternalMessage[] {
 		return this.messages;
 	}
@@ -295,6 +290,19 @@ export class ContextManager {
 			logger.info(`[TokenAware] Token count updated: ${this.currentTokenCount} tokens for ${this.messages.length} messages`);
 		} catch (error) {
 			logger.error('[TokenAware] Failed to update token count', { error });
+
+	async processLLMStreamResponse(response: any): Promise<void> {
+		if (this.formatter.parseStreamResponse) {
+			const msgs = (await this.formatter.parseStreamResponse(response)) ?? [];
+			for (const msg of msgs) {
+				try {
+					await this.addMessage(msg);
+				} catch (error) {
+					logger.error('Failed to process LLM stream response message', { error });
+				}
+			}
+		} else {
+			await this.processLLMResponse(response);
 		}
 	}
 
@@ -328,6 +336,14 @@ export class ContextManager {
 		const utilization = this.currentTokenCount / (this.compressionStrategy.config.maxTokens || 1);
 		if (utilization >= this.compressionStrategy.config.warningThreshold && utilization < this.compressionStrategy.config.compressionThreshold) {
 			logger.warn(`[TokenAware] Token usage warning: ${Math.round(utilization*100)}% of context window (${this.currentTokenCount}/${this.compressionStrategy.config.maxTokens})`);
+	async processLLMResponse(response: any): Promise<void> {
+		const msgs = this.formatter.parseResponse(response) ?? [];
+		for (const msg of msgs) {
+			try {
+				await this.addMessage(msg);
+			} catch (error) {
+				logger.error('Failed to process LLM response message', { error });
+			}
 		}
 		if (!this.compressionStrategy.shouldCompress(this.currentTokenCount)) {
 			return;
@@ -431,5 +447,52 @@ export class ContextManager {
 		
 		await this.performCompression();
 		return this.compressionHistory[this.compressionHistory.length - 1] || null;
+
+	 * Returns the raw message history for this context.
+	 * If a history provider is available and not in fallback, retrieves from persistent storage.
+	 * Otherwise, returns the in-memory array.
+	 */
+	async getRawMessages(): Promise<InternalMessage[]> {
+		if (this.historyProvider && this.sessionId && !this.fallbackToMemory) {
+			try {
+				const history = await this.historyProvider.getHistory(this.sessionId);
+				return history;
+			} catch (err) {
+				logger.error(
+					`History provider failed in getRawMessages, falling back to in-memory: ${err}`
+				);
+				this.fallbackToMemory = true;
+				return this.messages;
+			}
+		} else {
+			return this.messages;
+		}
+	}
+
+	/**
+	 * Get the raw messages array synchronously (for backward compatibility)
+	 * @deprecated Use getRawMessages() for persistent storage support
+	 */
+	public getRawMessagesSync(): InternalMessage[] {
+		return this.messages;
+	}
+
+	/**
+	 * Restore conversation history from persistent storage
+	 */
+	public async restoreHistory(): Promise<void> {
+		if (this.historyProvider && this.sessionId && !this.fallbackToMemory) {
+			try {
+				const history = await this.historyProvider.getHistory(this.sessionId);
+				// Replace in-memory messages with persistent history
+				this.messages = history;
+				logger.debug(`ContextManager: Restored ${history.length} messages from persistent storage`);
+			} catch (err) {
+				logger.error(
+					`ContextManager: Failed to restore history, falling back to in-memory: ${err}`
+				);
+				this.fallbackToMemory = true;
+			}
+		}
 	}
 }
