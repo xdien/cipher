@@ -334,6 +334,95 @@ cipher --mode mcp --strict
 cipher --mode mcp --new-session my-session-id
 ```
 
+## MCP Aggregator Mode
+
+Cipher now supports a new **MCP Aggregator Mode** that exposes all available tools (not just `ask_cipher`) to MCP clients. This is controlled by the `MCP_SERVER_MODE` environment variable.
+
+### Modes
+
+- **default**: Only the `ask_cipher` tool is available (legacy behavior).
+- **aggregator**: All tools (including those from connected MCP servers) are available, with conflict resolution and timeout options.
+
+### Environment Variables
+
+```bash
+# Select MCP server mode: 'default' (only ask_cipher) or 'aggregator' (all tools)
+MCP_SERVER_MODE=aggregator
+
+# (Optional) Tool name conflict resolution: 'prefix' (default), 'first-wins', or 'error'
+AGGREGATOR_CONFLICT_RESOLUTION=prefix
+
+# (Optional) Tool execution timeout in milliseconds (default: 60000)
+AGGREGATOR_TIMEOUT=60000
+```
+
+### Example MCP Aggregator JSON Config
+
+```json
+{
+	"mcpServers": {
+		"cipher-aggregator": {
+			"type": "stdio",
+			"command": "cipher",
+			"args": [
+				"--mode", "mcp"
+			],
+			"env": {
+				"OPENAI_API_KEY": "sk-your-openai-key",
+				"MCP_SERVER_MODE": "aggregator",
+				"AGGREGATOR_CONFLICT_RESOLUTION": "prefix",
+				"AGGREGATOR_TIMEOUT": "60000"
+			}
+		}
+	}
+}
+```
+
+- In **aggregator** mode, all tools are exposed. Tool name conflicts are resolved according to `AGGREGATOR_CONFLICT_RESOLUTION`.
+- If you want only the `ask_cipher` tool, set `MCP_SERVER_MODE=default` or omit the variable.
+
+---
+
+## SSE Transport Support
+
+Cipher now supports **SSE (Server-Sent Events)** as a transport for MCP server mode, in addition to `stdio` and `http`.
+
+### CLI Usage
+
+To start Cipher in MCP mode with SSE transport:
+
+```bash
+cipher --mode mcp --mcp-transport-type sse --mcp-port 4000
+```
+
+- `--mcp-transport-type sse` enables SSE transport.
+- `--mcp-port 4000` sets the port (default: 3000).
+
+### Example MCP Client Config for SSE
+
+```json
+{
+	"mcpServers": {
+		"cipher-sse": {
+			"type": "sse",
+			"url": "http://localhost:4000/mcp",
+			"env": {
+				"OPENAI_API_KEY": "sk-your-openai-key"
+			}
+		}
+	}
+}
+```
+
+- Set `"type": "sse"` and provide the `"url"` to the running Cipher SSE server.
+
+---
+
+## Summary of New Features
+
+- **MCP Aggregator Mode**: Expose all tools to MCP clients, with configurable conflict resolution and timeouts.
+- **SSE Transport**: Run Cipher as an MCP server over SSE for real-time streaming support.
+
 ## Use Case: Claude Code with Cipher MCP
 
 Cipher integrates seamlessly with Claude Code through MCP, providing persistent memory that enhances your coding experience. Here's how it works:
