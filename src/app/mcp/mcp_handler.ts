@@ -13,6 +13,7 @@ import { AgentCardSchema } from '@core/brain/memAgent/config.js';
 import { z } from 'zod';
 import * as fs from 'fs';
 import * as path from 'path';
+import type { AggregatorConfig } from '@core/mcp/types.js';
 
 // Derive the AgentCard type from the schema
 export type AgentCard = z.infer<typeof AgentCardSchema>;
@@ -21,9 +22,16 @@ export type AgentCard = z.infer<typeof AgentCardSchema>;
  * Initialize MCP server with agent capabilities
  * @param agent - The MemAgent instance to expose
  * @param agentCard - Agent metadata/card information
+ * @param mode - MCP server mode ('default' or 'aggregator')
+ * @param aggregatorConfig - Configuration for aggregator mode (optional)
  */
-export async function initializeMcpServer(agent: MemAgent, agentCard: AgentCard): Promise<Server> {
-	logger.info('[MCP Handler] Initializing MCP server with agent capabilities');
+export async function initializeMcpServer(
+	agent: MemAgent,
+	agentCard: AgentCard,
+	mode: 'default' | 'aggregator' = 'default',
+	aggregatorConfig?: AggregatorConfig
+): Promise<Server> {
+	logger.info(`[MCP Handler] Initializing MCP server with agent capabilities (mode: ${mode})`);
 
 	// Create MCP server instance
 	const server = new Server(
@@ -41,28 +49,122 @@ export async function initializeMcpServer(agent: MemAgent, agentCard: AgentCard)
 	);
 
 	// Register agent capabilities as MCP tools, resources, and prompts
-	await registerAgentTools(server, agent);
+	if (mode === 'aggregator') {
+		await registerAggregatedTools(server, agent, aggregatorConfig);
+	} else {
+		await registerAgentTools(server, agent);
+	}
 	await registerAgentResources(server, agent, agentCard);
 	await registerAgentPrompts(server, agent);
 
-	logger.info('[MCP Handler] MCP server initialized successfully');
+	logger.info(`[MCP Handler] MCP server initialized successfully (mode: ${mode})`);
 	logger.info('[MCP Handler] Agent is now available as MCP server for external clients');
 
 	return server;
 }
 
 /**
- * Register agent tools as MCP tools (dynamic discovery)
+ * Register agent tools as MCP tools (default mode - ask_cipher only)
  */
 async function registerAgentTools(server: Server, agent: MemAgent): Promise<void> {
-	logger.debug('[MCP Handler] Registering agent tools (dynamic)');
+	logger.debug('[MCP Handler] Registering agent tools (default mode - ask_cipher only)');
+
+	// Default mode: Only expose ask_cipher tool (simplified)
+	const mcpTools = [
+		{
+			name: 'ask_cipher',
+			description: 'Chat with the Cipher AI agent. Send a message to interact with the agent.',
+			inputSchema: {
+				type: 'object',
+				properties: {
+					message: {
+						type: 'string',
+						description: 'The message or question to send to the Cipher agent',
+					},
+					session_id: {
+						type: 'string',
+						description: 'Optional session ID to maintain conversation context',
+						default: 'default',
+					},
+					stream: {
+						type: 'boolean',
+						description: 'Whether to stream the response (not supported via MCP)',
+						default: false,
+					},
+				},
+				required: ['message'],
+			},
+		},
+	];
+
+	logger.info(
+		`[MCP Handler] Registering ${mcpTools.length} MCP tools: ${mcpTools.map(t => t.name).join(', ')}`
+	);
+
+	// Register list tools handler
+	server.setRequestHandler(ListToolsRequestSchema, async () => {
+		return { tools: mcpTools };
+	});
+
+	// Register call tool handler
+	server.setRequestHandler(CallToolRequestSchema, async request => {
+		const { name, arguments: args } = request.params;
+		logger.info(`[MCP Handler] Tool called: ${name}`, { toolName: name, args });
+
+		if (name === 'ask_cipher') {
+			return await handleAskCipherTool(agent, args);
+		}
+
+		// Default mode only supports ask_cipher
+		throw new Error(
+			`Tool '${name}' not available in default mode. Use aggregator mode for access to all tools.`
+		);
+	});
+}
+
+/**
+ * Register aggregated tools as MCP tools (aggregator mode - all tools)
+ */
+async function registerAggregatedTools(
+	server: Server,
+	agent: MemAgent,
+	config?: AggregatorConfig
+): Promise<void> {
+	logger.debug('[MCP Handler] Registering all tools (aggregator mode - built-in + MCP servers)');
 
 	// Get all agent-accessible tools from unifiedToolManager
 	const unifiedToolManager = agent.unifiedToolManager;
 	const combinedTools = await unifiedToolManager.getAllTools();
 
-	// Build MCP tool list
-	const mcpTools = Object.entries(combinedTools).map(([toolName, tool]) => ({
+	// Apply conflict resolution if needed
+	const resolvedTools = new Map<string, any>();
+	const conflictResolution = config?.conflictResolution || 'prefix';
+
+	Object.entries(combinedTools).forEach(([toolName, tool]) => {
+		let resolvedName = toolName;
+
+		// Check for conflicts and resolve based on strategy
+		if (resolvedTools.has(toolName)) {
+			switch (conflictResolution) {
+				case 'prefix':
+					resolvedName = `cipher.${toolName}`;
+					logger.info(`[MCP Handler] Tool name conflict resolved: ${toolName} -> ${resolvedName}`);
+					break;
+				case 'first-wins':
+					logger.warn(`[MCP Handler] Tool name conflict: ${toolName} already exists, skipping`);
+					return; // Skip this tool
+				case 'error':
+					throw new Error(`Tool name conflict: ${toolName} exists multiple times`);
+				default:
+					resolvedName = toolName;
+			}
+		}
+
+		resolvedTools.set(resolvedName, tool);
+	});
+
+	// Build MCP tool list from resolved tools
+	const mcpTools = Array.from(resolvedTools.entries()).map(([toolName, tool]) => ({
 		name: toolName,
 		description: (tool as any).description,
 		inputSchema: (tool as any).parameters,
@@ -97,7 +199,7 @@ async function registerAgentTools(server: Server, agent: MemAgent): Promise<void
 	}
 
 	logger.info(
-		`[MCP Handler] Registering ${mcpTools.length} MCP tools: ${mcpTools.map(t => t.name).join(', ')}`
+		`[MCP Handler] Registering ${mcpTools.length} tools: ${mcpTools.map(t => t.name).join(', ')}`
 	);
 
 	// Register list tools handler
@@ -116,7 +218,20 @@ async function registerAgentTools(server: Server, agent: MemAgent): Promise<void
 
 		// Route to unifiedToolManager for all other tools
 		try {
-			const result = await unifiedToolManager.executeTool(name, args);
+			const unifiedToolManager = agent.unifiedToolManager;
+
+			// Apply timeout if configured
+			const timeout = config?.timeout || 60000;
+			const result = await Promise.race([
+				unifiedToolManager.executeTool(name, args),
+				new Promise((_, reject) =>
+					setTimeout(
+						() => reject(new Error(`Tool execution timed out after ${timeout}ms`)),
+						timeout
+					)
+				),
+			]);
+
 			return {
 				content: [
 					{
@@ -392,6 +507,25 @@ export function initializeAgentCardResource(agentCard: Partial<AgentCard>): Agen
 	};
 
 	return processedCard;
+}
+
+/**
+ * Create MCP transport for stdio communication
+ * @param type - Transport type (currently only 'stdio' is supported)
+ * @returns Transport object with server property
+ */
+export async function createMcpTransport(type: string): Promise<{ server: any }> {
+	if (type !== 'stdio') {
+		throw new Error(`Unsupported transport type: ${type}. Only 'stdio' is currently supported.`);
+	}
+
+	// Import stdio transport from MCP SDK
+	const { StdioServerTransport } = await import('@modelcontextprotocol/sdk/server/stdio.js');
+
+	logger.info('[MCP Handler] Creating stdio transport');
+	const transport = new StdioServerTransport();
+
+	return { server: transport };
 }
 
 /**
