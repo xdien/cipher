@@ -69,7 +69,7 @@ export async function startHeadlessCli(agent: MemAgent, input: string): Promise<
 
 // --- Token-Aware Compression System Startup Message ---
 let lastCompressionHistoryLength = 0;
-let compressionSystemActive = false;
+// let compressionSystemActive = false; // Xoá vì không dùng
 
 async function showCompressionStartup(agent: MemAgent) {
 	try {
@@ -78,33 +78,46 @@ async function showCompressionStartup(agent: MemAgent) {
 			const ctx = session.getContextManager();
 			const stats = ctx.getTokenStats();
 			if (stats.maxTokens > 0) {
-				compressionSystemActive = true;
+				// compressionSystemActive = true; // Xoá vì không dùng
 				console.log(chalk.green('🧠 Token-Aware Compression System is ACTIVE'));
-				console.log(chalk.gray(`• Max tokens: ${stats.maxTokens}, Compression strategy: ${ctx["compressionStrategy"]?.name || "unknown"}`));
-				lastCompressionHistoryLength = ctx["compressionHistory"]?.length || 0;
+				console.log(
+					chalk.gray(
+						`• Max tokens: ${stats.maxTokens}, Compression strategy: ${ctx['compressionStrategy']?.name || 'unknown'}`
+					)
+				);
+				lastCompressionHistoryLength = ctx['compressionHistory']?.length || 0;
 			}
 		}
-	} catch {}
+	} catch {
+		/* intentionally empty */
+	}
 }
 
 async function showCompressionInfo(agent: MemAgent) {
 	try {
 		const session = await agent.getSession(agent.getCurrentSessionId());
-			if (session) {
-				const ctx = session.getContextManager();
-				const history = ctx["compressionHistory"];
-				if (Array.isArray(history) && history.length > lastCompressionHistoryLength) {
-					const event = history[history.length - 1];
-					console.log(chalk.yellowBright('⚡ Context compressed:') +
-					  chalk.gray(` [${event?.strategy}] `) +
-					  chalk.white(`Tokens: ${event?.originalTokenCount} → ${event?.compressedTokenCount} `) +
-					  chalk.gray(`(${Math.round((event?.compressionRatio ?? 0) * 100)}%) `) +
-					  chalk.gray(`Messages removed: ${event?.removedMessages.length}`)
-					);
-					lastCompressionHistoryLength = history.length;
-				}
+		if (session) {
+			const ctx = session.getContextManager();
+			const history = ctx['compressionHistory'];
+			if (Array.isArray(history) && history.length > lastCompressionHistoryLength) {
+				const event = history[history.length - 1];
+				console.log(
+					chalk.yellowBright('⚡ Context compressed:') +
+						chalk.gray(` [${event?.strategy ?? ''}] `) +
+						chalk.white(
+							`Tokens: ${event?.originalTokenCount ?? '?'} → ${event?.compressedTokenCount ?? '?'} `
+						) +
+						chalk.gray(
+							`(${event?.compressionRatio !== undefined ? Math.round(event.compressionRatio * 100) : '?'}%) `
+						) +
+						chalk.gray(`Messages removed: ${event?.removedMessages?.length ?? '?'} `)
+				);
+				lastCompressionHistoryLength = history.length;
 			}
-	} catch {}
+		}
+	} catch {
+		/* intentionally empty */
+	}
 }
 
 /**
@@ -224,7 +237,9 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 					if (result && result.backgroundOperations) {
 						try {
 							await result.backgroundOperations;
-						} catch { /* lỗi đã log, bỏ qua */ }
+						} catch {
+							/* lỗi đã log, bỏ qua */
+						}
 					}
 
 					if (result && result.response) {

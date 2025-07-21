@@ -142,10 +142,10 @@ export function createLLMService(
 	unifiedToolManager?: UnifiedToolManager
 ): ILLMService {
 	const service = _createLLMService(config, mcpManager, contextManager, unifiedToolManager);
-	
+
 	// Configure token-aware compression for the context manager
 	configureCompressionForService(config, contextManager);
-	
+
 	return service;
 }
 
@@ -160,10 +160,10 @@ async function configureCompressionForService(
 		// Extract provider and model info
 		const provider = config.provider.toLowerCase();
 		const model = config.model;
-		
+
 		// Get context window size from defaults since it's not in config
 		const contextWindow = getDefaultContextWindow(provider, model);
-		
+
 		// Configure compression asynchronously to avoid blocking service creation
 		setImmediate(async () => {
 			try {
@@ -171,17 +171,16 @@ async function configureCompressionForService(
 				logger.debug('Token-aware compression configured for LLM service', {
 					provider,
 					model,
-					contextWindow
+					contextWindow,
 				});
 			} catch (error) {
 				logger.warn('Failed to configure compression for LLM service', {
 					error: (error as Error).message,
 					provider,
-					model
+					model,
 				});
 			}
 		});
-		
 	} catch (error) {
 		logger.error('Error in compression configuration', { error });
 	}
@@ -201,7 +200,7 @@ function getDefaultContextWindow(provider: string, model?: string): number {
 			'gpt-4o-mini': 128000,
 			'o1-preview': 128000,
 			'o1-mini': 128000,
-			default: 8192
+			default: 8192,
 		},
 		anthropic: {
 			'claude-3-opus': 200000,
@@ -211,7 +210,7 @@ function getDefaultContextWindow(provider: string, model?: string): number {
 			'claude-2.1': 200000,
 			'claude-2.0': 100000,
 			'claude-instant-1.2': 100000,
-			default: 200000
+			default: 200000,
 		},
 		google: {
 			'gemini-pro': 32760,
@@ -219,20 +218,20 @@ function getDefaultContextWindow(provider: string, model?: string): number {
 			'gemini-ultra': 32760,
 			'gemini-1.5-pro': 1000000,
 			'gemini-1.5-flash': 1000000,
-			default: 32760
+			default: 32760,
 		},
 		ollama: {
-			default: 8192 // Conservative default for local models
+			default: 8192, // Conservative default for local models
 		},
 		openrouter: {
-			default: 8192 // Varies by model, conservative default
-		}
+			default: 8192, // Varies by model, conservative default
+		},
 	};
-	
+
 	const providerDefaults = defaults[provider];
 	if (!providerDefaults) {
 		return 8192; // Global fallback
 	}
-	
+
 	return providerDefaults[model || 'default'] || providerDefaults.default || 8192;
 }

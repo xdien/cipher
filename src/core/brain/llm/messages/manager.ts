@@ -4,28 +4,35 @@ import { InternalMessage, ImageData } from './types.js';
 import { getImageData } from './utils.js';
 import { PromptManager } from '../../../brain/systemPrompt/manager.js';
 import { ITokenizer, createTokenizer, getTokenizerConfigForModel } from '../tokenizer/index.js';
-import { ICompressionStrategy, createCompressionStrategy, getCompressionConfigForProvider, EnhancedInternalMessage, CompressionResult, CompressionLevel } from '../compression/index.js';
-import { assignMessagePriorities, calculateTotalTokens } from '../compression/utils.js';
+import {
+	ICompressionStrategy,
+	createCompressionStrategy,
+	getCompressionConfigForProvider,
+	EnhancedInternalMessage,
+	CompressionResult,
+	CompressionLevel,
+} from '../compression/index.js';
+import { assignMessagePriorities } from '../compression/utils.js';
 
 export class ContextManager {
 	private promptManager: PromptManager;
 	private formatter: IMessageFormatter;
 	private messages: InternalMessage[] = [];
-	
+
 	// Token-aware compression components
 	private tokenizer?: ITokenizer;
 	private compressionStrategy?: ICompressionStrategy;
 	private enableCompression: boolean = false;
-	
+
 	// Token tracking
 	private currentTokenCount: number = 0;
 	private compressionHistory: CompressionResult[] = [];
 	private lastCompressionCheck: number = 0;
-	
+
 	// Configuration
 	private compressionConfig = {
 		checkInterval: 5000, // Check every 5 seconds
-		maxCompressionHistory: 10
+		maxCompressionHistory: 10,
 	};
 
 	constructor(formatter: IMessageFormatter, promptManager: PromptManager) {
@@ -222,7 +229,9 @@ export class ContextManager {
 	}
 
 	public async restoreHistory(): Promise<void> {
-		logger.debug(`ContextManager: restoreHistory called, in-memory messages: ${this.messages.length}`);
+		logger.debug(
+			`ContextManager: restoreHistory called, in-memory messages: ${this.messages.length}`
+		);
 	}
 
 	/**
@@ -231,7 +240,7 @@ export class ContextManager {
 	public getRawMessages(): InternalMessage[] {
 		return this.messages;
 	}
-	
+
 	/**
 	 * Configure token-aware compression for this context
 	 * @param provider - The LLM provider (openai, anthropic, google)
@@ -239,38 +248,38 @@ export class ContextManager {
 	 * @param contextWindow - The model's context window size
 	 */
 	async configureCompression(
-		provider: string, 
-		model?: string, 
+		provider: string,
+		model?: string,
 		contextWindow?: number
 	): Promise<void> {
 		try {
 			// Initialize tokenizer
 			const tokenizerConfig = getTokenizerConfigForModel(model || `${provider}-default`);
 			this.tokenizer = createTokenizer(tokenizerConfig);
-			
+
 			// Initialize compression strategy
 			const compressionConfig = getCompressionConfigForProvider(provider, model, contextWindow);
 			this.compressionStrategy = createCompressionStrategy(compressionConfig);
-			
+
 			this.enableCompression = true;
-			
+
 			// Recalculate current token count with new tokenizer
 			await this.updateTokenCount();
-			
+
 			logger.debug('Token-aware compression configured', {
 				provider,
 				model,
 				contextWindow,
 				tokenizerProvider: this.tokenizer.provider,
 				compressionStrategy: this.compressionStrategy.name,
-				currentTokens: this.currentTokenCount
+				currentTokens: this.currentTokenCount,
 			});
 		} catch (error) {
 			logger.error('Failed to configure compression', { error, provider, model });
 			this.enableCompression = false;
 		}
 	}
-	
+
 	/**
 	 * Update the current token count cho toàn bộ messages
 	 */
@@ -292,7 +301,9 @@ export class ContextManager {
 				})
 			);
 			this.currentTokenCount = messageTokenCounts.reduce((sum, count) => sum + count, 0);
-			logger.info(`[TokenAware] Token count updated: ${this.currentTokenCount} tokens for ${this.messages.length} messages`);
+			logger.info(
+				`[TokenAware] Token count updated: ${this.currentTokenCount} tokens for ${this.messages.length} messages`
+			);
 		} catch (error) {
 			logger.error('[TokenAware] Failed to update token count', { error });
 		}
@@ -305,14 +316,14 @@ export class ContextManager {
 		if (typeof message.content === 'string') {
 			return message.content;
 		}
-		
+
 		if (Array.isArray(message.content)) {
 			return message.content
 				.filter(part => part.type === 'text')
 				.map(part => part.text)
 				.join(' ');
 		}
-		
+
 		return '';
 	}
 
@@ -326,13 +337,20 @@ export class ContextManager {
 		}
 		this.lastCompressionCheck = now;
 		const utilization = this.currentTokenCount / (this.compressionStrategy.config.maxTokens || 1);
-		if (utilization >= this.compressionStrategy.config.warningThreshold && utilization < this.compressionStrategy.config.compressionThreshold) {
-			logger.warn(`[TokenAware] Token usage warning: ${Math.round(utilization*100)}% of context window (${this.currentTokenCount}/${this.compressionStrategy.config.maxTokens})`);
+		if (
+			utilization >= this.compressionStrategy.config.warningThreshold &&
+			utilization < this.compressionStrategy.config.compressionThreshold
+		) {
+			logger.warn(
+				`[TokenAware] Token usage warning: ${Math.round(utilization * 100)}% of context window (${this.currentTokenCount}/${this.compressionStrategy.config.maxTokens})`
+			);
 		}
 		if (!this.compressionStrategy.shouldCompress(this.currentTokenCount)) {
 			return;
 		}
-		logger.info(`[TokenAware] Compression threshold reached (${Math.round(utilization*100)}%), starting compression...`);
+		logger.info(
+			`[TokenAware] Compression threshold reached (${Math.round(utilization * 100)}%), starting compression...`
+		);
 		await this.performCompression();
 	}
 
@@ -346,50 +364,59 @@ export class ContextManager {
 				...message,
 				messageId: `msg_${Date.now()}_${index}`,
 				timestamp: Date.now() - (this.messages.length - index) * 1000, // Approximate timestamps
-				tokenCount: this.extractTextFromMessage(message).length / 4 // Rough estimate
+				tokenCount: this.extractTextFromMessage(message).length / 4, // Rough estimate
 			}));
-			
+
 			// Add priorities
 			const prioritizedMessages = assignMessagePriorities(enhancedMessages);
-			
+
 			// Calculate target token count (aim for 80% of max)
 			const targetTokenCount = Math.floor(this.compressionStrategy.config.maxTokens * 0.8);
-			
+
 			// Perform compression
 			const compressionResult = await this.compressionStrategy.compress(
 				prioritizedMessages,
 				this.currentTokenCount,
 				targetTokenCount
 			);
-			
+
 			// Validate compression result
 			if (!this.compressionStrategy.validateCompression(compressionResult)) {
 				logger.warn('[TokenAware] Compression validation failed, keeping original messages');
 				return;
 			}
-			
+
 			// Apply compression result
 			this.messages = compressionResult.compressedMessages.map(msg => {
 				// Convert back to InternalMessage format
-				const { messageId, timestamp, tokenCount, priority, preserveInCompression, ...internalMessage } = msg;
+				const {
+					messageId,
+					timestamp,
+					tokenCount,
+					priority,
+					preserveInCompression,
+					...internalMessage
+				} = msg;
 				return internalMessage;
 			});
-			
+
 			// Update token count
 			await this.updateTokenCount();
-			
+
 			// Store compression history
 			this.compressionHistory.push(compressionResult);
 			if (this.compressionHistory.length > this.compressionConfig.maxCompressionHistory) {
 				this.compressionHistory.shift();
 			}
-			
-			logger.info(`[TokenAware] Compression completed: ${compressionResult.originalTokenCount} → ${compressionResult.compressedTokenCount} tokens, strategy: ${compressionResult.strategy}, messages removed: ${compressionResult.removedMessages.length}`);
+
+			logger.info(
+				`[TokenAware] Compression completed: ${compressionResult.originalTokenCount} → ${compressionResult.compressedTokenCount} tokens, strategy: ${compressionResult.strategy}, messages removed: ${compressionResult.removedMessages.length}`
+			);
 		} catch (error) {
 			logger.error('[TokenAware] Compression failed', { error });
 		}
 	}
-	
+
 	/**
 	 * Get current compression level
 	 */
@@ -397,10 +424,10 @@ export class ContextManager {
 		if (!this.compressionStrategy) {
 			return CompressionLevel.NONE;
 		}
-		
+
 		return this.compressionStrategy.getCompressionLevel(this.currentTokenCount);
 	}
-	
+
 	/**
 	 * Get token usage statistics
 	 */
@@ -417,10 +444,10 @@ export class ContextManager {
 			maxTokens,
 			utilization: maxTokens > 0 ? this.currentTokenCount / maxTokens : 0,
 			compressionLevel: this.getCompressionLevel(),
-			compressionHistory: this.compressionHistory.length
+			compressionHistory: this.compressionHistory.length,
 		};
 	}
-	
+
 	/**
 	 * Force compression (for testing or manual control)
 	 */
@@ -428,7 +455,7 @@ export class ContextManager {
 		if (!this.enableCompression || !this.compressionStrategy) {
 			throw new Error('Compression not configured');
 		}
-		
+
 		await this.performCompression();
 		return this.compressionHistory[this.compressionHistory.length - 1] || null;
 	}
