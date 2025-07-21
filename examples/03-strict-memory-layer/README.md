@@ -12,7 +12,7 @@ export ANTHROPIC_API_KEY=your_anthropic_api_key
 
 2. **Launch Cipher as MCP Server:**
 ```bash
-cipher --mode mcp --agent ./cipher.yml
+cipher --mode mcp --agent ./examples/03-strict-memory-layer/cipher.yml
 ```
 
 3. **MCP Client Config Example**
