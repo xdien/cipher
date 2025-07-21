@@ -7,7 +7,7 @@ import { DEFAULT_CONFIG_PATH, logger, MemAgent } from '@core/index.js';
 import { resolveConfigPath } from '@core/utils/path.js';
 import { handleCliOptionsError, validateCliOptions } from './cli/utils/options.js';
 import { loadAgentConfig } from '../core/brain/memAgent/loader.js';
-import { startInteractiveCli, startHeadlessCli } from './cli/cli.js';
+import { startInteractiveCli, startHeadlessCli, startMcpMode } from './cli/cli.js';
 import { ApiServer } from './api/server.js';
 import path from 'path';
 import os from 'os';
@@ -136,7 +136,7 @@ program
 		) {
 			// Use MCP-safe error reporting
 			const errorMsg =
-				'No API key or Ollama configuration found, please set at least one of OPENAI_API_KEY, ANTHROPIC_API_KEY, OPENROUTER_API_KEY, or OLLAMA_BASE_URL in .env file\nAvailable providers: OpenAI, Anthropic, OpenRouter, Ollama';
+				'No API key or Ollama configuration found, please set at least one of OPENAI_API_KEY, ANTHROPIC_API_KEY, OPENROUTER_API_KEY, or OLLAMA_BASE_URL in your environment variables \nAvailable providers: OpenAI, Anthropic, OpenRouter, Ollama';
 
 			if (opts.mode === 'mcp') {
 				process.stderr.write(`[CIPHER-MCP] ERROR: ${errorMsg}\n`);
@@ -334,7 +334,9 @@ program
 			case 'cli':
 				await startInteractiveCli(agent);
 				break;
-			case 'mcp': // Fall through to api mode for MCP server via HTTP
+			case 'mcp':
+				await startMcpMode(agent);
+				break;
 			case 'api':
 				await startApiMode(agent, opts);
 				break;
