@@ -243,46 +243,6 @@ Add to your Claude Desktop MCP configuration file:
 }
 ```
 
-#### Cursor/Windsurf Configuration
-
-Add to your MCP settings:
-
-```json
-{
-	"mcpServers": {
-		"cipher-memory": {
-			"type": "stdio",
-			"command": "cipher",
-			"args": ["--mode", "mcp", "--agent", "memAgent/cipher.yml"],
-			"env": {
-				"OPENAI_API_KEY": "sk-your-openai-key",
-				"CIPHER_LOG_LEVEL": "info"
-			}
-		}
-	}
-}
-```
-
-#### With Custom Configuration
-
-```json
-{
-	"mcpServers": {
-		"cipher": {
-			"type": "stdio",
-			"command": "cipher",
-			"args": ["--mode", "mcp", "--agent", "/path/to/custom-config.yml", "--strict"],
-			"env": {
-				"OPENAI_API_KEY": "sk-your-openai-key",
-				"ANTHROPIC_API_KEY": "sk-ant-your-anthropic-key",
-				"OPENROUTER_API_KEY": "sk-or-your-openrouter-key",
-				"CIPHER_LOG_LEVEL": "debug",
-				"NODE_ENV": "production"
-			}
-		}
-	}
-}
-```
 
 ### Environment Variables
 
@@ -300,25 +260,6 @@ CIPHER_LOG_LEVEL=info
 NODE_ENV=production
 ```
 
-### Available Capabilities
-
-When running as an MCP server, Cipher exposes:
-
-**Tools:**
-
-- `ask_cipher` - Chat interface with the memory-powered agent
-- Dynamic tool discovery from your agent configuration
-
-**Resources:**
-
-- `cipher://agent/card` - Agent metadata and information
-- `cipher://agent/stats` - Runtime statistics and metrics
-
-**Prompts:**
-
-- `system_prompt` - Current system prompt used by the agent
-
----
 
 ### MCP Aggregator Mode
 
