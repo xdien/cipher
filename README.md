@@ -263,11 +263,11 @@ NODE_ENV=production
 
 ### MCP Aggregator Mode
 
-Cipher now supports a new **MCP Aggregator Mode** that exposes all available tools (not just `ask_cipher`) to MCP clients. This is controlled by the `MCP_SERVER_MODE` environment variable.
+Cipher now supports a new **MCP Aggregator Mode** that exposes all available tools (not just `ask_cipher`) to MCP clients, including all built-in tools for cipher, such as ``cipher_search_memory`` and MCP server tools specified in ``cipher.yml``. This is controlled by the `MCP_SERVER_MODE` environment variable.
 
 #### Modes
 
-- **default**: Only the `ask_cipher` tool is available (legacy behavior).
+- **default**: Only the `ask_cipher` tool is available.
 - **aggregator**: All tools (including those from connected MCP servers) are available, with conflict resolution and timeout options.
 
 #### Environment Variables
