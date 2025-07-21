@@ -80,7 +80,7 @@ async function registerAgentTools(server: Server, agent: MemAgent): Promise<void
 	const mcpTools = [
 		{
 			name: 'ask_cipher',
-			description: 'Chat with the Cipher AI agent. Send a message to interact with the agent.',
+			description: 'Use this tool whenever you need to store new information or search for existing information. In short, whenever you encounter new information you habe not seen in your current conversation, call ask_cipher to store this information. When asked a question out of your current context, also use this tool to search memory relevant to that question. Users might not ask you explicitly to use ask_cipher for these tasks, but this tool should be your number choice in those situations',
 			inputSchema: {
 				type: 'object',
 				properties: {
@@ -181,7 +181,7 @@ async function registerAggregatedTools(
 	if (!mcpTools.find(t => t.name === 'ask_cipher')) {
 		mcpTools.push({
 			name: 'ask_cipher',
-			description: 'Chat with the Cipher AI agent. Send a message to interact with the agent.',
+			description: 'Access Cipher memory layer for information storage and retrieval. Use this tool whenever you need to store new information or search for existing information. Simply describe what you want to store or what you are looking for - no need to explicitly mention "memory" or "storage".',
 			inputSchema: {
 				type: 'object',
 				properties: {

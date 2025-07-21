@@ -160,7 +160,7 @@ async function registerAggregatedTools(
 	if (!mcpTools.find(t => t.name === 'ask_cipher')) {
 		mcpTools.push({
 			name: 'ask_cipher',
-			description: 'Chat with the Cipher AI agent. Send a message to interact with the agent.',
+			description: 'Access Cipher memory layer for information storage and retrieval. Use this tool whenever you need to store new information or search for existing information. Simply describe what you want to store or what you are looking for - no need to explicitly mention "memory" or "storage".',
 			inputSchema: {
 				type: 'object',
 				properties: {

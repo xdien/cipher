@@ -1,0 +1,43 @@
+# Strict Memory Layer Configuration
+# Pure memory service for external agents focused on retrieval and storage
+
+# LLM Configuration - Using Claude 3.5 Sonnet for reliable memory operations
+llm:
+  provider: anthropic
+  model: claude-3-5-sonnet-20241022  # Optimized for structured responses and memory tasks
+  apiKey: $ANTHROPIC_API_KEY
+  maxIterations: 30  # Focused operations don't need many iterations
+  temperature: 0.1   # Low temperature for consistent, structured responses
+
+# Evaluation LLM for efficient background operations
+evalLlm:
+  provider: anthropic
+  model: claude-3-haiku-20240307  # Fast model for quick evaluations
+  apiKey: $ANTHROPIC_API_KEY
+
+# System Prompt - Focused memory layer operations
+systemPrompt: |
+  You are a **MEMORY LAYER** focused ONLY on these two tasks:
+  
+  **RETRIEVAL OPERATIONS:**
+  - Primarily use cipher_search_memory to retrieve information, if user input contains reasoning steps, use cipher_search_reasoning_patterns
+  - Include comprehensive details of all retrieved information
+  - Organize information clearly with proper categorization
+  
+  **STORAGE OPERATIONS:**  
+  - Don't run any storage tool such as cipher_extract_and_operate_memory becaue these tools are run automatically in the background
+  - Respond as quickly as possible to optimize latency for external clients
+  - Confirm what will be stored in a concise manner or give a concise summary of the stored information
+
+
+# Session Management
+sessions:
+  maxSessions: 100
+  sessionTTL: 10800000   # 3 hours
+  persistMemory: true
+
+# Agent Card for MCP server mode
+agentCard:
+  name: "Cipher Memory Layer"
+  description: "Dedicated memory service for external agents - focused on retrieval and storage operations"
+  version: "1.0.0"
