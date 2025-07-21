@@ -318,32 +318,18 @@ When running as an MCP server, Cipher exposes:
 
 - `system_prompt` - Current system prompt used by the agent
 
-### Configuration Options
+---
 
-```bash
-# Basic MCP server
-cipher --mode mcp
-
-# With custom agent config
-cipher --mode mcp --agent /path/to/custom-config.yml
-
-# Strict mode (all MCP connections must succeed)
-cipher --mode mcp --strict
-
-# With new session
-cipher --mode mcp --new-session my-session-id
-```
-
-## MCP Aggregator Mode
+### MCP Aggregator Mode
 
 Cipher now supports a new **MCP Aggregator Mode** that exposes all available tools (not just `ask_cipher`) to MCP clients. This is controlled by the `MCP_SERVER_MODE` environment variable.
 
-### Modes
+#### Modes
 
 - **default**: Only the `ask_cipher` tool is available (legacy behavior).
 - **aggregator**: All tools (including those from connected MCP servers) are available, with conflict resolution and timeout options.
 
-### Environment Variables
+#### Environment Variables
 
 ```bash
 # Select MCP server mode: 'default' (only ask_cipher) or 'aggregator' (all tools)
@@ -356,7 +342,7 @@ AGGREGATOR_CONFLICT_RESOLUTION=prefix
 AGGREGATOR_TIMEOUT=60000
 ```
 
-### Example MCP Aggregator JSON Config
+#### Example MCP Aggregator JSON Config
 
 ```json
 {
@@ -383,11 +369,11 @@ AGGREGATOR_TIMEOUT=60000
 
 ---
 
-## SSE Transport Support
+### SSE Transport Support
 
 Cipher now supports **SSE (Server-Sent Events)** as a transport for MCP server mode, in addition to `stdio` and `http`.
 
-### CLI Usage
+#### CLI Usage
 
 To start Cipher in MCP mode with SSE transport:
 
@@ -398,7 +384,7 @@ cipher --mode mcp --mcp-transport-type sse --mcp-port 4000
 - `--mcp-transport-type sse` enables SSE transport.
 - `--mcp-port 4000` sets the port (default: 3000).
 
-### Example MCP Client Config for SSE
+#### Example MCP Client Config for SSE
 
 ```json
 {
@@ -417,11 +403,6 @@ cipher --mode mcp --mcp-transport-type sse --mcp-port 4000
 - Set `"type": "sse"` and provide the `"url"` to the running Cipher SSE server.
 
 ---
-
-## Summary of New Features
-
-- **MCP Aggregator Mode**: Expose all tools to MCP clients, with configurable conflict resolution and timeouts.
-- **SSE Transport**: Run Cipher as an MCP server over SSE for real-time streaming support.
 
 ## Use Case: Claude Code with Cipher MCP
 
