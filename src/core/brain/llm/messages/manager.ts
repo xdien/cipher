@@ -3,11 +3,30 @@ import { logger } from '../../../logger/index.js';
 import { InternalMessage, ImageData } from './types.js';
 import { getImageData } from './utils.js';
 import { PromptManager } from '../../../brain/systemPrompt/manager.js';
+import { ITokenizer, createTokenizer, getTokenizerConfigForModel } from '../tokenizer/index.js';
+import { ICompressionStrategy, createCompressionStrategy, getCompressionConfigForProvider, EnhancedInternalMessage, CompressionResult, CompressionLevel } from '../compression/index.js';
+import { assignMessagePriorities, calculateTotalTokens } from '../compression/utils.js';
 
 export class ContextManager {
 	private promptManager: PromptManager;
 	private formatter: IMessageFormatter;
 	private messages: InternalMessage[] = [];
+	
+	// Token-aware compression components
+	private tokenizer?: ITokenizer;
+	private compressionStrategy?: ICompressionStrategy;
+	private enableCompression: boolean = false;
+	
+	// Token tracking
+	private currentTokenCount: number = 0;
+	private compressionHistory: CompressionResult[] = [];
+	private lastCompressionCheck: number = 0;
+	
+	// Configuration
+	private compressionConfig = {
+		checkInterval: 5000, // Check every 5 seconds
+		maxCompressionHistory: 10
+	};
 
 	constructor(formatter: IMessageFormatter, promptManager: PromptManager) {
 		if (!formatter) throw new Error('formatter is required');
@@ -25,7 +44,6 @@ export class ContextManager {
 
 	/**
 	 * Add a message to the context
-	 * @param message - The message to add to the context
 	 */
 	async addMessage(message: InternalMessage): Promise<void> {
 		if (!message.role) {
@@ -69,10 +87,14 @@ export class ContextManager {
 				throw new Error(`Unknown message role: ${(message as any).role}`);
 		}
 
-		// Store the message in history
 		this.messages.push(message);
 		logger.debug(`Adding message to context: ${JSON.stringify(message, null, 2)}`);
 		logger.debug(`Total messages in context: ${this.messages.length}`);
+
+		if (this.enableCompression) {
+			await this.updateTokenCount();
+			await this.checkAndCompress();
+		}
 	}
 
 	/**
@@ -150,22 +172,20 @@ export class ContextManager {
 			// Assume array of parts already
 			content = result;
 		} else {
-			// Fallback: stringify all other values
-			content = JSON.stringify(result ?? '');
+			// For objects or other types, JSON stringify for now
+			content = JSON.stringify(result, null, 2);
 		}
 
-		await this.addMessage({ role: 'tool', content, toolCallId, name });
+		await this.addMessage({
+			role: 'tool',
+			content,
+			toolCallId,
+			name,
+		});
 	}
 
-	/**
-	 * Get formatted messages including conversation history
-	 * @param message - The current message (already added to context by the service)
-	 * @returns The formatted messages array including conversation history
-	 */
 	async getFormattedMessage(_message: InternalMessage): Promise<any[]> {
 		try {
-			// Don't add the message again - it's already been added by the service
-			// Just return all formatted messages from the existing conversation history
 			return this.getAllFormattedMessages();
 		} catch (error) {
 			logger.error('Failed to get formatted messages', { error });
@@ -174,28 +194,14 @@ export class ContextManager {
 			);
 		}
 	}
-
-	/**
-	 * Get all formatted messages from conversation history
-	 * @returns The formatted messages array
-	 */
 	async getAllFormattedMessages(): Promise<any[]> {
 		try {
-			// Get the system prompt
 			const prompt = await this.getSystemPrompt();
-
-			// Format all messages in conversation history
 			const formattedMessages: any[] = [];
-
-			// Add system prompt as first message - for both OpenAI and Anthropic
 			if (prompt) {
 				formattedMessages.push({ role: 'system', content: prompt });
 			}
-
-			// Format each message in history
 			for (const msg of this.messages) {
-				// Don't pass system prompt to individual message formatting
-				// The system prompt has already been added above
 				const formatted = this.formatter.format(msg, null);
 				if (Array.isArray(formatted)) {
 					formattedMessages.push(...formatted);
@@ -203,7 +209,6 @@ export class ContextManager {
 					formattedMessages.push(formatted);
 				}
 			}
-
 			logger.debug(
 				`Formatted ${formattedMessages.length} messages from history of ${this.messages.length} messages`
 			);
@@ -216,40 +221,8 @@ export class ContextManager {
 		}
 	}
 
-	/**
-	 * Process a stream response from the LLM
-	 * @param response - The stream response from the LLM
-	 */
-
-	async processLLMStreamResponse(response: any): Promise<void> {
-		if (this.formatter.parseStreamResponse) {
-			const msgs = (await this.formatter.parseStreamResponse(response)) ?? [];
-			for (const msg of msgs) {
-				try {
-					await this.addMessage(msg);
-				} catch (error) {
-					logger.error('Failed to process LLM stream response message', { error });
-				}
-			}
-		} else {
-			await this.processLLMResponse(response);
-		}
-	}
-
-	/**
-	 * Process a response from the LLM
-	 * @param response - The response from the LLM
-	 */
-
-	async processLLMResponse(response: any): Promise<void> {
-		const msgs = this.formatter.parseResponse(response) ?? [];
-		for (const msg of msgs) {
-			try {
-				await this.addMessage(msg);
-			} catch (error) {
-				logger.error('Failed to process LLM response message', { error });
-			}
-		}
+	public async restoreHistory(): Promise<void> {
+		logger.debug(`ContextManager: restoreHistory called, in-memory messages: ${this.messages.length}`);
 	}
 
 	/**
@@ -257,5 +230,206 @@ export class ContextManager {
 	 */
 	public getRawMessages(): InternalMessage[] {
 		return this.messages;
+	}
+	
+	/**
+	 * Configure token-aware compression for this context
+	 * @param provider - The LLM provider (openai, anthropic, google)
+	 * @param model - The specific model being used
+	 * @param contextWindow - The model's context window size
+	 */
+	async configureCompression(
+		provider: string, 
+		model?: string, 
+		contextWindow?: number
+	): Promise<void> {
+		try {
+			// Initialize tokenizer
+			const tokenizerConfig = getTokenizerConfigForModel(model || `${provider}-default`);
+			this.tokenizer = createTokenizer(tokenizerConfig);
+			
+			// Initialize compression strategy
+			const compressionConfig = getCompressionConfigForProvider(provider, model, contextWindow);
+			this.compressionStrategy = createCompressionStrategy(compressionConfig);
+			
+			this.enableCompression = true;
+			
+			// Recalculate current token count with new tokenizer
+			await this.updateTokenCount();
+			
+			logger.debug('Token-aware compression configured', {
+				provider,
+				model,
+				contextWindow,
+				tokenizerProvider: this.tokenizer.provider,
+				compressionStrategy: this.compressionStrategy.name,
+				currentTokens: this.currentTokenCount
+			});
+		} catch (error) {
+			logger.error('Failed to configure compression', { error, provider, model });
+			this.enableCompression = false;
+		}
+	}
+	
+	/**
+	 * Update the current token count cho toàn bộ messages
+	 */
+	private async updateTokenCount(): Promise<void> {
+		if (!this.tokenizer || this.messages.length === 0) {
+			this.currentTokenCount = 0;
+			logger.debug('[TokenAware] Token count reset to 0 (no messages or tokenizer)');
+			return;
+		}
+		try {
+			const messageTokenCounts = await Promise.all(
+				this.messages.map(async (message, index) => {
+					const textContent = this.extractTextFromMessage(message);
+					const tokenCount = await this.tokenizer!.countTokens(textContent);
+					if ('tokenCount' in message) {
+						(message as any).tokenCount = tokenCount.total;
+					}
+					return tokenCount.total;
+				})
+			);
+			this.currentTokenCount = messageTokenCounts.reduce((sum, count) => sum + count, 0);
+			logger.info(`[TokenAware] Token count updated: ${this.currentTokenCount} tokens for ${this.messages.length} messages`);
+		} catch (error) {
+			logger.error('[TokenAware] Failed to update token count', { error });
+		}
+	}
+
+	/**
+	 * Extract text content from a message for token counting
+	 */
+	private extractTextFromMessage(message: InternalMessage): string {
+		if (typeof message.content === 'string') {
+			return message.content;
+		}
+		
+		if (Array.isArray(message.content)) {
+			return message.content
+				.filter(part => part.type === 'text')
+				.map(part => part.text)
+				.join(' ');
+		}
+		
+		return '';
+	}
+
+	private async checkAndCompress(): Promise<void> {
+		if (!this.enableCompression || !this.compressionStrategy || !this.tokenizer) {
+			return;
+		}
+		const now = Date.now();
+		if (now - this.lastCompressionCheck < this.compressionConfig.checkInterval) {
+			return;
+		}
+		this.lastCompressionCheck = now;
+		const utilization = this.currentTokenCount / (this.compressionStrategy.config.maxTokens || 1);
+		if (utilization >= this.compressionStrategy.config.warningThreshold && utilization < this.compressionStrategy.config.compressionThreshold) {
+			logger.warn(`[TokenAware] Token usage warning: ${Math.round(utilization*100)}% of context window (${this.currentTokenCount}/${this.compressionStrategy.config.maxTokens})`);
+		}
+		if (!this.compressionStrategy.shouldCompress(this.currentTokenCount)) {
+			return;
+		}
+		logger.info(`[TokenAware] Compression threshold reached (${Math.round(utilization*100)}%), starting compression...`);
+		await this.performCompression();
+	}
+
+	private async performCompression(): Promise<void> {
+		if (!this.compressionStrategy || !this.tokenizer) {
+			return;
+		}
+		try {
+			// Convert messages to enhanced format
+			const enhancedMessages: EnhancedInternalMessage[] = this.messages.map((message, index) => ({
+				...message,
+				messageId: `msg_${Date.now()}_${index}`,
+				timestamp: Date.now() - (this.messages.length - index) * 1000, // Approximate timestamps
+				tokenCount: this.extractTextFromMessage(message).length / 4 // Rough estimate
+			}));
+			
+			// Add priorities
+			const prioritizedMessages = assignMessagePriorities(enhancedMessages);
+			
+			// Calculate target token count (aim for 80% of max)
+			const targetTokenCount = Math.floor(this.compressionStrategy.config.maxTokens * 0.8);
+			
+			// Perform compression
+			const compressionResult = await this.compressionStrategy.compress(
+				prioritizedMessages,
+				this.currentTokenCount,
+				targetTokenCount
+			);
+			
+			// Validate compression result
+			if (!this.compressionStrategy.validateCompression(compressionResult)) {
+				logger.warn('[TokenAware] Compression validation failed, keeping original messages');
+				return;
+			}
+			
+			// Apply compression result
+			this.messages = compressionResult.compressedMessages.map(msg => {
+				// Convert back to InternalMessage format
+				const { messageId, timestamp, tokenCount, priority, preserveInCompression, ...internalMessage } = msg;
+				return internalMessage;
+			});
+			
+			// Update token count
+			await this.updateTokenCount();
+			
+			// Store compression history
+			this.compressionHistory.push(compressionResult);
+			if (this.compressionHistory.length > this.compressionConfig.maxCompressionHistory) {
+				this.compressionHistory.shift();
+			}
+			
+			logger.info(`[TokenAware] Compression completed: ${compressionResult.originalTokenCount} → ${compressionResult.compressedTokenCount} tokens, strategy: ${compressionResult.strategy}, messages removed: ${compressionResult.removedMessages.length}`);
+		} catch (error) {
+			logger.error('[TokenAware] Compression failed', { error });
+		}
+	}
+	
+	/**
+	 * Get current compression level
+	 */
+	public getCompressionLevel(): CompressionLevel {
+		if (!this.compressionStrategy) {
+			return CompressionLevel.NONE;
+		}
+		
+		return this.compressionStrategy.getCompressionLevel(this.currentTokenCount);
+	}
+	
+	/**
+	 * Get token usage statistics
+	 */
+	public getTokenStats(): {
+		currentTokens: number;
+		maxTokens: number;
+		utilization: number;
+		compressionLevel: CompressionLevel;
+		compressionHistory: number;
+	} {
+		const maxTokens = this.compressionStrategy?.config.maxTokens || 0;
+		return {
+			currentTokens: this.currentTokenCount,
+			maxTokens,
+			utilization: maxTokens > 0 ? this.currentTokenCount / maxTokens : 0,
+			compressionLevel: this.getCompressionLevel(),
+			compressionHistory: this.compressionHistory.length
+		};
+	}
+	
+	/**
+	 * Force compression (for testing or manual control)
+	 */
+	public async forceCompression(): Promise<CompressionResult | null> {
+		if (!this.enableCompression || !this.compressionStrategy) {
+			throw new Error('Compression not configured');
+		}
+		
+		await this.performCompression();
+		return this.compressionHistory[this.compressionHistory.length - 1] || null;
 	}
 }

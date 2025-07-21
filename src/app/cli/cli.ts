@@ -11,6 +11,7 @@ import { commandParser } from './parser.js';
  */
 export async function startHeadlessCli(agent: MemAgent, input: string): Promise<void> {
 	await _initCli(agent);
+	await showCompressionStartup(agent);
 
 	if (input.trim().startsWith('!meta ')) {
 		const metaAndMessage = input.trim().substring(6).split(' ');
@@ -35,6 +36,7 @@ export async function startHeadlessCli(agent: MemAgent, input: string): Promise<
 		} else {
 			console.log(chalk.gray('No response received.'));
 		}
+		await showCompressionInfo(agent);
 
 		// Wait for background operations to complete before exiting
 		if (result && result.backgroundOperations) {
@@ -52,6 +54,7 @@ export async function startHeadlessCli(agent: MemAgent, input: string): Promise<
 		} else {
 			console.log(chalk.gray('No response received.'));
 		}
+		await showCompressionInfo(agent);
 
 		// Wait for background operations to complete before exiting
 		if (result && result.backgroundOperations) {
@@ -64,18 +67,60 @@ export async function startHeadlessCli(agent: MemAgent, input: string): Promise<
 	}
 }
 
+// --- Token-Aware Compression System Startup Message ---
+let lastCompressionHistoryLength = 0;
+let compressionSystemActive = false;
+
+async function showCompressionStartup(agent: MemAgent) {
+	try {
+		const session = await agent.getSession(agent.getCurrentSessionId());
+		if (session) {
+			const ctx = session.getContextManager();
+			const stats = ctx.getTokenStats();
+			if (stats.maxTokens > 0) {
+				compressionSystemActive = true;
+				console.log(chalk.green('🧠 Token-Aware Compression System is ACTIVE'));
+				console.log(chalk.gray(`• Max tokens: ${stats.maxTokens}, Compression strategy: ${ctx["compressionStrategy"]?.name || "unknown"}`));
+				lastCompressionHistoryLength = ctx["compressionHistory"]?.length || 0;
+			}
+		}
+	} catch {}
+}
+
+async function showCompressionInfo(agent: MemAgent) {
+	try {
+		const session = await agent.getSession(agent.getCurrentSessionId());
+			if (session) {
+				const ctx = session.getContextManager();
+				const history = ctx["compressionHistory"];
+				if (Array.isArray(history) && history.length > lastCompressionHistoryLength) {
+					const event = history[history.length - 1];
+					console.log(chalk.yellowBright('⚡ Context compressed:') +
+					  chalk.gray(` [${event?.strategy}] `) +
+					  chalk.white(`Tokens: ${event?.originalTokenCount} → ${event?.compressedTokenCount} `) +
+					  chalk.gray(`(${Math.round((event?.compressionRatio ?? 0) * 100)}%) `) +
+					  chalk.gray(`Messages removed: ${event?.removedMessages.length}`)
+					);
+					lastCompressionHistoryLength = history.length;
+				}
+			}
+	} catch {}
+}
+
 /**
  * Start interactive CLI mode where user can continuously chat with the agent
  */
 export async function startInteractiveCli(agent: MemAgent): Promise<void> {
-	// Common initialization
 	await _initCli(agent);
 
-	console.log(chalk.cyan('🚀 Welcome to Cipher Interactive CLI!'));
-	console.log(chalk.gray('Your memory-powered coding assistant is ready.'));
-	console.log(chalk.gray('• Type /help to see available commands'));
-	console.log(chalk.gray('• Use /exit or /quit to end the session'));
-	console.log(chalk.gray('• Regular messages will be sent to the AI agent\n'));
+	// Force session/context/llmService/tokenizer/compression initialization and logging before CLI UI
+	const session = await agent.getSession(agent.getCurrentSessionId());
+	if (session && typeof session.init === 'function') {
+		await session.init();
+	}
+
+	await showCompressionStartup(agent);
+	await new Promise(res => process.stderr.write('', res));
 
 	const rl = readline.createInterface({
 		input: process.stdin,
@@ -93,7 +138,14 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 	rl.on('SIGINT', handleExit);
 	rl.on('SIGTERM', handleExit);
 
-	rl.prompt();
+	setTimeout(() => {
+		console.log(chalk.cyan('🚀 Welcome to Cipher Interactive CLI!'));
+		console.log(chalk.gray('Your memory-powered coding assistant is ready.'));
+		console.log(chalk.gray('• Type /help to see available commands'));
+		console.log(chalk.gray('• Use /exit or /quit to end the session'));
+		console.log(chalk.gray('• Regular messages will be sent to the AI agent\n'));
+		rl.prompt();
+	}, 0);
 
 	rl.on('line', async (input: string) => {
 		const trimmedInput = input.trim();
@@ -131,6 +183,7 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 				} else {
 					console.log(chalk.gray('No response received.'));
 				}
+				await showCompressionInfo(agent);
 
 				// Let background operations run in the background without blocking the UI
 				if (result && result.backgroundOperations) {
@@ -168,6 +221,11 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 					// Handle regular user prompt - pass to agent
 					console.log(chalk.gray('🤔 Thinking...'));
 					const result = await agent.run(trimmedInput);
+					if (result && result.backgroundOperations) {
+						try {
+							await result.backgroundOperations;
+						} catch { /* lỗi đã log, bỏ qua */ }
+					}
 
 					if (result && result.response) {
 						// Display the AI response with nice formatting
@@ -175,6 +233,8 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 					} else {
 						console.log(chalk.gray('No response received.'));
 					}
+					await showCompressionInfo(agent);
+					rl.prompt();
 
 					// Let background operations run in the background without blocking the UI
 					if (result && result.backgroundOperations) {

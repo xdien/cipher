@@ -141,5 +141,98 @@ export function createLLMService(
 	contextManager: ContextManager,
 	unifiedToolManager?: UnifiedToolManager
 ): ILLMService {
-	return _createLLMService(config, mcpManager, contextManager, unifiedToolManager);
+	const service = _createLLMService(config, mcpManager, contextManager, unifiedToolManager);
+	
+	// Configure token-aware compression for the context manager
+	configureCompressionForService(config, contextManager);
+	
+	return service;
+}
+
+/**
+ * Configure compression settings for the context manager based on LLM config
+ */
+async function configureCompressionForService(
+	config: LLMConfig,
+	contextManager: ContextManager
+): Promise<void> {
+	try {
+		// Extract provider and model info
+		const provider = config.provider.toLowerCase();
+		const model = config.model;
+		
+		// Get context window size from defaults since it's not in config
+		const contextWindow = getDefaultContextWindow(provider, model);
+		
+		// Configure compression asynchronously to avoid blocking service creation
+		setImmediate(async () => {
+			try {
+				await contextManager.configureCompression(provider, model, contextWindow);
+				logger.debug('Token-aware compression configured for LLM service', {
+					provider,
+					model,
+					contextWindow
+				});
+			} catch (error) {
+				logger.warn('Failed to configure compression for LLM service', {
+					error: (error as Error).message,
+					provider,
+					model
+				});
+			}
+		});
+		
+	} catch (error) {
+		logger.error('Error in compression configuration', { error });
+	}
+}
+
+/**
+ * Get default context window size for provider/model combinations
+ */
+function getDefaultContextWindow(provider: string, model?: string): number {
+	const defaults: Record<string, Record<string, number>> = {
+		openai: {
+			'gpt-3.5-turbo': 16385,
+			'gpt-4': 8192,
+			'gpt-4-32k': 32768,
+			'gpt-4-turbo': 128000,
+			'gpt-4o': 128000,
+			'gpt-4o-mini': 128000,
+			'o1-preview': 128000,
+			'o1-mini': 128000,
+			default: 8192
+		},
+		anthropic: {
+			'claude-3-opus': 200000,
+			'claude-3-sonnet': 200000,
+			'claude-3-haiku': 200000,
+			'claude-3-5-sonnet': 200000,
+			'claude-2.1': 200000,
+			'claude-2.0': 100000,
+			'claude-instant-1.2': 100000,
+			default: 200000
+		},
+		google: {
+			'gemini-pro': 32760,
+			'gemini-pro-vision': 16384,
+			'gemini-ultra': 32760,
+			'gemini-1.5-pro': 1000000,
+			'gemini-1.5-flash': 1000000,
+			default: 32760
+		},
+		ollama: {
+			default: 8192 // Conservative default for local models
+		},
+		openrouter: {
+			default: 8192 // Varies by model, conservative default
+		}
+	};
+	
+	const providerDefaults = defaults[provider];
+	if (!providerDefaults) {
+		return 8192; // Global fallback
+	}
+	
+	return providerDefaults[model || 'default'] || providerDefaults.default || 8192;
 }
