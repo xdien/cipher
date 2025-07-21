@@ -49,7 +49,12 @@ describe('ContextManager Token-Aware Compression Integration', () => {
 	beforeEach(() => {
 		mockFormatter = new MockFormatter();
 		mockPromptManager = new MockPromptManager();
-		contextManager = new ContextManager(mockFormatter, mockPromptManager as any);
+		contextManager = new ContextManager(
+			mockFormatter,
+			mockPromptManager as any,
+			undefined,
+			undefined
+		);
 	});
 
 	describe('Compression Configuration', () => {
