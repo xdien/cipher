@@ -126,11 +126,13 @@ CIPHER_WAL_FLUSH_INTERVAL=5000
 - If either backend fails to connect, Cipher will fall back to in-memory storage (with a warning in logs).
 
 **Verifying Multi-Backend Persistence:**
+
 - PostgreSQL tables: `cipher_store`, `cipher_lists`, `cipher_list_metadata`
 - SQLite tables: `store`, `lists`, `list_metadata`
 - Messages are stored under keys like `messages:<sessionId>` in the `lists`/`cipher_lists` tables.
 
 **Example:**
+
 ```bash
 export CIPHER_MULTI_BACKEND=1
 export CIPHER_PG_URL="postgres://cipheruser:cipherpass@localhost:5432/cipherdb"

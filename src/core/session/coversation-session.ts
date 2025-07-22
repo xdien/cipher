@@ -9,7 +9,10 @@ import { createLLMService } from '../brain/llm/services/factory.js';
 import { MemAgentStateManager } from '../brain/memAgent/state-manager.js';
 import { ReasoningContentDetector } from '../brain/reasoning/content-detector.js';
 import { SearchContextManager } from '../brain/reasoning/search-context-manager.js';
-import { createMultiBackendHistoryProvider, createDatabaseHistoryProvider } from '../brain/llm/messages/history/factory.js';
+import {
+	createMultiBackendHistoryProvider,
+	createDatabaseHistoryProvider,
+} from '../brain/llm/messages/history/factory.js';
 import { WALHistoryProvider } from '../brain/llm/messages/history/wal.js';
 import { StorageManager } from '../storage/manager.js';
 import { Logger } from '../logger/index.js';
@@ -95,7 +98,8 @@ export class ConversationSession {
 		if (options?.sessionMemoryMetadata) this.sessionMemoryMetadata = options.sessionMemoryMetadata;
 		if (options?.mergeMetadata) this.mergeMetadata = options.mergeMetadata;
 		if (options?.metadataSchema) this.metadataSchema = options.metadataSchema;
-		if (options?.beforeMemoryExtraction) this.beforeMemoryExtraction = options.beforeMemoryExtraction;
+		if (options?.beforeMemoryExtraction)
+			this.beforeMemoryExtraction = options.beforeMemoryExtraction;
 		if (typeof options?.historyEnabled === 'boolean') this.historyEnabled = options.historyEnabled;
 		if (options?.historyBackend) this.historyBackend = options.historyBackend;
 	}
@@ -132,19 +136,32 @@ export class ConversationSession {
 		let historyProvider: IConversationHistoryProvider | undefined = undefined;
 		// Multi-backend config example (can be extended to use env/config)
 		const multiBackendEnabled = !!process.env.CIPHER_MULTI_BACKEND;
-		const flushIntervalMs = process.env.CIPHER_WAL_FLUSH_INTERVAL ? parseInt(process.env.CIPHER_WAL_FLUSH_INTERVAL, 10) : 5000;
+		const flushIntervalMs = process.env.CIPHER_WAL_FLUSH_INTERVAL
+			? parseInt(process.env.CIPHER_WAL_FLUSH_INTERVAL, 10)
+			: 5000;
 		if (this.historyEnabled) {
 			try {
 				if (multiBackendEnabled) {
 					// Example: primary = Postgres, backup = SQLite, WAL = in-memory
-					const primaryStorage = new StorageManager({ database: { type: 'postgres' as const, url: process.env.CIPHER_PG_URL }, cache: { type: 'in-memory' as const } });
+					const primaryStorage = new StorageManager({
+						database: { type: 'postgres' as const, url: process.env.CIPHER_PG_URL },
+						cache: { type: 'in-memory' as const },
+					});
 					await primaryStorage.connect();
-					const backupStorage = new StorageManager({ database: { type: 'sqlite' as const, path: './cipher-backup.db' }, cache: { type: 'in-memory' as const } });
+					const backupStorage = new StorageManager({
+						database: { type: 'sqlite' as const, path: './cipher-backup.db' },
+						cache: { type: 'in-memory' as const },
+					});
 					await backupStorage.connect();
 					const primaryProvider = createDatabaseHistoryProvider(primaryStorage);
 					const backupProvider = createDatabaseHistoryProvider(backupStorage);
 					const wal = new WALHistoryProvider();
-					historyProvider = createMultiBackendHistoryProvider(primaryProvider, backupProvider, wal, flushIntervalMs);
+					historyProvider = createMultiBackendHistoryProvider(
+						primaryProvider,
+						backupProvider,
+						wal,
+						flushIntervalMs
+					);
 					logger.debug(`Session ${this.id}: Multi-backend history provider initialized.`);
 				} else if (this.historyBackend === 'database') {
 					const storageConfig = {
