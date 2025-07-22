@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { DatabaseHistoryProvider } from '../database.js';
 import { StorageManager } from '../../../../../storage/manager.js';
 import type { InternalMessage } from '../../types.js';
+import { InMemoryBackend } from '../../../../../storage/backend/in-memory.js';
 
 const mockLogger = { error: () => {}, warn: () => {}, debug: () => {} };
 
@@ -20,19 +21,25 @@ describe.each(storageConfigs)('DatabaseHistoryProvider integration ($name)', ({ 
 	let sessionId: string;
 	let message: InternalMessage;
 	let storageManager: StorageManager;
+	let backend: any;
 
 	beforeEach(async () => {
 		sessionId = 'integration-session';
 		message = { role: 'user', content: 'integration test' };
-		storageManager = new StorageManager(config);
-		await storageManager.connect();
+		backend = new InMemoryBackend();
+		await backend.connect();
+		storageManager = {
+			getBackends: () => ({ database: backend }),
+		} as any;
 		provider = new DatabaseHistoryProvider(storageManager);
 		await provider.clearHistory(sessionId);
 	});
 
 	afterEach(async () => {
 		await provider.clearHistory(sessionId);
-		await storageManager.disconnect();
+		if (typeof storageManager.disconnect === 'function') {
+			await storageManager.disconnect();
+		}
 	});
 
 	it('should save and retrieve messages with real storage', async () => {

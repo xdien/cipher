@@ -9,7 +9,8 @@ import { createLLMService } from '../brain/llm/services/factory.js';
 import { MemAgentStateManager } from '../brain/memAgent/state-manager.js';
 import { ReasoningContentDetector } from '../brain/reasoning/content-detector.js';
 import { SearchContextManager } from '../brain/reasoning/search-context-manager.js';
-import { createDatabaseHistoryProvider } from '../brain/llm/messages/history/factory.js';
+import { createMultiBackendHistoryProvider, createDatabaseHistoryProvider } from '../brain/llm/messages/history/factory.js';
+import { WALHistoryProvider } from '../brain/llm/messages/history/wal.js';
 import { StorageManager } from '../storage/manager.js';
 import { Logger } from '../logger/index.js';
 import type { ZodSchema } from 'zod';
@@ -136,14 +137,28 @@ export class ConversationSession {
 	 * Initializes the services for the session, including the history provider.
 	 */
 	private async initializeServices(): Promise<void> {
+		console.log(`[Cipher DEBUG] Initializing session with historyBackend='${this.historyBackend}'`);
 		const llmConfig = this.services.stateManager.getLLMConfig(this.id);
 		let historyProvider: IConversationHistoryProvider | undefined = undefined;
+		// Multi-backend config example (can be extended to use env/config)
+		const multiBackendEnabled = !!process.env.CIPHER_MULTI_BACKEND;
+		const flushIntervalMs = process.env.CIPHER_WAL_FLUSH_INTERVAL ? parseInt(process.env.CIPHER_WAL_FLUSH_INTERVAL, 10) : 5000;
 		if (this.historyEnabled) {
 			try {
-				if (this.historyBackend === 'database') {
-					// Use a valid storage config with both database and cache
+				if (multiBackendEnabled) {
+					// Example: primary = Postgres, backup = SQLite, WAL = in-memory
+					const primaryStorage = new StorageManager({ database: { type: 'postgres' as const, url: process.env.CIPHER_PG_URL }, cache: { type: 'in-memory' as const } });
+					await primaryStorage.connect();
+					const backupStorage = new StorageManager({ database: { type: 'sqlite' as const, path: './cipher-backup.db' }, cache: { type: 'in-memory' as const } });
+					await backupStorage.connect();
+					const primaryProvider = createDatabaseHistoryProvider(primaryStorage);
+					const backupProvider = createDatabaseHistoryProvider(backupStorage);
+					const wal = new WALHistoryProvider();
+					historyProvider = createMultiBackendHistoryProvider(primaryProvider, backupProvider, wal, flushIntervalMs);
+					logger.debug(`Session ${this.id}: Multi-backend history provider initialized.`);
+				} else if (this.historyBackend === 'database') {
 					const storageConfig = {
-						database: { type: 'in-memory' as const },
+						database: { type: 'sqlite' as const, path: './data' },
 						cache: { type: 'in-memory' as const },
 					};
 					const storageManager = new StorageManager(storageConfig);
@@ -464,7 +479,7 @@ export class ConversationSession {
 	 */
 	private async enforceReflectionMemoryProcessing(
 		userInput: string,
-		_aiResponse: string
+		aiResponse: string
 	): Promise<void> {
 		try {
 			logger.debug('ConversationSession: Enforcing reflection memory processing');
@@ -722,7 +737,7 @@ export class ConversationSession {
 						// Summarize key arguments for memory (avoid storing full large content)
 						const keyArgs = this.summarizeToolArguments(toolName, parsedArgs);
 						args = keyArgs ? ` with ${keyArgs}` : '';
-					} catch {
+					} catch (_e) {
 						// If parsing fails, just note that there were arguments
 						args = ' with arguments';
 					}
@@ -800,7 +815,7 @@ export class ConversationSession {
 			}
 
 			return 'result received';
-		} catch {
+		} catch (_e) {
 			// If parsing fails, provide a basic summary
 			const contentStr = String(content);
 			return contentStr.length > 100 ? `${contentStr.substring(0, 100)}...` : contentStr;
