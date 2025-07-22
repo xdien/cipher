@@ -69,6 +69,7 @@ describe('MultiBackendHistoryProvider', () => {
     (primary.getHistory as any).mockRejectedValueOnce(new Error('fail'));
     (backup.getHistory as any).mockResolvedValueOnce([makeMessage('backup')]);
     const result = await provider.getHistory(sessionId);
-    expect(result[0].content).toBe('backup');
+    expect(result[0]).toBeDefined();
+    expect(result[0]?.content).toBe('backup');
   });
 }); 

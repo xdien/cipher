@@ -55,9 +55,6 @@ export class ConversationSession {
 	private historyProvider: IConversationHistoryProvider | undefined;
 	private historyEnabled: boolean = true;
 	private historyBackend: 'database' | 'memory' = 'database';
-	private historyProvider: IConversationHistoryProvider | undefined;
-	private historyEnabled: boolean = true;
-	private historyBackend: 'database' | 'memory' = 'database';
 
 	private sessionMemoryMetadata?: Record<string, any>;
 	private mergeMetadata?: (
@@ -91,30 +88,14 @@ export class ConversationSession {
 			) => Record<string, any>;
 			metadataSchema?: ZodSchema<any>;
 			beforeMemoryExtraction?: (meta: Record<string, any>, context: Record<string, any>) => void;
-			// New: history management options
-			historyEnabled?: boolean;
-			historyBackend?: 'database' | 'memory';
-			// New: history management options
 			historyEnabled?: boolean;
 			historyBackend?: 'database' | 'memory';
 		}
 	) {
-		logger.debug('ConversationSession initialized with services', { services, id });
-		if (
-			options?.sessionMemoryMetadata &&
-			typeof options.sessionMemoryMetadata === 'object' &&
-			!Array.isArray(options.sessionMemoryMetadata)
-		) {
-			this.sessionMemoryMetadata = options.sessionMemoryMetadata;
-		}
+		if (options?.sessionMemoryMetadata) this.sessionMemoryMetadata = options.sessionMemoryMetadata;
 		if (options?.mergeMetadata) this.mergeMetadata = options.mergeMetadata;
 		if (options?.metadataSchema) this.metadataSchema = options.metadataSchema;
-		if (options?.beforeMemoryExtraction)
-			this.beforeMemoryExtraction = options.beforeMemoryExtraction;
-		// New: read history options
-		if (typeof options?.historyEnabled === 'boolean') this.historyEnabled = options.historyEnabled;
-		if (options?.historyBackend) this.historyBackend = options.historyBackend;
-		// New: read history options
+		if (options?.beforeMemoryExtraction) this.beforeMemoryExtraction = options.beforeMemoryExtraction;
 		if (typeof options?.historyEnabled === 'boolean') this.historyEnabled = options.historyEnabled;
 		if (options?.historyBackend) this.historyBackend = options.historyBackend;
 	}
@@ -126,9 +107,6 @@ export class ConversationSession {
 		this.sessionMemoryMetadata = { ...this.sessionMemoryMetadata, ...newMeta };
 	}
 
-	/**
-	 * Initialize all services for the session, including history provider.
-	 */
 	/**
 	 * Initialize all services for the session, including history provider.
 	 */
@@ -144,19 +122,8 @@ export class ConversationSession {
 			}
 		}
 	}
-		// Restore history if enabled and provider exists
-		if (this.historyEnabled && this.historyProvider && this.contextManager) {
-			try {
-				await this.contextManager.restoreHistory?.();
-				logger.debug(`Session ${this.id}: Conversation history restored.`);
-			} catch (err) {
-				logger.warn(`Session ${this.id}: Failed to restore conversation history: ${err}`);
-			}
-		}
-	}
 
 	/**
-	 * Initializes the services for the session, including the history provider.
 	 * Initializes the services for the session, including the history provider.
 	 */
 	private async initializeServices(): Promise<void> {
@@ -385,7 +352,6 @@ export class ConversationSession {
 			}
 
 			// Extract comprehensive interaction data including tool usage
-			const comprehensiveInteractionData = await this.extractComprehensiveInteractionData(
 			const comprehensiveInteractionData = await this.extractComprehensiveInteractionData(
 				userInput,
 				aiResponse
@@ -701,17 +667,12 @@ export class ConversationSession {
 		userInput: string,
 		aiResponse: string
 	): Promise<string[]> {
-	private async extractComprehensiveInteractionData(
-		userInput: string,
-		aiResponse: string
-	): Promise<string[]> {
 		const interactionData: string[] = [];
 
 		// Start with the user input
 		interactionData.push(`User: ${userInput}`);
 
 		// Get recent messages from context manager to extract tool usage
-		const recentMessages = await this.contextManager.getRawMessages();
 		const recentMessages = await this.contextManager.getRawMessages();
 
 		// Find messages from this current interaction (after the user input)
@@ -893,20 +854,6 @@ export class ConversationSession {
 					return `error: ${String(result.error).substring(0, 50)}`;
 				}
 				return 'completed';
-		}
-	}
-
-	/**
-	 * Disconnects the history provider if it exists (for session teardown).
-	 */
-	public async disconnect(): Promise<void> {
-		if (this.historyProvider && typeof (this.historyProvider as any).disconnect === 'function') {
-			try {
-				await (this.historyProvider as any).disconnect();
-				logger.debug(`Session ${this.id}: History provider disconnected.`);
-			} catch (err) {
-				logger.warn(`Session ${this.id}: Failed to disconnect history provider: ${err}`);
-			}
 		}
 	}
 

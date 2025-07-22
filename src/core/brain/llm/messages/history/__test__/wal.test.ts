@@ -20,8 +20,10 @@ describe('WALHistoryProvider', () => {
     await wal.saveMessage(sessionId, makeMessage('b'));
     const history = await wal.getHistory(sessionId);
     expect(history.length).toBe(2);
-    expect(history[0].content).toBe('a');
-    expect(history[1].content).toBe('b');
+    expect(history[0]).toBeDefined();
+    expect(history[0]?.content).toBe('a');
+    expect(history[1]).toBeDefined();
+    expect(history[1]?.content).toBe('b');
   });
 
   it('returns only unflushed entries as pending', async () => {
@@ -34,7 +36,8 @@ describe('WALHistoryProvider', () => {
     await wal.markFlushed(sessionId, msgA);
     pending = await wal.getPendingEntries();
     expect(pending.length).toBe(1);
-    expect(pending[0].message.content).toBe('b');
+    expect(pending[0]).toBeDefined();
+    expect(pending[0]?.message.content).toBe('b');
   });
 
   it('clears history for a session', async () => {
