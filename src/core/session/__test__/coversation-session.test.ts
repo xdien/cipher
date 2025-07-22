@@ -91,7 +91,7 @@ describe('ConversationSession', () => {
 			addMessage: vi.fn(),
 			getMessages: vi.fn().mockReturnValue([]),
 			clearMessages: vi.fn(),
-			getRawMessages: vi.fn().mockReturnValue([]), // <-- Add this line
+			getRawMessages: vi.fn().mockResolvedValue([]), // Updated to async
 		};
 
 		mockLLMService = {

@@ -14,6 +14,16 @@ describe('createDatabaseHistoryProvider', () => {
 		const provider = createDatabaseHistoryProvider(storageManager);
 		expect(provider).toBeInstanceOf(DatabaseHistoryProvider);
 	});
+	it('should create a DatabaseHistoryProvider instance for in-memory backend', async () => {
+		const config = {
+			cache: { type: 'in-memory' as const },
+			database: { type: 'in-memory' as const },
+		};
+		const storageManager = new StorageManager(config);
+		await storageManager.connect();
+		const provider = createDatabaseHistoryProvider(storageManager);
+		expect(provider).toBeInstanceOf(DatabaseHistoryProvider);
+	});
 
 	it('should create a DatabaseHistoryProvider instance for SQLite backend', async () => {
 		let hasSqlite = true;
@@ -65,6 +75,11 @@ describe('createDatabaseHistoryProvider', () => {
 		expect(provider).toBeInstanceOf(DatabaseHistoryProvider);
 	});
 
+	it('should throw for misconfigured backend', async () => {
+		const config = { cache: { type: 'in-memory' as const }, database: { type: 'unknown' as any } };
+		// StorageManager constructor should throw synchronously for invalid config
+		expect(() => new StorageManager(config)).toThrow(/Invalid backend type/);
+	});
 	it('should throw for misconfigured backend', async () => {
 		const config = { cache: { type: 'in-memory' as const }, database: { type: 'unknown' as any } };
 		// StorageManager constructor should throw synchronously for invalid config

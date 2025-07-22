@@ -279,47 +279,6 @@ Add to your Claude Desktop MCP configuration file:
 }
 ```
 
-#### Cursor/Windsurf Configuration
-
-Add to your MCP settings:
-
-```json
-{
-	"mcpServers": {
-		"cipher-memory": {
-			"type": "stdio",
-			"command": "cipher",
-			"args": ["--mode", "mcp", "--agent", "memAgent/cipher.yml"],
-			"env": {
-				"OPENAI_API_KEY": "sk-your-openai-key",
-				"CIPHER_LOG_LEVEL": "info"
-			}
-		}
-	}
-}
-```
-
-#### With Custom Configuration
-
-```json
-{
-	"mcpServers": {
-		"cipher": {
-			"type": "stdio",
-			"command": "cipher",
-			"args": ["--mode", "mcp", "--agent", "/path/to/custom-config.yml", "--strict"],
-			"env": {
-				"OPENAI_API_KEY": "sk-your-openai-key",
-				"ANTHROPIC_API_KEY": "sk-ant-your-anthropic-key",
-				"OPENROUTER_API_KEY": "sk-or-your-openrouter-key",
-				"CIPHER_LOG_LEVEL": "debug",
-				"NODE_ENV": "production"
-			}
-		}
-	}
-}
-```
-
 ### Environment Variables
 
 The MCP server requires at least one LLM provider API key:
@@ -336,39 +295,87 @@ CIPHER_LOG_LEVEL=info
 NODE_ENV=production
 ```
 
-### Available Capabilities
+### MCP Aggregator Mode
 
-When running as an MCP server, Cipher exposes:
+Cipher now supports a new **MCP Aggregator Mode** that exposes all available tools (not just `ask_cipher`) to MCP clients, including all built-in tools for cipher, such as `cipher_search_memory` and MCP server tools specified in `cipher.yml`. This is controlled by the `MCP_SERVER_MODE` environment variable.
 
-**Tools:**
+#### Modes
 
-- `ask_cipher` - Chat interface with the memory-powered agent
-- Dynamic tool discovery from your agent configuration
+- **default**: Only the `ask_cipher` tool is available.
+- **aggregator**: All tools (including those from connected MCP servers) are available, with conflict resolution and timeout options.
 
-**Resources:**
-
-- `cipher://agent/card` - Agent metadata and information
-- `cipher://agent/stats` - Runtime statistics and metrics
-
-**Prompts:**
-
-- `system_prompt` - Current system prompt used by the agent
-
-### Configuration Options
+#### Environment Variables
 
 ```bash
-# Basic MCP server
-cipher --mode mcp
+# Select MCP server mode: 'default' (only ask_cipher) or 'aggregator' (all tools)
+MCP_SERVER_MODE=aggregator
 
-# With custom agent config
-cipher --mode mcp --agent /path/to/custom-config.yml
+# (Optional) Tool name conflict resolution: 'prefix' (default), 'first-wins', or 'error'
+AGGREGATOR_CONFLICT_RESOLUTION=prefix
 
-# Strict mode (all MCP connections must succeed)
-cipher --mode mcp --strict
-
-# With new session
-cipher --mode mcp --new-session my-session-id
+# (Optional) Tool execution timeout in milliseconds (default: 60000)
+AGGREGATOR_TIMEOUT=60000
 ```
+
+#### Example MCP Aggregator JSON Config
+
+```json
+{
+	"mcpServers": {
+		"cipher-aggregator": {
+			"type": "stdio",
+			"command": "cipher",
+			"args": ["--mode", "mcp"],
+			"env": {
+				"OPENAI_API_KEY": "sk-your-openai-key",
+				"MCP_SERVER_MODE": "aggregator",
+				"AGGREGATOR_CONFLICT_RESOLUTION": "prefix",
+				"AGGREGATOR_TIMEOUT": "60000"
+			}
+		}
+	}
+}
+```
+
+- In **aggregator** mode, all tools are exposed. Tool name conflicts are resolved according to `AGGREGATOR_CONFLICT_RESOLUTION`.
+- If you want only the `ask_cipher` tool, set `MCP_SERVER_MODE=default` or omit the variable.
+
+---
+
+### SSE Transport Support
+
+Cipher now supports **SSE (Server-Sent Events)** as a transport for MCP server mode, in addition to `stdio` and `http`.
+
+#### CLI Usage
+
+To start Cipher in MCP mode with SSE transport:
+
+```bash
+cipher --mode mcp --mcp-transport-type sse --mcp-port 4000
+```
+
+- `--mcp-transport-type sse` enables SSE transport.
+- `--mcp-port 4000` sets the port (default: 3000).
+
+#### Example MCP Client Config for SSE
+
+```json
+{
+	"mcpServers": {
+		"cipher-sse": {
+			"type": "sse",
+			"url": "http://localhost:4000/mcp",
+			"env": {
+				"OPENAI_API_KEY": "sk-your-openai-key"
+			}
+		}
+	}
+}
+```
+
+- Set `"type": "sse"` and provide the `"url"` to the running Cipher SSE server.
+
+---
 
 ## Use Case: Claude Code with Cipher MCP
 
