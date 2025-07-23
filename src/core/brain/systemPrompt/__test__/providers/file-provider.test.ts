@@ -172,7 +172,7 @@ describe('FilePromptProvider', () => {
       await fs.writeFile(testFile, updatedContent);
       
       // Small delay to ensure file modification time changes
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise(resolve => setTimeout(resolve, 200));
       
       result = await provider.generateContent(mockContext);
       expect(result).toBe(updatedContent);

@@ -47,6 +47,9 @@ A complete refactor introducing a **plugin-based architecture** that provides:
 ### Before vs After
 
 #### Before (Monolithic)
+<details>
+<summary>Click to view legacy implementation</summary>
+
 ```typescript
 // Hard-coded in manager.ts
 export class PromptManager {
@@ -59,8 +62,12 @@ export class PromptManager {
   }
 }
 ```
+</details>
 
 #### After (Plugin-Based)
+<details>
+<summary>Click to view new plugin-based implementation</summary>
+
 ```typescript
 // Flexible provider system
 export class EnhancedPromptManager {
@@ -73,6 +80,7 @@ export class EnhancedPromptManager {
   }
 }
 ```
+</details>
 
 ### Architecture Diagram
 ```
@@ -121,6 +129,9 @@ src/core/brain/systemPrompt/
 ### Core Interfaces
 
 #### ProviderContext
+<details>
+<summary>Click to view ProviderContext interface</summary>
+
 ```typescript
 interface ProviderContext {
   /** Current timestamp */
@@ -135,8 +146,12 @@ interface ProviderContext {
   metadata?: Record<string, any>;
 }
 ```
+</details>
 
 #### PromptProvider
+<details>
+<summary>Click to view PromptProvider interface</summary>
+
 ```typescript
 interface PromptProvider {
   readonly id: string;
@@ -151,8 +166,12 @@ interface PromptProvider {
   destroy(): Promise<void>;
 }
 ```
+</details>
 
 #### SystemPromptConfig
+<details>
+<summary>Click to view SystemPromptConfig interface</summary>
+
 ```typescript
 interface SystemPromptConfig {
   providers: ProviderConfig[];
@@ -163,6 +182,7 @@ interface SystemPromptConfig {
   };
 }
 ```
+</details>
 
 ---
 
@@ -172,6 +192,9 @@ interface SystemPromptConfig {
 **Purpose**: Fixed content with template variable support
 
 #### Configuration
+<details>
+<summary>Click to view Static Provider configuration example</summary>
+
 ```json
 {
   "name": "main-instructions",
@@ -186,6 +209,7 @@ interface SystemPromptConfig {
   }
 }
 ```
+</details>
 
 #### Features
 - Template variable substitution: `{{variable}}`
@@ -197,6 +221,9 @@ interface SystemPromptConfig {
 **Purpose**: Runtime-generated content based on context
 
 #### Configuration
+<details>
+<summary>Click to view Dynamic Provider configuration example</summary>
+
 ```json
 {
   "name": "session-info",
@@ -213,6 +240,7 @@ interface SystemPromptConfig {
   }
 }
 ```
+</details>
 
 #### Built-in Generators
 - **`timestamp`**: Current date/time in various formats
@@ -222,6 +250,9 @@ interface SystemPromptConfig {
 - **`conditional`**: Conditional content based on context
 
 #### Custom Generator Example
+<details>
+<summary>Click to view custom generator implementation</summary>
+
 ```typescript
 // Register a custom generator
 DynamicPromptProvider.registerGenerator('user-stats', async (context, config) => {
@@ -233,11 +264,15 @@ DynamicPromptProvider.registerGenerator('user-stats', async (context, config) =>
   return `User has ${stats.totalSessions} sessions, last active: ${stats.lastActive}`;
 });
 ```
+</details>
 
 ### 3. File-based Provider
 **Purpose**: Load content from external files
 
 #### Configuration
+<details>
+<summary>Click to view File-based Provider configuration example</summary>
+
 ```json
 {
   "name": "custom-instructions",
@@ -256,6 +291,7 @@ DynamicPromptProvider.registerGenerator('user-stats', async (context, config) =>
   }
 }
 ```
+</details>
 
 #### Features
 - Supports relative and absolute paths
@@ -271,6 +307,9 @@ DynamicPromptProvider.registerGenerator('user-stats', async (context, config) =>
 ### Configuration Manager
 
 #### Loading Configuration
+<details>
+<summary>Click to view configuration loading examples</summary>
+
 ```typescript
 import { SystemPromptConfigManager } from './config-manager.js';
 
@@ -289,8 +328,12 @@ await configManager.loadFromFile('./prompt-config.json', {
 // Get providers sorted by priority
 const providers = configManager.getEnabledProviders();
 ```
+</details>
 
 #### Environment Variable Substitution
+<details>
+<summary>Click to view environment variable usage</summary>
+
 ```json
 {
   "providers": [
@@ -304,10 +347,14 @@ const providers = configManager.getEnabledProviders();
   ]
 }
 ```
+</details>
 
 ### Example Configurations
 
 #### Basic Configuration
+<details>
+<summary>Click to view basic configuration example</summary>
+
 ```json
 {
   "providers": [
@@ -337,8 +384,12 @@ const providers = configManager.getEnabledProviders();
   }
 }
 ```
+</details>
 
 #### Advanced Configuration
+<details>
+<summary>Click to view advanced configuration example</summary>
+
 ```json
 {
   "providers": [
@@ -400,6 +451,7 @@ const providers = configManager.getEnabledProviders();
   }
 }
 ```
+</details>
 
 ---
 
@@ -408,6 +460,9 @@ const providers = configManager.getEnabledProviders();
 ### Backward Compatibility
 
 The system maintains **100% backward compatibility** through the `LegacyPromptManagerAdapter`:
+
+<details>
+<summary>Click to view backward compatibility example</summary>
 
 ```typescript
 // Existing code continues to work unchanged
@@ -430,10 +485,14 @@ const enhancedPrompt = await adapter.getEnhancedSystemPrompt({
   userId: 'user_456'
 });
 ```
+</details>
 
 ### Migration Strategies
 
 #### Strategy 1: Drop-in Replacement
+<details>
+<summary>Click to view drop-in replacement strategy</summary>
+
 ```typescript
 // Before
 import { PromptManager } from './systemPrompt/manager.js';
@@ -441,8 +500,12 @@ import { PromptManager } from './systemPrompt/manager.js';
 // After - zero code changes needed
 import { LegacyPromptManagerAdapter as PromptManager } from './systemPrompt/legacy-adapter.js';
 ```
+</details>
 
 #### Strategy 2: Gradual Enhancement
+<details>
+<summary>Click to view gradual enhancement strategy</summary>
+
 ```typescript
 // Start with legacy, gradually enable features
 const manager = new LegacyPromptManagerAdapter();
@@ -460,8 +523,12 @@ if (manager.isEnhancedMode()) {
   console.log(`Generated in ${stats.averageGenerationTime}ms`);
 }
 ```
+</details>
 
 #### Strategy 3: Full Migration
+<details>
+<summary>Click to view full migration strategy</summary>
+
 ```typescript
 // Migrate existing PromptManager to EnhancedPromptManager
 import { PromptManagerMigration } from './systemPrompt/legacy-adapter.js';
@@ -482,10 +549,14 @@ const result = await enhancedManager.generateSystemPrompt({
   sessionId: 'current_session'
 });
 ```
+</details>
 
 ### Integration Points
 
 #### Service Initializer
+<details>
+<summary>Click to view service initializer integration</summary>
+
 ```typescript
 // File: src/core/utils/service-initializer.ts
 
@@ -507,8 +578,12 @@ if (typeof agentConfig.systemPrompt === 'string') {
   await promptManager.loadConfigFromObject(agentConfig.systemPromptConfig);
 }
 ```
+</details>
 
 #### Message Manager
+<details>
+<summary>Click to view message manager integration</summary>
+
 ```typescript
 // File: src/core/brain/llm/messages/manager.ts
 
@@ -527,6 +602,7 @@ getSystemPrompt(): string {
   return this.promptManager.getCompleteSystemPrompt();
 }
 ```
+</details>
 
 ---
 
@@ -548,6 +624,9 @@ cipher --show-prompt  # Shows current system prompt
 #### Step 1: Create Enhanced Config File
 
 Create `./memAgent/cipher-enhanced.yml`:
+
+<details>
+<summary>Click to view complete enhanced configuration file</summary>
 
 ```yaml
 # Standard agent configuration
@@ -689,10 +768,14 @@ systemPromptConfig:
     failOnProviderError: false # Continue even if some providers fail
     contentSeparator: "\n\n---\n\n"
 ```
+</details>
 
 #### Step 2: Create External Guidelines File
 
 Create `./prompts/project-guidelines.md`:
+
+<details>
+<summary>Click to view project guidelines template</summary>
 
 ```markdown
 # {{project_name}} Project Guidelines
@@ -726,6 +809,7 @@ Create `./prompts/project-guidelines.md`:
 - **User Experience**: Prioritize clear, actionable responses
 - **Performance**: System prompt generation should be <100ms
 ```
+</details>
 
 #### Step 3: Enhanced CLI Usage
 
@@ -897,6 +981,9 @@ $ cipher prompt-providers --enable user-personalization
 ### Custom Dynamic Generators
 
 #### Creating Custom Generators
+<details>
+<summary>Click to view custom generator implementation examples</summary>
+
 ```typescript
 // File: ./extensions/custom-generators.ts
 import { DynamicPromptProvider } from '@/core/brain/systemPrompt';
@@ -931,8 +1018,12 @@ DynamicPromptProvider.registerGenerator('user-preferences', async (context, conf
   `.trim();
 });
 ```
+</details>
 
 #### Using Custom Generators
+<details>
+<summary>Click to view custom generator usage configuration</summary>
+
 ```json
 {
   "name": "code-analysis",
@@ -948,11 +1039,15 @@ DynamicPromptProvider.registerGenerator('user-preferences', async (context, conf
   }
 }
 ```
+</details>
 
 ### Advanced File Provider Usage
 
 #### Template-Based Prompts
 Create `./prompts/role-template.md`:
+<details>
+<summary>Click to view role-based prompt template</summary>
+
 ```markdown
 # {{role_name}} Assistant
 
@@ -974,8 +1069,12 @@ You are a specialized {{role_name}} assistant with expertise in {{domain}}.
 ## Special Instructions
 {{special_instructions}}
 ```
+</details>
 
 Configuration:
+<details>
+<summary>Click to view role-based prompt configuration</summary>
+
 ```json
 {
   "name": "role-based-prompt",
@@ -999,10 +1098,14 @@ Configuration:
   }
 }
 ```
+</details>
 
 ### Conditional Logic Examples
 
 #### Complex Conditional Provider
+<details>
+<summary>Click to view complex conditional logic example</summary>
+
 ```json
 {
   "name": "adaptive-instructions",
@@ -1051,10 +1154,14 @@ Configuration:
   }
 }
 ```
+</details>
 
 ### Performance Optimization
 
 #### Provider Caching
+<details>
+<summary>Click to view provider caching implementation</summary>
+
 ```typescript
 // Custom provider with caching
 export class CachedDynamicProvider extends DynamicPromptProvider {
@@ -1080,8 +1187,12 @@ export class CachedDynamicProvider extends DynamicPromptProvider {
   }
 }
 ```
+</details>
 
 #### Lazy Loading Configuration
+<details>
+<summary>Click to view lazy loading configuration example</summary>
+
 ```json
 {
   "name": "heavy-analysis",
@@ -1098,6 +1209,7 @@ export class CachedDynamicProvider extends DynamicPromptProvider {
   }
 }
 ```
+</details>
 
 ---
 
@@ -1106,6 +1218,9 @@ export class CachedDynamicProvider extends DynamicPromptProvider {
 ### Performance Metrics
 
 #### Built-in Performance Tracking
+<details>
+<summary>Click to view performance tracking implementation</summary>
+
 ```typescript
 // Enhanced manager provides detailed metrics
 const manager = new EnhancedPromptManager();
@@ -1121,18 +1236,26 @@ result.providerResults.forEach(result => {
   console.log(`${result.providerId}: ${result.generationTimeMs}ms ${result.success ? '✅' : '❌'}`);
 });
 ```
+</details>
 
 #### Performance Statistics API
+<details>
+<summary>Click to view performance statistics API usage</summary>
+
 ```typescript
 const stats = await manager.getPerformanceStats();
 console.log(`Average generation time: ${stats.averageGenerationTime}ms`);
 console.log(`Total providers: ${stats.totalProviders}`);
 console.log(`Enabled providers: ${stats.enabledProviders}`);
 ```
+</details>
 
 ### Monitoring & Logging
 
 #### Structured Logging
+<details>
+<summary>Click to view structured logging implementation</summary>
+
 ```typescript
 // Custom logger for prompt generation
 class PromptLogger {
@@ -1159,8 +1282,12 @@ class PromptLogger {
 const result = await manager.generateSystemPrompt(context);
 PromptLogger.logGeneration(result);
 ```
+</details>
 
 #### Health Checks
+<details>
+<summary>Click to view health check monitoring implementation</summary>
+
 ```typescript
 // Provider health monitoring
 class PromptHealthMonitor {
@@ -1198,10 +1325,14 @@ class PromptHealthMonitor {
   }
 }
 ```
+</details>
 
 ### Error Handling
 
 #### Graceful Degradation
+<details>
+<summary>Click to view graceful degradation configuration</summary>
+
 ```json
 {
   "settings": {
@@ -1211,8 +1342,12 @@ class PromptHealthMonitor {
   }
 }
 ```
+</details>
 
 #### Error Recovery Strategies
+<details>
+<summary>Click to view error recovery implementation</summary>
+
 ```typescript
 // Custom error handling in providers
 export class ResilientFileProvider extends FilePromptProvider {
@@ -1232,6 +1367,7 @@ export class ResilientFileProvider extends FilePromptProvider {
   }
 }
 ```
+</details>
 
 ---
 
@@ -1292,6 +1428,9 @@ $ cipher prompt-stats
 ### Debugging Tools
 
 #### Debug Mode Configuration
+<details>
+<summary>Click to view debug mode configuration</summary>
+
 ```json
 {
   "settings": {
@@ -1301,8 +1440,12 @@ $ cipher prompt-stats
   }
 }
 ```
+</details>
 
 #### Provider Testing
+<details>
+<summary>Click to view provider testing implementation</summary>
+
 ```typescript
 // Test individual providers
 async function testProvider(provider: PromptProvider) {
@@ -1325,8 +1468,12 @@ async function testProvider(provider: PromptProvider) {
   }
 }
 ```
+</details>
 
 #### Configuration Validation
+<details>
+<summary>Click to view configuration validation example</summary>
+
 ```typescript
 import { SystemPromptConfigManager } from './config-manager.js';
 
@@ -1339,6 +1486,7 @@ try {
   console.log('❌ Configuration error:', error.message);
 }
 ```
+</details>
 
 ### Performance Troubleshooting
 
@@ -1358,6 +1506,9 @@ Recommendations:
 ```
 
 #### Provider Profiling
+<details>
+<summary>Click to view provider profiling implementation</summary>
+
 ```typescript
 // Profile provider performance
 class ProviderProfiler {
@@ -1381,6 +1532,7 @@ class ProviderProfiler {
   }
 }
 ```
+</details>
 
 ---
 

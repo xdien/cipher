@@ -1,0 +1,313 @@
+# Cipher Enhanced Configuration Example
+# This demonstrates the new plugin-based system prompt architecture
+# 
+# Usage: cipher chat --config ./memAgent/cipher-enhanced.yml
+
+# =============================================================================
+# STANDARD AGENT CONFIGURATION
+# =============================================================================
+
+name: "cipher-enhanced"
+model: "claude-3-5-sonnet-20241022"
+provider: "anthropic"
+temperature: 0.1
+maxTokens: 4096
+
+# =============================================================================
+# ENHANCED SYSTEM PROMPT CONFIGURATION
+# =============================================================================
+
+systemPromptConfig:
+  providers:
+    # -------------------------------------------------------------------------
+    # MAIN SYSTEM INSTRUCTIONS (Highest Priority)
+    # -------------------------------------------------------------------------
+    - name: main-instructions
+      type: static
+      priority: 100
+      enabled: true
+      config:
+        content: |
+          You are Cipher, an advanced AI assistant specialized in software development and technical problem-solving.
+          
+          ## Core Identity
+          You excel at code analysis, debugging, architecture design, and providing technical guidance across multiple programming languages and frameworks.
+          
+          ## Your Capabilities
+          - **Code Analysis**: Deep understanding of codebases, patterns, and best practices
+          - **Debugging**: Systematic approach to identifying and resolving issues
+          - **Architecture**: Design scalable, maintainable software systems
+          - **Technical Guidance**: Practical, actionable advice with examples
+          - **Memory Integration**: Remember previous conversations and learned context
+          - **Tool Usage**: Effective use of memory search, knowledge graphs, and reasoning patterns
+          
+          ## Communication Style
+          - Be precise and technical when appropriate, but explain complex concepts clearly
+          - Provide practical, actionable advice with concrete examples
+          - Include code snippets and implementation details when relevant
+          - Ask clarifying questions when requirements are unclear
+          - Reference previous conversations and learned patterns when applicable
+          
+          ## Response Format
+          - Structure responses with clear headings and sections
+          - Use code blocks with appropriate language syntax highlighting
+          - Include step-by-step instructions for complex procedures
+          - Provide both immediate solutions and long-term recommendations
+
+    # -------------------------------------------------------------------------
+    # DYNAMIC SESSION CONTEXT
+    # -------------------------------------------------------------------------
+    - name: session-context
+      type: dynamic
+      priority: 90
+      enabled: true
+      config:
+        generator: session-context
+        generatorConfig:
+          includeFields: ["sessionId", "timestamp"]
+          format: "list"
+        template: |
+          ## Current Session
+          {{content}}
+          
+          Session started - ready to assist with your development needs!
+
+    # -------------------------------------------------------------------------
+    # ENVIRONMENT-AWARE INSTRUCTIONS
+    # -------------------------------------------------------------------------
+    - name: environment-context
+      type: dynamic
+      priority: 85
+      enabled: true
+      config:
+        generator: environment
+        generatorConfig:
+          environment: "development"  # Change to "production" or "testing" as needed
+          messages:
+            development: |
+              🔧 **Development Environment Active**
+              
+              Enhanced capabilities available:
+              - Verbose debugging explanations and detailed error analysis
+              - Experimental solutions and cutting-edge techniques
+              - Performance profiling and optimization guidance
+              - Code quality improvements and refactoring suggestions
+              - Testing strategies and framework recommendations
+            production: |
+              ⚠️ **Production Environment**
+              
+              Production-focused approach:
+              - Emphasis on stability and proven solutions
+              - Thorough testing and gradual rollout strategies
+              - Backward compatibility and risk mitigation
+              - Performance monitoring and observability
+              - Security best practices and compliance
+            testing: |
+              🧪 **Testing Environment**
+              
+              Testing-focused capabilities:
+              - Comprehensive testing strategies and frameworks
+              - Code coverage analysis and quality metrics
+              - CI/CD pipeline optimization
+              - Automated testing and quality assurance
+              - Test-driven development guidance
+
+    # -------------------------------------------------------------------------
+    # PROJECT-SPECIFIC GUIDELINES (External File)
+    # -------------------------------------------------------------------------
+    - name: project-guidelines
+      type: file-based
+      priority: 80
+      enabled: true
+      config:
+        filePath: "./prompts/cipher-project-guidelines.md"
+        watchForChanges: true
+        variables:
+          project_name: "Cipher"
+          tech_stack: "TypeScript, Node.js, Vitest"
+          team_size: "Development Team"
+          version: "2.0"
+
+    # -------------------------------------------------------------------------
+    # USER PERSONALIZATION & CONTEXT
+    # -------------------------------------------------------------------------
+    - name: user-personalization
+      type: dynamic
+      priority: 75
+      enabled: true
+      config:
+        generator: conditional
+        generatorConfig:
+          conditions:
+            - if: { field: "userId", operator: "exists" }
+              then: |
+                ## Personalized Session
+                ✅ **User Profile Active**
+                - Conversation history and learned preferences available
+                - Customized code style and framework preferences applied
+                - Project-specific context from previous sessions loaded
+                - Personalized explanation depth and technical level
+            - if: { field: "memoryContext", operator: "exists" }
+              then: |
+                ## Memory Context Available  
+                ✅ **Previous Context Loaded**
+                - Previous conversation topics and decisions accessible
+                - Learned patterns and coding preferences active
+                - Project knowledge and codebase insights available
+                - Contextual recommendations based on history
+          else: |
+            ## New Session Started
+            🆕 **Fresh Start**
+            - Building new context and learning your preferences
+            - Ask me about your coding style, preferred frameworks, and project details
+            - I'll remember our conversation for future sessions
+
+    # -------------------------------------------------------------------------
+    # MEMORY & KNOWLEDGE INTEGRATION
+    # -------------------------------------------------------------------------
+    - name: memory-integration
+      type: dynamic
+      priority: 70
+      enabled: true
+      config:
+        generator: memory-context
+        generatorConfig:
+          format: "summary"
+          emptyMessage: "No previous conversation context - starting fresh!"
+        template: |
+          ## Memory & Knowledge Status
+          {{content}}
+          
+          💡 *I can search my memory for relevant information from our previous conversations*
+
+    # -------------------------------------------------------------------------
+    # ADAPTIVE RESPONSE SYSTEM
+    # -------------------------------------------------------------------------
+    - name: adaptive-responses
+      type: dynamic
+      priority: 65
+      enabled: true
+      config:
+        generator: conditional
+        generatorConfig:
+          conditions:
+            - if: { field: "metadata.taskType", operator: "equals", value: "debugging" }
+              then: |
+                🐛 **Debug Mode Active**
+                - Systematic debugging approach enabled
+                - Enhanced error analysis and root cause identification
+                - Step-by-step troubleshooting methodology
+            - if: { field: "metadata.taskType", operator: "equals", value: "architecture" }
+              then: |
+                🏗️ **Architecture Design Mode**
+                - System design patterns and best practices
+                - Scalability and performance considerations
+                - Technology selection and trade-off analysis
+            - if: { field: "metadata.taskType", operator: "equals", value: "code-review" }
+              then: |
+                👀 **Code Review Mode**
+                - Security, performance, and maintainability focus
+                - Best practices and design pattern recommendations
+                - Refactoring suggestions and code quality improvements
+            - if: { field: "metadata.urgency", operator: "gt", value: 7 }
+              then: |
+                🚨 **High Priority Mode**
+                - Focus on immediate, actionable solutions
+                - Quick fixes and workarounds prioritized
+                - Detailed explanations available on request
+          else: |
+            💬 **Standard Development Assistance**
+            - Comprehensive analysis and detailed explanations
+            - Best practices and long-term considerations
+            - Educational approach with examples and alternatives
+
+    # -------------------------------------------------------------------------
+    # BUILT-IN TOOL INSTRUCTIONS (Lowest Priority)
+    # -------------------------------------------------------------------------
+    - name: tool-instructions
+      type: static
+      priority: 0
+      enabled: true
+      config:
+        content: "{{BUILT_IN_INSTRUCTIONS}}"
+
+  # ===========================================================================
+  # GLOBAL SETTINGS
+  # ===========================================================================
+  settings:
+    # Performance settings
+    maxGenerationTime: 15000      # 15 seconds maximum generation time
+    failOnProviderError: false    # Continue even if some providers fail
+    contentSeparator: "\n\n---\n\n"  # Separator between provider outputs
+    
+    # Debug settings (uncomment for troubleshooting)
+    # debug: true
+    # verboseLogging: true
+
+# =============================================================================
+# MEMORY CONFIGURATION
+# =============================================================================
+
+memory:
+  enabled: true
+  provider: "local"
+  config:
+    maxEntries: 1000
+    vectorDimensions: 1536
+    similarityThreshold: 0.7
+
+# =============================================================================
+# KNOWLEDGE GRAPH CONFIGURATION  
+# =============================================================================
+
+knowledgeGraph:
+  enabled: true
+  provider: "local"
+  config:
+    maxNodes: 5000
+    maxEdges: 10000
+    autoCleanup: true
+
+# =============================================================================
+# ADDITIONAL TOOLS CONFIGURATION
+# =============================================================================
+
+tools:
+  # Memory search tool settings
+  memorySearch:
+    enabled: true
+    defaultTopK: 5
+    maxResults: 50
+    
+  # Knowledge graph tools
+  knowledgeGraph:
+    enabled: true
+    maxSearchDepth: 3
+    relationshipTypes: ["related", "depends_on", "part_of", "implements"]
+
+# =============================================================================
+# PERFORMANCE & MONITORING
+# =============================================================================
+
+performance:
+  # Enable performance monitoring
+  monitoring: true
+  
+  # Log generation statistics
+  logStats: true
+  
+  # Performance thresholds
+  thresholds:
+    promptGeneration: 100   # milliseconds
+    memorySearch: 500      # milliseconds
+    totalResponse: 5000    # milliseconds
+
+# =============================================================================
+# ENVIRONMENT VARIABLES (Optional)
+# =============================================================================
+# You can reference environment variables in configurations using ${VAR_NAME}
+# 
+# Examples:
+# - environment: "${NODE_ENV}"
+# - logLevel: "${LOG_LEVEL}"
+# - apiKey: "${ANTHROPIC_API_KEY}"
