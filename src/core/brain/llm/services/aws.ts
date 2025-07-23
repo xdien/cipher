@@ -1,7 +1,7 @@
 import {
 	BedrockRuntimeClient,
-	InvokeModelCommand,
 	BedrockRuntimeClientConfig,
+	InvokeModelCommand,
 } from '@aws-sdk/client-bedrock-runtime';
 import { ILLMService, LLMServiceConfig } from './types.js';
 import { AwsConfig } from '../config.js';
@@ -12,6 +12,7 @@ import { ImageData } from '../messages/types.js';
 import { ToolSet } from '../../../mcp/types.js';
 import { logger } from '../../../logger/index.js';
 import { formatToolResult } from '../utils/tool-result-formatter.js';
+import { TextDecoder } from 'util';
 
 interface BedrockRequest {
 	messages: Array<{
@@ -222,7 +223,7 @@ export class AwsService implements ILLMService {
 			body: JSON.stringify(request),
 		});
 
-		const response = await this.client.send(command);
+		const response = await this.client.send(command) as any;
 		const responseBody = JSON.parse(new TextDecoder().decode(response.body)) as BedrockResponse;
 
 		return responseBody.content
@@ -280,7 +281,7 @@ export class AwsService implements ILLMService {
 			body: JSON.stringify(request),
 		});
 
-		const response = await this.client.send(command);
+		const response = await this.client.send(command) as any;
 		return JSON.parse(new TextDecoder().decode(response.body)) as BedrockResponse;
 	}
 

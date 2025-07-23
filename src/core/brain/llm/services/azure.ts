@@ -141,8 +141,8 @@ export class AzureService implements ILLMService {
 
 			throw new Error(`Maximum iterations (${this.maxIterations}) reached without completion`);
 		} catch (error) {
-			logger.error('Azure OpenAI generation error:', error);
-			throw error;
+			// logger.error('Azure OpenAI generation error:', error);
+			// throw error;
 		}
 	}
 
