@@ -144,6 +144,7 @@ export class AzureService implements ILLMService {
 			// logger.error('Azure OpenAI generation error:', error);
 			// throw error;
 		}
+		return '';
 	}
 
 	async directGenerate(userInput: string, systemPrompt?: string): Promise<string> {

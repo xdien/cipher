@@ -223,7 +223,7 @@ export class AwsService implements ILLMService {
 			body: JSON.stringify(request),
 		});
 
-		const response = await this.client.send(command) as any;
+		const response = (await this.client.send(command)) as any;
 		const responseBody = JSON.parse(new TextDecoder().decode(response.body)) as BedrockResponse;
 
 		return responseBody.content
@@ -281,7 +281,7 @@ export class AwsService implements ILLMService {
 			body: JSON.stringify(request),
 		});
 
-		const response = await this.client.send(command) as any;
+		const response = (await this.client.send(command)) as any;
 		return JSON.parse(new TextDecoder().decode(response.body)) as BedrockResponse;
 	}
 
