@@ -38,6 +38,7 @@ export class MiddleRemovalStrategy implements ICompressionStrategy {
 	): Promise<CompressionResult> {
 		const startTime = Date.now();
 
+		const originalMessages = [...messages];
 		// Ensure messages have IDs and priorities
 		let processedMessages = ensureMessageIds(messages);
 		processedMessages = assignMessagePriorities(processedMessages);
@@ -49,75 +50,108 @@ export class MiddleRemovalStrategy implements ICompressionStrategy {
 			tokensToRemove: currentTokenCount - targetTokenCount,
 		});
 
-		// Get preservable messages (always keep these)
+		// Use configuration values instead of hardcoded ones
+		const minMessagesToKeep = this.config.minMessagesToKeep;
+		const preserveStart = Math.min(this.config.preserveStart, processedMessages.length);
+		const preserveEnd = Math.min(this.config.preserveEnd, processedMessages.length);
+
 		const preservableMessages = getPreservableMessages(processedMessages);
 		const removableMessages = getRemovableMessages(processedMessages);
 
 		if (removableMessages.length === 0) {
 			logger.warn('No removable messages found for compression');
-			return createCompressionResult(processedMessages, processedMessages, [], this.name);
+			return createCompressionResult(originalMessages, processedMessages, [], this.name);
 		}
 
-		// Sort removable messages by index to identify start, middle, and end
+		// Sort removable messages by their original position
 		const sortedRemovable = removableMessages.sort((a, b) => {
 			const aIndex = processedMessages.indexOf(a);
 			const bIndex = processedMessages.indexOf(b);
 			return aIndex - bIndex;
 		});
 
-		// Determine which messages to preserve from start and end
-		const startPreserveCount = Math.min(this.config.preserveStart, sortedRemovable.length);
-		const endPreserveCount = Math.min(
-			this.config.preserveEnd,
-			sortedRemovable.length - startPreserveCount
-		);
-
-		const startMessages = sortedRemovable.slice(0, startPreserveCount);
-		const endMessages = sortedRemovable.slice(-endPreserveCount);
+		// Identify start, middle, and end sections
+		const startMessages = sortedRemovable.slice(0, preserveStart);
+		const endMessages = sortedRemovable.slice(-preserveEnd);
 		const middleMessages = sortedRemovable.slice(
-			startPreserveCount,
-			sortedRemovable.length - endPreserveCount
+			preserveStart,
+			Math.max(preserveStart, sortedRemovable.length - preserveEnd)
 		);
 
-		// Start with all preservable messages plus start and end
+		// Start with all preservable messages and the start/end messages we want to keep
 		let compressedMessages = [...preservableMessages, ...startMessages, ...endMessages];
 		let removedMessages: EnhancedInternalMessage[] = [];
+		let currentTokens = calculateTotalTokens(compressedMessages);
 
-		// Remove middle messages until we reach target or minimum
-		const minToKeep = Math.max(this.config.minMessagesToKeep, preservableMessages.length + 2);
-
+		// Remove middle messages until we reach target or run out of removable messages
 		for (const message of middleMessages) {
-			const currentTotal = calculateTotalTokens(compressedMessages);
-
-			if (currentTotal <= targetTokenCount) {
-				break; // Target reached
+			// Check if removing this message would violate minimum message count
+			if (compressedMessages.length <= minMessagesToKeep) {
+				break;
 			}
 
-			if (compressedMessages.length <= minToKeep) {
-				break; // Minimum reached
+			// Check if we've already reached our target
+			if (currentTokens <= targetTokenCount) {
+				break;
 			}
 
+			// Actually remove the message from compressedMessages
+			const messageIndex = compressedMessages.findIndex(m => m.messageId === message.messageId);
+			if (messageIndex !== -1) {
+				compressedMessages.splice(messageIndex, 1);
+			}
+
+			// Add to removed messages and update token count
 			removedMessages.push(message);
+			currentTokens = calculateTotalTokens(compressedMessages);
+
+			logger.debug('Removed middle message', {
+				messageId: message.messageId,
+				tokensAfterRemoval: currentTokens,
+				targetTokens: targetTokenCount,
+				messagesRemaining: compressedMessages.length,
+			});
 		}
 
-		// Re-sort compressed messages by original order
+		// Ensure we maintain minimum message count
+		if (compressedMessages.length < minMessagesToKeep) {
+			const restoreCount = minMessagesToKeep - compressedMessages.length;
+			const toRestore = removedMessages.slice(-restoreCount);
+
+			compressedMessages.push(...toRestore);
+			removedMessages = removedMessages.slice(0, -restoreCount);
+
+			logger.warn('Restored messages to meet minMessagesToKeep', {
+				restoreCount,
+				minMessagesToKeep,
+				messagesRestored: toRestore.map(m => m.messageId),
+			});
+		}
+
+		// Sort final messages to maintain original conversation order
 		compressedMessages = compressedMessages.sort((a, b) => {
 			const aIndex = processedMessages.indexOf(a);
 			const bIndex = processedMessages.indexOf(b);
 			return aIndex - bIndex;
 		});
 
+		logger.debug('Compression summary before validate', {
+			messagesRemaining: compressedMessages.length,
+			minMessagesToKeep,
+			messagesRemoved: removedMessages.length,
+			finalTokenCount: calculateTotalTokens(compressedMessages),
+		});
+
 		const result = createCompressionResult(
-			processedMessages,
+			originalMessages,
 			compressedMessages,
 			removedMessages,
 			this.name
 		);
 
-		// Validate the compression result
-		if (!validateCompressionResult(result, this.config.minMessagesToKeep)) {
+		if (!validateCompressionResult(result, minMessagesToKeep)) {
 			logger.warn('Middle removal compression validation failed, returning original messages');
-			return createCompressionResult(processedMessages, processedMessages, [], this.name);
+			return createCompressionResult(originalMessages, originalMessages, [], this.name);
 		}
 
 		const duration = Date.now() - startTime;

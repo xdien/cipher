@@ -38,8 +38,8 @@ export class OldestRemovalStrategy implements ICompressionStrategy {
 		targetTokenCount: number
 	): Promise<CompressionResult> {
 		const startTime = Date.now();
+		const originalMessages = [...messages];
 
-		// Ensure messages have IDs and priorities
 		let processedMessages = ensureMessageIds(messages);
 		processedMessages = assignMessagePriorities(processedMessages);
 
@@ -50,76 +50,100 @@ export class OldestRemovalStrategy implements ICompressionStrategy {
 			tokensToRemove: currentTokenCount - targetTokenCount,
 		});
 
-		// Get preservable messages (always keep these)
+		// Use configuration values instead of hardcoded ones
+		const minMessagesToKeep = this.config.minMessagesToKeep;
+		const preserveStart = Math.min(this.config.preserveStart, processedMessages.length);
+		const preserveEnd = Math.min(this.config.preserveEnd, processedMessages.length);
+
 		const preservableMessages = getPreservableMessages(processedMessages);
 		const removableMessages = getRemovableMessages(processedMessages);
 
 		if (removableMessages.length === 0) {
 			logger.warn('No removable messages found for compression');
-			return createCompressionResult(processedMessages, processedMessages, [], this.name);
+			return createCompressionResult(originalMessages, processedMessages, [], this.name);
 		}
 
-		// Sort removable messages by removal priority (oldest and lowest priority first)
-		const sortedForRemoval = sortMessagesByRemovalPriority(removableMessages);
+		// Sort messages by timestamp (oldest first) for removal priority
+		const sortedForRemoval = sortMessagesByRemovalPriority(removableMessages).sort(
+			(a, b) => (a.timestamp || 0) - (b.timestamp || 0)
+		);
 
-		// Start with all preservable messages
-		let compressedMessages = [...preservableMessages];
+		logger.debug('Oldest removal strategy analysis', {
+			totalRemovable: removableMessages.length,
+			preserveStart,
+			preserveEnd,
+			sortedForRemovalCount: sortedForRemoval.length,
+		});
+
+		// Start with all preservable messages + all removable messages
+		let compressedMessages = [...preservableMessages, ...sortedForRemoval];
 		let removedMessages: EnhancedInternalMessage[] = [];
 
-		// Add removable messages back in reverse order (newest first)
-		// until we reach target token count or minimum message count
-		const minToKeep = Math.max(this.config.minMessagesToKeep, preservableMessages.length);
+		// Remove oldest messages until we reach target or minimum
+		while (
+			calculateTotalTokens(compressedMessages) > targetTokenCount &&
+			compressedMessages.length > minMessagesToKeep
+		) {
+			// Find the oldest removable message still in compressed set
+			let oldestIndex = -1;
+			let oldestTimestamp = Infinity;
 
-		for (let i = sortedForRemoval.length - 1; i >= 0; i--) {
-			const message = sortedForRemoval[i];
-			if (!message) continue; // Skip undefined messages
+			for (let i = 0; i < compressedMessages.length; i++) {
+				const message = compressedMessages[i];
+				if (!message) continue;
+				// Skip preservable messages
+				if (preservableMessages.includes(message)) continue;
 
-			const testMessages = [...compressedMessages, message];
-			const testTokenCount = calculateTotalTokens(testMessages);
+				const timestamp = message.timestamp || 0;
+				if (timestamp < oldestTimestamp) {
+					oldestTimestamp = timestamp;
+					oldestIndex = i;
+				}
+			}
 
-			// Add message if it doesn't exceed target and we need more messages
-			if (testTokenCount <= targetTokenCount || compressedMessages.length < minToKeep) {
-				compressedMessages.push(message);
+			// If we found an oldest message, remove it
+			if (oldestIndex >= 0) {
+				const removedMessage = compressedMessages.splice(oldestIndex, 1)[0];
+				if (removedMessage) {
+					removedMessages.push(removedMessage);
+					logger.debug('Removed oldest message', {
+						messageId: removedMessage.messageId,
+						timestamp: removedMessage.timestamp,
+						priority: removedMessage.priority,
+						remainingMessages: compressedMessages.length,
+						currentTokens: calculateTotalTokens(compressedMessages),
+					});
+				}
 			} else {
-				// Mark for removal
-				removedMessages.unshift(message); // Add to beginning to maintain order
+				// No more removable messages found
+				break;
 			}
 		}
 
-		// Re-sort compressed messages by original order
+		// Sort final messages to maintain original conversation order
 		compressedMessages = compressedMessages.sort((a, b) => {
 			const aIndex = processedMessages.indexOf(a);
 			const bIndex = processedMessages.indexOf(b);
 			return aIndex - bIndex;
 		});
 
-		// Ensure we have minimum messages even if it exceeds target
-		if (compressedMessages.length < minToKeep) {
-			const neededMessages = minToKeep - compressedMessages.length;
-			const toRestore = removedMessages.slice(-neededMessages); // Get newest removed messages
-
-			compressedMessages.push(...toRestore);
-			removedMessages = removedMessages.slice(0, -neededMessages);
-
-			// Re-sort after restoration
-			compressedMessages = compressedMessages.sort((a, b) => {
-				const aIndex = processedMessages.indexOf(a);
-				const bIndex = processedMessages.indexOf(b);
-				return aIndex - bIndex;
-			});
-		}
+		logger.debug('Compression summary before validate', {
+			messagesRemaining: compressedMessages.length,
+			minMessagesToKeep,
+			messagesRemoved: removedMessages.length,
+			finalTokenCount: calculateTotalTokens(compressedMessages),
+		});
 
 		const result = createCompressionResult(
-			processedMessages,
+			originalMessages,
 			compressedMessages,
 			removedMessages,
 			this.name
 		);
 
-		// Validate the compression result
-		if (!validateCompressionResult(result, this.config.minMessagesToKeep)) {
+		if (!validateCompressionResult(result, minMessagesToKeep)) {
 			logger.warn('Oldest removal compression validation failed, returning original messages');
-			return createCompressionResult(processedMessages, processedMessages, [], this.name);
+			return createCompressionResult(originalMessages, originalMessages, [], this.name);
 		}
 
 		const duration = Date.now() - startTime;
@@ -154,39 +178,11 @@ export class OldestRemovalStrategy implements ICompressionStrategy {
 		return validateCompressionResult(result, this.config.minMessagesToKeep);
 	}
 
-	/**
-	 * Calculate age-based removal score for a message
-	 */
-	private getRemovalScore(
-		message: EnhancedInternalMessage,
-		oldestTime: number,
-		newestTime: number
-	): number {
-		const messageTime = message.timestamp || Date.now();
-		const timeRange = newestTime - oldestTime;
-
-		// Age factor (0-1, older = higher score = more likely to remove)
-		const ageFactor = timeRange > 0 ? (newestTime - messageTime) / timeRange : 0;
-
-		// Priority factor (0-1, lower priority = higher score = more likely to remove)
-		const priorityFactors = {
-			critical: 0,
-			high: 0.2,
-			normal: 0.5,
-			low: 1.0,
-		};
-		const priorityFactor = priorityFactors[message.priority || 'normal'];
-
-		// Combined score (weighted towards age for this strategy)
-		return ageFactor * 0.7 + priorityFactor * 0.3;
-	}
-
-	/**
-	 * Get strategy-specific statistics
-	 */
 	getStrategyStats(): any {
 		return {
 			name: this.name,
+			preserveStart: this.config.preserveStart,
+			preserveEnd: this.config.preserveEnd,
 			minMessagesToKeep: this.config.minMessagesToKeep,
 			compressionType: 'oldest-removal',
 			bestFor: 'long conversations where recent context is most important',

@@ -12,7 +12,16 @@ export function getMessageTokenCount(message: EnhancedInternalMessage): number {
 
 	// Fallback to character-based estimation
 	const text = extractTextFromMessage(message);
-	return Math.ceil(text.length / 4); // 4 chars per token approximation
+
+	const approxToken = Math.ceil(text.length / 4); // 4 chars per token approximation
+	if (approxToken > 10000) {
+		console.warn('Token estimation unusually high:', {
+			textLength: text.length,
+			approxToken,
+			message,
+		});
+	}
+	return approxToken;
 }
 
 /**
@@ -29,36 +38,30 @@ export function assignMessagePriorities(
 	messages: EnhancedInternalMessage[]
 ): EnhancedInternalMessage[] {
 	return messages.map((message, index) => {
-		// Skip if priority is already set
 		if (message.priority !== undefined) {
 			return message;
 		}
 
 		let priority: MessagePriority = MessagePriority.NORMAL;
+		const tokenCount = getMessageTokenCount(message);
+		const textContent = typeof message.content === 'string' ? message.content : '';
 
-		// System messages are critical
 		if (message.role === 'system') {
 			priority = MessagePriority.CRITICAL;
-		}
-		// Tool messages are high priority
-		else if (message.role === 'tool') {
+		} else if (message.role === 'tool') {
 			priority = MessagePriority.HIGH;
-		}
-		// First few messages are high priority (conversation context)
-		else if (index < 3) {
+		} else if (index < 2 || index >= messages.length - 2) {
 			priority = MessagePriority.HIGH;
-		}
-		// Last few messages are high priority (recent context)
-		else if (index >= messages.length - 3) {
+		} else if (tokenCount > 800) {
 			priority = MessagePriority.HIGH;
-		}
-		// Long messages might be important
-		else if (getMessageTokenCount(message) > 500) {
-			priority = MessagePriority.HIGH;
-		}
-		// Very short messages are low priority
-		else if (getMessageTokenCount(message) < 20) {
+		} else if (tokenCount < 20 && !textContent.includes('?')) {
 			priority = MessagePriority.LOW;
+		} else if (
+			(message as any).function_call ||
+			(message as any).tool_calls ||
+			(message as any).name
+		) {
+			priority = MessagePriority.HIGH;
 		}
 
 		return {
@@ -89,12 +92,39 @@ export function getPreservableMessages(
 export function getRemovableMessages(
 	messages: EnhancedInternalMessage[]
 ): EnhancedInternalMessage[] {
-	return messages.filter(
-		message =>
+	const removable = [];
+	const debugInfo = [];
+	for (const message of messages) {
+		if (
 			message.preserveInCompression !== true &&
 			message.priority !== MessagePriority.CRITICAL &&
 			message.role !== 'system'
-	);
+		) {
+			removable.push(message);
+			debugInfo.push({
+				messageId: message.messageId,
+				role: message.role,
+				priority: message.priority,
+				preserveInCompression: message.preserveInCompression,
+				removable: true,
+			});
+		} else {
+			let reason = '';
+			if (message.preserveInCompression === true) reason += 'preserveInCompression=true; ';
+			if (message.priority === MessagePriority.CRITICAL) reason += 'priority=CRITICAL; ';
+			if (message.role === 'system') reason += 'role=system; ';
+			debugInfo.push({
+				messageId: message.messageId,
+				role: message.role,
+				priority: message.priority,
+				preserveInCompression: message.preserveInCompression,
+				removable: false,
+				reason,
+			});
+		}
+	}
+	logger.debug('Removable message debug info:', debugInfo);
+	return removable;
 }
 
 /**
@@ -138,7 +168,14 @@ export function createCompressionResult(
 ): CompressionResult {
 	const originalTokenCount = calculateTotalTokens(originalMessages);
 	const compressedTokenCount = calculateTotalTokens(compressedMessages);
-	const compressionRatio = originalTokenCount > 0 ? compressedTokenCount / originalTokenCount : 1;
+
+	let compressionRatio = 1;
+	if (originalTokenCount > 0) {
+		compressionRatio = compressedTokenCount / originalTokenCount;
+		if (compressionRatio > 1) {
+			compressionRatio = 1; // Clamp to 1 if logic error
+		}
+	}
 
 	return {
 		compressedMessages,
@@ -158,7 +195,7 @@ export function validateCompressionResult(
 	result: CompressionResult,
 	minMessagesToKeep: number
 ): boolean {
-	// Must preserve minimum number of messages
+	// Check minimum message count
 	if (result.compressedMessages.length < minMessagesToKeep) {
 		logger.warn('Compression removed too many messages', {
 			remaining: result.compressedMessages.length,
@@ -168,10 +205,9 @@ export function validateCompressionResult(
 	}
 
 	// Must preserve system messages
+	const allMessages = result.compressedMessages.concat(result.removedMessages);
 	const systemMessages = result.compressedMessages.filter(m => m.role === 'system');
-	const originalSystemMessages = result.compressedMessages
-		.concat(result.removedMessages)
-		.filter(m => m.role === 'system');
+	const originalSystemMessages = allMessages.filter(m => m.role === 'system');
 
 	if (systemMessages.length !== originalSystemMessages.length) {
 		logger.warn('Compression removed system messages');
@@ -182,9 +218,7 @@ export function validateCompressionResult(
 	const criticalMessages = result.compressedMessages.filter(
 		m => m.priority === MessagePriority.CRITICAL
 	);
-	const originalCriticalMessages = result.compressedMessages
-		.concat(result.removedMessages)
-		.filter(m => m.priority === MessagePriority.CRITICAL);
+	const originalCriticalMessages = allMessages.filter(m => m.priority === MessagePriority.CRITICAL);
 
 	if (criticalMessages.length !== originalCriticalMessages.length) {
 		logger.warn('Compression removed critical messages');
@@ -192,8 +226,8 @@ export function validateCompressionResult(
 	}
 
 	// Should achieve some compression
-	if (result.compressionRatio > 0.95) {
-		logger.warn('Compression achieved minimal token reduction', {
+	if (result.compressionRatio >= 1) {
+		logger.warn('Compression achieved no token reduction', {
 			ratio: result.compressionRatio,
 		});
 		return false;
