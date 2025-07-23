@@ -177,7 +177,7 @@ llm:
 ```yaml
 llm:
   provider: aws
-  model: meta.llama3-1-70b-instruct-v1:0  # Or another Bedrock-supported model
+  model: meta.llama3-1-70b-instruct-v1:0 # Or another Bedrock-supported model
   maxIterations: 50
   aws:
     region: $AWS_REGION
@@ -187,6 +187,7 @@ llm:
 ```
 
 > **Required environment variables:**
+>
 > - `AWS_REGION`
 > - `AWS_ACCESS_KEY_ID`
 > - `AWS_SECRET_ACCESS_KEY`
@@ -197,15 +198,16 @@ llm:
 ```yaml
 llm:
   provider: azure
-  model: gpt-4o-mini  # Or your Azure deployment/model name
+  model: gpt-4o-mini # Or your Azure deployment/model name
   apiKey: $AZURE_OPENAI_API_KEY
   maxIterations: 50
   azure:
     endpoint: $AZURE_OPENAI_ENDPOINT
-    deploymentName: gpt-4o-mini  # Optional, defaults to model name
+    deploymentName: gpt-4o-mini # Optional, defaults to model name
 ```
 
 > **Required environment variables:**
+>
 > - `AZURE_OPENAI_API_KEY`
 > - `AZURE_OPENAI_ENDPOINT`
 

@@ -156,18 +156,33 @@ export const validateLlmConfig = [
 	body('config').optional().isObject().withMessage('Config must be an object'),
 	// AWS-specific validations
 	body('config.aws.region').optional().isString().withMessage('AWS region must be a string'),
-	body('config.aws.accessKeyId').optional().isString().withMessage('AWS access key ID must be a string'),
-	body('config.aws.secretAccessKey').optional().isString().withMessage('AWS secret access key must be a string'),
-	body('config.aws.sessionToken').optional().isString().withMessage('AWS session token must be a string'),
+	body('config.aws.accessKeyId')
+		.optional()
+		.isString()
+		.withMessage('AWS access key ID must be a string'),
+	body('config.aws.secretAccessKey')
+		.optional()
+		.isString()
+		.withMessage('AWS secret access key must be a string'),
+	body('config.aws.sessionToken')
+		.optional()
+		.isString()
+		.withMessage('AWS session token must be a string'),
 	// Azure-specific validations
-	body('config.azure.endpoint').optional().isURL().withMessage('Azure endpoint must be a valid URL'),
-	body('config.azure.deploymentName').optional().isString().withMessage('Azure deployment name must be a string'),
+	body('config.azure.endpoint')
+		.optional()
+		.isURL()
+		.withMessage('Azure endpoint must be a valid URL'),
+	body('config.azure.deploymentName')
+		.optional()
+		.isString()
+		.withMessage('Azure deployment name must be a string'),
 	// Conditional validation - Azure requires endpoint
-	body().custom((value) => {
-		if (value.provider === 'azure' && (!value.config?.azure?.endpoint)) {
+	body().custom(value => {
+		if (value.provider === 'azure' && !value.config?.azure?.endpoint) {
 			throw new Error('Azure provider requires config.azure.endpoint to be provided');
 		}
-		if (value.provider === 'aws' && (!value.config?.aws)) {
+		if (value.provider === 'aws' && !value.config?.aws) {
 			throw new Error('AWS provider requires config.aws object to be provided');
 		}
 		return true;

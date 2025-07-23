@@ -1,15 +1,30 @@
 import { z } from 'zod';
 
 const AwsConfigSchema = z.object({
-	region: z.string().optional().describe('AWS region (defaults to us-east-1 or AWS_DEFAULT_REGION)'),
-	accessKeyId: z.string().optional().describe('AWS Access Key ID (can use AWS_ACCESS_KEY_ID env var)'),
-	secretAccessKey: z.string().optional().describe('AWS Secret Access Key (can use AWS_SECRET_ACCESS_KEY env var)'),
-	sessionToken: z.string().optional().describe('AWS Session Token (can use AWS_SESSION_TOKEN env var)'),
+	region: z
+		.string()
+		.optional()
+		.describe('AWS region (defaults to us-east-1 or AWS_DEFAULT_REGION)'),
+	accessKeyId: z
+		.string()
+		.optional()
+		.describe('AWS Access Key ID (can use AWS_ACCESS_KEY_ID env var)'),
+	secretAccessKey: z
+		.string()
+		.optional()
+		.describe('AWS Secret Access Key (can use AWS_SECRET_ACCESS_KEY env var)'),
+	sessionToken: z
+		.string()
+		.optional()
+		.describe('AWS Session Token (can use AWS_SESSION_TOKEN env var)'),
 });
 
 const AzureConfigSchema = z.object({
 	endpoint: z.string().url().describe('Azure OpenAI endpoint URL (required for Azure)'),
-	deploymentName: z.string().optional().describe('Azure deployment name (defaults to model name if not provided)'),
+	deploymentName: z
+		.string()
+		.optional()
+		.describe('Azure deployment name (defaults to model name if not provided)'),
 });
 
 export const LLMConfigSchema = z
@@ -17,7 +32,9 @@ export const LLMConfigSchema = z
 		provider: z
 			.string()
 			.nonempty()
-			.describe("The LLM provider (e.g., 'openai', 'anthropic', 'openrouter', 'ollama', 'aws', 'azure')"),
+			.describe(
+				"The LLM provider (e.g., 'openai', 'anthropic', 'openrouter', 'ollama', 'aws', 'azure')"
+			),
 		model: z.string().nonempty().describe('The specific model name for the selected provider'),
 		apiKey: z
 			.string()
