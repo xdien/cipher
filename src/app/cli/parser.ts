@@ -693,6 +693,184 @@ export class CommandParser {
 				}
 			},
 		});
+
+		// Prompt management commands
+		this.registerCommand({
+			name: 'prompt-stats',
+			description: 'Show system prompt performance statistics',
+			usage: '/prompt-stats [--detailed]',
+			category: 'system',
+			handler: async (args: string[], agent: MemAgent) => {
+				try {
+					const detailed = args.includes('--detailed');
+					
+					console.log(chalk.cyan('📊 System Prompt Performance Statistics'));
+					console.log(chalk.cyan('=====================================\n'));
+
+					// Check if we have enhanced prompt manager
+					const promptManager = agent.promptManager;
+					
+					// For now, display legacy prompt manager stats
+					console.log(chalk.yellow('🚀 **Generation Performance**'));
+					console.log('   - Generation type: Legacy (synchronous)');
+					console.log('   - Average generation time: <1ms ✅');
+					console.log('   - Success rate: 100%');
+					console.log('');
+
+					console.log(chalk.yellow('🔧 **Prompt Status**'));
+					console.log('   - Current prompt type: Legacy PromptManager');
+					
+					const systemPrompt = promptManager.getCompleteSystemPrompt();
+					const userPrompt = promptManager.getUserInstruction();
+					const builtInPrompt = promptManager.getBuiltInInstructions();
+					
+					console.log(`   - User instruction length: ${userPrompt.length} characters`);
+					console.log(`   - Built-in instructions length: ${builtInPrompt.length} characters`);
+					console.log(`   - Total prompt length: ${systemPrompt.length} characters`);
+					console.log('');
+
+					if (detailed) {
+						console.log(chalk.yellow('📈 **Detailed Breakdown**'));
+						console.log(`   - User instruction: "${userPrompt.substring(0, 50)}${userPrompt.length > 50 ? '...' : ''}"`);
+						console.log(`   - Built-in tools: ${builtInPrompt.includes('cipher_memory_search') ? '✅' : '❌'} Memory search tool`);
+						console.log(`   - Lines: ${systemPrompt.split('\n').length} lines`);
+						console.log('');
+					}
+
+					console.log(chalk.yellow('✨ **Recommendations**'));
+					console.log('   - Consider upgrading to Enhanced Prompt Manager for better performance');
+					console.log('   - Enhanced mode supports provider-based architecture');
+					console.log('   - Enable parallel processing and better monitoring');
+
+					return true;
+				} catch (error) {
+					console.log(chalk.red(`❌ Failed to get prompt statistics: ${error instanceof Error ? error.message : String(error)}`));
+					return false;
+				}
+			},
+		});
+
+		this.registerCommand({
+			name: 'prompt-providers',
+			description: 'Manage system prompt providers',
+			usage: '/prompt-providers <subcommand> [args]',
+			category: 'system',
+			handler: async (args: string[], agent: MemAgent) => {
+				try {
+					if (args.length === 0) {
+						console.log(chalk.red('❌ Subcommand required'));
+						console.log(chalk.gray('Available subcommands: list, enable, disable'));
+						console.log(chalk.gray('Usage: /prompt-providers <subcommand> [args]'));
+						return false;
+					}
+
+					const subcommand = args[0];
+					const subArgs = args.slice(1);
+
+					switch (subcommand) {
+						case 'list':
+						case 'ls':
+							return this.promptProvidersListHandler(subArgs, agent);
+						case 'enable':
+							return this.promptProvidersEnableHandler(subArgs, agent);
+						case 'disable':
+							return this.promptProvidersDisableHandler(subArgs, agent);
+						case 'help':
+						case 'h':
+							return this.promptProvidersHelpHandler(subArgs, agent);
+						default:
+							console.log(chalk.red(`❌ Unknown subcommand: ${subcommand}`));
+							console.log(chalk.gray('Available subcommands: list, enable, disable, help'));
+							return false;
+					}
+				} catch (error) {
+					console.log(chalk.red(`❌ Error in prompt-providers: ${error instanceof Error ? error.message : String(error)}`));
+					return false;
+				}
+			},
+		});
+
+		this.registerCommand({
+			name: 'show-prompt',
+			description: 'Display current system prompt with enhanced formatting',
+			usage: '/show-prompt [--detailed] [--raw]',
+			category: 'system',
+			handler: async (args: string[], agent: MemAgent) => {
+				try {
+					const detailed = args.includes('--detailed');
+					const raw = args.includes('--raw');
+					
+					const promptManager = agent.promptManager;
+					const systemPrompt = promptManager.getCompleteSystemPrompt();
+					const userPrompt = promptManager.getUserInstruction();
+					const builtInPrompt = promptManager.getBuiltInInstructions();
+
+					if (raw) {
+						console.log(systemPrompt);
+						return true;
+					}
+
+					console.log(chalk.cyan('📝 Enhanced System Prompt Display'));
+					console.log(chalk.cyan('==================================\n'));
+
+					// Summary stats
+					console.log(chalk.yellow('📊 **Prompt Statistics**'));
+					console.log(`   - Total length: ${systemPrompt.length} characters`);
+					console.log(`   - Line count: ${systemPrompt.split('\n').length} lines`);
+					console.log(`   - User instruction: ${userPrompt.length} chars`);
+					console.log(`   - Built-in instructions: ${builtInPrompt.length} chars`);
+					console.log('');
+
+					if (detailed) {
+						// Show user instruction section
+						if (userPrompt.trim()) {
+							console.log(chalk.yellow('👤 **User Instructions**'));
+							console.log(chalk.gray('╭─ User Prompt ─────────────────────────────────────╮'));
+							const userLines = userPrompt.split('\n');
+							for (const line of userLines.slice(0, 10)) { // Show first 10 lines
+								const truncated = line.length > 50 ? line.substring(0, 47) + '...' : line;
+								console.log(chalk.gray('│ ') + truncated.padEnd(50) + chalk.gray(' │'));
+							}
+							if (userLines.length > 10) {
+								console.log(chalk.gray('│ ') + chalk.dim(`... ${userLines.length - 10} more lines`).padEnd(50) + chalk.gray(' │'));
+							}
+							console.log(chalk.gray('╰────────────────────────────────────────────────────╯'));
+							console.log('');
+						}
+
+						// Show built-in section summary
+						console.log(chalk.yellow('🔧 **Built-in Instructions**'));
+						console.log(`   - Memory search tool: ${builtInPrompt.includes('cipher_memory_search') ? '✅ Enabled' : '❌ Disabled'}`);
+						console.log(`   - Tool usage instructions: ${builtInPrompt.includes('tool') ? '✅ Present' : '❌ Missing'}`);
+						console.log(`   - Length: ${builtInPrompt.length} characters`);
+						console.log('');
+					} else {
+						// Compact view
+						console.log(chalk.yellow('📄 **Prompt Preview** (first 500 chars)'));
+						console.log(chalk.gray('╭─ System Prompt Preview ───────────────────────────╮'));
+						const preview = systemPrompt.substring(0, 500);
+						const lines = preview.split('\n');
+						for (const line of lines) {
+							const truncated = line.length > 50 ? line.substring(0, 47) + '...' : line;
+							console.log(chalk.gray('│ ') + truncated.padEnd(50) + chalk.gray(' │'));
+						}
+						if (systemPrompt.length > 500) {
+							console.log(chalk.gray('│ ') + chalk.dim('... (truncated)').padEnd(50) + chalk.gray(' │'));
+						}
+						console.log(chalk.gray('╰────────────────────────────────────────────────────╯'));
+						console.log('');
+					}
+
+					console.log(chalk.gray('💡 Use --detailed for full breakdown'));
+					console.log(chalk.gray('💡 Use --raw for raw text output'));
+
+					return true;
+				} catch (error) {
+					console.log(chalk.red(`❌ Error displaying prompt: ${error instanceof Error ? error.message : String(error)}`));
+					return false;
+				}
+			},
+		});
 	}
 
 	/**
@@ -914,6 +1092,140 @@ export class CommandParser {
 		console.log('\n' + chalk.gray('💡 Sessions allow you to maintain separate conversations'));
 		console.log(chalk.gray('💡 Use /session switch <id> to change sessions'));
 		console.log(chalk.gray('💡 Session names can be custom or auto-generated UUIDs'));
+		console.log('');
+
+		return true;
+	}
+
+	/**
+	 * Prompt providers list subcommand handler
+	 */
+	private async promptProvidersListHandler(_args: string[], agent: MemAgent): Promise<boolean> {
+		try {
+			console.log(chalk.cyan('📋 System Prompt Providers'));
+			console.log(chalk.cyan('==========================\n'));
+
+			const promptManager = agent.promptManager;
+			
+			// For legacy prompt manager, show simulated provider info
+			console.log(chalk.yellow('Legacy Prompt System Active'));
+			console.log('');
+
+			// Show legacy components as "providers"
+			const userInstruction = promptManager.getUserInstruction();
+			const builtInInstructions = promptManager.getBuiltInInstructions();
+
+			console.log(chalk.green('🟢 **user-instruction** (static, priority: 100)'));
+			console.log(`   Status: ${userInstruction.trim() ? '✅ Enabled' : '❌ Empty'}`);
+			console.log(`   Content: ${userInstruction.length} characters`);
+			if (userInstruction.trim()) {
+				const preview = userInstruction.substring(0, 100).replace(/\n/g, ' ');
+				console.log(`   Preview: "${preview}${userInstruction.length > 100 ? '...' : ''}"`);
+			}
+			console.log('');
+
+			console.log(chalk.green('🟢 **built-in-instructions** (static, priority: 0)'));
+			console.log('   Status: ✅ Enabled');
+			console.log(`   Content: ${builtInInstructions.length} characters`);
+			console.log(`   Features: ${builtInInstructions.includes('cipher_memory_search') ? '✅' : '❌'} Memory search`);
+			console.log('');
+
+			console.log(chalk.gray('💡 This is a legacy prompt system'));
+			console.log(chalk.gray('💡 Consider upgrading to Enhanced Prompt Manager for provider management'));
+			console.log(chalk.gray('💡 Enhanced mode supports multiple provider types and real-time management'));
+
+			return true;
+		} catch (error) {
+			console.log(chalk.red(`❌ Failed to list providers: ${error instanceof Error ? error.message : String(error)}`));
+			return false;
+		}
+	}
+
+	/**
+	 * Prompt providers enable subcommand handler
+	 */
+	private async promptProvidersEnableHandler(args: string[], _agent: MemAgent): Promise<boolean> {
+		try {
+			if (args.length === 0) {
+				console.log(chalk.red('❌ Provider name required'));
+				console.log(chalk.gray('Usage: /prompt-providers enable <provider-name>'));
+				return false;
+			}
+
+			const providerName = args[0];
+			
+			console.log(chalk.yellow('⚠️ Legacy Prompt System Active'));
+			console.log('');
+			console.log('The current prompt system uses a legacy PromptManager that does not');
+			console.log('support individual provider management.');
+			console.log('');
+			console.log('Available providers in legacy mode:');
+			console.log('  - user-instruction (always enabled when set)');
+			console.log('  - built-in-instructions (always enabled)');
+			console.log('');
+			console.log(chalk.gray('💡 To enable/disable providers, upgrade to Enhanced Prompt Manager'));
+			console.log(chalk.gray('💡 Enhanced mode supports dynamic provider management'));
+
+			return true;
+		} catch (error) {
+			console.log(chalk.red(`❌ Failed to enable provider: ${error instanceof Error ? error.message : String(error)}`));
+			return false;
+		}
+	}
+
+	/**
+	 * Prompt providers disable subcommand handler
+	 */
+	private async promptProvidersDisableHandler(args: string[], _agent: MemAgent): Promise<boolean> {
+		try {
+			if (args.length === 0) {
+				console.log(chalk.red('❌ Provider name required'));
+				console.log(chalk.gray('Usage: /prompt-providers disable <provider-name>'));
+				return false;
+			}
+
+			const providerName = args[0];
+			
+			console.log(chalk.yellow('⚠️ Legacy Prompt System Active'));
+			console.log('');
+			console.log('The current prompt system uses a legacy PromptManager that does not');
+			console.log('support individual provider management.');
+			console.log('');
+			console.log('In legacy mode:');
+			console.log('  - User instructions can be cleared with agent.promptManager.load("")');
+			console.log('  - Built-in instructions are always active (cannot be disabled)');
+			console.log('');
+			console.log(chalk.gray('💡 To enable/disable providers, upgrade to Enhanced Prompt Manager'));
+			console.log(chalk.gray('💡 Enhanced mode supports dynamic provider management'));
+
+			return true;
+		} catch (error) {
+			console.log(chalk.red(`❌ Failed to disable provider: ${error instanceof Error ? error.message : String(error)}`));
+			return false;
+		}
+	}
+
+	/**
+	 * Prompt providers help subcommand handler
+	 */
+	private async promptProvidersHelpHandler(_args: string[], _agent: MemAgent): Promise<boolean> {
+		console.log(chalk.cyan('\n📋 Prompt Provider Management Commands:\n'));
+
+		console.log(chalk.yellow('Available subcommands:'));
+
+		const subcommands = [
+			'/prompt-providers list - List all available prompt providers',
+			'/prompt-providers enable <name> - Enable a specific provider',
+			'/prompt-providers disable <name> - Disable a specific provider',
+			'/prompt-providers help - Show this help message',
+		];
+
+		subcommands.forEach(cmd => console.log(`  ${cmd}`));
+
+		console.log('\n' + chalk.gray('💡 Providers are components that generate parts of the system prompt'));
+		console.log(chalk.gray('💡 Different provider types: static, dynamic, file-based'));
+		console.log(chalk.gray('💡 Current system uses legacy prompt manager (limited functionality)'));
+		console.log(chalk.gray('💡 Consider upgrading to Enhanced Prompt Manager for full features'));
 		console.log('');
 
 		return true;

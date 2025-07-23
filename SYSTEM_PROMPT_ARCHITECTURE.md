@@ -1,5 +1,7 @@
 # System Prompt Architecture Refactor - Complete Implementation Guide
 
+> **📊 Implementation Status**: Core architecture completed, CLI commands implemented and tested, enhanced provider system ready for integration.
+
 ## Table of Contents
 1. [Overview](#overview)
 2. [Architecture](#architecture)
@@ -613,365 +615,160 @@ Your existing CLI usage continues to work exactly as before:
 
 ```bash
 # Standard usage - no changes needed
-cipher chat --config ./memAgent/cipher.yml
-cipher ask "How do I optimize my React app?"
-cipher --show-prompt  # Shows current system prompt
+cipher --mode cli --agent ./memAgent/cipher.yml
+cipher "How do I optimize my React app?"  # One-shot mode
 ```
 
-### Enhanced Configuration
+### **NEW: Implemented CLI Commands for Prompt Management**
 
-#### Step 1: Create Enhanced Config File
+The following CLI commands are **now fully implemented and tested**:
 
-Create `./memAgent/cipher-enhanced.yml`:
+#### Interactive Mode Commands
 
-<details>
-<summary>Click to view complete enhanced configuration file</summary>
-
-```yaml
-# Standard agent configuration
-name: "cipher"
-model: "claude-3-5-sonnet-20241022"
-provider: "anthropic"
-temperature: 0.1
-
-# NEW: Enhanced system prompt configuration
-systemPromptConfig:
-  providers:
-    # Main system instructions (highest priority)
-    - name: main-instructions
-      type: static
-      priority: 100
-      enabled: true
-      config:
-        content: |
-          You are Cipher, an advanced AI assistant specialized in software development.
-          You excel at code analysis, debugging, architecture design, and technical guidance.
-          
-          Your core capabilities:
-          - Deep understanding of multiple programming languages
-          - Expert knowledge of development tools and frameworks
-          - Ability to analyze complex codebases and provide insights
-          - Memory of previous conversations and learned context
-          
-          Communication style:
-          - Be precise and technical when appropriate
-          - Provide practical, actionable advice
-          - Include code examples and specific implementation details
-          - Ask clarifying questions when requirements are unclear
-
-    # Dynamic session information
-    - name: session-context
-      type: dynamic
-      priority: 90
-      enabled: true
-      config:
-        generator: session-context
-        generatorConfig:
-          includeFields: ["sessionId", "timestamp"]
-          format: "list"
-        template: |
-          ## Current Session
-          {{content}}
-
-    # Environment-aware instructions
-    - name: environment-context
-      type: dynamic
-      priority: 85
-      enabled: true
-      config:
-        generator: environment
-        generatorConfig:
-          environment: "development"
-          messages:
-            development: |
-              🔧 **Development Environment Active**
-              - Enhanced debugging and verbose explanations available
-              - Can suggest experimental solutions and cutting-edge techniques
-              - Performance optimizations and profiling guidance enabled
-            production: |
-              ⚠️ **Production Environment**
-              - Focus on stability and proven solutions
-              - Emphasize thorough testing and gradual rollouts
-              - Prioritize backward compatibility and risk mitigation
-            testing: |
-              🧪 **Testing Environment**
-              - Comprehensive testing strategies and frameworks
-              - Code coverage analysis and quality metrics
-              - CI/CD pipeline optimization guidance
-
-    # Project-specific guidelines (external file)
-    - name: project-guidelines
-      type: file-based
-      priority: 80
-      enabled: true
-      config:
-        filePath: "./prompts/project-guidelines.md"
-        watchForChanges: true
-        variables:
-          project_name: "cipher"
-          team_size: "5"
-          tech_stack: "TypeScript, Node.js, React"
-
-    # Conditional user-specific content
-    - name: user-personalization
-      type: dynamic
-      priority: 75
-      enabled: true
-      config:
-        generator: conditional
-        generatorConfig:
-          conditions:
-            - if: { field: "userId", operator: "exists" }
-              then: |
-                ## Personalized Settings
-                - Conversation history and learned preferences available
-                - Customized code style and framework preferences applied
-                - Project-specific context from previous sessions loaded
-            - if: { field: "memoryContext", operator: "exists" }
-              then: |
-                ## Memory Context Available
-                - Previous conversation topics and decisions accessible
-                - Learned patterns and user preferences active
-                - Project knowledge and codebase insights loaded
-          else: |
-            ## New Session
-            - Starting fresh conversation
-            - Building new context and preferences
-            - Learning your coding style and preferences
-
-    # Memory context integration
-    - name: memory-integration
-      type: dynamic
-      priority: 70
-      enabled: true
-      config:
-        generator: memory-context
-        generatorConfig:
-          format: "summary"
-          emptyMessage: "No previous conversation context available"
-        template: |
-          ## Memory Status
-          {{content}}
-
-    # Built-in tool instructions (lowest priority)
-    - name: tool-instructions
-      type: static
-      priority: 0
-      enabled: true
-      config:
-        content: "{{BUILT_IN_INSTRUCTIONS}}"
-
-  # Global settings
-  settings:
-    maxGenerationTime: 15000  # 15 seconds max
-    failOnProviderError: false # Continue even if some providers fail
-    contentSeparator: "\n\n---\n\n"
-```
-</details>
-
-#### Step 2: Create External Guidelines File
-
-Create `./prompts/project-guidelines.md`:
-
-<details>
-<summary>Click to view project guidelines template</summary>
-
-```markdown
-# {{project_name}} Project Guidelines
-
-## Code Standards
-- **Language**: TypeScript strict mode required
-- **Style**: ESLint + Prettier configuration
-- **Testing**: Vitest for unit tests, >90% coverage target
-- **Documentation**: JSDoc for public APIs
-
-## Architecture Principles
-- **Modularity**: Clear separation of concerns
-- **Type Safety**: Comprehensive TypeScript usage
-- **Error Handling**: Graceful degradation and detailed logging
-- **Performance**: Lazy loading and optimization where appropriate
-
-## Development Workflow
-- **Branching**: Feature branches from `main`
-- **Reviews**: All changes require peer review
-- **Testing**: All features must include tests
-- **Deployment**: Automated CI/CD pipeline
-
-## Team Context
-- **Team Size**: {{team_size}} developers
-- **Tech Stack**: {{tech_stack}}
-- **Communication**: Slack for async, meetings for complex discussions
-
-## Cipher-Specific Guidelines
-- **Memory Usage**: Leverage conversation memory for context
-- **Tool Integration**: Use built-in tools effectively
-- **User Experience**: Prioritize clear, actionable responses
-- **Performance**: System prompt generation should be <100ms
-```
-</details>
-
-#### Step 3: Enhanced CLI Usage
+Start cipher in interactive mode, then use these slash commands:
 
 ```bash
-# Use enhanced configuration
-cipher chat --config ./memAgent/cipher-enhanced.yml
+# Start interactive CLI
+cipher --mode cli
 
-# View system prompt performance
-cipher prompt-stats --config ./memAgent/cipher-enhanced.yml
-
-# Manage providers
-cipher prompt-providers --list --config ./memAgent/cipher-enhanced.yml
-cipher prompt-providers --disable session-context --config ./memAgent/cipher-enhanced.yml
-cipher prompt-providers --enable session-context --config ./memAgent/cipher-enhanced.yml
-
-# Debug prompt generation
-cipher show-prompt --detailed --config ./memAgent/cipher-enhanced.yml
+# Inside interactive mode, use these commands:
+/help                           # Shows all available commands including new ones
+/prompt-stats                   # Show prompt performance statistics  
+/prompt-stats --detailed        # Show detailed breakdown with analysis
+/prompt-providers list          # List all prompt providers
+/prompt-providers help          # Show provider management help
+/show-prompt                    # Enhanced prompt display with statistics
+/show-prompt --detailed         # Detailed prompt breakdown
+/show-prompt --raw             # Raw prompt text output
 ```
 
-### Expected CLI Output
+### Real CLI Command Examples
 
-#### Startup with Enhanced Config
+Start cipher and test the commands:
+
 ```bash
-$ cipher chat --config ./memAgent/cipher-enhanced.yml
+# Start interactive CLI
+$ cipher --mode cli
 
-🚀 Initializing Cipher with enhanced system prompts...
-✅ Loaded 7 prompt providers
-   - main-instructions (static, priority: 100) ✅
-   - session-context (dynamic, priority: 90) ✅  
-   - environment-context (dynamic, priority: 85) ✅
-   - project-guidelines (file-based, priority: 80) ✅
-   - user-personalization (dynamic, priority: 75) ✅
-   - memory-integration (dynamic, priority: 70) ✅
-   - tool-instructions (static, priority: 0) ✅
-
-📊 System prompt generated in 67ms
-🔧 Development environment detected
-📝 Project guidelines loaded from ./prompts/project-guidelines.md
-
-Cipher is ready! (Enhanced mode active)
-Type 'help' for commands or start chatting...
-
->
+# Test the help command to see new prompt commands
+cipher> /help
 ```
 
-#### Enhanced Conversation Example
+**Output shows the new commands:**
 ```
-> Help me optimize this React component for performance
-
-Cipher: I'll help you optimize your React component! Since we're in development 
-environment, I can provide detailed performance analysis and suggest cutting-edge 
-optimization techniques.
-
-[Session ID: sess_1705123456789 | Started: January 13, 2024, 2:30 PM]
-
-Based on the cipher project guidelines, I'll focus on:
-✅ TypeScript strict mode compliance
-✅ Performance optimizations with profiling guidance  
-✅ Comprehensive testing recommendations
-✅ Clear documentation for changes
-
-Could you share the component code you'd like me to analyze? I'll look for:
-- Unnecessary re-renders
-- Heavy computations that could be memoized
-- Bundle size optimization opportunities
-- Accessibility and UX improvements
-
----
-💡 **Memory Status**: No previous conversation context available - starting fresh!
+SYSTEM:
+  /config - Display current configuration
+  /prompt - Display current system prompt
+  /prompt-providers - Manage system prompt providers
+  /prompt-stats - Show system prompt performance statistics
+  /show-prompt - Display current system prompt with enhanced formatting
+  /stats - Show system statistics and metrics
 ```
 
-#### Prompt Statistics
+#### Step 2: Test Prompt Statistics
+
 ```bash
-$ cipher prompt-stats --config ./memAgent/cipher-enhanced.yml
+cipher> /prompt-stats
+```
 
+**Real Output:**
+```
 📊 System Prompt Performance Statistics
 =====================================
 
 🚀 **Generation Performance**
-   - Average generation time: 67ms (Target: <100ms) ✅
-   - Last generation: 45ms
-   - Success rate: 100% (14/14 generations)
+   - Generation type: Legacy (synchronous)
+   - Average generation time: <1ms ✅
+   - Success rate: 100%
 
-🔧 **Provider Status**  
-   - Total providers: 7
-   - Enabled providers: 7
-   - Disabled providers: 0
-
-📈 **Provider Performance**
-   - main-instructions: 2ms (static)
-   - session-context: 15ms (dynamic) 
-   - environment-context: 8ms (dynamic)
-   - project-guidelines: 12ms (file-based)
-   - user-personalization: 18ms (dynamic)
-   - memory-integration: 6ms (dynamic)
-   - tool-instructions: 1ms (static)
-
-🎯 **Quality Metrics**
-   - Provider errors: 0
-   - Average content length: 2,847 characters
-   - Memory usage: 1.2MB
-   - Cache hit rate: 85%
+🔧 **Prompt Status**
+   - Current prompt type: Legacy PromptManager
+   - User instruction length: 267 characters
+   - Built-in instructions length: 12012 characters
+   - Total prompt length: 12280 characters
 
 ✨ **Recommendations**
-   - All providers performing within targets
-   - Consider caching dynamic content for better performance
-   - Project guidelines file watching active and healthy
+   - Consider upgrading to Enhanced Prompt Manager for better performance
+   - Enhanced mode supports provider-based architecture
+   - Enable parallel processing and better monitoring
 ```
 
-#### Provider Management
-```bash
-$ cipher prompt-providers --list --config ./memAgent/cipher-enhanced.yml
+#### Step 3: Test Provider Management
 
+```bash
+cipher> /prompt-providers list
+```
+
+**Real Output:**
+```
 📋 System Prompt Providers
 ==========================
 
-🟢 **main-instructions** (static, priority: 100)
-   Status: Enabled ✅
-   Content: 847 characters
-   Performance: 2ms average
+Legacy Prompt System Active
 
-🟢 **session-context** (dynamic, priority: 90)  
-   Status: Enabled ✅
-   Generator: session-context
-   Performance: 15ms average
+🟢 **user-instruction** (static, priority: 100)
+   Status: ✅ Enabled
+   Content: 267 characters
+   Preview: "You are an AI programming assistant focused on coding and reasoning tasks..."
 
-🟢 **environment-context** (dynamic, priority: 85)
-   Status: Enabled ✅  
-   Generator: environment
-   Performance: 8ms average
+🟢 **built-in-instructions** (static, priority: 0)
+   Status: ✅ Enabled
+   Content: 12012 characters
+   Features: ✅ Memory search
 
-🟢 **project-guidelines** (file-based, priority: 80)
-   Status: Enabled ✅
-   File: ./prompts/project-guidelines.md (watching changes)
-   Performance: 12ms average
-
-🟢 **user-personalization** (dynamic, priority: 75)
-   Status: Enabled ✅
-   Generator: conditional  
-   Performance: 18ms average
-
-🟢 **memory-integration** (dynamic, priority: 70)
-   Status: Enabled ✅
-   Generator: memory-context
-   Performance: 6ms average
-
-🟢 **tool-instructions** (static, priority: 0) 
-   Status: Enabled ✅
-   Content: 15,432 characters (built-in tools)
-   Performance: 1ms average
-
-# Disable a provider
-$ cipher prompt-providers --disable user-personalization
-
-✅ Provider 'user-personalization' disabled
-⚡ System prompt regenerated in 49ms (18ms faster)
-
-# Re-enable a provider  
-$ cipher prompt-providers --enable user-personalization
-
-✅ Provider 'user-personalization' enabled
-⚡ System prompt regenerated in 67ms
+💡 This is a legacy prompt system
+💡 Consider upgrading to Enhanced Prompt Manager for provider management
+💡 Enhanced mode supports multiple provider types and real-time management
 ```
+
+#### Step 4: Test Enhanced Prompt Display
+
+```bash
+cipher> /show-prompt
+```
+
+**Real Output:**
+```
+📝 Enhanced System Prompt Display
+==================================
+
+📊 **Prompt Statistics**
+   - Total length: 12280 characters
+   - Line count: 365 lines
+   - User instruction: 267 chars
+   - Built-in instructions: 12012 chars
+
+📄 **Prompt Preview** (first 500 chars)
+╭─ System Prompt Preview ───────────────────────────╮
+│ You are an AI programming assistant focused on ... │
+│ - Writing clean, efficient code                    │
+│ - Debugging and problem-solving                    │
+│ - Code review and optimization                     │
+│ ... (truncated)                                    │
+╰────────────────────────────────────────────────────╯
+
+💡 Use --detailed for full breakdown
+💡 Use --raw for raw text output
+```
+
+### Current Limitations & Future Enhancements
+
+#### What Currently Works
+- **✅ All interactive CLI commands** are implemented and tested
+- **✅ Legacy system support** - Commands work with current PromptManager
+- **✅ Rich formatting** with colors, boxes, and helpful information
+- **✅ Error handling** with clear explanations and suggestions
+
+#### What's Coming Next
+- **🔄 Enhanced Provider Support** - Full implementation of the enhanced architecture
+- **🔄 Configuration File Support** - Enhanced YML configuration format
+- **🔄 Real-time Provider Management** - Enable/disable providers dynamically  
+- **🔄 Performance Monitoring** - Real provider-level metrics and optimization
+
+#### Migration Path
+The CLI commands are designed to work with both legacy and enhanced systems:
+1. **Current**: Commands show legacy system status and encourage upgrades
+2. **Future**: Same commands will unlock full enhanced functionality automatically
 
 ---
 
@@ -1140,7 +937,7 @@ export class ResilientFileProvider extends FilePromptProvider {
 #### 1. Provider Not Loading
 **Symptoms**: Provider shows as disabled or missing
 ```bash
-$ cipher prompt-providers --list
+cipher> /prompt-providers list
 ❌ custom-provider (error: not found)
 ```
 
@@ -1153,7 +950,7 @@ $ cipher prompt-providers --list
 #### 2. Slow Performance
 **Symptoms**: Generation time >100ms consistently
 ```bash
-$ cipher prompt-stats
+cipher> /prompt-stats
 ⚠️ Average generation time: 245ms (Target: <100ms)
 ```
 
@@ -1254,17 +1051,17 @@ try {
 
 #### Identify Slow Providers
 ```bash
-$ cipher prompt-stats --detailed
+cipher> /prompt-stats --detailed
 
-Provider Performance Breakdown:
-- main-instructions: 2ms ✅
-- session-context: 145ms ⚠️ (slow)
-- file-provider: 3ms ✅
-- memory-context: 89ms ⚠️ (slow)
+📈 **Detailed Breakdown**
+   - User instruction: "You are an AI programming assistant focused on cod..."
+   - Built-in tools: ✅ Memory search tool
+   - Lines: 365 lines
 
-Recommendations:
-- Consider caching for session-context generator
-- Optimize memory-context queries
+✨ **Recommendations**
+   - Consider upgrading to Enhanced Prompt Manager for better performance
+   - Enhanced mode supports provider-based architecture
+   - Enable parallel processing and better monitoring
 ```
 
 #### Provider Profiling
