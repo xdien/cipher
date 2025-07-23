@@ -54,7 +54,7 @@ export class MiddleRemovalStrategy implements ICompressionStrategy {
 		const minMessagesToKeep = this.config.minMessagesToKeep;
 		const preserveStart = Math.min(this.config.preserveStart, processedMessages.length);
 		const preserveEnd = Math.min(this.config.preserveEnd, processedMessages.length);
-		
+
 		const preservableMessages = getPreservableMessages(processedMessages);
 		const removableMessages = getRemovableMessages(processedMessages);
 
@@ -80,7 +80,7 @@ export class MiddleRemovalStrategy implements ICompressionStrategy {
 		console.log('sortedRemovable.length:', sortedRemovable.length);
 		console.log('preserveStart:', preserveStart);
 		console.log('preserveEnd:', preserveEnd);
-		console.log("Is valid:", (preserveStart + preserveEnd) === sortedRemovable.length);
+		console.log('Is valid:', preserveStart + preserveEnd === sortedRemovable.length);
 		// Start with all preservable messages and the start/end messages we want to keep
 		let compressedMessages = [...preservableMessages, ...startMessages, ...endMessages];
 		let removedMessages: EnhancedInternalMessage[] = [];
