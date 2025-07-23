@@ -310,7 +310,7 @@ export class UnifiedToolManager {
 	/**
 	 * Get tools formatted for specific LLM providers
 	 */
-	async getToolsForProvider(provider: 'openai' | 'anthropic' | 'openrouter'): Promise<any[]> {
+	async getToolsForProvider(provider: 'openai' | 'anthropic' | 'openrouter' | 'aws' | 'azure'): Promise<any[]> {
 		const allTools = await this.getAllTools();
 
 		switch (provider) {
@@ -319,6 +319,10 @@ export class UnifiedToolManager {
 				return this.formatToolsForOpenAI(allTools);
 			case 'anthropic':
 				return this.formatToolsForAnthropic(allTools);
+			case 'aws':
+				return this.formatToolsForAnthropic(allTools); // AWS Bedrock uses Anthropic-compatible format
+			case 'azure':
+				return this.formatToolsForOpenAI(allTools); // Azure OpenAI uses OpenAI-compatible format
 			default:
 				throw new Error(`Unsupported provider: ${provider}`);
 		}
