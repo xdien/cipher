@@ -44,7 +44,7 @@ llm:
 # --- AWS Bedrock LLM Configuration (Active Example) ---
 # llm:
 # provider: aws
-# model: meta.llama3-1-70b-instruct-v1:0  # Or another Bedrock-supported model
+# model: us.anthropic.claude-3-5-sonnet-20241022-v2:0  # Or another Bedrock-supported model
 # maxIterations: 50
 # aws:
 #   region: $AWS_REGION

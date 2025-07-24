@@ -17,6 +17,10 @@ const AwsConfigSchema = z.object({
 		.string()
 		.optional()
 		.describe('AWS Session Token (can use AWS_SESSION_TOKEN env var)'),
+	inferenceProfileArn: z
+		.string()
+		.optional()
+		.describe('ARN of the AWS Bedrock provisioned throughput (inference profile) for the selected model'),
 });
 
 const AzureConfigSchema = z.object({
