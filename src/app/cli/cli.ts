@@ -451,15 +451,7 @@ async function _showCompressionInfo(agent: MemAgent): Promise<void> {
  */
 function _displayCompressionEvent(event: any): void {
 	console.log(
-		chalk.yellowBright('⚡ Context compressed:') +
-			chalk.gray(` [${event?.strategy ?? ''}] `) +
-			chalk.white(
-				`Tokens: ${event?.originalTokenCount ?? '?'} → ${event?.compressedTokenCount ?? '?'} `
-			) +
-			chalk.gray(
-				`(${event?.compressionRatio !== undefined ? Math.round(event.compressionRatio * 100) : '?'}%) `
-			) +
-			chalk.gray(`Messages removed: ${event?.removedMessages?.length ?? '?'} `)
+		chalk.yellowBright('⚡ Context has been compressed.')
 	);
 }
 
