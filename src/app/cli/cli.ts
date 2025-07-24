@@ -450,9 +450,7 @@ async function _showCompressionInfo(agent: MemAgent): Promise<void> {
  * Display compression event information
  */
 function _displayCompressionEvent(event: any): void {
-	console.log(
-		chalk.yellowBright('⚡ Context has been compressed.')
-	);
+	console.log(chalk.yellowBright('⚡ Context has been compressed.'));
 }
 
 // Add utility for parsing metadata from CLI
