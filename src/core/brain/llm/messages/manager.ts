@@ -439,7 +439,7 @@ export class ContextManager {
 	private async updateTokenCount(): Promise<void> {
 		if (!this.tokenizer || this.messages.length === 0) {
 			this.currentTokenCount = 0;
-			logger.debug('[TokenAware] Token count reset to 0 (no messages or tokenizer)');
+			logger.debug('[TokenAware] Token count reset (no messages or tokenizer)');
 			return;
 		}
 
@@ -585,7 +585,7 @@ export class ContextManager {
 		this.updateCompressionHistory(compressionResult);
 
 		logger.info(
-			`[TokenAware] Compression completed: ${compressionResult.originalTokenCount} → ${compressionResult.compressedTokenCount} tokens, strategy: ${compressionResult.strategy}, messages removed: ${compressionResult.removedMessages.length}`
+			`[TokenAware] Compression completed: ${compressionResult.originalTokenCount} → ${compressionResult.compressedTokenCount} tokens`
 		);
 	}
 
