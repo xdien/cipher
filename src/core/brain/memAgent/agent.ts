@@ -1,7 +1,7 @@
 import { MCPManager } from '@core/mcp/manager.js';
 import { AgentServices } from '../../utils/service-initializer.js';
 import { createAgentServices } from '../../utils/service-initializer.js';
-import { PromptManager } from '../systemPrompt/manager.js';
+import { EnhancedPromptManager } from '../systemPrompt/enhanced-manager.js';
 import { MemAgentStateManager } from './state-manager.js';
 import { SessionManager } from '../../session/session-manager.js';
 import { ConversationSession } from '../../session/coversation-session.js';
@@ -21,7 +21,7 @@ const requiredServices: (keyof AgentServices)[] = [
 
 export class MemAgent {
 	public readonly mcpManager!: MCPManager;
-	public readonly promptManager!: PromptManager;
+	public readonly promptManager!: EnhancedPromptManager;
 	public readonly stateManager!: MemAgentStateManager;
 	public readonly sessionManager!: SessionManager;
 	public readonly internalToolManager!: any; // Will be properly typed later
