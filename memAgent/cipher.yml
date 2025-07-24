@@ -9,52 +9,21 @@ mcpServers:
       - .
 
 # describes the llm configuration
-# llm:
-#   # OpenRouter configuration - Updated to use model that supports tool calling
-#   provider: openrouter
-#   model: o4-mini
-#   apiKey: $OPENROUTER_API_KEY
-#   maxIterations: 50
-
-# # System prompt
-# systemPrompt: "You are a helpful AI assistant with memory capabilities. Please confirm you're working with OpenRouter API."
-
-# Active LLM configuration
 llm:
-  # OpenAI configuration - Updated to use model that supports tool calling
   provider: openai
   model: gpt-4.1-mini
   apiKey: $OPENAI_API_KEY
   maxIterations: 50
-  # provider: anthropic
-  # model: claude-3-5-haiku-20241022
-  # apiKey: $ANTHROPIC_API_KEY
-  # maxIterations: 50
-  # provider: openrouter
-  # model: google/gemini-2.5-pro
-  # apiKey: $OPENROUTER_API_KEY
-  # maxIterations: 50
-
-# Evaluation LLM configuration (non-thinking model for evaluation step)
-# evalLlm:
-#   provider: anthropic
-#   model: claude-3-7-sonnet-20250219
-#   apiKey: $ANTHROPIC_API_KEY
-
-# Alternative Ollama configuration (commented out)
-# llm:
-#   provider: ollama
-#   model: qwen3:32b      # Use the model you downloaded
-#   maxIterations: 50
-#   baseURL: $OLLAMA_BASE_URL
 
 # System prompt - User customizable
-# This prompt will be combined with built-in tool usage instructions
-systemPrompt: |
-  You are an AI programming assistant focused on coding and reasoning tasks. You excel at:
-  - Writing clean, efficient code
-  - Debugging and problem-solving
-  - Code review and optimization
-  - Explaining complex technical concepts
-  - Reasoning through programming challenges
+# This is the main static provider for users who want a simple prompt
+systemPrompt:
+  enabled: true
+  content: |
+    You are an AI programming assistant focused on coding and reasoning tasks. You excel at:
+    - Writing clean, efficient code
+    - Debugging and problem-solving
+    - Code review and optimization
+    - Explaining complex technical concepts
+    - Reasoning through programming challenges
 

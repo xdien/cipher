@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import { MemAgent } from '@core/index.js';
+import { EnhancedPromptManager } from '@core/brain/systemPrompt/enhanced-manager.js';
 
 /**
  * Interface for command execution results
@@ -595,7 +596,18 @@ export class CommandParser {
 			category: 'system',
 			handler: async (args: string[], agent: MemAgent) => {
 				try {
-					const systemPrompt = agent.promptManager.getCompleteSystemPrompt();
+					const promptManager = agent.promptManager;
+					let systemPrompt = '';
+					// EnhancedPromptManager: use async generateSystemPrompt
+					if (typeof (promptManager as any).generateSystemPrompt === 'function') {
+						const result = await (promptManager as any).generateSystemPrompt();
+						systemPrompt = result.content || '';
+					} else if (typeof (promptManager as any).getCompleteSystemPrompt === 'function') {
+						// Legacy fallback
+						systemPrompt = promptManager.getCompleteSystemPrompt();
+					} else {
+						throw new Error('No compatible prompt manager found');
+					}
 
 					console.log(chalk.cyan('📝 Current System Prompt:'));
 					console.log('');
@@ -703,48 +715,73 @@ export class CommandParser {
 			handler: async (args: string[], agent: MemAgent) => {
 				try {
 					const detailed = args.includes('--detailed');
-					
 					console.log(chalk.cyan('📊 System Prompt Performance Statistics'));
-					console.log(chalk.cyan('=====================================\n'));
+					console.log(chalk.cyan('====================================='));
 
-					// Check if we have enhanced prompt manager
 					const promptManager = agent.promptManager;
-					
-					// For now, display legacy prompt manager stats
-					console.log(chalk.yellow('🚀 **Generation Performance**'));
-					console.log('   - Generation type: Legacy (synchronous)');
-					console.log('   - Average generation time: <1ms ✅');
-					console.log('   - Success rate: 100%');
-					console.log('');
-
-					console.log(chalk.yellow('🔧 **Prompt Status**'));
-					console.log('   - Current prompt type: Legacy PromptManager');
-					
-					const systemPrompt = promptManager.getCompleteSystemPrompt();
-					const userPrompt = promptManager.getUserInstruction();
-					const builtInPrompt = promptManager.getBuiltInInstructions();
-					
-					console.log(`   - User instruction length: ${userPrompt.length} characters`);
-					console.log(`   - Built-in instructions length: ${builtInPrompt.length} characters`);
-					console.log(`   - Total prompt length: ${systemPrompt.length} characters`);
-					console.log('');
-
-					if (detailed) {
-						console.log(chalk.yellow('📈 **Detailed Breakdown**'));
-						console.log(`   - User instruction: "${userPrompt.substring(0, 50)}${userPrompt.length > 50 ? '...' : ''}"`);
-						console.log(`   - Built-in tools: ${builtInPrompt.includes('cipher_memory_search') ? '✅' : '❌'} Memory search tool`);
-						console.log(`   - Lines: ${systemPrompt.split('\n').length} lines`);
+					if (typeof (promptManager as any).generateSystemPrompt === 'function') {
+						// EnhancedPromptManager mode
+						const result = await (promptManager as any).generateSystemPrompt();
+						console.log(chalk.yellow('🚀 **Enhanced Generation Performance**'));
+						console.log(`   - Providers used: ${result.providerResults.length}`);
+						console.log(`   - Total prompt length: ${result.content.length} characters`);
+						console.log(`   - Generation time: ${result.generationTimeMs} ms`);
+						console.log(`   - Success: ${result.success ? '✅' : '❌'}`);
+						if (detailed) {
+							console.log(chalk.yellow('📈 **Per-Provider Breakdown**'));
+							for (const r of result.providerResults) {
+								console.log(`   - ${r.providerId}: ${r.success ? '✅' : '❌'} | ${r.generationTimeMs} ms | ${r.content.length} chars`);
+							}
+						}
+						if (result.errors && result.errors.length > 0) {
+							console.log(chalk.red('❌ Errors:'));
+							for (const err of result.errors) {
+								console.log(`   - ${err.message}`);
+							}
+						}
+						return true;
+					} else if (typeof (promptManager as any).getCompleteSystemPrompt === 'function') {
+						// Legacy fallback
+						console.log(chalk.yellow('🚀 **Generation Performance**'));
+						console.log('   - Generation type: Legacy (synchronous)');
+						console.log('   - Average generation time: <1ms ✅');
+						console.log('   - Success rate: 100%');
 						console.log('');
+						console.log(chalk.yellow('🔧 **Prompt Status**'));
+						console.log('   - Current prompt type: Legacy PromptManager');
+						const systemPrompt = promptManager.getCompleteSystemPrompt();
+						const userPrompt = promptManager.getUserInstruction();
+						const builtInPrompt = promptManager.getBuiltInInstructions();
+						console.log(`   - User instruction length: ${userPrompt.length} characters`);
+						console.log(`   - Built-in instructions length: ${builtInPrompt.length} characters`);
+						console.log(`   - Total prompt length: ${systemPrompt.length} characters`);
+						console.log('');
+						if (detailed) {
+							console.log(chalk.yellow('📈 **Detailed Breakdown**'));
+							console.log(
+								`   - User instruction: "${userPrompt.substring(0, 50)}${userPrompt.length > 50 ? '...' : ''}"`
+							);
+							console.log(
+								`   - Built-in tools: ${builtInPrompt.includes('cipher_memory_search') ? '✅' : '❌'} Memory search tool`
+							);
+							console.log(`   - Lines: ${systemPrompt.split('\n').length} lines`);
+							console.log('');
+						}
+						console.log(chalk.yellow('✨ **Recommendations**'));
+						console.log('   - Consider upgrading to Enhanced Prompt Manager for better performance');
+						console.log('   - Enhanced mode supports provider-based architecture');
+						console.log('   - Enable parallel processing and better monitoring');
+						return true;
+					} else {
+						console.log(chalk.red('❌ No compatible prompt manager found.'));
+						return false;
 					}
-
-					console.log(chalk.yellow('✨ **Recommendations**'));
-					console.log('   - Consider upgrading to Enhanced Prompt Manager for better performance');
-					console.log('   - Enhanced mode supports provider-based architecture');
-					console.log('   - Enable parallel processing and better monitoring');
-
-					return true;
 				} catch (error) {
-					console.log(chalk.red(`❌ Failed to get prompt statistics: ${error instanceof Error ? error.message : String(error)}`));
+					console.log(
+						chalk.red(
+							`❌ Failed to get prompt statistics: ${error instanceof Error ? error.message : String(error)}`
+						)
+					);
 					return false;
 				}
 			},
@@ -759,32 +796,225 @@ export class CommandParser {
 				try {
 					if (args.length === 0) {
 						console.log(chalk.red('❌ Subcommand required'));
-						console.log(chalk.gray('Available subcommands: list, enable, disable'));
+						console.log(
+							chalk.gray(
+								'Available subcommands: list, add-dynamic, add-file, remove, update, enable, disable, help'
+							)
+						);
 						console.log(chalk.gray('Usage: /prompt-providers <subcommand> [args]'));
 						return false;
 					}
-
 					const subcommand = args[0];
 					const subArgs = args.slice(1);
-
+					const promptManager = agent.promptManager;
+					// EnhancedPromptManager logic
+					const isEnhanced = typeof (promptManager as any).listProviders === 'function';
+					if (!isEnhanced) {
+						console.log('❌ Prompt provider management is only available in enhanced mode.');
+						return false;
+					}
+					// Now safe to cast
+					const enhanced = promptManager as unknown as EnhancedPromptManager;
 					switch (subcommand) {
-						case 'list':
-						case 'ls':
-							return this.promptProvidersListHandler(subArgs, agent);
-						case 'enable':
-							return this.promptProvidersEnableHandler(subArgs, agent);
-						case 'disable':
-							return this.promptProvidersDisableHandler(subArgs, agent);
-						case 'help':
-						case 'h':
-							return this.promptProvidersHelpHandler(subArgs, agent);
+						case 'list': {
+							// Get all currently loaded (active) providers
+							const activeProviders = enhanced.listProviders();
+							// Get all provider configs from configManager (for preview)
+							const allConfigs = enhanced.getConfig().providers;
+							console.log(chalk.cyan('📋 System Prompt Providers (Enhanced Mode)'));
+							// Active providers only
+							if (activeProviders.length > 0) {
+								console.log(chalk.green('🟢 Active Providers:'));
+								for (const p of activeProviders) {
+									let preview = '';
+									if (p.type === 'static') {
+										const config = allConfigs.find(c => c.name === p.id);
+										if (config && typeof config.config?.content === 'string') {
+											preview = config.config.content.substring(0, 60);
+											if (config.config.content.length > 60) preview += '...';
+											preview = ` | Preview: "${preview.replace(/\n/g, ' ')}"`;
+										}
+									}
+									console.log(`  🟢 ${p.id} (${p.type})${preview}`);
+								}
+							} else {
+								console.log(chalk.gray('  No active providers.'));
+							}
+							console.log('');
+							console.log(chalk.gray('💡 Use /prompt-providers show-all to see all available and disabled providers.'));
+							console.log(chalk.gray('💡 Use /prompt-providers add-dynamic or add-file to activate more providers.'));
+							return true;
+						}
+						case 'add-dynamic': {
+							if (subArgs.length < 1) {
+								console.log(chalk.red('❌ Generator name required'));
+								console.log(
+									chalk.gray('Usage: /prompt-providers add-dynamic <generator> [--history N|all]')
+								);
+								return false;
+							}
+							const generator = subArgs[0];
+							let history = '';
+							for (let i = 1; i < subArgs.length; ++i) {
+								if (subArgs[i] === '--history') {
+									history = subArgs[i + 1] ?? '';
+								}
+							}
+							const config = {
+								name: generator,
+								type: 'dynamic',
+								priority: 50,
+								enabled: true,
+								config: { generator, history },
+							};
+							await enhanced.addOrUpdateProvider(config);
+							console.log(chalk.green(`✅ Dynamic provider '${generator}' added/updated.`));
+							return true;
+						}
+						case 'add-file': {
+							if (subArgs.length < 2) {
+								console.log(chalk.red('❌ Name and file path required'));
+								console.log(
+									chalk.gray(
+										'Usage: /prompt-providers add-file <name> <path> [--summarize true|false]'
+									)
+								);
+								return false;
+							}
+							const name = subArgs[0];
+							const filePath = subArgs[1];
+							let summarize = false;
+							for (let i = 2; i < subArgs.length; ++i) {
+								if (subArgs[i] === '--summarize' && subArgs[i + 1]) {
+									summarize = subArgs[i + 1] === 'true';
+								}
+							}
+							const config = {
+								name,
+								type: 'file-based',
+								priority: 40,
+								enabled: true,
+								config: { filePath, summarize },
+							};
+							await enhanced.addOrUpdateProvider(config);
+							console.log(chalk.green(`✅ File-based provider '${name}' added/updated.`));
+							return true;
+						}
+						case 'remove': {
+							const name = subArgs[0] ?? '';
+							await enhanced.removeProvider(name);
+							console.log(chalk.green(`✅ Provider '${name}' removed.`));
+							return true;
+						}
+						case 'update': {
+							const name = subArgs[0] ?? '';
+							const provider = enhanced.getProvider(name);
+							if (!provider) {
+								console.log(chalk.red(`❌ Provider '${name}' not found`));
+								return false;
+							}
+							// Use safe object spread for config
+							const configObj =
+								provider &&
+								typeof (provider as any).config === 'object' &&
+								(provider as any).config !== null
+									? { ...(provider as any).config }
+									: {};
+							const newConfig = { ...provider, config: configObj };
+							for (let i = 1; i < subArgs.length; ++i) {
+								const [key, value] = (subArgs[i] ?? '').split('=');
+								if (key && value !== undefined) {
+									newConfig.config[key] = value;
+								}
+							}
+							await enhanced.addOrUpdateProvider(newConfig);
+							console.log(chalk.green(`✅ Provider '${name}' updated.`));
+							return true;
+						}
+						case 'show-all': {
+							// Get all currently loaded (active) providers
+							const activeProviders = enhanced.listProviders();
+							// Get all provider configs from configManager (including those not loaded)
+							const allConfigs = enhanced.getConfig().providers;
+							// Build a set of active provider names for quick lookup
+							const activeNames = new Set(activeProviders.map(p => p.id));
+							// All enabled providers
+							const enabledProviders = allConfigs.filter(c => c.enabled);
+							// Split into active and available
+							const activeEnabled = enabledProviders.filter(c => activeNames.has(c.name));
+							const availableEnabled = enabledProviders.filter(c => !activeNames.has(c.name));
+							// Output
+							console.log(chalk.cyan('📋 All Enabled Providers'));
+							// Active
+							if (activeEnabled.length > 0) {
+								console.log(chalk.green('🟢 Active:'));
+								for (const c of activeEnabled) {
+									let preview = '';
+									if (c.type === 'static' && typeof c.config?.content === 'string') {
+										preview = c.config.content.substring(0, 60);
+										if (c.config.content.length > 60) preview += '...';
+										preview = ` | Preview: "${preview.replace(/\n/g, ' ')}"`;
+									}
+									console.log(`  🟢 ${c.name} (${c.type})${preview}`);
+								}
+							} else {
+								console.log(chalk.gray('  No active enabled providers.'));
+							}
+							// Available (enabled, not yet loaded)
+							if (availableEnabled.length > 0) {
+								console.log(chalk.yellow('🟡 Available (Enabled, Not Yet Loaded):'));
+								for (const c of availableEnabled) {
+									let preview = '';
+									if (c.type === 'static' && typeof c.config?.content === 'string') {
+										preview = c.config.content.substring(0, 60);
+										if (c.config.content.length > 60) preview += '...';
+										preview = ` | Preview: "${preview.replace(/\n/g, ' ')}"`;
+									}
+									console.log(`  🟡 ${c.name} (${c.type})${preview}`);
+								}
+							} else {
+								console.log(chalk.gray('  No available enabled providers.'));
+							}
+							console.log('');
+							console.log(chalk.gray('💡 All providers listed here have enabled: true in config.'));
+							console.log(chalk.gray('💡 Use /prompt-providers add-dynamic or add-file to activate available providers.'));
+							return true;
+						}
+						case 'help': {
+							console.log(chalk.cyan('\n📋 Prompt Provider Management Commands:\n'));
+							console.log(chalk.yellow('Available subcommands:'));
+							const subcommands = [
+								'/prompt-providers list - List active and available prompt providers',
+								'/prompt-providers show-all - Show all enabled providers (active + available)',
+								'/prompt-providers add-dynamic <generator> [--history N|all] - Add/update a dynamic provider',
+								'/prompt-providers add-file <name> <path> [--summarize true|false] - Add/update a file-based provider',
+								'/prompt-providers remove <name> - Remove a provider',
+								'/prompt-providers update <name> key=value ... - Update provider config',
+								'/prompt-providers enable <name> - Enable a provider (if supported)',
+								'/prompt-providers disable <name> - Disable a provider (if supported)',
+								'/prompt-providers help - Show this help message',
+							];
+							subcommands.forEach(cmd => console.log(`  ${cmd}`));
+							console.log('\n' + chalk.gray('💡 Providers are components that generate parts of the system prompt'));
+							console.log(chalk.gray('💡 Different provider types: static, dynamic, file-based'));
+							console.log(chalk.gray('💡 Use add-dynamic/add-file to activate available providers.'));
+							return true;
+						}
 						default:
 							console.log(chalk.red(`❌ Unknown subcommand: ${subcommand}`));
-							console.log(chalk.gray('Available subcommands: list, enable, disable, help'));
+							console.log(
+								chalk.gray(
+									'Available subcommands: list, add-dynamic, add-file, remove, update, enable, disable, help'
+								)
+							);
 							return false;
 					}
 				} catch (error) {
-					console.log(chalk.red(`❌ Error in prompt-providers: ${error instanceof Error ? error.message : String(error)}`));
+					console.log(
+						chalk.red(
+							`❌ Error in prompt-providers: ${error instanceof Error ? error.message : String(error)}`
+						)
+					);
 					return false;
 				}
 			},
@@ -799,11 +1029,25 @@ export class CommandParser {
 				try {
 					const detailed = args.includes('--detailed');
 					const raw = args.includes('--raw');
-					
 					const promptManager = agent.promptManager;
-					const systemPrompt = promptManager.getCompleteSystemPrompt();
-					const userPrompt = promptManager.getUserInstruction();
-					const builtInPrompt = promptManager.getBuiltInInstructions();
+					let systemPrompt = '';
+					let userPrompt = '';
+					let builtInPrompt = '';
+					// EnhancedPromptManager: use async generateSystemPrompt
+					if (typeof (promptManager as any).generateSystemPrompt === 'function') {
+						const result = await (promptManager as any).generateSystemPrompt();
+						systemPrompt = result.content || '';
+						// For enhanced mode, userPrompt and builtInPrompt are not separated, so leave blank or show N/A
+						userPrompt = 'N/A';
+						builtInPrompt = 'N/A';
+					} else if (typeof (promptManager as any).getCompleteSystemPrompt === 'function') {
+						// Legacy fallback
+						systemPrompt = promptManager.getCompleteSystemPrompt();
+						userPrompt = promptManager.getUserInstruction();
+						builtInPrompt = promptManager.getBuiltInInstructions();
+					} else {
+						throw new Error('No compatible prompt manager found');
+					}
 
 					if (raw) {
 						console.log(systemPrompt);
@@ -817,37 +1061,24 @@ export class CommandParser {
 					console.log(chalk.yellow('📊 **Prompt Statistics**'));
 					console.log(`   - Total length: ${systemPrompt.length} characters`);
 					console.log(`   - Line count: ${systemPrompt.split('\n').length} lines`);
-					console.log(`   - User instruction: ${userPrompt.length} chars`);
-					console.log(`   - Built-in instructions: ${builtInPrompt.length} chars`);
+					console.log(`   - User instruction: ${userPrompt}`);
+					console.log(`   - Built-in instructions: ${builtInPrompt}`);
 					console.log('');
 
+					// Show preview or detailed view
 					if (detailed) {
-						// Show user instruction section
-						if (userPrompt.trim()) {
-							console.log(chalk.yellow('👤 **User Instructions**'));
-							console.log(chalk.gray('╭─ User Prompt ─────────────────────────────────────╮'));
-							const userLines = userPrompt.split('\n');
-							for (const line of userLines.slice(0, 10)) { // Show first 10 lines
-								const truncated = line.length > 50 ? line.substring(0, 47) + '...' : line;
-								console.log(chalk.gray('│ ') + truncated.padEnd(50) + chalk.gray(' │'));
-							}
-							if (userLines.length > 10) {
-								console.log(chalk.gray('│ ') + chalk.dim(`... ${userLines.length - 10} more lines`).padEnd(50) + chalk.gray(' │'));
-							}
-							console.log(chalk.gray('╰────────────────────────────────────────────────────╯'));
-							console.log('');
+						console.log(chalk.yellow('📄 **Prompt Content (Full)**'));
+						console.log(chalk.gray('╭─ System Prompt ────────────────────────────────────────╮'));
+						const lines = systemPrompt.split('\n');
+						for (const line of lines) {
+							const truncated = line.length > 50 ? line.substring(0, 47) + '...' : line;
+							console.log(chalk.gray('│ ') + truncated.padEnd(50) + chalk.gray(' │'));
 						}
-
-						// Show built-in section summary
-						console.log(chalk.yellow('🔧 **Built-in Instructions**'));
-						console.log(`   - Memory search tool: ${builtInPrompt.includes('cipher_memory_search') ? '✅ Enabled' : '❌ Disabled'}`);
-						console.log(`   - Tool usage instructions: ${builtInPrompt.includes('tool') ? '✅ Present' : '❌ Missing'}`);
-						console.log(`   - Length: ${builtInPrompt.length} characters`);
+						console.log(chalk.gray('╰────────────────────────────────────────────────────────╯'));
 						console.log('');
 					} else {
-						// Compact view
 						console.log(chalk.yellow('📄 **Prompt Preview** (first 500 chars)'));
-						console.log(chalk.gray('╭─ System Prompt Preview ───────────────────────────╮'));
+						console.log(chalk.gray('╭─ System Prompt Preview ───────────────────────────────╮'));
 						const preview = systemPrompt.substring(0, 500);
 						const lines = preview.split('\n');
 						for (const line of lines) {
@@ -855,9 +1086,11 @@ export class CommandParser {
 							console.log(chalk.gray('│ ') + truncated.padEnd(50) + chalk.gray(' │'));
 						}
 						if (systemPrompt.length > 500) {
-							console.log(chalk.gray('│ ') + chalk.dim('... (truncated)').padEnd(50) + chalk.gray(' │'));
+							console.log(
+								chalk.gray('│ ') + chalk.dim('... (truncated)').padEnd(50) + chalk.gray(' │')
+							);
 						}
-						console.log(chalk.gray('╰────────────────────────────────────────────────────╯'));
+						console.log(chalk.gray('╰────────────────────────────────────────────────────────╯'));
 						console.log('');
 					}
 
@@ -866,7 +1099,11 @@ export class CommandParser {
 
 					return true;
 				} catch (error) {
-					console.log(chalk.red(`❌ Error displaying prompt: ${error instanceof Error ? error.message : String(error)}`));
+					console.log(
+						chalk.red(
+							`❌ Error displaying prompt: ${error instanceof Error ? error.message : String(error)}`
+						)
+					);
 					return false;
 				}
 			},
@@ -1089,7 +1326,7 @@ export class CommandParser {
 
 		subcommands.forEach(cmd => console.log(`  ${cmd}`));
 
-		console.log('\n' + chalk.gray('💡 Sessions allow you to maintain separate conversations'));
+		console.log('\n' + chalk.gray('�� Sessions allow you to maintain separate conversations'));
 		console.log(chalk.gray('💡 Use /session switch <id> to change sessions'));
 		console.log(chalk.gray('💡 Session names can be custom or auto-generated UUIDs'));
 		console.log('');
@@ -1107,36 +1344,36 @@ export class CommandParser {
 
 			const promptManager = agent.promptManager;
 			
-			// For legacy prompt manager, show simulated provider info
-			console.log(chalk.yellow('Legacy Prompt System Active'));
+			// For enhanced prompt manager, show actual providers
+			console.log(chalk.yellow('Enhanced Prompt System Active'));
 			console.log('');
 
-			// Show legacy components as "providers"
-			const userInstruction = promptManager.getUserInstruction();
-			const builtInInstructions = promptManager.getBuiltInInstructions();
-
-			console.log(chalk.green('🟢 **user-instruction** (static, priority: 100)'));
-			console.log(`   Status: ${userInstruction.trim() ? '✅ Enabled' : '❌ Empty'}`);
-			console.log(`   Content: ${userInstruction.length} characters`);
-			if (userInstruction.trim()) {
-				const preview = userInstruction.substring(0, 100).replace(/\n/g, ' ');
-				console.log(`   Preview: "${preview}${userInstruction.length > 100 ? '...' : ''}"`);
+			const providers = promptManager.listProviders();
+			if (providers.length === 0) {
+				console.log(chalk.gray('  No providers configured.'));
+				console.log(
+					chalk.gray('  💡 Use /prompt-providers add-dynamic, add-file, or update existing ones.')
+				);
+			} else {
+				for (const p of providers) {
+					console.log(`${p.enabled ? chalk.green('🟢') : chalk.red('🔴')} ${p.id} (${p.type})`);
+				}
 			}
 			console.log('');
 
-			console.log(chalk.green('🟢 **built-in-instructions** (static, priority: 0)'));
-			console.log('   Status: ✅ Enabled');
-			console.log(`   Content: ${builtInInstructions.length} characters`);
-			console.log(`   Features: ${builtInInstructions.includes('cipher_memory_search') ? '✅' : '❌'} Memory search`);
-			console.log('');
-
-			console.log(chalk.gray('💡 This is a legacy prompt system'));
-			console.log(chalk.gray('💡 Consider upgrading to Enhanced Prompt Manager for provider management'));
-			console.log(chalk.gray('💡 Enhanced mode supports multiple provider types and real-time management'));
+			console.log(chalk.gray('💡 This is an Enhanced Prompt Manager system'));
+			console.log(
+				chalk.gray('💡 You can manage providers like user-instruction, built-in-instructions, etc.')
+			);
+			console.log(chalk.gray('💡 Use /prompt-providers enable/disable to manage provider status.'));
 
 			return true;
 		} catch (error) {
-			console.log(chalk.red(`❌ Failed to list providers: ${error instanceof Error ? error.message : String(error)}`));
+			console.log(
+				chalk.red(
+					`❌ Failed to list providers: ${error instanceof Error ? error.message : String(error)}`
+				)
+			);
 			return false;
 		}
 	}
@@ -1154,21 +1391,27 @@ export class CommandParser {
 
 			const providerName = args[0];
 			
-			console.log(chalk.yellow('⚠️ Legacy Prompt System Active'));
+			console.log(chalk.yellow('⚠️ Enhanced Prompt System Active'));
 			console.log('');
-			console.log('The current prompt system uses a legacy PromptManager that does not');
-			console.log('support individual provider management.');
+			console.log('The current prompt system uses an Enhanced PromptManager that supports');
+			console.log('individual provider management.');
 			console.log('');
-			console.log('Available providers in legacy mode:');
-			console.log('  - user-instruction (always enabled when set)');
-			console.log('  - built-in-instructions (always enabled)');
+			console.log('Available providers:');
+			console.log('  - user-instruction (static, priority: 100)');
+			console.log('  - built-in-instructions (static, priority: 0)');
+			console.log('  - dynamic-generators (dynamic, priority: 50)');
+			console.log('  - file-based-providers (file-based, priority: 40)');
 			console.log('');
-			console.log(chalk.gray('💡 To enable/disable providers, upgrade to Enhanced Prompt Manager'));
-			console.log(chalk.gray('💡 Enhanced mode supports dynamic provider management'));
+			console.log(chalk.gray('💡 Use /prompt-providers disable <name> to disable a provider.'));
+			console.log(chalk.gray('💡 Providers can be re-enabled by re-adding them.'));
 
 			return true;
 		} catch (error) {
-			console.log(chalk.red(`❌ Failed to enable provider: ${error instanceof Error ? error.message : String(error)}`));
+			console.log(
+				chalk.red(
+					`❌ Failed to enable provider: ${error instanceof Error ? error.message : String(error)}`
+				)
+			);
 			return false;
 		}
 	}
@@ -1186,21 +1429,25 @@ export class CommandParser {
 
 			const providerName = args[0];
 			
-			console.log(chalk.yellow('⚠️ Legacy Prompt System Active'));
+			console.log(chalk.yellow('⚠️ Enhanced Prompt System Active'));
 			console.log('');
-			console.log('The current prompt system uses a legacy PromptManager that does not');
-			console.log('support individual provider management.');
+			console.log('The current prompt system uses an Enhanced PromptManager that supports');
+			console.log('individual provider management.');
 			console.log('');
-			console.log('In legacy mode:');
-			console.log('  - User instructions can be cleared with agent.promptManager.load("")');
-			console.log('  - Built-in instructions are always active (cannot be disabled)');
+			console.log('In enhanced mode:');
+			console.log('  - You can disable a provider by removing it or setting enabled: false.');
+			console.log('  - Providers can be re-enabled by re-adding them or setting enabled: true.');
 			console.log('');
-			console.log(chalk.gray('💡 To enable/disable providers, upgrade to Enhanced Prompt Manager'));
-			console.log(chalk.gray('💡 Enhanced mode supports dynamic provider management'));
+			console.log(chalk.gray('💡 Use /prompt-providers enable <name> to re-enable a provider.'));
+			console.log(chalk.gray('💡 Providers can be re-enabled by re-adding them.'));
 
 			return true;
 		} catch (error) {
-			console.log(chalk.red(`❌ Failed to disable provider: ${error instanceof Error ? error.message : String(error)}`));
+			console.log(
+				chalk.red(
+					`❌ Failed to disable provider: ${error instanceof Error ? error.message : String(error)}`
+				)
+			);
 			return false;
 		}
 	}
@@ -1222,10 +1469,16 @@ export class CommandParser {
 
 		subcommands.forEach(cmd => console.log(`  ${cmd}`));
 
-		console.log('\n' + chalk.gray('💡 Providers are components that generate parts of the system prompt'));
+		console.log(
+			'\n' + chalk.gray('💡 Providers are components that generate parts of the system prompt')
+		);
 		console.log(chalk.gray('💡 Different provider types: static, dynamic, file-based'));
-		console.log(chalk.gray('💡 Current system uses legacy prompt manager (limited functionality)'));
-		console.log(chalk.gray('💡 Consider upgrading to Enhanced Prompt Manager for full features'));
+		console.log(
+			chalk.gray('💡 Current system uses Enhanced Prompt Manager for provider management')
+		);
+		console.log(
+			chalk.gray('💡 You can manage providers like user-instruction, built-in-instructions, etc.')
+		);
 		console.log('');
 
 		return true;

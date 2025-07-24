@@ -1,4 +1,3 @@
-import { PromptManager } from '../brain/systemPrompt/manager.js';
 import { ContextManager, ILLMService } from '../brain/llm/index.js';
 import { MCPManager } from '../mcp/manager.js';
 import { UnifiedToolManager } from '../brain/tools/unified-tool-manager.js';
@@ -14,6 +13,7 @@ import { StorageManager } from '../storage/manager.js';
 import type { ZodSchema } from 'zod';
 import { setImmediate } from 'timers';
 import { IConversationHistoryProvider } from '../brain/llm/messages/history/types.js';
+import { EnhancedPromptManager } from '../brain/systemPrompt/enhanced-manager.js';
 export class ConversationSession {
 	private contextManager!: ContextManager;
 	private llmService!: ILLMService;
@@ -42,7 +42,7 @@ export class ConversationSession {
 	constructor(
 		private services: {
 			stateManager: MemAgentStateManager;
-			promptManager: PromptManager;
+			promptManager: EnhancedPromptManager;
 			mcpManager: MCPManager;
 			unifiedToolManager: UnifiedToolManager;
 		},

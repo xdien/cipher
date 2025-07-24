@@ -1,6 +1,6 @@
 /**
  * System Prompt Architecture - Main Exports
- * 
+ *
  * This module provides a complete plugin-based system prompt management solution
  * with backward compatibility for existing code.
  */
@@ -21,10 +21,3 @@ export * from './built-in-generators.js';
 
 // Enhanced manager
 export { EnhancedPromptManager } from './enhanced-manager.js';
-
-// Legacy compatibility
-export { LegacyPromptManagerAdapter, PromptManagerMigration } from './legacy-adapter.js';
-
-// Legacy manager (for backward compatibility)
-export { PromptManager } from './manager.js';
-export { getBuiltInInstructions } from './tool-instructions.js';

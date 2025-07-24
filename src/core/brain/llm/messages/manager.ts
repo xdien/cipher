@@ -2,11 +2,11 @@ import { IMessageFormatter } from './formatters/types.js';
 import { logger } from '../../../logger/index.js';
 import { InternalMessage, ImageData } from './types.js';
 import { getImageData } from './utils.js';
-import { PromptManager } from '../../../brain/systemPrompt/manager.js';
+import { EnhancedPromptManager } from '../../../brain/systemPrompt/enhanced-manager.js';
 import { IConversationHistoryProvider } from './history/types.js';
 
 export class ContextManager {
-	private promptManager: PromptManager;
+	private promptManager: EnhancedPromptManager;
 	private formatter: IMessageFormatter;
 	private historyProvider: IConversationHistoryProvider | undefined;
 	private sessionId: string | undefined;
@@ -21,7 +21,7 @@ export class ContextManager {
 	 */
 	constructor(
 		formatter: IMessageFormatter,
-		promptManager: PromptManager,
+		promptManager: EnhancedPromptManager,
 		historyProvider: IConversationHistoryProvider | undefined,
 		sessionId: string | undefined
 	) {
@@ -34,9 +34,9 @@ export class ContextManager {
 	}
 
 	async getSystemPrompt(): Promise<string> {
-		const prompt = await this.promptManager.getCompleteSystemPrompt();
-		logger.debug(`[SystemPrompt] Built complete system prompt (${prompt.length} chars)`);
-		return prompt;
+		const result = await this.promptManager.generateSystemPrompt();
+		logger.debug(`[SystemPrompt] Built complete system prompt (${result.content.length} chars)`);
+		return result.content;
 	}
 
 	async addMessage(message: InternalMessage): Promise<void> {

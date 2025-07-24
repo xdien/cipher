@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { PromptManager } from '../brain/systemPrompt/manager.js';
+import { EnhancedPromptManager } from '../brain/systemPrompt/enhanced-manager.js';
 import { MemAgentStateManager } from '../brain/memAgent/state-manager.js';
 import { ConversationSession } from './coversation-session.js';
 import { MCPManager } from '../mcp/manager.js';
@@ -31,7 +31,7 @@ export class SessionManager {
 	constructor(
 		private services: {
 			stateManager: MemAgentStateManager;
-			promptManager: PromptManager;
+			promptManager: EnhancedPromptManager;
 			mcpManager: MCPManager;
 			unifiedToolManager: UnifiedToolManager;
 			eventManager: EventManager;
