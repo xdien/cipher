@@ -14,6 +14,8 @@ export class OpenAITokenizer implements ITokenizer {
 	private tokenLimits: ProviderTokenLimits;
 	private tiktoken: any = null;
 	private encoding: any = null;
+	private tiktokencountflag: boolean = false;
+	private approximationcountflag: boolean = false;
 
 	// Token density calibration for hybrid tracking
 	private densityHistory: number[] = [];
@@ -107,16 +109,20 @@ export class OpenAITokenizer implements ITokenizer {
 				if (this.config.hybridTracking) {
 					this.updateDensityHistory(text.length, tokens.length);
 				}
-
-				logTokenCount('tiktoken count', count);
+				if (!this.tiktokencountflag) {
+					logTokenCount('tiktoken count', count);
+					this.tiktokencountflag = true;
+				}
 				return count;
 			} else {
 				// Fallback to approximation
 				const estimated = this.estimateTokens(text);
 				const count = createFallbackTokenCount(text, this.provider, this.model);
 				count.total = estimated;
-
-				logTokenCount('approximation count', count);
+				if (!this.approximationcountflag) {
+					logTokenCount('openai approximation', count);
+					this.approximationcountflag = true;
+				}
 				return count;
 			}
 		} catch (error) {

@@ -142,7 +142,6 @@ export function createLLMService(
 	unifiedToolManager?: UnifiedToolManager
 ): ILLMService {
 	const service = _createLLMService(config, mcpManager, contextManager, unifiedToolManager);
-
 	// Configure token-aware compression for the context manager
 	configureCompressionForService(config, contextManager);
 

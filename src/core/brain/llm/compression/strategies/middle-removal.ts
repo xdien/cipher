@@ -77,16 +77,12 @@ export class MiddleRemovalStrategy implements ICompressionStrategy {
 			preserveStart,
 			sortedRemovable.length - preserveEnd
 		);
-		console.log('sortedRemovable.length:', sortedRemovable.length);
-		console.log('preserveStart:', preserveStart);
-		console.log('preserveEnd:', preserveEnd);
-		console.log('Is valid:', preserveStart + preserveEnd === sortedRemovable.length);
+
 		// Start with all preservable messages and the start/end messages we want to keep
 		let compressedMessages = [...preservableMessages, ...startMessages, ...endMessages];
 		let removedMessages: EnhancedInternalMessage[] = [];
 		let currentTokens = calculateTotalTokens(compressedMessages);
 
-		console.log('Middlemessages:', middleMessages);
 		// Remove middle messages until we reach target or run out of removable messages
 		for (const message of middleMessages) {
 			// Check if removing this message would violate minimum message count

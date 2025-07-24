@@ -12,7 +12,7 @@ export class GoogleTokenizer implements ITokenizer {
 
 	private config: TokenizerConfig;
 	private tokenLimits: ProviderTokenLimits;
-
+	private tokencountflag: boolean = false;
 	// Calibrated token density for Google models
 	private avgTokenDensity = 0.28; // Slightly higher than other providers
 
@@ -57,8 +57,10 @@ export class GoogleTokenizer implements ITokenizer {
 			provider: this.provider,
 			model: this.model,
 		};
-
-		logTokenCount('google approximation', count);
+		if (!this.tokencountflag) {
+			logTokenCount('google', count);
+			this.tokencountflag = true;
+		}
 		return count;
 	}
 

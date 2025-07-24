@@ -12,6 +12,7 @@ export class AnthropicTokenizer implements ITokenizer {
 
 	private config: TokenizerConfig;
 	private tokenLimits: ProviderTokenLimits;
+	private tokencountflag: boolean = false;
 
 	// Calibrated token density for this provider
 	private avgTokenDensity = 0.25; // 4 chars per token
@@ -59,8 +60,10 @@ export class AnthropicTokenizer implements ITokenizer {
 			provider: this.provider,
 			model: this.model,
 		};
-
-		logTokenCount('anthropic approximation', count);
+		if (!this.tokencountflag) {
+			logTokenCount('anthropic', count);
+			this.tokencountflag = true;
+		}
 		return count;
 	}
 

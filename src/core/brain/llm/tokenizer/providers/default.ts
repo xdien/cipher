@@ -12,7 +12,7 @@ export class DefaultTokenizer implements ITokenizer {
 
 	private config: TokenizerConfig;
 	private tokenLimits: ProviderTokenLimits;
-
+	private tokencountflag: boolean = false;
 	// Conservative token density
 	private avgTokenDensity = 0.3; // ~3.3 chars per token (conservative)
 
@@ -53,8 +53,10 @@ export class DefaultTokenizer implements ITokenizer {
 			provider: this.provider,
 			model: this.model,
 		};
-
-		logTokenCount('default approximation', count);
+		if (!this.tokencountflag) {
+			logTokenCount('default', count);
+			this.tokencountflag = true;
+		}
 		return count;
 	}
 
