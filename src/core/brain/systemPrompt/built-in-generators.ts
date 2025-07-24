@@ -21,7 +21,7 @@ export const timestampGenerator: DynamicContentGenerator = async (
 	switch (format) {
 		case 'iso':
 			return context.timestamp.toISOString();
-		case 'locale':
+		case 'locale': {
 			const options: Intl.DateTimeFormatOptions = {
 				year: 'numeric',
 				month: 'long',
@@ -31,6 +31,7 @@ export const timestampGenerator: DynamicContentGenerator = async (
 				...(includeTimezone && { timeZoneName: 'short' }),
 			};
 			return context.timestamp.toLocaleString('en-US', options);
+		}
 		case 'date-only':
 			return context.timestamp.toISOString().split('T')[0]!;
 		case 'time-only':
@@ -69,19 +70,23 @@ export const sessionContextGenerator: DynamicContentGenerator = async (
 	}
 
 	switch (format) {
-		case 'list':
+		case 'list': {
 			return contextInfo.join('\n');
-		case 'inline':
+		}
+		case 'inline': {
 			return contextInfo.join(', ');
-		case 'json':
+		}
+		case 'json': {
 			const obj: Record<string, any> = {};
 			if (includeFields.includes('sessionId') && context.sessionId)
 				obj.sessionId = context.sessionId;
 			if (includeFields.includes('userId') && context.userId) obj.userId = context.userId;
 			if (includeFields.includes('timestamp')) obj.timestamp = context.timestamp.toISOString();
 			return JSON.stringify(obj, null, 2);
-		default:
+		}
+		default: {
 			return contextInfo.join('\n');
+		}
 	}
 };
 
@@ -100,19 +105,20 @@ export const memoryContextGenerator: DynamicContentGenerator = async (
 	const maxItems = config.maxItems || 5;
 
 	switch (format) {
-		case 'summary':
+		case 'summary': {
 			const itemCount = Object.keys(context.memoryContext).length;
 			return `Memory context contains ${itemCount} items`;
-
-		case 'list':
+		}
+		case 'list': {
 			const items = Object.entries(context.memoryContext).slice(0, maxItems);
 			return items.map(([key, value]) => `${key}: ${JSON.stringify(value)}`).join('\n');
-
-		case 'json':
+		}
+		case 'json': {
 			return JSON.stringify(context.memoryContext, null, 2);
-
-		default:
+		}
+		default: {
 			return 'Memory context is available';
+		}
 	}
 };
 

@@ -18,7 +18,7 @@ export interface FileProviderConfig {
 	/** Whether to watch file for changes and reload */
 	watchForChanges?: boolean;
 	/** Encoding for file reading */
-	encoding?: BufferEncoding;
+	encoding?: string;
 	/** Template variables to replace in file content */
 	variables?: Record<string, string>;
 	/** Whether to summarize the file content using an LLM */
@@ -29,7 +29,7 @@ export class FilePromptProvider extends BasePromptProvider {
 	private filePath: string = '';
 	private baseDir: string = '';
 	private watchForChanges: boolean = false;
-	private encoding: BufferEncoding = 'utf8';
+	private encoding: string = 'utf8';
 	private variables: Record<string, string> = {};
 	private cachedContent: string = '';
 	private lastModified: Date = new Date(0);
@@ -184,7 +184,7 @@ export class FilePromptProvider extends BasePromptProvider {
 			this.lastModified = stats.mtime;
 
 			// Read file content
-			this.cachedContent = await fs.readFile(fullPath, this.encoding);
+			this.cachedContent = await fs.readFile(fullPath, 'utf8');
 		} catch (error) {
 			throw new Error(
 				`Failed to load file ${this.filePath}: ${error instanceof Error ? error.message : 'Unknown error'}`

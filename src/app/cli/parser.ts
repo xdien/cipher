@@ -617,9 +617,6 @@ export class CommandParser {
 							useCache: true,
 						});
 						systemPrompt = result.content || '';
-					} else if (typeof (promptManager as any).getCompleteSystemPrompt === 'function') {
-						// Legacy fallback
-						systemPrompt = promptManager.getCompleteSystemPrompt();
 					} else {
 						throw new Error('No compatible prompt manager found');
 					}
@@ -769,43 +766,8 @@ export class CommandParser {
 							}
 						}
 						return true;
-					} else if (typeof (promptManager as any).getCompleteSystemPrompt === 'function') {
-						// Legacy fallback
-						console.log(chalk.yellow('🚀 **Generation Performance**'));
-						console.log('   - Generation type: Legacy (synchronous)');
-						console.log('   - Average generation time: <1ms ✅');
-						console.log('   - Success rate: 100%');
-						console.log('');
-						console.log(chalk.yellow('🔧 **Prompt Status**'));
-						console.log('   - Current prompt type: Legacy PromptManager');
-						const systemPrompt = promptManager.getCompleteSystemPrompt();
-						const userPrompt = promptManager.getUserInstruction();
-						const builtInPrompt = promptManager.getBuiltInInstructions();
-						console.log(`   - User instruction length: ${userPrompt.length} characters`);
-						console.log(`   - Built-in instructions length: ${builtInPrompt.length} characters`);
-						console.log(`   - Total prompt length: ${systemPrompt.length} characters`);
-						console.log('');
-						if (detailed) {
-							console.log(chalk.yellow('📈 **Detailed Breakdown**'));
-							console.log(
-								`   - User instruction: "${userPrompt.substring(0, 50)}${userPrompt.length > 50 ? '...' : ''}"`
-							);
-							console.log(
-								`   - Built-in tools: ${builtInPrompt.includes('cipher_memory_search') ? '✅' : '❌'} Memory search tool`
-							);
-							console.log(`   - Lines: ${systemPrompt.split('\n').length} lines`);
-							console.log('');
-						}
-						console.log(chalk.yellow('✨ **Recommendations**'));
-						console.log(
-							'   - Consider upgrading to Enhanced Prompt Manager for better performance'
-						);
-						console.log('   - Enhanced mode supports provider-based architecture');
-						console.log('   - Enable parallel processing and better monitoring');
-						return true;
 					} else {
-						console.log(chalk.red('❌ No compatible prompt manager found.'));
-						return false;
+						throw new Error('No compatible prompt manager found');
 					}
 				} catch (error) {
 					console.log(
@@ -927,9 +889,15 @@ export class CommandParser {
 								r => r.providerId === generator && r.success && r.content.trim()
 							);
 							// Set the cached content on the provider instance
-							const providerInstance = enhanced.getProvider(generator);
-							if (providerInstance && typeof providerInstance.setCachedContent === 'function') {
-								providerInstance.setCachedContent(summaryResult ? summaryResult.content : '');
+							if (typeof generator === 'string') {
+								const providerInstance = enhanced.getProvider(generator);
+								if (
+									providerInstance &&
+									'setCachedContent' in providerInstance &&
+									typeof providerInstance.setCachedContent === 'function'
+								) {
+									providerInstance.setCachedContent(summaryResult ? summaryResult.content : '');
+								}
 							}
 							if (summaryResult) {
 								console.log(chalk.cyan(`📝 Generated summary for '${generator}':`));
@@ -1001,23 +969,29 @@ export class CommandParser {
 							// Immediately trigger summarization if summarize is true
 							if (summarize) {
 								// Get the provider instance
-								const provider = enhanced.getProvider(name);
-								if (provider && typeof provider.generateContent === 'function') {
-									// Try to get llmService from agent (if available)
-									const llmService =
-										agent.llmService || (agent.services && agent.services.llmService);
-									const context = { metadata: { llmService } };
-									try {
-										await provider.generateContent(context);
-										console.log(
-											chalk.gray('💡 LLM summary generated and cached for file-based provider.')
-										);
-									} catch (err) {
-										console.log(
-											chalk.yellow(
-												'⚠️  LLM summarization failed to cache immediately, will retry on next /prompt.'
-											)
-										);
+								if (typeof name === 'string') {
+									const provider = enhanced.getProvider(name);
+									if (provider && typeof provider.generateContent === 'function') {
+										// Try to get llmService from agent (if available)
+										const llmService = agent.services && agent.services.llmService;
+										const sessionId = agent.getCurrentSessionId && agent.getCurrentSessionId();
+										const context = {
+											timestamp: new Date(),
+											sessionId: sessionId || '',
+											metadata: { llmService },
+										};
+										try {
+											await provider.generateContent(context);
+											console.log(
+												chalk.gray('💡 LLM summary generated and cached for file-based provider.')
+											);
+										} catch (err) {
+											console.log(
+												chalk.yellow(
+													'⚠️  LLM summarization failed to cache immediately, will retry on next /prompt.'
+												)
+											);
+										}
 									}
 								}
 							}
@@ -1062,11 +1036,16 @@ export class CommandParser {
 							// Fetch the new provider instance after update
 							const updatedProvider = enhanced.getProvider(name);
 							// If summarize flag is set to true for file-based provider, trigger LLM summarization immediately
-							if (updatedProvider && updatedProvider.type === 'file-based' && summarizeFlag) {
-								if (typeof updatedProvider.generateContent === 'function') {
-									const llmService =
-										agent.llmService || (agent.services && agent.services.llmService);
-									const context = { metadata: { llmService } };
+							if (summarizeFlag && typeof name === 'string') {
+								const updatedProvider = enhanced.getProvider(name);
+								if (updatedProvider && typeof updatedProvider.generateContent === 'function') {
+									const llmService = agent.services && agent.services.llmService;
+									const sessionId = agent.getCurrentSessionId && agent.getCurrentSessionId();
+									const context = {
+										timestamp: new Date(),
+										sessionId: sessionId || '',
+										metadata: { llmService },
+									};
 									try {
 										await updatedProvider.generateContent(context);
 										console.log(
@@ -1092,7 +1071,10 @@ export class CommandParser {
 							}
 							const providerName = subArgs[0];
 							// Try to get from loaded providers first
-							let provider = enhanced.getProvider(providerName);
+							let provider: ReturnType<typeof enhanced.getProvider> | undefined = undefined;
+							if (typeof providerName === 'string') {
+								provider = enhanced.getProvider(providerName);
+							}
 							// If not loaded, update config in configManager
 							if (!provider) {
 								const allConfigs = enhanced.getConfig().providers;
@@ -1121,7 +1103,10 @@ export class CommandParser {
 							}
 							const providerName = subArgs[0];
 							// Try to get from loaded providers first
-							let provider = enhanced.getProvider(providerName);
+							let provider: ReturnType<typeof enhanced.getProvider> | undefined = undefined;
+							if (typeof providerName === 'string') {
+								provider = enhanced.getProvider(providerName);
+							}
 							// If not loaded, update config in configManager
 							if (!provider) {
 								const allConfigs = enhanced.getConfig().providers;
@@ -1274,11 +1259,6 @@ export class CommandParser {
 						// For enhanced mode, userPrompt and builtInPrompt are not separated, so leave blank or show N/A
 						userPrompt = 'N/A';
 						builtInPrompt = 'N/A';
-					} else if (typeof (promptManager as any).getCompleteSystemPrompt === 'function') {
-						// Legacy fallback
-						systemPrompt = promptManager.getCompleteSystemPrompt();
-						userPrompt = promptManager.getUserInstruction();
-						builtInPrompt = promptManager.getBuiltInInstructions();
 					} else {
 						throw new Error('No compatible prompt manager found');
 					}

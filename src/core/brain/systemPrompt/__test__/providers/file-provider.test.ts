@@ -59,7 +59,7 @@ describe('FilePromptProvider', () => {
 				filePath: 'test.txt',
 				baseDir: '/tmp',
 				watchForChanges: true,
-				encoding: 'utf8' as BufferEncoding,
+				encoding: 'utf8' as string,
 				variables: { name: 'value' },
 			};
 			expect(provider.validateConfig(config)).toBe(true);
