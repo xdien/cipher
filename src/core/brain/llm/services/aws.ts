@@ -13,6 +13,7 @@ import { ToolSet } from '../../../mcp/types.js';
 import { logger } from '../../../logger/index.js';
 import { formatToolResult } from '../utils/tool-result-formatter.js';
 import { TextDecoder } from 'util';
+import { BedrockAnthropicMessageFormatter, BedrockLlamaMessageFormatter, BedrockTitanMessageFormatter, BedrockDeepSeekMessageFormatter, BedrockAI21MessageFormatter } from '../messages/formatters/aws.js';
 
 // Complete AWS Bedrock model families (2025)
 enum ModelFamily {
@@ -30,157 +31,6 @@ enum ModelFamily {
 	WRITER = 'writer'
 }
 
-// Anthropic format (Claude models)
-interface AnthropicRequest {
-	messages: Array<{
-		role: 'user' | 'assistant';
-		content: Array<{
-			type: 'text' | 'image';
-			text?: string;
-			image?: {
-				format: 'png' | 'jpeg' | 'gif' | 'webp';
-				source: {
-					bytes: string;
-				};
-			};
-		}>;
-	}>;
-	anthropic_version: string;
-	max_tokens: number;
-	temperature?: number;
-	top_p?: number;
-	system?: string;
-	tools?: Array<{
-		name: string;
-		description: string;
-		input_schema: any;
-	}>;
-}
-
-// Meta Llama format
-interface LlamaRequest {
-	prompt: string;
-	temperature?: number;
-	top_p?: number;
-	max_gen_len?: number;
-	images?: string[];
-}
-
-// Amazon Titan format
-interface TitanRequest {
-	inputText: string;
-	textGenerationConfig?: {
-		maxTokenCount?: number;
-		temperature?: number;
-		topP?: number;
-		stopSequences?: string[];
-	};
-}
-
-// AI21 Labs format
-interface AI21Request {
-	messages: Array<{
-		role: 'system' | 'user' | 'assistant';
-		content: string;
-	}>;
-	temperature?: number;
-	top_p?: number;
-	max_tokens?: number;
-	frequency_penalty?: number;
-	presence_penalty?: number;
-}
-
-// DeepSeek format
-interface DeepSeekRequest {
-	prompt: string;
-	temperature?: number;
-	top_p?: number;
-	max_tokens?: number;
-	stop?: string[];
-}
-
-// Cohere format
-interface CohereRequest {
-	message: string;
-	chat_history?: Array<{
-		role: 'USER' | 'CHATBOT';
-		message: string;
-	}>;
-	temperature?: number;
-	p?: number;
-	k?: number;
-	max_tokens?: number;
-}
-
-// Union type for all request formats (for type checking)
-// type BedrockRequest = AnthropicRequest | LlamaRequest | TitanRequest | AI21Request | DeepSeekRequest | CohereRequest;
-
-// Anthropic response format
-interface AnthropicResponse {
-	content: Array<{
-		type: 'text' | 'tool_use';
-		text?: string;
-		id?: string;
-		name?: string;
-		input?: any;
-	}>;
-	usage: {
-		input_tokens: number;
-		output_tokens: number;
-	};
-	stop_reason?: string;
-}
-
-// Meta Llama response format
-interface LlamaResponse {
-	generation: string;
-	prompt_token_count: number;
-	generation_token_count: number;
-	stop_reason: string;
-}
-
-// Amazon Titan response format
-interface TitanResponse {
-	inputTextTokenCount: number;
-	results: Array<{
-		tokenCount: number;
-		outputText: string;
-		completionReason: string;
-	}>;
-}
-
-// AI21 Labs response format
-interface AI21Response {
-	choices: Array<{
-		message: {
-			role: string;
-			content: string;
-		};
-		finish_reason: string;
-	}>;
-	usage: {
-		prompt_tokens: number;
-		completion_tokens: number;
-		total_tokens: number;
-	};
-}
-
-// DeepSeek response format
-interface DeepSeekResponse {
-	choices: Array<{
-		text: string;
-		finish_reason: string;
-	}>;
-	usage: {
-		prompt_tokens: number;
-		completion_tokens: number;
-		total_tokens: number;
-	};
-}
-
-// Union type for all response formats
-type BedrockResponse = AnthropicResponse | LlamaResponse | TitanResponse | AI21Response | DeepSeekResponse;
-
 export class AwsService implements ILLMService {
 	private client: BedrockRuntimeClient;
 	private model: string;
@@ -190,6 +40,7 @@ export class AwsService implements ILLMService {
 	private maxIterations: number;
 	private modelFamily: ModelFamily;
 	private inferenceProfileArn: string | undefined;
+	private formatter: any; // Should be IMessageFormatter, but use any for now if needed
 
 	constructor(
 		model: string,
@@ -206,6 +57,26 @@ export class AwsService implements ILLMService {
 		this.maxIterations = maxIterations;
 		this.modelFamily = this.detectModelFamily(model);
 		this.inferenceProfileArn = awsConfig?.inferenceProfileArn || process.env.AWS_BEDROCK_INFERENCE_PROFILE_ARN;
+
+		switch (this.modelFamily) {
+			case ModelFamily.ANTHROPIC:
+				this.formatter = new BedrockAnthropicMessageFormatter();
+				break;
+			case ModelFamily.META_LLAMA:
+				this.formatter = new BedrockLlamaMessageFormatter();
+				break;
+			case ModelFamily.AMAZON_TITAN:
+				this.formatter = new BedrockTitanMessageFormatter();
+				break;
+			case ModelFamily.DEEPSEEK:
+				this.formatter = new BedrockDeepSeekMessageFormatter();
+				break;
+			case ModelFamily.AI21_LABS:
+				this.formatter = new BedrockAI21MessageFormatter();
+				break;
+			default:
+				this.formatter = new BedrockAnthropicMessageFormatter();
+		}
 
 		const clientConfig: BedrockRuntimeClientConfig = {
 			region: awsConfig?.region || process.env.AWS_DEFAULT_REGION || 'us-east-1',
@@ -387,31 +258,34 @@ export class AwsService implements ILLMService {
 	}
 
 	async directGenerate(userInput: string, systemPrompt?: string): Promise<string> {
-		const messages = [{
-			role: 'user' as const,
-			content: [{ type: 'text' as const, text: userInput }],
-		}];
+		let messages;
+		if (this.modelFamily === ModelFamily.ANTHROPIC) {
+			messages = await this.contextManager.getAllFormattedMessages(false);
+			if (!messages || messages.length === 0) {
+				messages = [{
+					role: 'user',
+					content: [
+						{ type: 'text', text: userInput }
+					],
+				}];
+			}
+		} else {
+			messages = await this.contextManager.getAllFormattedMessages();
+		}
 
 		let request: any;
 
-		switch (this.modelFamily) {
-			case ModelFamily.ANTHROPIC:
-				request = this.buildAnthropicRequest(messages, systemPrompt);
-				break;
-			case ModelFamily.META_LLAMA:
-				request = this.buildLlamaRequest(messages, systemPrompt);
-				break;
-			case ModelFamily.AMAZON_TITAN:
-				request = this.buildTitanRequest(messages, systemPrompt);
-				break;
-			case ModelFamily.AI21_LABS:
-				request = this.buildAI21Request(messages, systemPrompt);
-				break;
-			case ModelFamily.DEEPSEEK:
-				request = this.buildDeepSeekRequest(messages, systemPrompt);
-				break;
-			default:
-				request = this.buildAnthropicRequest(messages, systemPrompt);
+		const formattedMessage = this.formatter.format(messages[0], systemPrompt)[0];
+		if (this.modelFamily === ModelFamily.ANTHROPIC) {
+			request = {
+				messages: [formattedMessage],
+				anthropic_version: 'bedrock-2023-05-31',
+				max_tokens: 4096,
+				temperature: 0.7,
+				...(systemPrompt ? { system: systemPrompt } : {}),
+			};
+		} else {
+			request = formattedMessage;
 		}
 
 		const commandParams: any = {
@@ -426,7 +300,7 @@ export class AwsService implements ILLMService {
 		const command = new InvokeModelCommand(commandParams);
 
 		const response = (await this.client.send(command)) as any;
-		const responseBody = JSON.parse(new TextDecoder().decode(response.body)) as BedrockResponse;
+		const responseBody = JSON.parse(new TextDecoder().decode(response.body)) as any; // BedrockResponse type removed
 
 		const { textContent } = this.parseResponse(responseBody);
 		return textContent;
@@ -455,9 +329,14 @@ export class AwsService implements ILLMService {
 		};
 	}
 
-	private async getAIResponse(formattedTools: any[]): Promise<BedrockResponse> {
+	private async getAIResponse(formattedTools: any[]): Promise<any> { // BedrockResponse type removed
 		logger.info('Getting formatted messages from context manager');
-		const messages = await this.contextManager.getAllFormattedMessages();
+		let messages;
+		if (this.modelFamily === ModelFamily.ANTHROPIC) {
+			messages = await this.contextManager.getAllFormattedMessages(false);
+		} else {
+			messages = await this.contextManager.getAllFormattedMessages();
+		}
 		logger.info(`Got ${messages.length} messages from context`);
 		
 		logger.info('Getting system prompt from context manager');
@@ -467,28 +346,20 @@ export class AwsService implements ILLMService {
 		logger.info(`Building request for model family: ${this.modelFamily}`);
 		let request: any;
 
-		switch (this.modelFamily) {
-			case ModelFamily.ANTHROPIC:
-				logger.info(`Using Anthropic request format`);
-				request = this.buildAnthropicRequest(messages, systemPrompt, formattedTools);
-				break;
-			case ModelFamily.META_LLAMA:
-				logger.info(`Using Llama request format`);
-				request = this.buildLlamaRequest(messages, systemPrompt);
-				break;
-			case ModelFamily.AMAZON_TITAN:
-				request = this.buildTitanRequest(messages, systemPrompt);
-				break;
-			case ModelFamily.AI21_LABS:
-				request = this.buildAI21Request(messages, systemPrompt);
-				break;
-			case ModelFamily.DEEPSEEK:
-				request = this.buildDeepSeekRequest(messages, systemPrompt);
-				break;
-			default:
-				// Fallback to Anthropic format for unsupported families
-				logger.warn(`Model family ${this.modelFamily} not fully implemented, using Anthropic format`);
-				request = this.buildAnthropicRequest(messages, systemPrompt, formattedTools);
+		if (this.modelFamily === ModelFamily.ANTHROPIC) {
+			const formattedMessages = messages.map((msg: any) => this.formatter.format(msg, systemPrompt)[0]);
+			request = {
+				messages: formattedMessages,
+				anthropic_version: 'bedrock-2023-05-31',
+				max_tokens: 4096,
+				temperature: 0.7,
+				...(systemPrompt ? { system: systemPrompt } : {}),
+			};
+			if (formattedTools && formattedTools.length > 0) {
+				request.tools = formattedTools;
+			}
+		} else {
+			request = this.formatter.format(messages[0], systemPrompt)[0];
 		}
 
 		logger.info('Creating InvokeModelCommand');
@@ -507,30 +378,30 @@ export class AwsService implements ILLMService {
 		const response = (await this.client.send(command)) as any;
 		logger.info('Got response from Bedrock, parsing...');
 		
-		const parsedResponse = JSON.parse(new TextDecoder().decode(response.body)) as BedrockResponse;
+		const parsedResponse = JSON.parse(new TextDecoder().decode(response.body)) as any; // BedrockResponse type removed
 		logger.info('Response parsed successfully');
 		return parsedResponse;
 	}
 
-	private parseResponse(response: BedrockResponse): { textContent: string; toolCalls: any[] } {
+	private parseResponse(response: any): { textContent: string; toolCalls: any[] } { // BedrockResponse type removed
 		switch (this.modelFamily) {
 			case ModelFamily.ANTHROPIC:
-				return this.parseAnthropicResponse(response as AnthropicResponse);
+				return this.parseAnthropicResponse(response);
 			case ModelFamily.META_LLAMA:
-				return this.parseLlamaResponse(response as LlamaResponse);
+				return this.parseLlamaResponse(response);
 			case ModelFamily.AMAZON_TITAN:
-				return this.parseTitanResponse(response as TitanResponse);
+				return this.parseTitanResponse(response);
 			case ModelFamily.AI21_LABS:
-				return this.parseAI21Response(response as AI21Response);
+				return this.parseAI21Response(response);
 			case ModelFamily.DEEPSEEK:
-				return this.parseDeepSeekResponse(response as DeepSeekResponse);
+				return this.parseDeepSeekResponse(response);
 			default:
 				// Fallback to Anthropic parsing
-				return this.parseAnthropicResponse(response as AnthropicResponse);
+				return this.parseAnthropicResponse(response);
 		}
 	}
 
-	private parseAnthropicResponse(response: AnthropicResponse): { textContent: string; toolCalls: any[] } {
+	private parseAnthropicResponse(response: any): { textContent: string; toolCalls: any[] } { // BedrockResponse type removed
 		const toolUseBlocks = response.content.filter(block => block.type === 'tool_use');
 		const textContent = response.content
 			.filter(block => block.type === 'text')
@@ -549,14 +420,14 @@ export class AwsService implements ILLMService {
 		return { textContent, toolCalls };
 	}
 
-	private parseLlamaResponse(response: LlamaResponse): { textContent: string; toolCalls: any[] } {
+	private parseLlamaResponse(response: any): { textContent: string; toolCalls: any[] } { // BedrockResponse type removed
 		return {
 			textContent: response.generation,
 			toolCalls: [], // Llama models don't support tool calling
 		};
 	}
 
-	private parseTitanResponse(response: TitanResponse): { textContent: string; toolCalls: any[] } {
+	private parseTitanResponse(response: any): { textContent: string; toolCalls: any[] } { // BedrockResponse type removed
 		const textContent = response.results.map(result => result.outputText).join('');
 		return {
 			textContent,
@@ -564,7 +435,7 @@ export class AwsService implements ILLMService {
 		};
 	}
 
-	private parseAI21Response(response: AI21Response): { textContent: string; toolCalls: any[] } {
+	private parseAI21Response(response: any): { textContent: string; toolCalls: any[] } { // BedrockResponse type removed
 		const textContent = response.choices.map(choice => choice.message.content).join('');
 		return {
 			textContent,
@@ -572,157 +443,11 @@ export class AwsService implements ILLMService {
 		};
 	}
 
-	private parseDeepSeekResponse(response: DeepSeekResponse): { textContent: string; toolCalls: any[] } {
+	private parseDeepSeekResponse(response: any): { textContent: string; toolCalls: any[] } { // BedrockResponse type removed
 		const textContent = response.choices.map(choice => choice.text).join('');
 		return {
 			textContent,
 			toolCalls: [], // DeepSeek models don't support tool calling
-		};
-	}
-
-	private buildAnthropicRequest(messages: any[], systemPrompt?: string, formattedTools?: any[]): AnthropicRequest {
-		// Filter out system messages as they're handled separately in Bedrock
-		const bedrockMessages = messages.filter((msg: any) => msg.role !== 'system');
-
-		const request: AnthropicRequest = {
-			messages: bedrockMessages,
-			anthropic_version: 'bedrock-2023-05-31',
-			max_tokens: 4096,
-			temperature: 0.7,
-			...(systemPrompt && { system: systemPrompt }),
-		};
-
-		if (formattedTools && formattedTools.length > 0) {
-			request.tools = formattedTools;
-		}
-
-		return request;
-	}
-
-	private buildLlamaRequest(messages: any[], systemPrompt?: string): LlamaRequest {
-		// Convert messages to Llama prompt format according to AWS Bedrock documentation
-		let prompt = '<|begin_of_text|>';
-		
-		if (systemPrompt) {
-			prompt += `<|start_header_id|>system<|end_header_id|> ${systemPrompt} <|eot_id|>`;
-		}
-
-		for (const message of messages) {
-			if (message.role === 'system') continue; // Already handled above
-			
-			const role = message.role === 'assistant' ? 'assistant' : 'user';
-			const content = Array.isArray(message.content) 
-				? message.content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join('')
-				: message.content;
-			
-			prompt += `<|start_header_id|>${role}<|end_header_id|> ${content} <|eot_id|>`;
-		}
-
-		prompt += '<|start_header_id|>assistant<|end_header_id|>';
-
-		return {
-			prompt,
-			max_gen_len: 512,
-			temperature: 0.5,
-			top_p: 0.9,
-		};
-	}
-
-	private buildTitanRequest(messages: any[], systemPrompt?: string): TitanRequest {
-		// Convert messages to Titan format according to AWS Bedrock documentation
-		let inputText = '';
-		
-		if (systemPrompt) {
-			inputText += `${systemPrompt}\n\n`;
-		}
-
-		for (const message of messages) {
-			if (message.role === 'system') continue; // Already handled above
-			
-			const role = message.role === 'assistant' ? 'Bot' : 'User';
-			const content = Array.isArray(message.content) 
-				? message.content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join('')
-				: message.content;
-			
-			inputText += `${role}: ${content}\n`;
-		}
-
-		inputText += 'Bot:';
-
-		return {
-			inputText,
-			textGenerationConfig: {
-				maxTokenCount: 512,
-				temperature: 0.7,
-				topP: 0.9,
-				stopSequences: [],
-			},
-		};
-	}
-
-	private buildAI21Request(messages: any[], systemPrompt?: string): AI21Request {
-		const ai21Messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [];
-
-		if (systemPrompt) {
-			ai21Messages.push({ role: 'system', content: systemPrompt });
-		}
-
-		for (const message of messages) {
-			if (message.role === 'system' && systemPrompt) continue; // Already added above
-			
-			const content = Array.isArray(message.content) 
-				? message.content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join('')
-				: message.content;
-			
-			ai21Messages.push({
-				role: message.role as 'user' | 'assistant' | 'system',
-				content,
-			});
-		}
-
-		return {
-			messages: ai21Messages,
-			temperature: 1.0,
-			top_p: 1.0,
-			max_tokens: 4096,
-			frequency_penalty: 0,
-			presence_penalty: 0,
-		};
-	}
-
-	private buildDeepSeekRequest(messages: any[], systemPrompt?: string): DeepSeekRequest {
-		// Convert messages to DeepSeek R1 prompt format according to AWS Bedrock documentation
-		let prompt = '<｜begin▁of▁sentence｜>';
-		
-		// Handle system prompt by incorporating it into the first user message
-		let firstUserMessage = true;
-		
-		for (const message of messages) {
-			if (message.role === 'system') continue; // System prompt handled separately
-			
-			const content = Array.isArray(message.content) 
-				? message.content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join('')
-				: message.content;
-			
-			if (message.role === 'user') {
-				let userContent = content;
-				if (firstUserMessage && systemPrompt) {
-					userContent = `${systemPrompt}\n\n${content}`;
-					firstUserMessage = false;
-				}
-				prompt += '<｜User｜>' + userContent;
-			} else if (message.role === 'assistant') {
-				prompt += '<｜Assistant｜>' + content;
-			}
-		}
-
-		prompt += '<｜Assistant｜><think>\n';
-
-		return {
-			prompt,
-			temperature: 0.5,
-			top_p: 0.9,
-			max_tokens: 512,
 		};
 	}
 
