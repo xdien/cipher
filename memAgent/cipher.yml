@@ -17,6 +17,7 @@ llm:
 
 # System prompt - User customizable
 # This is the main static provider for users who want a simple prompt
+# Make sure your custom prompt format follows the exact format of the example above
 systemPrompt:
   enabled: true
   content: |

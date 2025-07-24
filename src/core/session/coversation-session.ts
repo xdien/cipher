@@ -845,4 +845,21 @@ export class ConversationSession {
 	public getUnifiedToolManager(): UnifiedToolManager {
 		return this.services.unifiedToolManager;
 	}
+
+	/**
+	 * Get the storageManager used by the historyProvider (if available)
+	 */
+	public getStorageManager(): StorageManager | undefined {
+		if (
+			this.historyProvider &&
+			typeof (this.historyProvider as any).getStorageManager === 'function'
+		) {
+			return (this.historyProvider as any).getStorageManager();
+		}
+		// Try to access directly if exposed
+		if (this.historyProvider && (this.historyProvider as any).storageManager) {
+			return (this.historyProvider as any).storageManager;
+		}
+		return undefined;
+	}
 }

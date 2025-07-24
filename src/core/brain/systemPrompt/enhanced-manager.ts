@@ -100,6 +100,9 @@ export class EnhancedPromptManager {
 		const settings = this.configManager.getSettings();
 		const enabledProviders = this.getEnabledProviders();
 
+		// Support useCache flag in context
+		const useCache = (runtimeContext as any).useCache === true;
+
 		const providerResults: ProviderResult[] = [];
 		const errors: Error[] = [];
 		let success = true;
@@ -124,6 +127,19 @@ export class EnhancedPromptManager {
 			const providerStartTime = Date.now();
 
 			try {
+				// If useCache is true and provider supports getCachedContent, use it
+				if (useCache && typeof (provider as any).getCachedContent === 'function') {
+					const cached = (provider as any).getCachedContent();
+					if (cached !== null && cached !== undefined) {
+						providerResults.push({
+							providerId: provider.id,
+							content: cached,
+							generationTimeMs: 0,
+							success: true,
+						});
+						return;
+					}
+				}
 				const content = await this.executeWithTimeout(
 					() => provider.generateContent(context),
 					settings.maxGenerationTime

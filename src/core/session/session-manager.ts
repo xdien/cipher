@@ -269,4 +269,19 @@ export class SessionManager {
 
 		logger.debug('SessionManager shutdown completed');
 	}
+
+	/**
+	 * Get the storageManager for a given session (if available)
+	 */
+	public getStorageManagerForSession(sessionId: string): any {
+		const sessionMetadata = this.sessions.get(sessionId);
+		if (
+			sessionMetadata &&
+			sessionMetadata.session &&
+			typeof sessionMetadata.session.getStorageManager === 'function'
+		) {
+			return sessionMetadata.session.getStorageManager();
+		}
+		return undefined;
+	}
 }

@@ -28,6 +28,9 @@ export class DynamicPromptProvider extends BasePromptProvider {
 	private template: string = '';
 	private generatorFunction: DynamicContentGenerator | undefined;
 
+	// Cached content for this provider
+	private cachedContent: string | null = null;
+
 	// Static registry of generator functions
 	private static generators: Map<string, DynamicContentGenerator> = new Map();
 
@@ -115,6 +118,10 @@ export class DynamicPromptProvider extends BasePromptProvider {
 			return '';
 		}
 
+		// If cached content is set, return it
+		if (this.cachedContent !== null) {
+			return this.cachedContent;
+		}
 		try {
 			// Generate dynamic content
 			const dynamicContent = await this.generatorFunction(context, this.generatorConfig);
@@ -122,6 +129,7 @@ export class DynamicPromptProvider extends BasePromptProvider {
 			// Apply template if provided
 			const result = this.template.replace('{{content}}', dynamicContent);
 
+			// Optionally cache here (but for now, only set via setCachedContent)
 			return result;
 		} catch (error) {
 			throw new Error(
@@ -130,11 +138,33 @@ export class DynamicPromptProvider extends BasePromptProvider {
 		}
 	}
 
+	/**
+	 * Set the cached content for this provider
+	 */
+	public setCachedContent(content: string) {
+		this.cachedContent = content;
+	}
+
+	/**
+	 * Get the cached content for this provider
+	 */
+	public getCachedContent(): string | null {
+		return this.cachedContent;
+	}
+
+	/**
+	 * Clear the cached content (for cache invalidation)
+	 */
+	public clearCachedContent() {
+		this.cachedContent = null;
+	}
+
 	public override async destroy(): Promise<void> {
 		await super.destroy();
 		this.generatorName = '';
 		this.generatorConfig = {};
 		this.template = '';
 		this.generatorFunction = undefined;
+		this.cachedContent = null;
 	}
 }

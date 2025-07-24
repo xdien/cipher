@@ -600,7 +600,22 @@ export class CommandParser {
 					let systemPrompt = '';
 					// EnhancedPromptManager: use async generateSystemPrompt
 					if (typeof (promptManager as any).generateSystemPrompt === 'function') {
-						const result = await (promptManager as any).generateSystemPrompt();
+						// Use cached content for dynamic/file-based providers
+						const sessionId = agent.getCurrentSessionId && agent.getCurrentSessionId();
+						let storageManager = undefined;
+						if (
+							agent.sessionManager &&
+							typeof agent.sessionManager.getStorageManagerForSession === 'function' &&
+							sessionId
+						) {
+							storageManager = agent.sessionManager.getStorageManagerForSession(sessionId);
+						}
+						// Pass a flag to skip regeneration (if supported)
+						const result = await (promptManager as any).generateSystemPrompt({
+							sessionId,
+							metadata: { storageManager },
+							useCache: true,
+						});
 						systemPrompt = result.content || '';
 					} else if (typeof (promptManager as any).getCompleteSystemPrompt === 'function') {
 						// Legacy fallback
@@ -720,8 +735,20 @@ export class CommandParser {
 
 					const promptManager = agent.promptManager;
 					if (typeof (promptManager as any).generateSystemPrompt === 'function') {
-						// EnhancedPromptManager mode
-						const result = await (promptManager as any).generateSystemPrompt();
+						// Patch: Pass sessionId and storageManager in context
+						const sessionId = agent.getCurrentSessionId && agent.getCurrentSessionId();
+						let storageManager = undefined;
+						if (
+							agent.sessionManager &&
+							typeof agent.sessionManager.getStorageManagerForSession === 'function' &&
+							sessionId
+						) {
+							storageManager = agent.sessionManager.getStorageManagerForSession(sessionId);
+						}
+						const result = await (promptManager as any).generateSystemPrompt({
+							sessionId,
+							metadata: { storageManager },
+						});
 						console.log(chalk.yellow('🚀 **Enhanced Generation Performance**'));
 						console.log(`   - Providers used: ${result.providerResults.length}`);
 						console.log(`   - Total prompt length: ${result.content.length} characters`);
@@ -730,7 +757,9 @@ export class CommandParser {
 						if (detailed) {
 							console.log(chalk.yellow('📈 **Per-Provider Breakdown**'));
 							for (const r of result.providerResults) {
-								console.log(`   - ${r.providerId}: ${r.success ? '✅' : '❌'} | ${r.generationTimeMs} ms | ${r.content.length} chars`);
+								console.log(
+									`   - ${r.providerId}: ${r.success ? '✅' : '❌'} | ${r.generationTimeMs} ms | ${r.content.length} chars`
+								);
 							}
 						}
 						if (result.errors && result.errors.length > 0) {
@@ -768,7 +797,9 @@ export class CommandParser {
 							console.log('');
 						}
 						console.log(chalk.yellow('✨ **Recommendations**'));
-						console.log('   - Consider upgrading to Enhanced Prompt Manager for better performance');
+						console.log(
+							'   - Consider upgrading to Enhanced Prompt Manager for better performance'
+						);
 						console.log('   - Enhanced mode supports provider-based architecture');
 						console.log('   - Enable parallel processing and better monitoring');
 						return true;
@@ -841,8 +872,16 @@ export class CommandParser {
 								console.log(chalk.gray('  No active providers.'));
 							}
 							console.log('');
-							console.log(chalk.gray('💡 Use /prompt-providers show-all to see all available and disabled providers.'));
-							console.log(chalk.gray('💡 Use /prompt-providers add-dynamic or add-file to activate more providers.'));
+							console.log(
+								chalk.gray(
+									'💡 Use /prompt-providers show-all to see all available and disabled providers.'
+								)
+							);
+							console.log(
+								chalk.gray(
+									'💡 Use /prompt-providers add-dynamic or add-file to activate more providers.'
+								)
+							);
 							return true;
 						}
 						case 'add-dynamic': {
@@ -869,34 +908,119 @@ export class CommandParser {
 							};
 							await enhanced.addOrUpdateProvider(config);
 							console.log(chalk.green(`✅ Dynamic provider '${generator}' added/updated.`));
+							// Immediately trigger LLM to generate the summary and cache it
+							const sessionId = agent.getCurrentSessionId && agent.getCurrentSessionId();
+							let storageManager = undefined;
+							if (
+								agent.sessionManager &&
+								typeof agent.sessionManager.getStorageManagerForSession === 'function' &&
+								sessionId
+							) {
+								storageManager = agent.sessionManager.getStorageManagerForSession(sessionId);
+							}
+							const result = await enhanced.generateSystemPrompt({
+								sessionId,
+								metadata: { storageManager },
+							});
+							// Find the providerResult for the new dynamic provider
+							const summaryResult = result.providerResults.find(
+								r => r.providerId === generator && r.success && r.content.trim()
+							);
+							// Set the cached content on the provider instance
+							const providerInstance = enhanced.getProvider(generator);
+							if (providerInstance && typeof providerInstance.setCachedContent === 'function') {
+								providerInstance.setCachedContent(summaryResult ? summaryResult.content : '');
+							}
+							if (summaryResult) {
+								console.log(chalk.cyan(`📝 Generated summary for '${generator}':`));
+								console.log(summaryResult.content);
+							} else {
+								// Fallback: show any error or message
+								const errorResult = result.providerResults.find(r => r.providerId === generator);
+								if (errorResult && errorResult.content) {
+									console.log(chalk.yellow(`⚠️  ${errorResult.content}`));
+								} else {
+									console.log(chalk.yellow('⚠️  No summary content generated.'));
+								}
+							}
 							return true;
 						}
 						case 'add-file': {
-							if (subArgs.length < 2) {
-								console.log(chalk.red('❌ Name and file path required'));
+							if (subArgs.length < 1) {
+								console.log(chalk.red('❌ Provider name required'));
 								console.log(
 									chalk.gray(
-										'Usage: /prompt-providers add-file <name> <path> [--summarize true|false]'
+										'Usage: /prompt-providers add-file <name> [<path>] [--summarize true|false]'
 									)
 								);
 								return false;
 							}
 							const name = subArgs[0];
-							const filePath = subArgs[1];
-							let summarize = false;
-							for (let i = 2; i < subArgs.length; ++i) {
+							let filePath: string | undefined = undefined;
+							let summarize: boolean | undefined = undefined;
+							// Parse args for filePath and --summarize
+							let i = 1;
+							while (i < subArgs.length) {
 								if (subArgs[i] === '--summarize' && subArgs[i + 1]) {
 									summarize = subArgs[i + 1] === 'true';
+									i += 2;
+								} else if (!filePath) {
+									filePath = subArgs[i];
+									i++;
+								} else {
+									i++;
 								}
+							}
+							// If filePath or summarize is missing, get from config
+							const allConfigs = enhanced.getConfig().providers;
+							const configFromFile = allConfigs.find(
+								c => c.name === name && c.type === 'file-based'
+							);
+							if (!configFromFile) {
+								console.log(chalk.red(`❌ File-based provider '${name}' not found in config`));
+								return false;
+							}
+							if (!filePath) filePath = configFromFile.config?.filePath;
+							if (summarize === undefined) summarize = configFromFile.config?.summarize ?? false;
+							if (!filePath) {
+								console.log(
+									chalk.red(
+										`❌ File path for provider '${name}' is not specified and not found in config`
+									)
+								);
+								return false;
 							}
 							const config = {
 								name,
 								type: 'file-based',
-								priority: 40,
+								priority: configFromFile.priority ?? 40,
 								enabled: true,
 								config: { filePath, summarize },
 							};
 							await enhanced.addOrUpdateProvider(config);
+							// Immediately trigger summarization if summarize is true
+							if (summarize) {
+								// Get the provider instance
+								const provider = enhanced.getProvider(name);
+								if (provider && typeof provider.generateContent === 'function') {
+									// Try to get llmService from agent (if available)
+									const llmService =
+										agent.llmService || (agent.services && agent.services.llmService);
+									const context = { metadata: { llmService } };
+									try {
+										await provider.generateContent(context);
+										console.log(
+											chalk.gray('💡 LLM summary generated and cached for file-based provider.')
+										);
+									} catch (err) {
+										console.log(
+											chalk.yellow(
+												'⚠️  LLM summarization failed to cache immediately, will retry on next /prompt.'
+											)
+										);
+									}
+								}
+							}
 							console.log(chalk.green(`✅ File-based provider '${name}' added/updated.`));
 							return true;
 						}
@@ -921,31 +1045,119 @@ export class CommandParser {
 									? { ...(provider as any).config }
 									: {};
 							const newConfig = { ...provider, config: configObj };
+							let summarizeFlag: boolean | undefined = undefined;
 							for (let i = 1; i < subArgs.length; ++i) {
-								const [key, value] = (subArgs[i] ?? '').split('=');
-								if (key && value !== undefined) {
-									newConfig.config[key] = value;
+								if (subArgs[i] === '--summarize' && subArgs[i + 1]) {
+									summarizeFlag = subArgs[i + 1] === 'true';
+									newConfig.config['summarize'] = summarizeFlag;
+									i++;
+								} else {
+									const [key, value] = (subArgs[i] ?? '').split('=');
+									if (key && value !== undefined) {
+										newConfig.config[key] = value;
+									}
 								}
 							}
 							await enhanced.addOrUpdateProvider(newConfig);
+							// Fetch the new provider instance after update
+							const updatedProvider = enhanced.getProvider(name);
+							// If summarize flag is set to true for file-based provider, trigger LLM summarization immediately
+							if (updatedProvider && updatedProvider.type === 'file-based' && summarizeFlag) {
+								if (typeof updatedProvider.generateContent === 'function') {
+									const llmService =
+										agent.llmService || (agent.services && agent.services.llmService);
+									const context = { metadata: { llmService } };
+									try {
+										await updatedProvider.generateContent(context);
+										console.log(
+											chalk.gray('💡 LLM summary generated and cached for file-based provider.')
+										);
+									} catch (err) {
+										console.log(
+											chalk.yellow(
+												'⚠️  LLM summarization failed to cache immediately, will retry on next /prompt.'
+											)
+										);
+									}
+								}
+							}
 							console.log(chalk.green(`✅ Provider '${name}' updated.`));
 							return true;
 						}
+						case 'enable': {
+							if (subArgs.length === 0) {
+								console.log(chalk.red('❌ Provider name required'));
+								console.log(chalk.gray('Usage: /prompt-providers enable <provider-name>'));
+								return false;
+							}
+							const providerName = subArgs[0];
+							// Try to get from loaded providers first
+							let provider = enhanced.getProvider(providerName);
+							// If not loaded, update config in configManager
+							if (!provider) {
+								const allConfigs = enhanced.getConfig().providers;
+								const config = allConfigs.find(c => c.name === providerName);
+								if (!config) {
+									console.log(chalk.red(`❌ Provider '${providerName}' not found in config`));
+									return false;
+								}
+								config.enabled = true;
+								console.log(
+									chalk.green(
+										`✅ Provider '${providerName}' enabled (config updated, will take effect if loaded).`
+									)
+								);
+								return true;
+							}
+							provider.enabled = true;
+							console.log(chalk.green(`✅ Provider '${providerName}' enabled.`));
+							return true;
+						}
+						case 'disable': {
+							if (subArgs.length === 0) {
+								console.log(chalk.red('❌ Provider name required'));
+								console.log(chalk.gray('Usage: /prompt-providers disable <provider-name>'));
+								return false;
+							}
+							const providerName = subArgs[0];
+							// Try to get from loaded providers first
+							let provider = enhanced.getProvider(providerName);
+							// If not loaded, update config in configManager
+							if (!provider) {
+								const allConfigs = enhanced.getConfig().providers;
+								const config = allConfigs.find(c => c.name === providerName);
+								if (!config) {
+									console.log(chalk.red(`❌ Provider '${providerName}' not found in config`));
+									return false;
+								}
+								config.enabled = false;
+								console.log(
+									chalk.green(
+										`✅ Provider '${providerName}' disabled (config updated, will take effect if loaded).`
+									)
+								);
+								return true;
+							}
+							provider.enabled = false;
+							console.log(chalk.green(`✅ Provider '${providerName}' disabled.`));
+							return true;
+						}
 						case 'show-all': {
-							// Get all currently loaded (active) providers
-							const activeProviders = enhanced.listProviders();
 							// Get all provider configs from configManager (including those not loaded)
 							const allConfigs = enhanced.getConfig().providers;
+							// Get all currently loaded (active) providers
+							const activeProviders = enhanced.listProviders();
 							// Build a set of active provider names for quick lookup
 							const activeNames = new Set(activeProviders.map(p => p.id));
-							// All enabled providers
+							// All enabled and disabled providers
 							const enabledProviders = allConfigs.filter(c => c.enabled);
-							// Split into active and available
+							const disabledProviders = allConfigs.filter(c => !c.enabled);
+							// Split enabled into active and available
 							const activeEnabled = enabledProviders.filter(c => activeNames.has(c.name));
 							const availableEnabled = enabledProviders.filter(c => !activeNames.has(c.name));
 							// Output
-							console.log(chalk.cyan('📋 All Enabled Providers'));
-							// Active
+							console.log(chalk.cyan('📋 All Providers (Enabled and Disabled)'));
+							// Active enabled
 							if (activeEnabled.length > 0) {
 								console.log(chalk.green('🟢 Active:'));
 								for (const c of activeEnabled) {
@@ -960,7 +1172,7 @@ export class CommandParser {
 							} else {
 								console.log(chalk.gray('  No active enabled providers.'));
 							}
-							// Available (enabled, not yet loaded)
+							// Available enabled
 							if (availableEnabled.length > 0) {
 								console.log(chalk.yellow('🟡 Available (Enabled, Not Yet Loaded):'));
 								for (const c of availableEnabled) {
@@ -975,9 +1187,26 @@ export class CommandParser {
 							} else {
 								console.log(chalk.gray('  No available enabled providers.'));
 							}
+							// Disabled providers
+							if (disabledProviders.length > 0) {
+								console.log(chalk.red('🔴 Disabled:'));
+								for (const c of disabledProviders) {
+									let preview = '';
+									if (c.type === 'static' && typeof c.config?.content === 'string') {
+										preview = c.config.content.substring(0, 60);
+										if (c.config.content.length > 60) preview += '...';
+										preview = ` | Preview: "${preview.replace(/\n/g, ' ')}"`;
+									}
+									console.log(chalk.red(`  🔴 ${c.name} (${c.type})${preview}`));
+								}
+							} else {
+								console.log(chalk.gray('  No disabled providers.'));
+							}
 							console.log('');
-							console.log(chalk.gray('💡 All providers listed here have enabled: true in config.'));
-							console.log(chalk.gray('💡 Use /prompt-providers add-dynamic or add-file to activate available providers.'));
+							console.log(chalk.gray('💡 All providers listed here are from config.'));
+							console.log(
+								chalk.gray('💡 Use /prompt-providers enable/disable to manage provider status.')
+							);
 							return true;
 						}
 						case 'help': {
@@ -995,9 +1224,14 @@ export class CommandParser {
 								'/prompt-providers help - Show this help message',
 							];
 							subcommands.forEach(cmd => console.log(`  ${cmd}`));
-							console.log('\n' + chalk.gray('💡 Providers are components that generate parts of the system prompt'));
+							console.log(
+								'\n' +
+									chalk.gray('💡 Providers are components that generate parts of the system prompt')
+							);
 							console.log(chalk.gray('💡 Different provider types: static, dynamic, file-based'));
-							console.log(chalk.gray('💡 Use add-dynamic/add-file to activate available providers.'));
+							console.log(
+								chalk.gray('💡 Use add-dynamic/add-file to activate available providers.')
+							);
 							return true;
 						}
 						default:
@@ -1343,7 +1577,7 @@ export class CommandParser {
 			console.log(chalk.cyan('==========================\n'));
 
 			const promptManager = agent.promptManager;
-			
+
 			// For enhanced prompt manager, show actual providers
 			console.log(chalk.yellow('Enhanced Prompt System Active'));
 			console.log('');
@@ -1390,7 +1624,7 @@ export class CommandParser {
 			}
 
 			const providerName = args[0];
-			
+
 			console.log(chalk.yellow('⚠️ Enhanced Prompt System Active'));
 			console.log('');
 			console.log('The current prompt system uses an Enhanced PromptManager that supports');
@@ -1428,7 +1662,7 @@ export class CommandParser {
 			}
 
 			const providerName = args[0];
-			
+
 			console.log(chalk.yellow('⚠️ Enhanced Prompt System Active'));
 			console.log('');
 			console.log('The current prompt system uses an Enhanced PromptManager that supports');

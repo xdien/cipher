@@ -236,7 +236,7 @@ export const summaryGenerator: DynamicContentGenerator = async (context, config)
 	if (!llmService) return '[LLM service unavailable: cannot generate summary]';
 	const history = await fetchSessionHistory(context, config);
 	if (!history.length) return '[No session history to summarize]';
-	const prompt = `Summarize the following conversation in a concise paragraph for the system prompt.\n\n${history.join('\n')}\n\nSummary:`;
+	const prompt = `Summarize the following conversation in a concise paragraph (maximum 4-5 sentences) for the system prompt.\n\n${history.join('\n')}\n\nSummary:`;
 	return await llmService.directGenerate(prompt);
 };
 
@@ -248,7 +248,7 @@ export const rulesGenerator: DynamicContentGenerator = async (context, config) =
 	if (!llmService) return '[LLM service unavailable: cannot extract rules]';
 	const history = await fetchSessionHistory(context, config);
 	if (!history.length) return '[No session history to extract rules from]';
-	const prompt = `Extract any rules, requirements, or project specifications set by the user in the following conversation. List them clearly for the system prompt.\n\n${history.join('\n')}\n\nRules/Specs:`;
+	const prompt = `Extract any rules, requirements, or project specifications set by the user in the following conversation. List them clearly and concisely for the system prompt (maximum 4-5 sentences).\n\n${history.join('\n')}\n\nRules/Specs:`;
 	return await llmService.directGenerate(prompt);
 };
 
@@ -260,7 +260,7 @@ export const errorDetectionGenerator: DynamicContentGenerator = async (context, 
 	if (!llmService) return '[LLM service unavailable: cannot detect errors]';
 	const history = await fetchSessionHistory(context, config);
 	if (!history.length) return '[No session history to detect errors from]';
-	const prompt = `Identify any errors, bugs, or issues discussed or emphasized by the user in the following conversation. List them for the system prompt.\n\n${history.join('\n')}\n\nErrors/Bugs:`;
+	const prompt = `Identify any errors, bugs, or issues discussed or emphasized by the user in the following conversation. List them concisely for the system prompt (maximum 4-5 sentences).\n\n${history.join('\n')}\n\nErrors/Bugs:`;
 	return await llmService.directGenerate(prompt);
 };
 

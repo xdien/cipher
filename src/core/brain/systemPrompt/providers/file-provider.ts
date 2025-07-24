@@ -21,6 +21,8 @@ export interface FileProviderConfig {
 	encoding?: BufferEncoding;
 	/** Template variables to replace in file content */
 	variables?: Record<string, string>;
+	/** Whether to summarize the file content using an LLM */
+	summarize?: boolean;
 }
 
 export class FilePromptProvider extends BasePromptProvider {
@@ -83,6 +85,13 @@ export class FilePromptProvider extends BasePromptProvider {
 			}
 		}
 
+		// Summarize is optional but must be a boolean if provided
+		if (typedConfig.summarize !== undefined) {
+			if (typeof typedConfig.summarize !== 'boolean') {
+				return false;
+			}
+		}
+
 		return true;
 	}
 
@@ -100,7 +109,7 @@ export class FilePromptProvider extends BasePromptProvider {
 		await this.loadFileContent();
 	}
 
-	public async generateContent(_context: ProviderContext): Promise<string> {
+	public async generateContent(context: ProviderContext): Promise<string> {
 		this.ensureInitialized();
 
 		if (!this.canGenerate()) {
@@ -114,10 +123,29 @@ export class FilePromptProvider extends BasePromptProvider {
 
 		// Replace template variables if any exist
 		let result = this.cachedContent;
-
 		for (const [key, value] of Object.entries(this.variables)) {
 			const placeholder = `{{${key}}}`;
 			result = result.replace(new RegExp(placeholder, 'g'), value);
+		}
+
+		// Summarization support
+		const summarize =
+			(this as any).config?.summarize === true || (context as any)?.summarize === true;
+		if (summarize) {
+			// Use LLM service from context
+			const llmService = context?.metadata?.llmService;
+			if (!llmService) {
+				return '[LLM service unavailable: cannot summarize file]';
+			}
+			// Cache summary for this file content
+			if ((this as any)._cachedSummary && (this as any)._cachedSummarySource === result) {
+				return (this as any)._cachedSummary;
+			}
+			const prompt = `Summarize the following project document for the system prompt. Focus on key guidelines, rules, and standards. Keep the summary concise, maximum 4-5 sentences.\n\n${result}\n\nSummary:`;
+			const summary = await llmService.directGenerate(prompt);
+			(this as any)._cachedSummary = summary;
+			(this as any)._cachedSummarySource = result;
+			return summary;
 		}
 
 		return result;

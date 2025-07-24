@@ -70,9 +70,9 @@ providers:
   - name: project-guidelines
     type: file-based
     priority: 40
-    enabled: false
+    enabled: true
     config:
-      filePath: ./docs/project-guidelines.md
+      filePath: ./memAgent/project-guidelines.md
       summarize: false
 
 settings:
