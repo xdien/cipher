@@ -2,7 +2,7 @@ import { IMessageFormatter } from './formatters/types.js';
 import { logger } from '../../../logger/index.js';
 import { InternalMessage, ImageData } from './types.js';
 import { getImageData } from './utils.js';
-import { PromptManager } from '../../../brain/systemPrompt/manager.js';
+import { EnhancedPromptManager } from '../../../brain/systemPrompt/enhanced-manager.js';
 import { ITokenizer, createTokenizer, getTokenizerConfigForModel } from '../tokenizer/index.js';
 import {
 	ICompressionStrategy,
@@ -16,10 +16,10 @@ import { assignMessagePriorities, calculateTotalTokens } from '../compression/ut
 import { IConversationHistoryProvider } from './history/types.js';
 
 export class ContextManager {
-	private readonly promptManager: PromptManager;
-	private readonly formatter: IMessageFormatter;
-	private readonly historyProvider: IConversationHistoryProvider | undefined;
-	private readonly sessionId: string | undefined;
+	private promptManager: EnhancedPromptManager;
+	private formatter: IMessageFormatter;
+	private historyProvider: IConversationHistoryProvider | undefined;
+	private sessionId: string | undefined;
 	private messages: InternalMessage[] = [];
 
 	// Token-aware compression components
@@ -42,9 +42,9 @@ export class ContextManager {
 
 	constructor(
 		formatter: IMessageFormatter,
-		promptManager: PromptManager,
-		historyProvider?: IConversationHistoryProvider,
-		sessionId?: string
+		promptManager: EnhancedPromptManager,
+		historyProvider: IConversationHistoryProvider | undefined,
+		sessionId: string | undefined
 	) {
 		if (!formatter) {
 			throw new Error('formatter is required');
@@ -60,9 +60,9 @@ export class ContextManager {
 
 	// Public API Methods
 	async getSystemPrompt(): Promise<string> {
-		const prompt = await this.promptManager.getCompleteSystemPrompt();
-		logger.debug(`[SystemPrompt] Built complete system prompt (${prompt.length} chars)`);
-		return prompt;
+		const result = await this.promptManager.generateSystemPrompt();
+		logger.debug(`[SystemPrompt] Built complete system prompt (${result.content.length} chars)`);
+		return result.content;
 	}
 
 	async addMessage(message: InternalMessage): Promise<void> {
