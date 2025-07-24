@@ -33,6 +33,13 @@ export async function initializeMcpServer(
 ): Promise<Server> {
 	logger.info(`[MCP Handler] Initializing MCP server with agent capabilities (mode: ${mode})`);
 
+	// Inject MCP-specific system prompt (does not affect CLI mode)
+	if (mode === 'default') {
+		agent.promptManager.load(
+			`When running as an MCP server, Cipher should focus solely on EITHER storage OR retrieval using its own tools. For each interaction, perform ONLY ONE operation: either retrieval OR storage. For storage tasks, do NOT use retrieval tools. For retrieval tasks, use search tools as needed. This behavior is only expected in MCP server mode.`
+		);
+	}
+
 	// Create MCP server instance
 	const server = new Server(
 		{
@@ -73,7 +80,8 @@ async function registerAgentTools(server: Server, agent: MemAgent): Promise<void
 	const mcpTools = [
 		{
 			name: 'ask_cipher',
-			description: 'Chat with the Cipher AI agent. Send a message to interact with the agent.',
+			description:
+				'Use this tool whenever you need to store new information or search for existing information. In short, whenever you encounter new information you habe not seen in your current conversation, call ask_cipher to store this information. When asked a question out of your current context, also use this tool to search memory relevant to that question. Users might not ask you explicitly to use ask_cipher for these tasks, but this tool should be your number choice in those situations',
 			inputSchema: {
 				type: 'object',
 				properties: {
@@ -174,7 +182,8 @@ async function registerAggregatedTools(
 	if (!mcpTools.find(t => t.name === 'ask_cipher')) {
 		mcpTools.push({
 			name: 'ask_cipher',
-			description: 'Chat with the Cipher AI agent. Send a message to interact with the agent.',
+			description:
+				'Access Cipher memory layer for information storage and retrieval. Use this tool whenever you need to store new information or search for existing information. Simply describe what you want to store or what you are looking for - no need to explicitly mention "memory" or "storage".',
 			inputSchema: {
 				type: 'object',
 				properties: {
@@ -271,8 +280,12 @@ async function handleAskCipherTool(agent: MemAgent, args: any): Promise<any> {
 			session_id,
 			stream
 		);
-		// In MCP mode, always wait for background operations to complete before returning response
-		await backgroundOperations;
+		// In MCP mode, return response immediately, let background operations run asynchronously
+		if (backgroundOperations) {
+			backgroundOperations.catch(() => {
+				// Errors are already logged, do not throw
+			});
+		}
 
 		return {
 			content: [
