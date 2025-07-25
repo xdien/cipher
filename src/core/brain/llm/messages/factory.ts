@@ -1,6 +1,7 @@
 import { LLMConfig, LLMConfigSchema } from '../config.js';
 import { OpenAIMessageFormatter } from './formatters/openai.js';
 import { AnthropicMessageFormatter } from './formatters/anthropic.js';
+import { AzureMessageFormatter } from './formatters/azure.js';
 import { IMessageFormatter } from './formatters/types.js';
 import { ContextManager } from './manager.js';
 import { logger } from '../../../logger/index.js';
@@ -14,8 +15,10 @@ function getFormatter(provider: string): IMessageFormatter {
 		case 'openai':
 		case 'openrouter':
 		case 'ollama':
-		case 'azure':
 			formatter = new OpenAIMessageFormatter();
+			break;
+		case 'azure':
+			formatter = new AzureMessageFormatter();
 			break;
 		case 'anthropic':
 		case 'aws':

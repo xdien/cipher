@@ -23,7 +23,7 @@ export class AzureService implements ILLMService {
 		mcpManager: MCPManager,
 		contextManager: ContextManager,
 		unifiedToolManager?: UnifiedToolManager,
-		maxIterations = 10,
+		maxIterations: number = 5,
 		azureConfig?: AzureConfig
 	) {
 		this.model = model;
@@ -58,7 +58,7 @@ export class AzureService implements ILLMService {
 	async generate(userInput: string, imageData?: ImageData): Promise<string> {
 		await this.contextManager.addUserMessage(userInput, imageData);
 
-		// Get formatted tools
+		// Use unified tool manager if available, otherwise fall back to MCP manager
 		let formattedTools: any[];
 		if (this.unifiedToolManager) {
 			formattedTools = await this.unifiedToolManager.getToolsForProvider('azure');
@@ -74,18 +74,13 @@ export class AzureService implements ILLMService {
 			while (iterationCount < this.maxIterations) {
 				iterationCount++;
 
-				const response = await this.getAIResponse(formattedTools);
-				const choice = response.choices[0];
+				// Attempt to get a response, with retry logic
+				const { message } = await this.getAIResponseWithRetries(formattedTools, userInput);
 
-				if (!choice) {
-					throw new Error('No choices returned from Azure OpenAI');
-				}
-
-				const message = choice.message;
-
-				// If there are no function calls, we're done
-				if (!message.functionCall) {
+				// If there are no tool calls, we're done
+				if (!message.tool_calls || message.tool_calls.length === 0) {
 					const responseText = message.content || '';
+					// Add assistant message to history
 					await this.contextManager.addAssistantMessage(responseText);
 					return responseText;
 				}
@@ -95,93 +90,130 @@ export class AzureService implements ILLMService {
 					logger.info(`💭 ${message.content.trim()}`);
 				}
 
-				// Convert function call to OpenAI format for context manager
-				const toolCall = {
-					id: `call_${Date.now()}`,
-					type: 'function' as const,
-					function: {
-						name: message.functionCall.name,
-						arguments: message.functionCall.arguments,
-					},
-				};
+				// Add assistant message with tool calls to history
+				await this.contextManager.addAssistantMessage(message.content, message.tool_calls);
 
-				await this.contextManager.addAssistantMessage(message.content, [toolCall]);
+				// Handle tool calls
+				for (const toolCall of message.tool_calls) {
+					logger.debug(`Tool call initiated: ${JSON.stringify(toolCall, null, 2)}`);
+					logger.info(`🔧 Using tool: ${toolCall.function.name}`);
+					const toolName = toolCall.function.name;
+					let args: any = {};
 
-				// Handle the function call
-				logger.debug(`Function call initiated: ${JSON.stringify(message.functionCall, null, 2)}`);
-				logger.info(`🔧 Using tool: ${message.functionCall.name}`);
-
-				const toolName = message.functionCall.name;
-				let args: any = {};
-
-				try {
-					args = JSON.parse(message.functionCall.arguments);
-				} catch (error) {
-					logger.warn(`Failed to parse function arguments: ${message.functionCall.arguments}`);
-				}
-
-				try {
-					let toolResult: string;
-					if (this.unifiedToolManager) {
-						toolResult = await this.unifiedToolManager.executeTool(toolName, args);
-					} else {
-						const toolExecutionResult = await this.mcpManager.executeTool(toolName, args);
-						toolResult = toolExecutionResult.content;
+					try {
+						args = JSON.parse(toolCall.function.arguments);
+					} catch (e) {
+						logger.error(`Error parsing arguments for ${toolName}:`, e);
+						await this.contextManager.addToolResult(toolCall.id, toolName, {
+							error: `Failed to parse arguments: ${e}`,
+						});
+						continue;
 					}
 
-					const formattedResult = formatToolResult(toolName, toolResult);
-					await this.contextManager.addToolResult(toolCall.id, toolName, formattedResult);
-					logger.debug(`Tool result: ${formattedResult}`);
-				} catch (error) {
-					const errorMessage = `Tool execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
-					await this.contextManager.addToolResult(toolCall.id, toolName, errorMessage);
-					logger.error(`Tool execution error: ${errorMessage}`);
+					// Execute tool
+					try {
+						let result: any;
+						if (this.unifiedToolManager) {
+							result = await this.unifiedToolManager.executeTool(toolName, args);
+						} else {
+							result = await this.mcpManager.executeTool(toolName, args);
+						}
+
+						// Display formatted tool result
+						const formattedResult = formatToolResult(toolName, result);
+						logger.info(`📋 Tool Result:\n${formattedResult}`);
+
+						// Add tool result to message manager
+						await this.contextManager.addToolResult(toolCall.id, toolName, result);
+					} catch (error) {
+						// Handle tool execution error
+						const errorMessage = error instanceof Error ? error.message : String(error);
+						logger.error(`Tool execution error for ${toolName}: ${errorMessage}`);
+
+						// Add error as tool result
+						await this.contextManager.addToolResult(toolCall.id, toolName, {
+							error: errorMessage,
+						});
+					}
 				}
 			}
 
-			throw new Error(`Maximum iterations (${this.maxIterations}) reached without completion`);
+			// If we reached max iterations, return a message
+			logger.warn(`Reached maximum iterations (${this.maxIterations}) for task.`);
+			const finalResponse = 'Task completed but reached maximum tool call iterations.';
+			await this.contextManager.addAssistantMessage(finalResponse);
+			return finalResponse;
 		} catch (error) {
-			// logger.error('Azure OpenAI generation error:', error);
-			// throw error;
+			// Handle API errors
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			logger.error(`Error in Azure OpenAI service API call: ${errorMessage}`, { error });
+			await this.contextManager.addAssistantMessage(`Error processing request: ${errorMessage}`);
+			return `Error processing request: ${errorMessage}`;
 		}
-		return '';
 	}
 
+	/**
+	 * Direct generate method that bypasses conversation context
+	 * Used for internal tool operations that shouldn't pollute conversation history
+	 * @param userInput - The input to generate a response for
+	 * @param systemPrompt - Optional system prompt to use
+	 * @returns Promise<string> - The generated response
+	 */
 	async directGenerate(userInput: string, systemPrompt?: string): Promise<string> {
-		const messages: any[] = [];
+		try {
+			logger.debug('AzureService: Direct generate call (bypassing conversation context)', {
+				inputLength: userInput.length,
+				hasSystemPrompt: !!systemPrompt,
+			});
 
-		if (systemPrompt) {
-			messages.push({ role: 'system', content: systemPrompt });
+			// Create a minimal message array for direct API call
+			const messages: any[] = [];
+
+			if (systemPrompt) {
+				messages.push({
+					role: 'system',
+					content: systemPrompt,
+				});
+			}
+
+			messages.push({
+				role: 'user',
+				content: userInput,
+			});
+
+			// Make direct API call without adding to conversation context
+			const response = await this.client.getChatCompletions(this.deploymentName, messages, {
+				temperature: 0.7,
+				maxTokens: 4096,
+				topP: 1,
+				// No tools for direct calls - this is for simple text generation
+			});
+
+			const choice = response.choices[0];
+			if (!choice) {
+				throw new Error('No choices returned from Azure OpenAI');
+			}
+
+			const responseText = choice.message?.content || '';
+
+			logger.debug('AzureService: Direct generate completed', {
+				responseLength: responseText.length,
+			});
+
+			return responseText;
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			logger.error('AzureService: Direct generate failed', {
+				error: errorMessage,
+				inputLength: userInput.length,
+			});
+			throw new Error(`Direct generate failed: ${errorMessage}`);
 		}
-
-		messages.push({ role: 'user', content: userInput });
-
-		const response = await this.client.getChatCompletions(this.deploymentName, messages, {
-			temperature: 0.7,
-			maxTokens: 4096,
-			topP: 1,
-		});
-
-		const choice = response.choices[0];
-		if (!choice) {
-			throw new Error('No choices returned from Azure OpenAI');
-		}
-
-		return choice.message?.content || '';
 	}
 
-	async getAllTools(): Promise<ToolSet> {
+	async getAllTools(): Promise<ToolSet | CombinedToolSet> {
 		if (this.unifiedToolManager) {
-			const combinedTools: CombinedToolSet = await this.unifiedToolManager.getAllTools();
-			// Convert CombinedToolSet to ToolSet format
-			const toolSet: ToolSet = {};
-			for (const [toolName, toolInfo] of Object.entries(combinedTools)) {
-				toolSet[toolName] = {
-					description: toolInfo.description,
-					parameters: toolInfo.parameters,
-				};
-			}
-			return toolSet;
+			return await this.unifiedToolManager.getAllTools();
 		}
 		return this.mcpManager.getAllTools();
 	}
@@ -193,68 +225,123 @@ export class AzureService implements ILLMService {
 		};
 	}
 
-	private async getAIResponse(formattedTools: any[]): Promise<any> {
-		const messages = await this.contextManager.getAllFormattedMessages();
+	// Helper methods
+	private async getAIResponseWithRetries(
+		tools: any[],
+		userInput: string
+	): Promise<{ message: any }> {
+		let attempts = 0;
+		const MAX_ATTEMPTS = 3;
 
-		logger.debug(`Azure service received ${formattedTools.length} formatted tools`);
+		// Add a log of the number of tools in response
+		logger.debug(`Tools in response: ${tools.length}`);
 
-		// The messages are already formatted by OpenAIMessageFormatter, so we can use them directly
-		// But we need to convert OpenAI tool format to Azure function format for function calls
-		const azureMessages = messages.map((msg: any) => {
-			if (msg.role === 'tool') {
-				// Convert OpenAI tool response to Azure function response
-				return {
-					role: 'function',
-					name: msg.name,
-					content: msg.content,
+		while (attempts < MAX_ATTEMPTS) {
+			attempts++;
+			try {
+				// Use the new method that implements proper flow: get system prompt, compress history, format messages
+				const formattedMessages = await this.contextManager.getFormattedMessage({
+					role: 'user',
+					content: userInput,
+				});
+
+				// Debug log: Show exactly what messages are being sent to Azure OpenAI
+				logger.debug(`Sending ${formattedMessages.length} formatted messages to Azure OpenAI:`, {
+					messages: formattedMessages.map((msg, idx) => ({
+						index: idx,
+						role: msg.role,
+						hasContent: !!msg.content,
+						hasToolCalls: !!msg.tool_calls,
+						toolCallId: msg.toolCallId || msg.tool_call_id,
+						name: msg.name,
+					})),
+				});
+
+				// Call Azure OpenAI API
+				const requestOptions: any = {
+					temperature: 0.7,
+					maxTokens: 4096,
+					topP: 1,
 				};
-			} else if (msg.role === 'assistant' && msg.tool_calls) {
-				// Convert OpenAI tool_calls to Azure functionCall (single call only)
-				const functionCall = msg.tool_calls[0]; // Azure only supports one function call per message
-				return {
-					role: 'assistant',
-					content: msg.content || '',
-					functionCall: {
-						name: functionCall.function.name,
-						arguments: functionCall.function.arguments,
-					},
+
+				// Add tools if available - Azure uses different property names
+				if (attempts === 1 && tools.length > 0) {
+					requestOptions.tools = tools;
+					requestOptions.toolChoice = 'auto'; // Azure uses toolChoice instead of tool_choice
+				}
+
+				const response = await this.client.getChatCompletions(this.deploymentName, formattedMessages, requestOptions);
+
+				logger.silly('AZURE OPENAI CHAT COMPLETION RESPONSE: ', JSON.stringify(response, null, 2));
+
+				// Get the response message and normalize tool calls format
+				const choice = response.choices[0];
+				if (!choice) {
+					throw new Error('Received empty message from Azure OpenAI API');
+				}
+
+				const message = choice.message as any; // Azure API has different types than expected
+				
+				// Azure OpenAI may return tool calls in different formats, normalize to OpenAI format
+				// Create a normalized message object that our code expects
+				const normalizedMessage = {
+					...message,
+					tool_calls: message.toolCalls || message.tool_calls || (message.functionCall ? [{
+						id: `call_${Date.now()}`,
+						type: 'function' as const,
+						function: {
+							name: message.functionCall.name,
+							arguments: message.functionCall.arguments,
+						}
+					}] : undefined)
 				};
-			}
-			// For all other messages, use as-is
-			return msg;
-		});
 
-		const requestOptions: any = {
-			temperature: 0.7,
-			maxTokens: 4096,
-			topP: 1,
-		};
+				return { message: normalizedMessage };
+			} catch (error) {
+				const apiError = error as any;
+				logger.error(
+					`Error in Azure OpenAI API call (Attempt ${attempts}/${MAX_ATTEMPTS}): ${apiError.message || JSON.stringify(apiError, null, 2)}`,
+					{ status: apiError.status, headers: apiError.headers }
+				);
 
-		// Add functions if available
-		if (formattedTools.length > 0) {
-			// Validate that functions have required fields
-			const validFunctions = formattedTools.filter(
-				func => func && func.name && func.description && func.parameters
-			);
+				// Azure OpenAI specific error handling
+				if (apiError.status === 400) {
+					if (apiError.message?.includes('context_length_exceeded') || apiError.message?.includes('maximum context length')) {
+						logger.warn(
+							`Context length exceeded in Azure OpenAI. ContextManager compression might not be sufficient. Error details: ${JSON.stringify(apiError)}`
+						);
+					}
+					if (apiError.message?.includes('tool_call_id')) {
+						logger.warn(
+							`Azure OpenAI tool_call_id error. This indicates message format issues. Error details: ${JSON.stringify(apiError)}`
+						);
+					}
+				}
 
-			if (validFunctions.length > 0) {
-				logger.debug(`Azure service using ${validFunctions.length} valid functions`);
-				requestOptions.functions = validFunctions;
-				requestOptions.functionCall = 'auto';
-			} else {
-				logger.warn('No valid functions found for Azure service, skipping function calling');
+				if (attempts >= MAX_ATTEMPTS) {
+					logger.error(`Failed to get response from Azure OpenAI after ${MAX_ATTEMPTS} attempts.`);
+					throw error;
+				}
+
+				await new Promise(resolve => setTimeout(resolve, 500 * attempts));
 			}
 		}
 
-		return this.client.getChatCompletions(this.deploymentName, azureMessages, requestOptions);
+		throw new Error('Failed to get response after maximum retry attempts');
 	}
 
-	private formatToolsForAzure(rawTools: ToolSet): any[] {
-		if (!rawTools || typeof rawTools !== 'object') return [];
-		return Object.entries(rawTools).map(([toolName, tool]) => ({
-			name: toolName,
-			description: tool.description,
-			parameters: tool.parameters,
-		}));
+	private formatToolsForAzure(tools: ToolSet): any[] {
+		// Keep the existing implementation
+		// Convert the ToolSet object to an array of tools in Azure OpenAI's format (same as OpenAI)
+		return Object.entries(tools).map(([name, tool]) => {
+			return {
+				type: 'function',
+				function: {
+					name,
+					description: tool.description,
+					parameters: tool.parameters,
+				},
+			};
+		});
 	}
 }
