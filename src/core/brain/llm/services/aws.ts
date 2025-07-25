@@ -357,6 +357,9 @@ export class AwsService implements ILLMService {
 			};
 			if (formattedTools && formattedTools.length > 0) {
 				request.tools = formattedTools;
+				// Use 'auto' tool choice to let the model decide when to use tools
+				// This prevents over-eager tool calling for simple questions
+				request.tool_choice = { type: "auto" };
 			}
 		} else {
 			request = this.formatter.format(messages[0], systemPrompt)[0];

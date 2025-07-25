@@ -18,10 +18,10 @@ export const MEMORY_SEARCH_INSTRUCTIONS = `
 
 **PURPOSE**: Search knowledge memory for stored facts, code patterns, and technical information.
 
-**CRITICAL: Search First Strategy**
-Before answering ANY question, you MUST first consider: "Could this information be in my memory?" If the answer is YES or MAYBE, use the search tool FIRST.
+**When to Search Memory:**
+Use the search tool when you need specific information that might be stored from previous interactions or when the context would significantly improve your response.
 
-**ALWAYS use cipher_memory_search for these question types:**
+**Use cipher_memory_search for these specific scenarios:**
 1. **Personal/Identity Questions**: "What is my name?", "Who am I?", "What do you know about me?"
 2. **User Information**: Personal details, preferences, characteristics, background
 3. **Previous Conversations**: "What did we discuss?", "What was my last question?"
@@ -57,11 +57,14 @@ cipher_memory_search(
 )
 \`\`\`
 
-**When to SKIP searching:**
-- You have sufficient context from the current conversation
-- The question is about basic programming concepts or syntax
-- You recently searched for similar information in this session
-- The task is straightforward implementation without needing past patterns
+**IMPORTANT: When to SKIP searching (answer directly):**
+- **General knowledge questions**: "What is a binary search tree?", "How does recursion work?"
+- **Basic programming concepts**: Language syntax, standard algorithms, common patterns
+- **Simple explanations**: "Explain X", "Define Y", "How does Z work?"
+- **Direct implementation requests**: Writing standard code without needing past examples
+- **Conversational queries**: Greetings, thanks, simple responses
+- **Current context is sufficient**: Recent conversation provides enough information
+- **Public knowledge**: Information that is commonly available and doesn't need personal context
 
 **NOTE**: This tool searches ONLY knowledge memory. For reasoning patterns, use \`cipher_search_reasoning_patterns\`.
 `;
@@ -347,6 +350,8 @@ cipher_intelligent_processor(
  */
 export const EFFICIENCY_GUIDELINES = `
 ## EFFICIENCY GUIDELINES
+
+**CORE PRINCIPLE**: Only use tools when they add genuine value. Answer directly from your knowledge for standard questions.
 
 **Memory Search Guidelines:**
 1. **Don't repeat searches**: If you just searched for similar information, avoid searching again
