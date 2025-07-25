@@ -157,7 +157,7 @@ export class BedrockAI21MessageFormatter implements IMessageFormatter {
             : message.content;
         ai21Messages.push({
             role: message.role as 'user' | 'assistant' | 'system',
-            content,
+            content: content || '',
         });
         return [{
             messages: ai21Messages,

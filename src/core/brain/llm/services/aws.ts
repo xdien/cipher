@@ -110,7 +110,7 @@ export class AwsService implements ILLMService {
 		
 		logger.info(`Detecting model family for: ${id}`);
 		
-		if (id.startsWith('anthropic.')) {
+		if (id.startsWith('anthropic.') || id.startsWith('us.anthropic.')) {
 			logger.info(`Detected ANTHROPIC model family`);
 			return ModelFamily.ANTHROPIC;
 		}
@@ -126,11 +126,11 @@ export class AwsService implements ILLMService {
 			logger.debug(`Detected AMAZON_NOVA model family`);
 			return ModelFamily.AMAZON_NOVA;
 		}
-		if (id.startsWith('ai21.')) {
+		if (id.startsWith('ai21.') || id.startsWith('us.ai21.')) {
 			logger.debug(`Detected AI21_LABS model family`);
 			return ModelFamily.AI21_LABS;
 		}
-		if (id.startsWith('cohere.')) {
+		if (id.startsWith('cohere.') || id.startsWith('us.cohere.')) {
 			logger.debug(`Detected COHERE model family`);
 			return ModelFamily.COHERE;
 		}
@@ -142,7 +142,7 @@ export class AwsService implements ILLMService {
 			logger.debug(`Detected LUMA_AI model family`);
 			return ModelFamily.LUMA_AI;
 		}
-		if (id.startsWith('mistral.')) {
+		if (id.startsWith('mistral.') || id.startsWith('us.mistral.')) {
 			logger.debug(`Detected MISTRAL_AI model family`);
 			return ModelFamily.MISTRAL_AI;
 		}
@@ -428,7 +428,7 @@ export class AwsService implements ILLMService {
 	}
 
 	private parseTitanResponse(response: any): { textContent: string; toolCalls: any[] } { // BedrockResponse type removed
-		const textContent = response.results.map(result => result.outputText).join('');
+		const textContent = response.results.map((result: any) => result.outputText).join('');
 		return {
 			textContent,
 			toolCalls: [], // Titan models don't support tool calling
@@ -436,7 +436,7 @@ export class AwsService implements ILLMService {
 	}
 
 	private parseAI21Response(response: any): { textContent: string; toolCalls: any[] } { // BedrockResponse type removed
-		const textContent = response.choices.map(choice => choice.message.content).join('');
+		const textContent = response.choices.map((choice: any) => choice.message.content).join('');
 		return {
 			textContent,
 			toolCalls: [], // AI21 models don't support tool calling in this implementation
@@ -444,23 +444,13 @@ export class AwsService implements ILLMService {
 	}
 
 	private parseDeepSeekResponse(response: any): { textContent: string; toolCalls: any[] } { // BedrockResponse type removed
-		const textContent = response.choices.map(choice => choice.text).join('');
+		const textContent = response.choices.map((choice: any) => choice.text).join('');
 		return {
 			textContent,
 			toolCalls: [], // DeepSeek models don't support tool calling
 		};
 	}
 
-	private supportsToolCalling(): boolean {
-		// Currently support tool calling for these model families
-		// Note: We can extend this as we implement tool calling for more families
-		return [
-			ModelFamily.ANTHROPIC,
-			ModelFamily.META_LLAMA,
-			ModelFamily.DEEPSEEK,
-			// Add more families as we implement support
-		].includes(this.modelFamily);
-	}
 
 	private formatToolsForBedrock(rawTools: ToolSet): any[] {
 		if (!rawTools || typeof rawTools !== 'object') return [];
