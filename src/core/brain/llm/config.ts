@@ -4,7 +4,7 @@ export const LLMConfigSchema = z
 		provider: z
 			.string()
 			.nonempty()
-			.describe("The LLM provider (e.g., 'openai', 'anthropic', 'openrouter', 'ollama')"),
+			.describe("The LLM provider (e.g., 'openai', 'anthropic', 'openrouter', 'ollama', 'qwen')"),
 		model: z.string().nonempty().describe('The specific model name for the selected provider'),
 		apiKey: z
 			.string()
@@ -26,13 +26,13 @@ export const LLMConfigSchema = z
 			.url()
 			.optional()
 			.describe(
-				'Base URL for the LLM provider (e.g., https://api.openai.com/v1, https://openrouter.ai/api/v1). \nSupported for OpenAI, OpenRouter, and Ollama providers.'
+				'Base URL for the LLM provider (e.g., https://api.openai.com/v1, https://openrouter.ai/api/v1). \nSupported for OpenAI, OpenRouter, Ollama, and Qwen providers.'
 			),
 	})
 	.strict()
 	.superRefine((data, ctx) => {
 		const providerLower = data.provider?.toLowerCase();
-		const supportedProvidersList = ['openai', 'anthropic', 'openrouter', 'ollama'];
+		const supportedProvidersList = ['openai', 'anthropic', 'openrouter', 'ollama', 'qwen'];
 		if (!supportedProvidersList.includes(providerLower)) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,

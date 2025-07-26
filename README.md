@@ -93,6 +93,7 @@ Configure Cipher using environment variables and YAML config:
 OPENAI_API_KEY=your_openai_api_key
 ANTHROPIC_API_KEY=your_anthropic_api_key
 OPENROUTER_API_KEY=your_openrouter_api_key
+QWEN_API_KEY=your_alibaba_cloud_api_key
 
 # Ollama (self-hosted, no API key needed)
 OLLAMA_BASE_URL=http://localhost:11434/v1
@@ -107,7 +108,7 @@ NODE_ENV=production
 ```yaml
 # LLM Configuration
 llm:
-  provider: openai # openai, anthropic, openrouter, ollama
+  provider: openai # openai, anthropic, openrouter, ollama, qwen
   model: gpt-4-turbo
   apiKey: $OPENAI_API_KEY
 
@@ -128,7 +129,7 @@ mcpServers:
 - **Session Management**: Create, switch, and manage multiple conversation sessions
 - **Memory Integration**: Persistent memory that learns from every interaction
 - **MCP Protocol Support**: Full Model Context Protocol integration for tools and resources
-- **Multi-LLM Support**: OpenAI, Anthropic, OpenRouter, and Ollama compatibility
+- **Multi-LLM Support**: OpenAI, Anthropic, OpenRouter, Ollama, and Alibaba Cloud Qwen compatibility
 - **Knowledge Graph**: Structured memory with entity relationships (Neo4j, in-memory)
 - **Real-time Learning**: Memory layers that improve automatically with usage
 
@@ -170,6 +171,18 @@ llm:
   provider: ollama
   model: qwen2.5:32b # Recommended for best performance
   baseURL: $OLLAMA_BASE_URL
+```
+
+### Alibaba Cloud Qwen
+
+```yaml
+llm:
+  provider: qwen
+  model: qwen2.5-72b-instruct
+  apiKey: $QWEN_API_KEY
+  qwenOptions:
+    enableThinking: true      # Enable Qwen's thinking mode
+    thinkingBudget: 1000      # Thinking budget for complex reasoning
 ```
 
 ## CLI Reference
@@ -252,6 +265,7 @@ The MCP server requires at least one LLM provider API key:
 OPENAI_API_KEY=your_openai_api_key      # Always required for embedding
 ANTHROPIC_API_KEY=your_anthropic_api_key
 OPENROUTER_API_KEY=your_openrouter_api_key
+QWEN_API_KEY=your_alibaba_cloud_api_key
 
 # Optional
 OLLAMA_BASE_URL=http://localhost:11434/v1

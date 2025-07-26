@@ -264,6 +264,20 @@ describe('UnifiedToolManager', () => {
 			expect(tool.function).toBeDefined();
 		});
 
+		it('should format tools for qwen provider', async () => {
+			const formattedTools = await unifiedManager.getToolsForProvider('qwen');
+			expect(formattedTools).toEqual([
+				{
+					type: 'function',
+					function: {
+						name: 'test_tool',
+						description: 'A test tool',
+						parameters: { type: 'object', properties: {} },
+					},
+				},
+			]);
+		});
+
 		it('should throw error for unsupported provider', async () => {
 			await expect(unifiedManager.getToolsForProvider('unsupported' as any)).rejects.toThrow(
 				'Unsupported provider'
