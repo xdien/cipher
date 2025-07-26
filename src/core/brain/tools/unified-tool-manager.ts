@@ -41,6 +41,12 @@ export interface UnifiedToolManagerConfig {
 	 * @default 30000
 	 */
 	executionTimeout?: number;
+
+	/**
+	 * Operating mode - affects which tools are exposed
+	 * @default 'default'
+	 */
+	mode?: 'default' | 'aggregator';
 }
 
 /**
@@ -75,6 +81,7 @@ export class UnifiedToolManager {
 			enableMcpTools: true,
 			conflictResolution: 'prefix-internal',
 			executionTimeout: 30000,
+			mode: (process.env.MCP_SERVER_MODE as 'default' | 'aggregator') || 'default',
 			...config,
 		};
 	}
@@ -115,10 +122,21 @@ export class UnifiedToolManager {
 				try {
 					const internalTools = this.internalToolManager.getAllTools();
 					for (const [toolName, tool] of Object.entries(internalTools)) {
-						// Skip tools that are not agent-accessible (internal-only tools)
-						if (tool.agentAccessible === false) {
-							logger.debug(`UnifiedToolManager: Skipping internal-only tool '${toolName}'`);
-							continue;
+						// Special handling for cipher_extract_and_operate_memory in aggregator mode
+						if (toolName === 'extract_and_operate_memory' || toolName === 'cipher_extract_and_operate_memory') {
+							if (this.config.mode === 'aggregator') {
+								logger.debug(`UnifiedToolManager: Exposing '${toolName}' in aggregator mode`);
+								// Allow this tool in aggregator mode even though agentAccessible is false
+							} else {
+								logger.debug(`UnifiedToolManager: Skipping '${toolName}' in non-aggregator mode`);
+								continue;
+							}
+						} else {
+							// Skip tools that are not agent-accessible (internal-only tools)
+							if (tool.agentAccessible === false) {
+								logger.debug(`UnifiedToolManager: Skipping internal-only tool '${toolName}'`);
+								continue;
+							}
 						}
 
 						const normalizedName = toolName.startsWith('cipher_') ? toolName : `cipher_${toolName}`;
@@ -259,6 +277,12 @@ export class UnifiedToolManager {
 				const tool = this.internalToolManager.getTool(toolName);
 				if (!tool) return false;
 
+				// Special handling for cipher_extract_and_operate_memory in aggregator mode
+				const normalizedToolName = toolName.replace('cipher_', '');
+				if (normalizedToolName === 'extract_and_operate_memory') {
+					return this.config.mode === 'aggregator';
+				}
+
 				// Skip tools that are not agent-accessible (internal-only tools)
 				if (tool.agentAccessible === false) {
 					return false;
@@ -287,6 +311,12 @@ export class UnifiedToolManager {
 				// Check if tool exists and is agent-accessible
 				const tool = this.internalToolManager.getTool(toolName);
 				if (!tool) return null;
+
+				// Special handling for cipher_extract_and_operate_memory in aggregator mode
+				const normalizedToolName = toolName.replace('cipher_', '');
+				if (normalizedToolName === 'extract_and_operate_memory') {
+					return this.config.mode === 'aggregator' ? 'internal' : null;
+				}
 
 				// Skip tools that are not agent-accessible (internal-only tools)
 				if (tool.agentAccessible === false) {
