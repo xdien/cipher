@@ -26,6 +26,7 @@ describe('AzureService', () => {
 			addUserMessage: vi.fn(),
 			addAssistantMessage: vi.fn(),
 			getAllFormattedMessages: vi.fn().mockResolvedValue([]),
+			getFormattedMessage: vi.fn().mockResolvedValue([]),
 			getSystemPrompt: vi.fn().mockResolvedValue('Test system prompt'),
 		} as unknown as ContextManager;
 		mockToolManager = {
