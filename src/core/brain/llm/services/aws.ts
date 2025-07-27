@@ -417,7 +417,8 @@ export class AwsService implements ILLMService {
 		}
 	}
 
-	private parseAnthropicResponse(response: any): { textContent: string; toolCalls: any[] } { // BedrockResponse type removed
+	private parseAnthropicResponse(response: any): { textContent: string; toolCalls: any[] } {
+		// BedrockResponse type removed
 		const toolUseBlocks = response.content.filter((block: any) => block.type === 'tool_use');
 		const textContent = response.content
 			.filter((block: any) => block.type === 'text')
