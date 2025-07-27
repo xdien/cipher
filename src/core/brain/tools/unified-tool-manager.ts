@@ -332,6 +332,7 @@ export class UnifiedToolManager {
 			case 'openai':
 			case 'openrouter':
 				logger.info('UnifiedToolManager: Formatting tools for OpenAI');
+				return this.formatToolsForOpenAI(allTools);
 			case 'qwen':
 				return this.formatToolsForOpenAI(allTools);
 			case 'anthropic':
