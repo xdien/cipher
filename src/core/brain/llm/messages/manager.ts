@@ -127,12 +127,11 @@ export class ContextManager {
 		}
 	}
 
-	async getAllFormattedMessages(): Promise<any[]> {
+	async getAllFormattedMessages(includeSystemMessage: boolean = true): Promise<any[]> {
 		try {
 			const formattedMessages: any[] = [];
 			const prompt = await this.getSystemPrompt();
-
-			if (prompt) {
+			if (includeSystemMessage && prompt) {
 				formattedMessages.push({ role: 'system', content: prompt });
 			}
 
