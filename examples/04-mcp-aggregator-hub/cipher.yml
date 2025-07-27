@@ -34,12 +34,14 @@ mcpServers:
   
   # Context7 - Up-to-date documentation access (remote server)
   context7:
-    type: http
+    type: "streamable-http"
     url: "https://mcp.context7.com/mcp"
+    enabled: true 
 
   
-  # Context7 - local server
+  # Context7 - local server (alternative - currently disabled)
   # context7:
+  #   type: stdio
   #   command: npx
   #   args:
   #     - -y 
@@ -53,25 +55,15 @@ mcpServers:
       - -y
       - "--package=task-master-ai" # If the mcp server's not working, remove this
       - "task-master-ai"
-
+    enabled: false  # Explicitly disabled
     env:
-      ANTHROPIC_API_KEY: $ANTHROPIC_API_KEY
       OPENAI_API_KEY: $OPENAI_API_KEY 
-      # Beside these two providers, you can other providers' keys as well, see more here: https://github.com/eyaltoledano/claude-task-master?tab=readme-ov-file 
+      # Beside OPENAI, you can other providers' keys as well, see more here: https://github.com/eyaltoledano/claude-task-master?tab=readme-ov-file 
   
   
-  # Semgrep - Security vulnerability scanning (stdio mode)
+  # Semgrep - Security vulnerability scanning
   semgrep:
-    type: stdio
-    command: uvx
-    args:
-      - semgrep-mcp
-    env:
-      SEMGREP_APP_TOKEN: $SEMGREP_APP_TOKEN  # Optional but recommended
-  
-  # Semgrep HTTP Streamable (alternative) 
-  # Uncomment for HTTP streaming mode
-  # semgrep-http:
-  #   type: "streamable-http"
-  #   url: "https://mcp.semgrep.ai/mcp"
+    type: "streamable-http"
+    url: "https://mcp.semgrep.ai/mcp/" 
+    enabled: true
 

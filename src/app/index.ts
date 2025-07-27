@@ -66,8 +66,12 @@ program
 	.option('--mode <mode>', 'The application mode for cipher memory agent - cli | mcp | api', 'cli')
 	.option('--port <port>', 'Port for API server (only used with --mode api)', '3000')
 	.option('--host <host>', 'Host for API server (only used with --mode api)', 'localhost')
-	.option('--mcp-transport-type <type>', 'MCP transport type (stdio, sse, http)', 'stdio')
-	.option('--mcp-port <port>', 'Port for MCP server (only used with sse, http)', '3000');
+	.option(
+		'--mcp-transport-type <type>',
+		'MCP transport type (stdio, sse, streamable-http)',
+		'stdio'
+	)
+	.option('--mcp-port <port>', 'Port for MCP server (only used with sse, streamable-http)', '3000');
 
 program
 	.description(

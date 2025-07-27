@@ -104,8 +104,8 @@ export const validateMcpServerConfig = [
 	body('env').optional().isObject().withMessage('Environment must be an object'),
 	body('transport')
 		.optional()
-		.isIn(['stdio', 'sse', 'http'])
-		.withMessage('Transport must be stdio, sse, or http'),
+		.isIn(['stdio', 'sse', 'http', 'streamable-http'])
+		.withMessage('Transport must be stdio, sse, http, or streamable-http'),
 	body('connectionMode')
 		.optional()
 		.isIn(['strict', 'lenient'])

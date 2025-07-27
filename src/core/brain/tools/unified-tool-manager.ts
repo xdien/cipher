@@ -123,7 +123,10 @@ export class UnifiedToolManager {
 					const internalTools = this.internalToolManager.getAllTools();
 					for (const [toolName, tool] of Object.entries(internalTools)) {
 						// Special handling for cipher_extract_and_operate_memory in aggregator mode
-						if (toolName === 'extract_and_operate_memory' || toolName === 'cipher_extract_and_operate_memory') {
+						if (
+							toolName === 'extract_and_operate_memory' ||
+							toolName === 'cipher_extract_and_operate_memory'
+						) {
 							if (this.config.mode === 'aggregator') {
 								logger.debug(`UnifiedToolManager: Exposing '${toolName}' in aggregator mode`);
 								// Allow this tool in aggregator mode even though agentAccessible is false

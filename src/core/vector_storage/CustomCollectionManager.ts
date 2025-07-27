@@ -11,10 +11,10 @@ import type { VectorStoreConfig, VectorStoreResult, SearchFilters } from './type
 import { Logger, createLogger } from '../logger/index.js';
 import { env } from '../env.js';
 import { EventManager } from '../events/event-manager.js';
-import type { 
-	EmbeddingConfig, 
+import type {
+	EmbeddingConfig,
 	VectorStoreConfig as CustomVectorStoreConfig,
-	MemoryTypeConfig 
+	MemoryTypeConfig,
 } from '../config/memory-config.schema.js';
 
 /**
@@ -95,20 +95,20 @@ export class IDRangeManager {
 		this.logger = createLogger({
 			level: env.CIPHER_LOG_LEVEL || 'info',
 		});
-		
+
 		// Pre-allocate legacy ranges
 		this.allocatedRanges.set('knowledge', {
 			start: IDRangeManager.LEGACY_RANGES.KNOWLEDGE.start,
 			end: IDRangeManager.LEGACY_RANGES.KNOWLEDGE.end,
 			allocated: 0,
-			memoryTypeName: 'knowledge'
+			memoryTypeName: 'knowledge',
 		});
-		
+
 		this.allocatedRanges.set('reflection', {
 			start: IDRangeManager.LEGACY_RANGES.REFLECTION.start,
 			end: IDRangeManager.LEGACY_RANGES.REFLECTION.end,
 			allocated: 0,
-			memoryTypeName: 'reflection'
+			memoryTypeName: 'reflection',
 		});
 	}
 
@@ -124,7 +124,7 @@ export class IDRangeManager {
 			start: this.nextAvailableStart,
 			end: this.nextAvailableStart + this.rangeSize - 1,
 			allocated: 0,
-			memoryTypeName
+			memoryTypeName,
 		};
 
 		this.allocatedRanges.set(memoryTypeName, range);
@@ -134,7 +134,7 @@ export class IDRangeManager {
 			memoryTypeName,
 			start: range.start,
 			end: range.end,
-			size: this.rangeSize
+			size: this.rangeSize,
 		});
 
 		return range;
@@ -163,7 +163,7 @@ export class IDRangeManager {
 	 */
 	validateID(id: number, memoryTypeName: string): boolean {
 		const range = this.allocatedRanges.get(memoryTypeName);
-		return range ? (id >= range.start && id <= range.end) : false;
+		return range ? id >= range.start && id <= range.end : false;
 	}
 
 	/**
@@ -200,7 +200,7 @@ export class CustomCollectionManager {
 			level: env.CIPHER_LOG_LEVEL || 'info',
 		});
 		this.idRangeManager = new IDRangeManager(rangeSize);
-		
+
 		this.logger.info('CustomCollectionManager: Initialized');
 	}
 
@@ -224,7 +224,7 @@ export class CustomCollectionManager {
 		if (this.collections.has(collectionName)) {
 			this.logger.warn('CustomCollectionManager: Collection already exists', {
 				collectionName,
-				memoryTypeName
+				memoryTypeName,
 			});
 			return;
 		}
@@ -245,7 +245,7 @@ export class CustomCollectionManager {
 			dimension: memoryTypeConfig.embedding.dimension,
 			distance: env.VECTOR_STORE_DISTANCE,
 			onDisk: env.VECTOR_STORE_ON_DISK,
-			maxVectors: env.VECTOR_STORE_MAX_VECTORS
+			maxVectors: env.VECTOR_STORE_MAX_VECTORS,
 		};
 
 		// Create and configure the manager
@@ -263,7 +263,7 @@ export class CustomCollectionManager {
 			errorCount: 0,
 			avgResponseTime: 0,
 			lastActive: new Date(),
-			uptime: Date.now()
+			uptime: Date.now(),
 		};
 
 		this.collections.set(collectionName, manager);
@@ -273,7 +273,7 @@ export class CustomCollectionManager {
 		this.logger.info('CustomCollectionManager: Created collection', {
 			collectionName,
 			memoryTypeName,
-			dimension: vectorConfig.dimension
+			dimension: vectorConfig.dimension,
 		});
 	}
 
@@ -300,12 +300,12 @@ export class CustomCollectionManager {
 			this.collectionMetrics.delete(collectionName);
 
 			this.logger.info('CustomCollectionManager: Deleted collection', {
-				collectionName
+				collectionName,
 			});
 		} catch (error) {
 			this.logger.error('CustomCollectionManager: Failed to delete collection', {
 				collectionName,
-				error: error instanceof Error ? error.message : String(error)
+				error: error instanceof Error ? error.message : String(error),
 			});
 			throw error;
 		}
@@ -325,7 +325,7 @@ export class CustomCollectionManager {
 				} catch (error) {
 					this.logger.error('CustomCollectionManager: Failed to connect collection', {
 						name,
-						error: error instanceof Error ? error.message : String(error)
+						error: error instanceof Error ? error.message : String(error),
 					});
 					const metrics = this.collectionMetrics.get(name);
 					if (metrics) {
@@ -345,8 +345,8 @@ export class CustomCollectionManager {
 	async disconnectAll(): Promise<void> {
 		this.logger.info('CustomCollectionManager: Disconnecting all collections...');
 
-		const disconnectionPromises = Array.from(this.collections.values()).map(
-			manager => manager.disconnect()
+		const disconnectionPromises = Array.from(this.collections.values()).map(manager =>
+			manager.disconnect()
 		);
 
 		await Promise.allSettled(disconnectionPromises);
@@ -372,7 +372,12 @@ export class CustomCollectionManager {
 	/**
 	 * Store a vector in a collection with automatic ID assignment
 	 */
-	async store(collectionName: string, memoryTypeName: string, vector: number[], payload: Record<string, any>): Promise<string> {
+	async store(
+		collectionName: string,
+		memoryTypeName: string,
+		vector: number[],
+		payload: Record<string, any>
+	): Promise<string> {
 		const store = this.getStore(collectionName);
 		if (!store) {
 			throw new Error(`Collection not found: ${collectionName}`);
@@ -383,7 +388,7 @@ export class CustomCollectionManager {
 
 		try {
 			await store.insert([vector], [id], [payload]);
-			
+
 			// Update metrics
 			const metrics = this.collectionMetrics.get(collectionName);
 			if (metrics) {
@@ -395,7 +400,7 @@ export class CustomCollectionManager {
 			this.logger.debug('CustomCollectionManager: Stored vector', {
 				collectionName,
 				memoryTypeName,
-				id
+				id,
 			});
 
 			return id.toString();
@@ -407,7 +412,7 @@ export class CustomCollectionManager {
 			this.logger.error('CustomCollectionManager: Failed to store vector', {
 				collectionName,
 				memoryTypeName,
-				error: error instanceof Error ? error.message : String(error)
+				error: error instanceof Error ? error.message : String(error),
 			});
 			throw error;
 		}
@@ -416,10 +421,14 @@ export class CustomCollectionManager {
 	/**
 	 * Search vectors in a collection
 	 */
-	async search(collectionName: string, query: number[], options: {
-		limit?: number;
-		filters?: SearchFilters;
-	} = {}): Promise<VectorStoreResult[]> {
+	async search(
+		collectionName: string,
+		query: number[],
+		options: {
+			limit?: number;
+			filters?: SearchFilters;
+		} = {}
+	): Promise<VectorStoreResult[]> {
 		const store = this.getStore(collectionName);
 		if (!store) {
 			throw new Error(`Collection not found: ${collectionName}`);
@@ -429,7 +438,7 @@ export class CustomCollectionManager {
 
 		try {
 			const results = await store.search(query, options.limit, options.filters);
-			
+
 			// Update metrics
 			const metrics = this.collectionMetrics.get(collectionName);
 			if (metrics) {
@@ -441,7 +450,7 @@ export class CustomCollectionManager {
 			this.logger.debug('CustomCollectionManager: Searched collection', {
 				collectionName,
 				resultCount: results.length,
-				responseTime: Date.now() - startTime
+				responseTime: Date.now() - startTime,
 			});
 
 			return results;
@@ -452,7 +461,7 @@ export class CustomCollectionManager {
 			}
 			this.logger.error('CustomCollectionManager: Failed to search collection', {
 				collectionName,
-				error: error instanceof Error ? error.message : String(error)
+				error: error instanceof Error ? error.message : String(error),
 			});
 			throw error;
 		}
@@ -461,7 +470,12 @@ export class CustomCollectionManager {
 	/**
 	 * Update a vector in a collection
 	 */
-	async update(collectionName: string, id: string, vector: number[], payload: Record<string, any>): Promise<void> {
+	async update(
+		collectionName: string,
+		id: string,
+		vector: number[],
+		payload: Record<string, any>
+	): Promise<void> {
 		const store = this.getStore(collectionName);
 		if (!store) {
 			throw new Error(`Collection not found: ${collectionName}`);
@@ -471,7 +485,7 @@ export class CustomCollectionManager {
 
 		try {
 			await store.update(parseInt(id), vector, payload);
-			
+
 			// Update metrics
 			const metrics = this.collectionMetrics.get(collectionName);
 			if (metrics) {
@@ -482,7 +496,7 @@ export class CustomCollectionManager {
 
 			this.logger.debug('CustomCollectionManager: Updated vector', {
 				collectionName,
-				id
+				id,
 			});
 		} catch (error) {
 			const metrics = this.collectionMetrics.get(collectionName);
@@ -492,7 +506,7 @@ export class CustomCollectionManager {
 			this.logger.error('CustomCollectionManager: Failed to update vector', {
 				collectionName,
 				id,
-				error: error instanceof Error ? error.message : String(error)
+				error: error instanceof Error ? error.message : String(error),
 			});
 			throw error;
 		}
@@ -511,7 +525,7 @@ export class CustomCollectionManager {
 
 		try {
 			await store.delete(parseInt(id));
-			
+
 			// Update metrics
 			const metrics = this.collectionMetrics.get(collectionName);
 			if (metrics) {
@@ -522,7 +536,7 @@ export class CustomCollectionManager {
 
 			this.logger.debug('CustomCollectionManager: Deleted vector', {
 				collectionName,
-				id
+				id,
 			});
 		} catch (error) {
 			const metrics = this.collectionMetrics.get(collectionName);
@@ -532,7 +546,7 @@ export class CustomCollectionManager {
 			this.logger.error('CustomCollectionManager: Failed to delete vector', {
 				collectionName,
 				id,
-				error: error instanceof Error ? error.message : String(error)
+				error: error instanceof Error ? error.message : String(error),
 			});
 			throw error;
 		}
@@ -553,7 +567,7 @@ export class CustomCollectionManager {
 		return Array.from(this.collections.entries()).map(([name, manager]) => {
 			const config = this.collectionConfigs.get(name)!;
 			const metrics = this.collectionMetrics.get(name);
-			
+
 			const collectionInfo: CollectionInfo = {
 				name,
 				connected: manager.isConnected(),
@@ -562,11 +576,11 @@ export class CustomCollectionManager {
 				config,
 				dimension: config.dimension,
 			};
-			
+
 			if (metrics?.lastActive) {
 				collectionInfo.lastAccessed = metrics.lastActive;
 			}
-			
+
 			return collectionInfo;
 		});
 	}
@@ -583,7 +597,7 @@ export class CustomCollectionManager {
 		try {
 			const health = await manager.healthCheck();
 			const metrics = this.collectionMetrics.get(collectionName);
-			
+
 			return {
 				status: health.overall ? 'healthy' : 'degraded',
 				totalDocuments: 0, // TODO: Implement document counting
@@ -594,8 +608,8 @@ export class CustomCollectionManager {
 				performance: {
 					avgSearchTime: metrics?.avgResponseTime || 0,
 					avgInsertTime: metrics?.avgResponseTime || 0,
-					throughput: this.calculateThroughput(metrics)
-				}
+					throughput: this.calculateThroughput(metrics),
+				},
 			};
 		} catch (error) {
 			return {
@@ -608,8 +622,8 @@ export class CustomCollectionManager {
 				performance: {
 					avgSearchTime: 0,
 					avgInsertTime: 0,
-					throughput: 0
-				}
+					throughput: 0,
+				},
 			};
 		}
 	}
@@ -639,24 +653,26 @@ export class CustomCollectionManager {
 		}>;
 	}> {
 		const collectionHealths = await Promise.allSettled(
-			Array.from(this.collections.keys()).map(async (name) => ({
+			Array.from(this.collections.keys()).map(async name => ({
 				name,
-				health: await this.getCollectionHealth(name)
+				health: await this.getCollectionHealth(name),
 			}))
 		);
 
 		const results = collectionHealths
-			.filter((result): result is PromiseFulfilledResult<{name: string; health: CollectionHealth}> => 
-				result.status === 'fulfilled')
+			.filter(
+				(result): result is PromiseFulfilledResult<{ name: string; health: CollectionHealth }> =>
+					result.status === 'fulfilled'
+			)
 			.map(result => result.value);
 
-		const overall = results.every(result => 
-			result.health.status === 'healthy' || result.health.status === 'degraded'
+		const overall = results.every(
+			result => result.health.status === 'healthy' || result.health.status === 'degraded'
 		);
 
 		return {
 			overall,
-			collections: results
+			collections: results,
 		};
 	}
 
@@ -670,20 +686,23 @@ export class CustomCollectionManager {
 
 	private updateResponseTime(metrics: CollectionMetrics, responseTime: number): void {
 		// Simple moving average
-		const totalOps = metrics.searchCount + metrics.insertCount + metrics.updateCount + metrics.deleteCount;
+		const totalOps =
+			metrics.searchCount + metrics.insertCount + metrics.updateCount + metrics.deleteCount;
 		if (totalOps === 1) {
 			metrics.avgResponseTime = responseTime;
 		} else {
-			metrics.avgResponseTime = (metrics.avgResponseTime * (totalOps - 1) + responseTime) / totalOps;
+			metrics.avgResponseTime =
+				(metrics.avgResponseTime * (totalOps - 1) + responseTime) / totalOps;
 		}
 	}
 
 	private calculateThroughput(metrics: CollectionMetrics | undefined): number {
 		if (!metrics) return 0;
-		
-		const totalOps = metrics.searchCount + metrics.insertCount + metrics.updateCount + metrics.deleteCount;
+
+		const totalOps =
+			metrics.searchCount + metrics.insertCount + metrics.updateCount + metrics.deleteCount;
 		const uptimeSeconds = (Date.now() - metrics.uptime) / 1000;
-		
+
 		return uptimeSeconds > 0 ? totalOps / uptimeSeconds : 0;
 	}
 }

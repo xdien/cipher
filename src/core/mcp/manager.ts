@@ -435,9 +435,16 @@ export class MCPManager implements IMCPManager {
 	 * Initialize clients from server configurations.
 	 */
 	async initializeFromConfig(serverConfigs: ServerConfigs): Promise<void> {
+		const enabledServers = Object.entries(serverConfigs).filter(
+			([, config]) => config.enabled !== false
+		);
 		this.logger.info(
-			`${LOG_PREFIXES.MANAGER} Initializing ${Object.keys(serverConfigs).length} servers`,
-			{ serverCount: Object.keys(serverConfigs).length }
+			`${LOG_PREFIXES.MANAGER} Initializing ${enabledServers.length} servers (${Object.keys(serverConfigs).length - enabledServers.length} disabled)`,
+			{
+				enabledServerCount: enabledServers.length,
+				totalServerCount: Object.keys(serverConfigs).length,
+				disabledServerCount: Object.keys(serverConfigs).length - enabledServers.length,
+			}
 		);
 
 		const strictServers: string[] = [];
@@ -445,6 +452,14 @@ export class MCPManager implements IMCPManager {
 
 		// Process all server configurations
 		for (const [name, config] of Object.entries(serverConfigs)) {
+			// Skip disabled servers
+			if (config.enabled === false) {
+				this.logger.info(`${LOG_PREFIXES.MANAGER} Skipping disabled server: ${name}`, {
+					serverName: name,
+				});
+				continue;
+			}
+
 			if (config.connectionMode === CONNECTION_MODES.STRICT) {
 				strictServers.push(name);
 			}
