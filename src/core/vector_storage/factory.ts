@@ -321,12 +321,15 @@ export function getVectorStoreConfigFromEnv(): VectorStoreConfig {
 		const onDisk = env.VECTOR_STORE_ON_DISK;
 
 		if (!url && !host) {
+			// Return in-memory config with fallback marker
 			return {
 				type: 'in-memory',
 				collectionName,
 				dimension,
 				maxVectors,
-			};
+				// Add a special property to indicate this is a fallback from Qdrant
+				_fallbackFrom: 'qdrant',
+			} as any;
 		}
 
 		return {
@@ -349,12 +352,15 @@ export function getVectorStoreConfigFromEnv(): VectorStoreConfig {
 		const token = env.VECTOR_STORE_API_KEY;
 
 		if (!url && !host) {
+			// Return in-memory config with fallback marker
 			return {
 				type: 'in-memory',
 				collectionName,
 				dimension,
 				maxVectors,
-			};
+				// Add a special property to indicate this is a fallback from Milvus
+				_fallbackFrom: 'milvus',
+			} as any;
 		}
 
 		return {

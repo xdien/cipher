@@ -47,13 +47,13 @@ export class QwenService implements ILLMService {
 	async generate(userInput: string, imageData?: ImageData, stream?: boolean): Promise<string> {
 		await this.contextManager.addUserMessage(userInput, imageData);
 
-		let formattedTools: any[];
+		let formattedTools: any[] = [];
 		if (this.unifiedToolManager) {
 			// Use 'qwen' for Qwen-specific tool formatting
-			formattedTools = await this.unifiedToolManager.getToolsForProvider('qwen');
+			formattedTools = (await this.unifiedToolManager.getToolsForProvider('qwen')) || [];
 		} else {
 			const rawTools = await this.mcpManager.getAllTools();
-			formattedTools = this.formatToolsForOpenAI(rawTools);
+			formattedTools = this.formatToolsForOpenAI(rawTools) || [];
 		}
 
 		logger.silly(`[Qwen] Formatted tools: ${JSON.stringify(formattedTools, null, 2)}`);
@@ -64,7 +64,7 @@ export class QwenService implements ILLMService {
 				iterationCount++;
 				const { message } = await this.getAIResponseWithRetries(formattedTools, userInput, stream);
 
-				if (!message.tool_calls || message.tool_calls.length === 0) {
+				if (!message.tool_calls || !Array.isArray(message.tool_calls) || message.tool_calls.length === 0) {
 					const responseText = message.content || '';
 					await this.contextManager.addAssistantMessage(responseText);
 					return responseText;
@@ -183,7 +183,7 @@ export class QwenService implements ILLMService {
 	): Promise<{ message: any }> {
 		let attempts = 0;
 		const MAX_ATTEMPTS = 3;
-		logger.debug(`[Qwen] Tools in response: ${tools.length}`);
+		logger.debug(`[Qwen] Tools in response: ${tools?.length || 0}`);
 		while (attempts < MAX_ATTEMPTS) {
 			attempts++;
 			try {
@@ -204,7 +204,7 @@ export class QwenService implements ILLMService {
 				const requestBody: any = {
 					model: this.model,
 					messages: formattedMessages,
-					tools: attempts === 1 ? tools : [],
+					tools: attempts === 1 ? (tools || []) : [],
 					tool_choice: attempts === 1 ? 'auto' : 'none',
 					...this.qwenOptions,
 				};
@@ -240,6 +240,9 @@ export class QwenService implements ILLMService {
 	}
 
 	private formatToolsForOpenAI(tools: ToolSet): any[] {
+		if (!tools || typeof tools !== 'object') {
+			return [];
+		}
 		return Object.entries(tools).map(([name, tool]) => {
 			return {
 				type: 'function',

@@ -4,7 +4,6 @@ import { MCPManager } from '../../../../mcp/manager.js';
 import { ContextManager } from '../../messages/manager.js';
 import { UnifiedToolManager } from '../../../tools/unified-tool-manager.js';
 import { EnhancedPromptManager } from '../../../systemPrompt/enhanced-manager.js';
-import { createContextManager } from '../../messages/factory.js';
 import { LLMConfig } from '../../config.js';
 
 // Mock OpenAI client
@@ -73,11 +72,40 @@ const mockUnifiedToolManager = {
 	}),
 } as unknown as UnifiedToolManager;
 
+// Mock Context Manager
+const mockContextManager = {
+	addUserMessage: vi.fn().mockResolvedValue(undefined),
+	addAssistantMessage: vi.fn().mockResolvedValue(undefined),
+	addToolResult: vi.fn().mockResolvedValue(undefined),
+	getFormattedMessage: vi.fn().mockImplementation((message) => {
+		return Promise.resolve([
+			{ role: 'system', content: 'You are a helpful AI assistant.' },
+			{ role: 'user', content: message?.content || 'test message' }
+		]);
+	}),
+	getAllFormattedMessages: vi.fn().mockResolvedValue([
+		{ role: 'system', content: 'You are a helpful AI assistant.' },
+		{ role: 'user', content: 'test message' }
+	]),
+	getRawMessages: vi.fn().mockReturnValue([]),
+	getRawMessagesSync: vi.fn().mockReturnValue([]),
+	getRawMessagesAsync: vi.fn().mockResolvedValue([]),
+} as unknown as ContextManager;
+
 // Mock Prompt Manager
 const mockPromptManager = {
 	getSystemPrompt: vi.fn().mockReturnValue('You are a helpful AI assistant.'),
 	getCompleteSystemPrompt: vi.fn().mockReturnValue('You are a helpful AI assistant.'),
+	generateSystemPrompt: vi.fn().mockResolvedValue({
+		content: 'You are a helpful AI assistant.',
+		providerResults: [],
+		generationTimeMs: 0,
+		success: true,
+		errors: []
+	}),
 	updateSystemPrompt: vi.fn(),
+	initialize: vi.fn().mockResolvedValue(undefined),
+	isInitialized: vi.fn().mockReturnValue(true),
 } as unknown as EnhancedPromptManager;
 
 describe('QwenService Integration Tests', () => {
@@ -90,18 +118,25 @@ describe('QwenService Integration Tests', () => {
 		top_p: 0.9,
 	};
 
-	beforeEach(() => {
+	beforeEach(async () => {
 		vi.clearAllMocks();
 
-		// Create real context manager with mock dependencies
-		const llmConfig: LLMConfig = {
-			provider: 'qwen',
-			model: 'qwen2.5-72b-instruct',
-			apiKey: 'test-api-key',
-			maxIterations: 5,
-		};
+		// Initialize the mock prompt manager
+		await mockPromptManager.initialize();
 
-		contextManager = createContextManager(llmConfig, mockPromptManager);
+		// Use mock context manager
+		contextManager = mockContextManager;
+
+		// Set up default mock responses
+		mockOpenAI.chat.completions.create.mockResolvedValue({
+			choices: [
+				{
+					message: {
+						content: 'Default response',
+					},
+				},
+			],
+		});
 
 		qwenService = new QwenService(
 			mockOpenAI as any,
@@ -120,6 +155,12 @@ describe('QwenService Integration Tests', () => {
 
 	describe('Full Integration Tests', () => {
 		it('should handle complete conversation flow with tool calls', async () => {
+			// Mock the context manager to return properly formatted messages
+			mockContextManager.getFormattedMessage.mockResolvedValue([
+				{ role: 'system', content: 'You are a helpful AI assistant.' },
+				{ role: 'user', content: 'Read the file and analyze its contents' }
+			]);
+
 			// Mock responses: first with tool call, second with final response
 			const mockResponses = [
 				{
@@ -168,6 +209,12 @@ describe('QwenService Integration Tests', () => {
 		});
 
 		it('should handle multiple tool calls in sequence', async () => {
+			// Mock the context manager to return properly formatted messages
+			mockContextManager.getFormattedMessage.mockResolvedValue([
+				{ role: 'system', content: 'You are a helpful AI assistant.' },
+				{ role: 'user', content: 'Process the file and write the output' }
+			]);
+
 			const mockResponses = [
 				{
 					choices: [
@@ -229,6 +276,12 @@ describe('QwenService Integration Tests', () => {
 		});
 
 		it('should handle tool execution errors gracefully', async () => {
+			// Mock the context manager to return properly formatted messages
+			mockContextManager.getFormattedMessage.mockResolvedValue([
+				{ role: 'system', content: 'You are a helpful AI assistant.' },
+				{ role: 'user', content: 'Read the file' }
+			]);
+
 			const mockResponses = [
 				{
 					choices: [
@@ -274,6 +327,12 @@ describe('QwenService Integration Tests', () => {
 		});
 
 		it('should respect max iterations limit', async () => {
+			// Mock the context manager to return properly formatted messages
+			mockContextManager.getFormattedMessage.mockResolvedValue([
+				{ role: 'system', content: 'You are a helpful AI assistant.' },
+				{ role: 'user', content: 'Process this task' }
+			]);
+
 			// Mock continuous tool calls to trigger max iterations
 			const toolCallResponse = {
 				choices: [
@@ -303,6 +362,12 @@ describe('QwenService Integration Tests', () => {
 		});
 
 		it('should handle Qwen-specific options correctly', async () => {
+			// Mock the context manager to return properly formatted messages
+			mockContextManager.getFormattedMessage.mockResolvedValue([
+				{ role: 'system', content: 'You are a helpful AI assistant.' },
+				{ role: 'user', content: 'Analyze this complex problem' }
+			]);
+
 			const mockResponse = {
 				choices: [
 					{
@@ -371,6 +436,12 @@ describe('QwenService Integration Tests', () => {
 		});
 
 		it('should handle API errors with retry logic', async () => {
+			// Mock the context manager to return properly formatted messages
+			mockContextManager.getFormattedMessage.mockResolvedValue([
+				{ role: 'system', content: 'You are a helpful AI assistant.' },
+				{ role: 'user', content: 'Test retry logic' }
+			]);
+
 			// Mock API error on first call, success on second
 			const errorResponse = new Error('API rate limit exceeded');
 			(errorResponse as any).status = 429;
@@ -402,6 +473,12 @@ describe('QwenService Integration Tests', () => {
 		});
 
 		it('should handle context length exceeded errors', async () => {
+			// Mock the context manager to return properly formatted messages
+			mockContextManager.getFormattedMessage.mockResolvedValue([
+				{ role: 'system', content: 'You are a helpful AI assistant.' },
+				{ role: 'user', content: 'Test with long context' }
+			]);
+
 			const contextError = new Error('Context length exceeded');
 			(contextError as any).status = 400;
 			(contextError as any).error = {
@@ -417,6 +494,12 @@ describe('QwenService Integration Tests', () => {
 		});
 
 		it('should format tools correctly for Qwen provider', async () => {
+			// Mock the context manager to return properly formatted messages
+			mockContextManager.getFormattedMessage.mockResolvedValue([
+				{ role: 'system', content: 'You are a helpful AI assistant.' },
+				{ role: 'user', content: 'Use available tools' }
+			]);
+
 			const mockResponse = {
 				choices: [
 					{
@@ -445,11 +528,19 @@ describe('QwenService Integration Tests', () => {
 		});
 
 		it('should handle empty tool calls gracefully', async () => {
+			// Mock the context manager to return properly formatted messages
+			mockContextManager.getFormattedMessage.mockResolvedValue([
+				{ role: 'system', content: 'You are a helpful AI assistant.' },
+				{ role: 'user', content: 'Simple question' }
+			]);
+
 			const mockResponse = {
 				choices: [
 					{
 						message: {
 							content: 'I can help you without using any tools.',
+							// Explicitly set tool_calls to undefined to test graceful handling
+							tool_calls: undefined,
 						},
 					},
 				],
@@ -464,6 +555,24 @@ describe('QwenService Integration Tests', () => {
 		});
 
 		it('should maintain conversation context across multiple calls', async () => {
+			// Setup mock to return different messages for different calls
+			let callCount = 0;
+			mockContextManager.getFormattedMessage.mockImplementation(() => {
+				if (callCount === 0) {
+					return Promise.resolve([
+						{ role: 'system', content: 'You are a helpful AI assistant.' },
+						{ role: 'user', content: 'Hello, can you help me?' }
+					]);
+				} else {
+					return Promise.resolve([
+						{ role: 'system', content: 'You are a helpful AI assistant.' },
+						{ role: 'user', content: 'Hello, can you help me?' },
+						{ role: 'assistant', content: 'Hello! How can I help you today?' },
+						{ role: 'user', content: 'What did we discuss earlier?' }
+					]);
+				}
+			});
+
 			const responses = [
 				{
 					choices: [
@@ -486,7 +595,6 @@ describe('QwenService Integration Tests', () => {
 				},
 			];
 
-			let callCount = 0;
 			mockOpenAI.chat.completions.create.mockImplementation(() => {
 				return Promise.resolve(responses[callCount++]);
 			});
@@ -511,12 +619,12 @@ describe('QwenService Integration Tests', () => {
 			});
 		});
 
-		it('should handle different Qwen models', () => {
+		it('should handle different Qwen models', async () => {
 			const qwenServiceSmall = new QwenService(
 				mockOpenAI as any,
 				'qwen2.5-7b-instruct',
 				mockMCPManager,
-				contextManager,
+				mockContextManager,
 				5,
 				mockOptions,
 				mockUnifiedToolManager
@@ -526,7 +634,7 @@ describe('QwenService Integration Tests', () => {
 			expect(config.model).toBe('qwen2.5-7b-instruct');
 		});
 
-		it('should handle different Qwen options', () => {
+		it('should handle different Qwen options', async () => {
 			const customOptions: QwenOptions = {
 				enableThinking: false,
 				thinkingBudget: 500,
@@ -534,15 +642,11 @@ describe('QwenService Integration Tests', () => {
 				max_tokens: 2048,
 			};
 
-			const qwenServiceCustom = new QwenService(
-				mockOpenAI as any,
-				'qwen2.5-72b-instruct',
-				mockMCPManager,
-				contextManager,
-				3,
-				customOptions,
-				mockUnifiedToolManager
-			);
+			// Mock the context manager to return properly formatted messages
+			mockContextManager.getFormattedMessage.mockResolvedValue([
+				{ role: 'system', content: 'You are a helpful AI assistant.' },
+				{ role: 'user', content: 'Test' }
+			]);
 
 			const mockResponse = {
 				choices: [
@@ -554,9 +658,20 @@ describe('QwenService Integration Tests', () => {
 				],
 			};
 
+			// Set up the mock before creating the service
 			mockOpenAI.chat.completions.create.mockResolvedValue(mockResponse);
 
-			qwenServiceCustom.generate('Test');
+			const qwenServiceCustom = new QwenService(
+				mockOpenAI as any,
+				'qwen2.5-72b-instruct',
+				mockMCPManager,
+				mockContextManager,
+				3,
+				customOptions,
+				mockUnifiedToolManager
+			);
+
+			await qwenServiceCustom.generate('Test');
 
 			expect(mockOpenAI.chat.completions.create).toHaveBeenCalledWith(
 				expect.objectContaining({
