@@ -343,6 +343,8 @@ AGGREGATOR_TIMEOUT=60000
 - In **aggregator** mode, all tools are exposed. Tool name conflicts are resolved according to `AGGREGATOR_CONFLICT_RESOLUTION`.
 - If you want only the `ask_cipher` tool, set `MCP_SERVER_MODE=default` or omit the variable.
 
+Check out the [MCP Aggregator Hub example](./examples/04-mcp-aggregator-hub/) that further demonstrates the usecase of this MCP server mode.
+
 ---
 
 ### SSE Transport Support
