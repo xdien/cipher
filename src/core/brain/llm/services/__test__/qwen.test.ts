@@ -23,9 +23,7 @@ const mockContextManager = {
 	addUserMessage: vi.fn().mockResolvedValue(undefined),
 	addAssistantMessage: vi.fn().mockResolvedValue(undefined),
 	addToolResult: vi.fn().mockResolvedValue(undefined),
-	getFormattedMessage: vi.fn().mockResolvedValue([
-		{ role: 'user', content: 'test message' },
-	]),
+	getFormattedMessage: vi.fn().mockResolvedValue([{ role: 'user', content: 'test message' }]),
 } as unknown as ContextManager;
 
 const mockUnifiedToolManager = {
@@ -116,18 +114,18 @@ describe('QwenService', () => {
 						{
 							message: {
 								content: 'I will help you with that',
-							tool_calls: [
-								{
-									id: 'call_1',
-									function: {
-										name: 'test_tool',
-										arguments: '{"param": "value"}',
+								tool_calls: [
+									{
+										id: 'call_1',
+										function: {
+											name: 'test_tool',
+											arguments: '{"param": "value"}',
+										},
 									},
-								},
-							],
+								],
+							},
 						},
-					},
-				],
+					],
 				},
 				{
 					choices: [
@@ -169,4 +167,4 @@ describe('QwenService', () => {
 			expect(result).toBe('Simple response from Qwen');
 		});
 	});
-}); 
+});

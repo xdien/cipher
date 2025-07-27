@@ -181,8 +181,8 @@ llm:
   model: qwen2.5-72b-instruct
   apiKey: $QWEN_API_KEY
   qwenOptions:
-    enableThinking: true      # Enable Qwen's thinking mode
-    thinkingBudget: 1000      # Thinking budget for complex reasoning
+    enableThinking: true # Enable Qwen's thinking mode
+    thinkingBudget: 1000 # Thinking budget for complex reasoning
 ```
 
 ## CLI Reference

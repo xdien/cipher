@@ -22,9 +22,7 @@ const mockContextManager = {
 	addUserMessage: vi.fn().mockResolvedValue(undefined),
 	addAssistantMessage: vi.fn().mockResolvedValue(undefined),
 	addToolResult: vi.fn().mockResolvedValue(undefined),
-	getFormattedMessage: vi.fn().mockResolvedValue([
-		{ role: 'user', content: 'test message' },
-	]),
+	getFormattedMessage: vi.fn().mockResolvedValue([{ role: 'user', content: 'test message' }]),
 } as any;
 
 const mockUnifiedToolManager = {
@@ -114,7 +112,9 @@ describe('QwenService Simple Integration Tests', () => {
 			const result = await qwenService.generate('Use a tool to help me');
 
 			expect(mockOpenAI.chat.completions.create).toHaveBeenCalledTimes(2);
-			expect(mockUnifiedToolManager.executeTool).toHaveBeenCalledWith('test_tool', { param: 'value' });
+			expect(mockUnifiedToolManager.executeTool).toHaveBeenCalledWith('test_tool', {
+				param: 'value',
+			});
 			expect(result).toContain('Tool executed successfully');
 		});
 
@@ -407,4 +407,4 @@ describe('QwenService Simple Integration Tests', () => {
 			});
 		});
 	});
-}); 
+});

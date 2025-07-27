@@ -92,7 +92,7 @@ describe('QwenService Integration Tests', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		
+
 		// Create real context manager with mock dependencies
 		const llmConfig: LLMConfig = {
 			provider: 'qwen',
@@ -144,7 +144,8 @@ describe('QwenService Integration Tests', () => {
 					choices: [
 						{
 							message: {
-								content: 'Based on the file content, here is my analysis: The file contains important data.',
+								content:
+									'Based on the file content, here is my analysis: The file contains important data.',
 							},
 						},
 					],
@@ -159,10 +160,10 @@ describe('QwenService Integration Tests', () => {
 			const result = await qwenService.generate('Read the file and analyze its contents');
 
 			expect(mockOpenAI.chat.completions.create).toHaveBeenCalledTimes(2);
-			expect(mockUnifiedToolManager.executeTool).toHaveBeenCalledWith(
-				'test_file_operation',
-				{ path: '/test/file.txt', operation: 'read' }
-			);
+			expect(mockUnifiedToolManager.executeTool).toHaveBeenCalledWith('test_file_operation', {
+				path: '/test/file.txt',
+				operation: 'read',
+			});
 			expect(result).toContain('Based on the file content');
 		});
 
@@ -264,9 +265,7 @@ describe('QwenService Integration Tests', () => {
 			});
 
 			// Mock tool execution to throw an error
-			(mockUnifiedToolManager.executeTool as any).mockRejectedValue(
-				new Error('File not found')
-			);
+			(mockUnifiedToolManager.executeTool as any).mockRejectedValue(new Error('File not found'));
 
 			const result = await qwenService.generate('Read the file');
 
@@ -479,7 +478,8 @@ describe('QwenService Integration Tests', () => {
 					choices: [
 						{
 							message: {
-								content: 'I remember you asked about that earlier. Here is the updated information.',
+								content:
+									'I remember you asked about that earlier. Here is the updated information.',
 							},
 						},
 					],
@@ -568,4 +568,4 @@ describe('QwenService Integration Tests', () => {
 			);
 		});
 	});
-}); 
+});
