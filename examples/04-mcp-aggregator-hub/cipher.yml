@@ -1,168 +1,77 @@
 # MCP Aggregator Hub Configuration
-# Cipher as a comprehensive MCP server aggregator for external IDE clients
-
-# Cipher Mode - Running as aggregator for external clients
-mode: mcp
 
 # LLM Configuration - Using Claude 3.5 Sonnet for balanced performance
 llm:
-  provider: anthropic
-  model: claude-3-5-sonnet-20241022
-  apiKey: $ANTHROPIC_API_KEY
+  provider: openai
+  model: gpt-4.1-mini
+  apiKey: $OPENAI_API_KEY
   maxIterations: 50
-  temperature: 0.1
 
-# Evaluation LLM for quick non-reasoning tasks
-evalLlm:
-  provider: anthropic
-  model: claude-3-haiku-20240307
-  apiKey: $ANTHROPIC_API_KEY
 
 # System Prompt - Optimized for MCP aggregator functionality
 systemPrompt: |
-  You are a **Comprehensive Development Assistant** operating as an MCP aggregator hub, providing:
+  You are a **Development Assistant** with access to multiple MCP tools for enhanced capabilities.
   
-  ## Core Capabilities
-  - **Multi-Tool Integration**: Access to web search, security scanning, documentation, and task management
-  - **Code Analysis & Security**: Deep code review with Semgrep security scanning
-  - **Research & Documentation**: Real-time documentation access via Context7 and web search via Exa
-  - **Task Management**: Structured project management via TaskMaster
-  - **Persistent Memory**: Learning and context retention across sessions
+  Use available tools proactively to provide comprehensive assistance:
+  - Research and gather current information
+  - Analyze code for security and quality
+  - Plan and structure development tasks
+  - Learn from interactions for better future responses
   
-  ## Tool Integration Strategy
-  - **Exa Search**: Use for comprehensive web research, competitor analysis, and real-time information
-  - **Context7**: Leverage for up-to-date framework documentation and API references
-  - **TaskMaster**: Employ for project planning, task breakdown, and development workflow management
-  - **Semgrep**: Apply for security vulnerability detection and code quality assessment
-  - **Cipher Memory**: Utilize for persistent learning and context building
-  
-  ## Development Methodology
-  1. **Research First**: Use Exa and Context7 for comprehensive requirement understanding
-  2. **Plan Systematically**: Leverage TaskMaster for structured development planning
-  3. **Secure by Design**: Apply Semgrep scanning throughout development process
-  4. **Memory-Enhanced**: Build on previous interactions and learned patterns
-  5. **Quality Focused**: Maintain high standards for code quality and security
-  
-  ## Communication Style
-  - **Tool-Aware**: Actively use available MCP tools to enhance responses
-  - **Security-Conscious**: Proactively identify and address security concerns
-  - **Research-Backed**: Support recommendations with current documentation and best practices
-  - **Context-Rich**: Apply learned patterns and project-specific knowledge
-  
-  Remember: You have access to a comprehensive toolkit. Use these tools effectively to provide thorough, secure, and well-researched assistance.
+  Deliver thorough, secure, and well-researched development assistance.
 
 # MCP Servers Configuration - Comprehensive development toolkit
 mcpServers:
-  # File System Access - Core functionality
-  filesystem:
-    type: stdio
-    command: npx
-    args:
-      - -y
-      - '@modelcontextprotocol/server-filesystem'
-      - /Users  # Adjust based on your workspace
-    env:
-      NODE_OPTIONS: '--max-old-space-size=4096'
-    timeout: 45000
-    connectionMode: strict
-  
   # Exa Search - Advanced web research and search
   exa:
     type: stdio
     command: npx
     args:
       - -y
-      - exa-mcp-server
+      - "exa-mcp-server"
     env:
       EXA_API_KEY: $EXA_API_KEY
-    timeout: 30000
-    connectionMode: lenient
   
-  # Context7 - Up-to-date documentation access
+  # Context7 - Up-to-date documentation access (remote server)
   context7:
-    type: stdio
-    command: npx
-    args:
-      - -y
-      - '@upstash/context7-mcp'
-    timeout: 30000
-    connectionMode: lenient
+    type: http
+    url: "https://mcp.context7.com/mcp"
+
   
+  # Context7 - local server
+  # context7:
+  #   command: npx
+  #   args:
+  #     - -y 
+  #     - "@upstash/context7-mcp"
+
   # TaskMaster - AI-powered task management (for IDEs with API keys)
   taskmaster:
     type: stdio
     command: npx
     args:
       - -y
-      - task-master-ai
+      - "--package=task-master-ai" # If the mcp server's not working, remove this
+      - "task-master-ai"
+
     env:
       ANTHROPIC_API_KEY: $ANTHROPIC_API_KEY
-      PERPLEXITY_API_KEY: $PERPLEXITY_API_KEY
-    timeout: 45000
-    connectionMode: lenient
+      OPENAI_API_KEY: $OPENAI_API_KEY 
+      # Beside these two providers, you can other providers' keys as well, see more here: https://github.com/eyaltoledano/claude-task-master?tab=readme-ov-file 
   
-  # TaskMaster for Claude Code (no API key needed) - COMMENTED OUT
-  # Uncomment if using Claude Code CLI
-  # taskmaster-claude-code:
-  #   type: stdio
-  #   command: npx
-  #   args:
-  #     - -y
-  #     - task-master-ai
-  #   timeout: 45000
-  #   connectionMode: lenient
   
-  # Semgrep - Security vulnerability scanning
+  # Semgrep - Security vulnerability scanning (stdio mode)
   semgrep:
     type: stdio
-    command: pipx
+    command: uvx
     args:
-      - run
       - semgrep-mcp
     env:
       SEMGREP_APP_TOKEN: $SEMGREP_APP_TOKEN  # Optional but recommended
-    timeout: 60000
-    connectionMode: lenient
-
-# Session Management - Optimized for external client connections
-sessions:
-  maxSessions: 100
-  sessionTTL: 14400000  # 4 hours
-  autoSave: true
-  persistMemory: true
-
-# Memory Configuration - Enhanced for aggregator mode
-memory:
-  enableLearning: true
-  contextWindow: 20
-  projectMemory: true
-  userPreferences: true
-
-# Agent Card for MCP server mode
-agentCard:
-  name: "MCP Aggregator Hub"
-  description: "Comprehensive development assistant with integrated MCP servers for web search, documentation, task management, and security scanning"
-  version: "1.0.0"
-  capabilities:
-    - "Web research and search (Exa)"
-    - "Real-time documentation (Context7)" 
-    - "Task management (TaskMaster)"
-    - "Security scanning (Semgrep)"
-    - "Persistent memory and learning"
-    - "File system integration"
-    - "Multi-tool orchestration"
-  provider:
-    organization: "Cipher Development"
-    url: "https://docs.byterover.dev/cipher"
-
-# Performance Configuration
-performance:
-  responseTimeout: 60000
-  maxConcurrentRequests: 5
-  cacheEnabled: true
   
-# Aggregator specific settings
-aggregator:
-  proxyMode: true
-  toolRouting: true
-  fallbackHandling: true
+  # Semgrep HTTP Streamable (alternative) 
+  # Uncomment for HTTP streaming mode
+  # semgrep-http:
+  #   type: "streamable-http"
+  #   url: "https://mcp.semgrep.ai/mcp"
+

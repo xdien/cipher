@@ -4,24 +4,28 @@
 
 ## Overview
 
-This configuration transforms Cipher into a powerful MCP (Model Context Protocol) aggregator hub that provides external IDE clients like Cursor and Claude Code with access to multiple specialized MCP servers through a single unified interface.
+This configuration transforms Cipher into a powerful MCP aggregator hub that provides external IDE clients like Cursor and Claude Code with access to multiple specialized MCP servers through a single unified interface.
 
 **Key Benefits:**
 - **Single Integration Point**: Connect to multiple MCP servers through one Cipher instance
 - **Comprehensive Toolset**: Web search, documentation, task management, and security scanning
 - **Persistent Memory**: Cross-session learning and context retention
 - **IDE Flexibility**: Works with Cursor, Claude Code, VS Code, and other MCP-compatible editors
+- **Extensible Architecture**: Easily add more MCP servers to expand functionality
 
 ## Included MCP Servers
 
 ### 🔍 **Exa Search** - Advanced Web Research
 - **Purpose**: Comprehensive web search, competitor analysis, and real-time information
 - **GitHub**: [exa-labs/exa-mcp-server](https://github.com/exa-labs/exa-mcp-server)
-- **Tools**: web_search_exa, research_paper_search, company_research, competitor_finder
+- **API Key**: Required from [dashboard.exa.ai/api-keys](https://dashboard.exa.ai/api-keys)
+- **Tools**: web_search_exa, research_paper_search, company_research, competitor_finder, linkedin_search, wikipedia_search_exa, github_search
 
 ### 📚 **Context7** - Live Documentation Access  
 - **Purpose**: Up-to-date framework documentation and API references
 - **GitHub**: [upstash/context7](https://github.com/upstash/context7)
+- **API Key**: None required (free service)
+- **Connection**: Remote server via `https://mcp.context7.com/mcp`
 - **Tools**: Real-time documentation retrieval, code examples, version-specific docs
 
 ### 📋 **TaskMaster** - AI-Powered Task Management
@@ -42,9 +46,9 @@ This configuration transforms Cipher into a powerful MCP (Model Context Protocol
 - pipx (for Semgrep installation)
 
 **Required API Keys:**
-1. **Anthropic API Key** - Get from [console.anthropic.com](https://console.anthropic.com)
-2. **OpenAI API Key** - Get from [platform.openai.com](https://platform.openai.com)
-3. **Exa API Key** - Get from [dashboard.exa.ai/api-keys](https://dashboard.exa.ai/api-keys)
+1. **OpenAI API Key** - Get from [platform.openai.com](https://platform.openai.com) (for main LLM and embeddings)
+2. **Exa API Key** - Get from [dashboard.exa.ai/api-keys](https://dashboard.exa.ai/api-keys)
+3. **Anthropic API Key** - Get from [console.anthropic.com](https://console.anthropic.com) (for TaskMaster)
 
 **Optional API Keys** (enhance functionality):
 - **Perplexity API Key** - Get from [perplexity.ai/settings/api](https://www.perplexity.ai/settings/api)
@@ -63,8 +67,8 @@ cp .env.example .env
 ### 2. Install Dependencies
 
 ```bash
-# Install Semgrep MCP server
-pipx install semgrep-mcp
+# Install Semgrep MCP server (use uvx for better compatibility)
+uvx semgrep-mcp --help
 
 # Verify other MCP servers (auto-installed via npx)
 npx -y exa-mcp-server --help
@@ -94,8 +98,8 @@ Add to `~/.cursor/mcp.json`:
       "command": "cipher",
       "args": ["--mode", "mcp", "--agent", "./cipher.yml"],
       "env": {
-        "ANTHROPIC_API_KEY": "your_anthropic_api_key",
         "OPENAI_API_KEY": "your_openai_api_key",
+        "ANTHROPIC_API_KEY": "your_anthropic_api_key",
         "EXA_API_KEY": "your_exa_api_key"
       }
     }
@@ -113,8 +117,8 @@ Add to project `.mcp.json`:
       "command": "cipher",
       "args": ["--mode", "mcp", "--agent", "./cipher.yml"],
       "env": {
-        "ANTHROPIC_API_KEY": "your_anthropic_api_key", 
         "OPENAI_API_KEY": "your_openai_api_key",
+        "ANTHROPIC_API_KEY": "your_anthropic_api_key", 
         "EXA_API_KEY": "your_exa_api_key"
       }
     }
@@ -122,7 +126,7 @@ Add to project `.mcp.json`:
 }
 ```
 
-**Note**: For Claude Code, TaskMaster can run without API keys. Uncomment the `taskmaster-claude-code` section in `cipher.yml` if using Claude Code exclusively.
+**Note**: TaskMaster supports multiple AI providers. The current configuration includes OpenAI and Anthropic API keys. For additional providers, see the [TaskMaster documentation](https://github.com/eyaltoledano/claude-task-master). If you experience issues with TaskMaster, try removing the `--package=task-master-ai` parameter from the configuration.
 
 ### **VS Code Setup**
 
@@ -134,8 +138,8 @@ Add to `.vscode/mcp.json`:
       "command": "cipher",
       "args": ["--mode", "mcp", "--agent", "./cipher.yml"],
       "env": {
-        "ANTHROPIC_API_KEY": "your_anthropic_api_key",
-        "OPENAI_API_KEY": "your_openai_api_key", 
+        "OPENAI_API_KEY": "your_openai_api_key",
+        "ANTHROPIC_API_KEY": "your_anthropic_api_key", 
         "EXA_API_KEY": "your_exa_api_key"
       }
     }
@@ -177,13 +181,62 @@ Add to `.vscode/mcp.json`:
 
 ## Configuration Customization
 
-### **Adjusting File System Access**
-Edit `cipher.yml` filesystem configuration:
+### **Semgrep HTTP Streamable Mode**
+Enable HTTP streaming mode by uncommenting in `cipher.yml`:
 ```yaml
-filesystem:
-  args:
-    - /your/workspace/path  # Change to your development directory
+mcpServers:
+  # Uncomment this section and comment out the stdio version
+  semgrep-http:
+    type: "streamable-http"
+    url: "https://mcp.semgrep.ai/mcp"
 ```
+
+### **TaskMaster Common Commands**
+Use these commands within your IDE when TaskMaster is active:
+```bash
+# Parse your requirements document
+> task-master parse-prd your-prd.txt
+
+# List all current tasks
+> task-master list
+
+# Get the next recommended task
+> task-master next
+
+# Show specific tasks by ID
+> task-master show 1,3,5
+
+# Research development topics
+> task-master research "Best practices for JWT authentication"
+```
+
+### **Configuration Notes**
+
+**Context7 Remote vs Local Setup:**
+- **Remote** (active in config): Uses `https://mcp.context7.com/mcp` - no local installation needed
+- **Local alternative** (commented): Available in cipher.yml for local server setup
+
+**Semgrep Connection Options:**
+- **Stdio mode** (active): Local uvx command execution
+- **HTTP Streamable** (commented): Remote server via `https://mcp.semgrep.ai/mcp`
+
+**TaskMaster Configuration:**
+- Uses `--package=task-master-ai` parameter for reliable installation
+- Configured with both OpenAI and Anthropic API keys
+- Remove `--package` parameter if experiencing connection issues
+
+**Exa Search Tool Selection:**
+- **Default** (used in this config): Includes all available tools automatically
+- **Custom selection**: Add `--tools` parameter to limit tools:
+```yaml
+exa:
+  args:
+    - -y
+    - exa-mcp-server
+    - --tools=web_search_exa,research_paper_search  # Custom selection
+```
+
+Available Exa tools: `web_search_exa`, `research_paper_search`, `company_research`, `competitor_finder`, `linkedin_search`, `wikipedia_search_exa`, `github_search`, `deep_researcher_start`, `deep_researcher_check`
 
 ### **Adding Additional MCP Servers**
 Extend the `mcpServers` section in `cipher.yml`:
@@ -197,42 +250,4 @@ mcpServers:
     timeout: 30000
 ```
 
-## Troubleshooting
-
-### **Connection Issues**
-```bash
-# Verify MCP servers
-npx -y exa-mcp-server --help
-npx -y @upstash/context7-mcp --help
-pipx run semgrep-mcp --help
-
-# Check Cipher MCP mode
-cipher --mode mcp --agent ./cipher.yml --test
-```
-
-### **Common Solutions**
-- **API Key Issues**: Verify all required keys are set in `.env`
-- **Semgrep Installation**: Ensure `pipx` is installed: `pip install pipx`
-- **Node.js Version**: Ensure Node.js >= v18.0.0
-- **Permission Issues**: Check file permissions for MCP server executables
-- **IDE Configuration**: Restart IDE after configuration changes
-
-### **Performance Optimization**
-- **Timeout Adjustment**: Increase timeout values in `cipher.yml` for slower networks
-- **Concurrent Requests**: Adjust `maxConcurrentRequests` based on system capabilities  
-- **Memory Usage**: Monitor memory usage with multiple MCP servers running
-
-## Advanced Features
-
-### **Tool Routing**
-The aggregator automatically routes requests to appropriate MCP servers based on context and request type.
-
-### **Fallback Handling**
-If one MCP server is unavailable, the aggregator gracefully handles fallbacks to alternative tools.
-
-### **Persistent Memory**
-All interactions are stored and learned from, improving responses over time across all integrated tools.
-
 ---
-
-This setup provides a comprehensive development environment with integrated web search, documentation access, task management, and security scanning - all accessible through your favorite IDE's MCP integration.
