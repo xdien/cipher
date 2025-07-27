@@ -72,17 +72,19 @@ const mockUnifiedToolManager = {
 	}),
 } as unknown as UnifiedToolManager;
 
-// Mock Context Manager
+// Mock Context Manager with proper typing
+const mockGetFormattedMessage = vi.fn().mockImplementation((message) => {
+	return Promise.resolve([
+		{ role: 'system', content: 'You are a helpful AI assistant.' },
+		{ role: 'user', content: message?.content || 'test message' }
+	]);
+});
+
 const mockContextManager = {
 	addUserMessage: vi.fn().mockResolvedValue(undefined),
 	addAssistantMessage: vi.fn().mockResolvedValue(undefined),
 	addToolResult: vi.fn().mockResolvedValue(undefined),
-	getFormattedMessage: vi.fn().mockImplementation((message) => {
-		return Promise.resolve([
-			{ role: 'system', content: 'You are a helpful AI assistant.' },
-			{ role: 'user', content: message?.content || 'test message' }
-		]);
-	}),
+	getFormattedMessage: mockGetFormattedMessage,
 	getAllFormattedMessages: vi.fn().mockResolvedValue([
 		{ role: 'system', content: 'You are a helpful AI assistant.' },
 		{ role: 'user', content: 'test message' }
@@ -156,7 +158,7 @@ describe('QwenService Integration Tests', () => {
 	describe('Full Integration Tests', () => {
 		it('should handle complete conversation flow with tool calls', async () => {
 			// Mock the context manager to return properly formatted messages
-			mockContextManager.getFormattedMessage.mockResolvedValue([
+			mockGetFormattedMessage.mockResolvedValue([
 				{ role: 'system', content: 'You are a helpful AI assistant.' },
 				{ role: 'user', content: 'Read the file and analyze its contents' }
 			]);
@@ -210,7 +212,7 @@ describe('QwenService Integration Tests', () => {
 
 		it('should handle multiple tool calls in sequence', async () => {
 			// Mock the context manager to return properly formatted messages
-			mockContextManager.getFormattedMessage.mockResolvedValue([
+			mockGetFormattedMessage.mockResolvedValue([
 				{ role: 'system', content: 'You are a helpful AI assistant.' },
 				{ role: 'user', content: 'Process the file and write the output' }
 			]);
@@ -277,7 +279,7 @@ describe('QwenService Integration Tests', () => {
 
 		it('should handle tool execution errors gracefully', async () => {
 			// Mock the context manager to return properly formatted messages
-			mockContextManager.getFormattedMessage.mockResolvedValue([
+			mockGetFormattedMessage.mockResolvedValue([
 				{ role: 'system', content: 'You are a helpful AI assistant.' },
 				{ role: 'user', content: 'Read the file' }
 			]);
@@ -328,7 +330,7 @@ describe('QwenService Integration Tests', () => {
 
 		it('should respect max iterations limit', async () => {
 			// Mock the context manager to return properly formatted messages
-			mockContextManager.getFormattedMessage.mockResolvedValue([
+			mockGetFormattedMessage.mockResolvedValue([
 				{ role: 'system', content: 'You are a helpful AI assistant.' },
 				{ role: 'user', content: 'Process this task' }
 			]);
@@ -363,7 +365,7 @@ describe('QwenService Integration Tests', () => {
 
 		it('should handle Qwen-specific options correctly', async () => {
 			// Mock the context manager to return properly formatted messages
-			mockContextManager.getFormattedMessage.mockResolvedValue([
+			mockGetFormattedMessage.mockResolvedValue([
 				{ role: 'system', content: 'You are a helpful AI assistant.' },
 				{ role: 'user', content: 'Analyze this complex problem' }
 			]);
@@ -437,7 +439,7 @@ describe('QwenService Integration Tests', () => {
 
 		it('should handle API errors with retry logic', async () => {
 			// Mock the context manager to return properly formatted messages
-			mockContextManager.getFormattedMessage.mockResolvedValue([
+			mockGetFormattedMessage.mockResolvedValue([
 				{ role: 'system', content: 'You are a helpful AI assistant.' },
 				{ role: 'user', content: 'Test retry logic' }
 			]);
@@ -474,7 +476,7 @@ describe('QwenService Integration Tests', () => {
 
 		it('should handle context length exceeded errors', async () => {
 			// Mock the context manager to return properly formatted messages
-			mockContextManager.getFormattedMessage.mockResolvedValue([
+			mockGetFormattedMessage.mockResolvedValue([
 				{ role: 'system', content: 'You are a helpful AI assistant.' },
 				{ role: 'user', content: 'Test with long context' }
 			]);
@@ -495,7 +497,7 @@ describe('QwenService Integration Tests', () => {
 
 		it('should format tools correctly for Qwen provider', async () => {
 			// Mock the context manager to return properly formatted messages
-			mockContextManager.getFormattedMessage.mockResolvedValue([
+			mockGetFormattedMessage.mockResolvedValue([
 				{ role: 'system', content: 'You are a helpful AI assistant.' },
 				{ role: 'user', content: 'Use available tools' }
 			]);
@@ -529,7 +531,7 @@ describe('QwenService Integration Tests', () => {
 
 		it('should handle empty tool calls gracefully', async () => {
 			// Mock the context manager to return properly formatted messages
-			mockContextManager.getFormattedMessage.mockResolvedValue([
+			mockGetFormattedMessage.mockResolvedValue([
 				{ role: 'system', content: 'You are a helpful AI assistant.' },
 				{ role: 'user', content: 'Simple question' }
 			]);
@@ -557,7 +559,7 @@ describe('QwenService Integration Tests', () => {
 		it('should maintain conversation context across multiple calls', async () => {
 			// Setup mock to return different messages for different calls
 			let callCount = 0;
-			mockContextManager.getFormattedMessage.mockImplementation(() => {
+			mockGetFormattedMessage.mockImplementation(() => {
 				if (callCount === 0) {
 					return Promise.resolve([
 						{ role: 'system', content: 'You are a helpful AI assistant.' },
@@ -643,7 +645,7 @@ describe('QwenService Integration Tests', () => {
 			};
 
 			// Mock the context manager to return properly formatted messages
-			mockContextManager.getFormattedMessage.mockResolvedValue([
+			mockGetFormattedMessage.mockResolvedValue([
 				{ role: 'system', content: 'You are a helpful AI assistant.' },
 				{ role: 'user', content: 'Test' }
 			]);
