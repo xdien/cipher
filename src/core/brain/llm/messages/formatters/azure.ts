@@ -90,7 +90,7 @@ export class AzureMessageFormatter implements IMessageFormatter {
 	/**
 	 * Format a single message without any system prompt handling.
 	 * This is the core formatting logic extracted for reuse.
-	 * 
+	 *
 	 * Handles Azure OpenAI specific field naming requirements.
 	 *
 	 * @param message - The message to format.
@@ -141,25 +141,32 @@ export class AzureMessageFormatter implements IMessageFormatter {
 	parseResponse(response: any): InternalMessage[] {
 		const internal: InternalMessage[] = [];
 		if (!response.choices || !Array.isArray(response.choices)) return internal;
-		
+
 		for (const choice of response.choices) {
 			const msg = (choice as any).message;
 			if (!msg || !msg.role) continue;
-			
+
 			const role = msg.role as InternalMessage['role'];
 			if (role === 'assistant') {
 				const content = msg.content ?? null;
-				
+
 				// Handle multiple Azure OpenAI tool call formats
-				const toolCalls = msg.tool_calls || msg.toolCalls || (msg.functionCall ? [{
-					id: `call_${Date.now()}`,
-					type: 'function',
-					function: {
-						name: msg.functionCall.name,
-						arguments: msg.functionCall.arguments,
-					}
-				}] : null);
-				
+				const toolCalls =
+					msg.tool_calls ||
+					msg.toolCalls ||
+					(msg.functionCall
+						? [
+								{
+									id: `call_${Date.now()}`,
+									type: 'function',
+									function: {
+										name: msg.functionCall.name,
+										arguments: msg.functionCall.arguments,
+									},
+								},
+							]
+						: null);
+
 				if (toolCalls && Array.isArray(toolCalls) && toolCalls.length > 0) {
 					const calls = toolCalls.map((call: any) => ({
 						id: call.id,

@@ -13,7 +13,13 @@ import { ToolSet } from '../../../mcp/types.js';
 import { logger } from '../../../logger/index.js';
 import { formatToolResult } from '../utils/tool-result-formatter.js';
 import { TextDecoder } from 'util';
-import { BedrockAnthropicMessageFormatter, BedrockLlamaMessageFormatter, BedrockTitanMessageFormatter, BedrockDeepSeekMessageFormatter, BedrockAI21MessageFormatter } from '../messages/formatters/aws.js';
+import {
+	BedrockAnthropicMessageFormatter,
+	BedrockLlamaMessageFormatter,
+	BedrockTitanMessageFormatter,
+	BedrockDeepSeekMessageFormatter,
+	BedrockAI21MessageFormatter,
+} from '../messages/formatters/aws.js';
 
 // Complete AWS Bedrock model families (2025)
 enum ModelFamily {
@@ -28,7 +34,7 @@ enum ModelFamily {
 	MISTRAL_AI = 'mistral',
 	STABILITY_AI = 'stability',
 	TWELVELABS = 'twelvelabs',
-	WRITER = 'writer'
+	WRITER = 'writer',
 }
 
 export class AwsService implements ILLMService {
@@ -56,7 +62,8 @@ export class AwsService implements ILLMService {
 		this.contextManager = contextManager;
 		this.maxIterations = maxIterations;
 		this.modelFamily = this.detectModelFamily(model);
-		this.inferenceProfileArn = awsConfig?.inferenceProfileArn || process.env.AWS_BEDROCK_INFERENCE_PROFILE_ARN;
+		this.inferenceProfileArn =
+			awsConfig?.inferenceProfileArn || process.env.AWS_BEDROCK_INFERENCE_PROFILE_ARN;
 
 		switch (this.modelFamily) {
 			case ModelFamily.ANTHROPIC:
@@ -107,9 +114,9 @@ export class AwsService implements ILLMService {
 
 	private detectModelFamily(modelId: string): ModelFamily {
 		const id = modelId.toLowerCase();
-		
+
 		logger.info(`Detecting model family for: ${id}`);
-		
+
 		if (id.startsWith('anthropic.') || id.startsWith('us.anthropic.')) {
 			logger.info(`Detected ANTHROPIC model family`);
 			return ModelFamily.ANTHROPIC;
@@ -158,7 +165,7 @@ export class AwsService implements ILLMService {
 			logger.debug(`Detected WRITER model family`);
 			return ModelFamily.WRITER;
 		}
-		
+
 		// Default to Anthropic for backward compatibility
 		logger.warn(`Unknown model family for ${modelId}, defaulting to Anthropic format`);
 		return ModelFamily.ANTHROPIC;
@@ -196,7 +203,9 @@ export class AwsService implements ILLMService {
 
 				// Parse response based on model family
 				const { textContent, toolCalls } = this.parseResponse(response);
-				logger.info(`Parsed response - textContent length: ${textContent?.length || 0}, toolCalls: ${toolCalls.length}`);
+				logger.info(
+					`Parsed response - textContent length: ${textContent?.length || 0}, toolCalls: ${toolCalls.length}`
+				);
 
 				if (toolCalls.length === 0) {
 					// No tool calls, return the text content
@@ -251,7 +260,7 @@ export class AwsService implements ILLMService {
 				stack: error instanceof Error ? error.stack : undefined,
 				iterationCount,
 				modelFamily: this.modelFamily,
-				model: this.model
+				model: this.model,
 			});
 			throw error;
 		}
@@ -262,12 +271,12 @@ export class AwsService implements ILLMService {
 		if (this.modelFamily === ModelFamily.ANTHROPIC) {
 			messages = await this.contextManager.getAllFormattedMessages(false);
 			if (!messages || messages.length === 0) {
-				messages = [{
-					role: 'user',
-					content: [
-						{ type: 'text', text: userInput }
-					],
-				}];
+				messages = [
+					{
+						role: 'user',
+						content: [{ type: 'text', text: userInput }],
+					},
+				];
 			}
 		} else {
 			messages = await this.contextManager.getAllFormattedMessages();
@@ -329,7 +338,8 @@ export class AwsService implements ILLMService {
 		};
 	}
 
-	private async getAIResponse(formattedTools: any[]): Promise<any> { // BedrockResponse type removed
+	private async getAIResponse(formattedTools: any[]): Promise<any> {
+		// BedrockResponse type removed
 		logger.info('Getting formatted messages from context manager');
 		let messages;
 		if (this.modelFamily === ModelFamily.ANTHROPIC) {
@@ -338,7 +348,7 @@ export class AwsService implements ILLMService {
 			messages = await this.contextManager.getAllFormattedMessages();
 		}
 		logger.info(`Got ${messages.length} messages from context`);
-		
+
 		logger.info('Getting system prompt from context manager');
 		const systemPrompt = await this.contextManager.getSystemPrompt();
 		logger.info(`Got system prompt: ${systemPrompt ? 'yes' : 'no'}`);
@@ -347,7 +357,9 @@ export class AwsService implements ILLMService {
 		let request: any;
 
 		if (this.modelFamily === ModelFamily.ANTHROPIC) {
-			const formattedMessages = messages.map((msg: any) => this.formatter.format(msg, systemPrompt)[0]);
+			const formattedMessages = messages.map(
+				(msg: any) => this.formatter.format(msg, systemPrompt)[0]
+			);
 			request = {
 				messages: formattedMessages,
 				anthropic_version: 'bedrock-2023-05-31',
@@ -359,7 +371,7 @@ export class AwsService implements ILLMService {
 				request.tools = formattedTools;
 				// Use 'auto' tool choice to let the model decide when to use tools
 				// This prevents over-eager tool calling for simple questions
-				request.tool_choice = { type: "auto" };
+				request.tool_choice = { type: 'auto' };
 			}
 		} else {
 			request = this.formatter.format(messages[0], systemPrompt)[0];
@@ -380,13 +392,14 @@ export class AwsService implements ILLMService {
 		logger.info('Sending command to Bedrock client');
 		const response = (await this.client.send(command)) as any;
 		logger.info('Got response from Bedrock, parsing...');
-		
+
 		const parsedResponse = JSON.parse(new TextDecoder().decode(response.body)) as any; // BedrockResponse type removed
 		logger.info('Response parsed successfully');
 		return parsedResponse;
 	}
 
-	private parseResponse(response: any): { textContent: string; toolCalls: any[] } { // BedrockResponse type removed
+	private parseResponse(response: any): { textContent: string; toolCalls: any[] } {
+		// BedrockResponse type removed
 		switch (this.modelFamily) {
 			case ModelFamily.ANTHROPIC:
 				return this.parseAnthropicResponse(response);
@@ -404,7 +417,8 @@ export class AwsService implements ILLMService {
 		}
 	}
 
-	private parseAnthropicResponse(response: any): { textContent: string; toolCalls: any[] } { // BedrockResponse type removed
+	private parseAnthropicResponse(response: any): { textContent: string; toolCalls: any[] } {
+		// BedrockResponse type removed
 		const toolUseBlocks = response.content.filter(block => block.type === 'tool_use');
 		const textContent = response.content
 			.filter(block => block.type === 'text')
@@ -423,14 +437,16 @@ export class AwsService implements ILLMService {
 		return { textContent, toolCalls };
 	}
 
-	private parseLlamaResponse(response: any): { textContent: string; toolCalls: any[] } { // BedrockResponse type removed
+	private parseLlamaResponse(response: any): { textContent: string; toolCalls: any[] } {
+		// BedrockResponse type removed
 		return {
 			textContent: response.generation,
 			toolCalls: [], // Llama models don't support tool calling
 		};
 	}
 
-	private parseTitanResponse(response: any): { textContent: string; toolCalls: any[] } { // BedrockResponse type removed
+	private parseTitanResponse(response: any): { textContent: string; toolCalls: any[] } {
+		// BedrockResponse type removed
 		const textContent = response.results.map((result: any) => result.outputText).join('');
 		return {
 			textContent,
@@ -438,7 +454,8 @@ export class AwsService implements ILLMService {
 		};
 	}
 
-	private parseAI21Response(response: any): { textContent: string; toolCalls: any[] } { // BedrockResponse type removed
+	private parseAI21Response(response: any): { textContent: string; toolCalls: any[] } {
+		// BedrockResponse type removed
 		const textContent = response.choices.map((choice: any) => choice.message.content).join('');
 		return {
 			textContent,
@@ -446,14 +463,14 @@ export class AwsService implements ILLMService {
 		};
 	}
 
-	private parseDeepSeekResponse(response: any): { textContent: string; toolCalls: any[] } { // BedrockResponse type removed
+	private parseDeepSeekResponse(response: any): { textContent: string; toolCalls: any[] } {
+		// BedrockResponse type removed
 		const textContent = response.choices.map((choice: any) => choice.text).join('');
 		return {
 			textContent,
 			toolCalls: [], // DeepSeek models don't support tool calling
 		};
 	}
-
 
 	private formatToolsForBedrock(rawTools: ToolSet): any[] {
 		if (!rawTools || typeof rawTools !== 'object') return [];

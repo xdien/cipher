@@ -118,7 +118,9 @@ export class UnifiedToolManager {
 				logger.info('UnifiedToolManager: Loading internal tools');
 				try {
 					const internalTools = this.internalToolManager.getAllTools();
-					logger.info(`UnifiedToolManager: Retrieved ${Object.keys(internalTools).length} internal tools`);
+					logger.info(
+						`UnifiedToolManager: Retrieved ${Object.keys(internalTools).length} internal tools`
+					);
 					for (const [toolName, tool] of Object.entries(internalTools)) {
 						// Skip tools that are not agent-accessible (internal-only tools)
 						if (tool.agentAccessible === false) {
@@ -160,9 +162,9 @@ export class UnifiedToolManager {
 
 			return combinedTools;
 		} catch (error) {
-			logger.error('UnifiedToolManager: Failed to load combined tools', { 
+			logger.error('UnifiedToolManager: Failed to load combined tools', {
 				error: error instanceof Error ? error.message : String(error),
-				stack: error instanceof Error ? error.stack : undefined
+				stack: error instanceof Error ? error.stack : undefined,
 			});
 			throw error;
 		}

@@ -270,7 +270,11 @@ export class AzureService implements ILLMService {
 					requestOptions.toolChoice = 'auto'; // Azure uses toolChoice instead of tool_choice
 				}
 
-				const response = await this.client.getChatCompletions(this.deploymentName, formattedMessages, requestOptions);
+				const response = await this.client.getChatCompletions(
+					this.deploymentName,
+					formattedMessages,
+					requestOptions
+				);
 
 				logger.silly('AZURE OPENAI CHAT COMPLETION RESPONSE: ', JSON.stringify(response, null, 2));
 
@@ -281,19 +285,26 @@ export class AzureService implements ILLMService {
 				}
 
 				const message = choice.message as any; // Azure API has different types than expected
-				
+
 				// Azure OpenAI may return tool calls in different formats, normalize to OpenAI format
 				// Create a normalized message object that our code expects
 				const normalizedMessage = {
 					...message,
-					tool_calls: message.toolCalls || message.tool_calls || (message.functionCall ? [{
-						id: `call_${Date.now()}`,
-						type: 'function' as const,
-						function: {
-							name: message.functionCall.name,
-							arguments: message.functionCall.arguments,
-						}
-					}] : undefined)
+					tool_calls:
+						message.toolCalls ||
+						message.tool_calls ||
+						(message.functionCall
+							? [
+									{
+										id: `call_${Date.now()}`,
+										type: 'function' as const,
+										function: {
+											name: message.functionCall.name,
+											arguments: message.functionCall.arguments,
+										},
+									},
+								]
+							: undefined),
 				};
 
 				return { message: normalizedMessage };
@@ -306,7 +317,10 @@ export class AzureService implements ILLMService {
 
 				// Azure OpenAI specific error handling
 				if (apiError.status === 400) {
-					if (apiError.message?.includes('context_length_exceeded') || apiError.message?.includes('maximum context length')) {
+					if (
+						apiError.message?.includes('context_length_exceeded') ||
+						apiError.message?.includes('maximum context length')
+					) {
 						logger.warn(
 							`Context length exceeded in Azure OpenAI. ContextManager compression might not be sufficient. Error details: ${JSON.stringify(apiError)}`
 						);

@@ -131,7 +131,6 @@ export class ContextManager {
 		try {
 			const formattedMessages: any[] = [];
 			const prompt = await this.getSystemPrompt();
-			const formattedMessages: any[] = [];
 			if (includeSystemMessage && prompt) {
 				formattedMessages.push({ role: 'system', content: prompt });
 			}

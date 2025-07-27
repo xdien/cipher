@@ -79,7 +79,9 @@ describe('AwsService', () => {
 				10,
 				{ region: 'us-east-1', accessKeyId: 'test-access-key', secretAccessKey: 'test-secret-key' }
 			);
-			expect(usAnthropicService.getConfig().model).toBe('us.anthropic.claude-3-5-sonnet-20241022-v2:0');
+			expect(usAnthropicService.getConfig().model).toBe(
+				'us.anthropic.claude-3-5-sonnet-20241022-v2:0'
+			);
 		});
 	});
 
