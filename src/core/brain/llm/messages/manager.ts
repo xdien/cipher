@@ -211,19 +211,6 @@ export class ContextManager {
 			return this.messages;
 		}
 	}
-				return this.messages;
-			}
-		}
-
-		return this.messages;
-	}
-
-	// History restoration methods
-	async restoreHistory(): Promise<void> {
-		logger.debug(
-			`ContextManager: restoreHistory called, in-memory messages: ${this.messages.length}`
-		);
-	}
 
 	async restoreHistoryPersistent(): Promise<void> {
 		if (this.shouldUsePersistentStorage()) {
