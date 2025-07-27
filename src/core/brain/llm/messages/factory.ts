@@ -1,6 +1,7 @@
 import { LLMConfig, LLMConfigSchema } from '../config.js';
 import { OpenAIMessageFormatter } from './formatters/openai.js';
 import { AnthropicMessageFormatter } from './formatters/anthropic.js';
+import { AzureMessageFormatter } from './formatters/azure.js';
 import { IMessageFormatter } from './formatters/types.js';
 import { ContextManager } from './manager.js';
 import { logger } from '../../../logger/index.js';
@@ -17,12 +18,16 @@ function getFormatter(provider: string): IMessageFormatter {
 		case 'qwen':
 			formatter = new OpenAIMessageFormatter();
 			break;
+		case 'azure':
+			formatter = new AzureMessageFormatter();
+			break;
 		case 'anthropic':
+		case 'aws':
 			formatter = new AnthropicMessageFormatter();
 			break;
 		default:
 			throw new Error(
-				`Unsupported provider: ${provider}. Supported providers: openai, anthropic, openrouter, ollama, qwen`
+				`Unsupported provider: ${provider}. Supported providers: openai, anthropic, openrouter, ollama, qwen, aws, azure`
 			);
 	}
 	return formatter;

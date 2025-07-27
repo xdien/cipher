@@ -10,12 +10,14 @@ import { AnthropicService } from './anthropic.js';
 import { OpenRouterService } from './openrouter.js';
 import { OllamaService } from './ollama.js';
 import { QwenService, QwenOptions } from './qwen.js';
+import { AwsService } from './aws.js';
+import { AzureService } from './azure.js';
 
 function extractApiKey(config: LLMConfig): string {
 	const provider = config.provider.toLowerCase();
 
-	// Ollama doesn't require an API key since it's a local service
-	if (provider === 'ollama') {
+	// These providers don't require traditional API keys
+	if (provider === 'ollama' || provider === 'aws' || provider === 'azure') {
 		return 'not-required';
 	}
 
@@ -139,6 +141,26 @@ function _createLLMService(
 				contextManager,
 				config.maxIterations,
 				unifiedToolManager
+			);
+		}
+		case 'aws': {
+			return new AwsService(
+				config.model,
+				mcpManager,
+				contextManager,
+				unifiedToolManager,
+				config.maxIterations,
+				config.aws
+			);
+		}
+		case 'azure': {
+			return new AzureService(
+				config.model,
+				mcpManager,
+				contextManager,
+				unifiedToolManager,
+				config.maxIterations,
+				config.azure
 			);
 		}
 		case 'qwen': {
