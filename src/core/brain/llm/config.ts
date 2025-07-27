@@ -28,6 +28,15 @@ export const LLMConfigSchema = z
 			.describe(
 				'Base URL for the LLM provider (e.g., https://api.openai.com/v1, https://openrouter.ai/api/v1). \nSupported for OpenAI, OpenRouter, Ollama, and Qwen providers.'
 			),
+		qwenOptions: z
+			.object({
+				enableThinking: z.boolean().optional(),
+				thinkingBudget: z.number().int().positive().optional(),
+				temperature: z.number().min(0).max(2).optional(),
+				top_p: z.number().min(0).max(1).optional(),
+			})
+			.optional()
+			.describe('Qwen-specific options for advanced configuration'),
 	})
 	.strict()
 	.superRefine((data, ctx) => {

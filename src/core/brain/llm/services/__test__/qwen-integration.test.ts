@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { QwenService, QwenOptions } from '../qwen.js';
-import { MCPManager } from '../../../mcp/manager.js';
+import { MCPManager } from '../../../../mcp/manager.js';
 import { ContextManager } from '../../messages/manager.js';
 import { UnifiedToolManager } from '../../../tools/unified-tool-manager.js';
-import { PromptManager } from '../../../systemPrompt/manager.js';
+import { EnhancedPromptManager } from '../../../systemPrompt/enhanced-manager.js';
 import { createContextManager } from '../../messages/factory.js';
 import { LLMConfig } from '../../config.js';
 
@@ -78,7 +78,7 @@ const mockPromptManager = {
 	getSystemPrompt: vi.fn().mockReturnValue('You are a helpful AI assistant.'),
 	getCompleteSystemPrompt: vi.fn().mockReturnValue('You are a helpful AI assistant.'),
 	updateSystemPrompt: vi.fn(),
-} as unknown as PromptManager;
+} as unknown as EnhancedPromptManager;
 
 describe('QwenService Integration Tests', () => {
 	let qwenService: QwenService;
