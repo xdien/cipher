@@ -10,22 +10,10 @@ mcpServers:
 
 # describes the llm configuration
 # llm:
-#   # OpenRouter configuration - Updated to use model that supports tool calling
-#   provider: openrouter
-#   model: o4-mini
-#   apiKey: $OPENROUTER_API_KEY
+#   provider: openai
+#   model: gpt-4.1-mini
+#   apiKey: $OPENAI_API_KEY
 #   maxIterations: 50
-
-# # System prompt
-# systemPrompt: "You are a helpful AI assistant with memory capabilities. Please confirm you're working with OpenRouter API."
-
-# Active LLM configuration
-llm:
-  # OpenAI configuration - Updated to use model that supports tool calling
-  provider: openai
-  model: gpt-4.1-mini
-  apiKey: $OPENAI_API_KEY
-  maxIterations: 50
   # provider: anthropic
   # model: claude-3-5-haiku-20241022
   # apiKey: $ANTHROPIC_API_KEY
@@ -50,17 +38,17 @@ llm:
 #     region: $AWS_REGION
 #     accessKeyId: $AWS_ACCESS_KEY_ID
 #     secretAccessKey: $AWS_SECRET_ACCESS_KEY
-#   # sessionToken: $AWS_SESSION_TOKEN   # (uncomment if needed)
+  # sessionToken: $AWS_SESSION_TOKEN   # (uncomment if needed)
 
 # --- Azure OpenAI LLM Configuration (Sample, Commented Out) ---
-# llm:
-#   provider: azure
-#   model: gpt-4o-mini  # Or your Azure deployment/model name
-#   apiKey: $AZURE_OPENAI_API_KEY
-#   maxIterations: 50
-#   azure:
-#     endpoint: $AZURE_OPENAI_ENDPOINT
-#     deploymentName: gpt-4o-mini  # Optional, defaults to model name
+llm:
+  provider: azure
+  model: gpt-4o-mini  # Or your Azure deployment/model name
+  apiKey: $AZURE_OPENAI_API_KEY
+  maxIterations: 50
+  azure:
+    endpoint: $AZURE_OPENAI_ENDPOINT
+    deploymentName: gpt-4o-mini  # Optional, defaults to model name
 
 # --- Ollama LLM Configuration (Sample, Commented Out) ---
 # llm:
@@ -71,10 +59,12 @@ llm:
 
 # System prompt - User customizable
 # This prompt will be combined with built-in tool usage instructions
-systemPrompt: |
-  You are an AI programming assistant focused on coding and reasoning tasks. You excel at:
-  - Writing clean, efficient code
-  - Debugging and problem-solving
-  - Code review and optimization
-  - Explaining complex technical concepts
-  - Reasoning through programming challenges
+systemPrompt:
+  enabled: true
+  content: |
+    You are an AI programming assistant focused on coding and reasoning tasks. You excel at:
+    - Writing clean, efficient code
+    - Debugging and problem-solving
+    - Code review and optimization
+    - Explaining complex technical concepts
+    - Reasoning through programming challenges

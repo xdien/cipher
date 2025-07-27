@@ -20,7 +20,9 @@ const AwsConfigSchema = z.object({
 	inferenceProfileArn: z
 		.string()
 		.optional()
-		.describe('ARN of the AWS Bedrock provisioned throughput (inference profile) for the selected model'),
+		.describe(
+			'ARN of the AWS Bedrock provisioned throughput (inference profile) for the selected model'
+		),
 });
 
 const AzureConfigSchema = z.object({

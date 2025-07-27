@@ -1,4 +1,4 @@
-import { PromptManager } from '../brain/systemPrompt/manager.js';
+import { EnhancedPromptManager } from '../brain/systemPrompt/enhanced-manager.js';
 import { MemAgentStateManager } from '../brain/memAgent/state-manager.js';
 import { MCPManager } from '../mcp/manager.js';
 import { SessionManager } from '../session/session-manager.js';
@@ -23,10 +23,14 @@ import { createKnowledgeGraphFromEnv } from '../knowledge_graph/factory.js';
 import { EventManager } from '../events/event-manager.js';
 import { EventPersistenceConfig } from '../events/persistence.js';
 import { env } from '../env.js';
+import { ProviderType } from '../brain/systemPrompt/interfaces.js';
+import fs from 'fs';
+import path from 'path';
+import yaml from 'yaml';
 
 export type AgentServices = {
 	mcpManager: MCPManager;
-	promptManager: PromptManager;
+	promptManager: EnhancedPromptManager;
 	stateManager: MemAgentStateManager;
 	sessionManager: SessionManager;
 	internalToolManager: InternalToolManager;
@@ -218,10 +222,72 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 	}
 
 	// 5. Initialize prompt manager
-	const promptManager = new PromptManager();
+	// --- BEGIN MERGE ADVANCED PROMPT CONFIG ---
+	const promptManager = new EnhancedPromptManager();
+
+	// Load static provider from cipher.yml
+	let staticProvider: any = null;
 	if (config.systemPrompt) {
-		promptManager.load(config.systemPrompt);
+		let enabled = true;
+		let content = '';
+		if (typeof config.systemPrompt === 'string') {
+			content = config.systemPrompt;
+		} else if (typeof config.systemPrompt === 'object' && config.systemPrompt !== null) {
+			const promptObj = config.systemPrompt as any;
+			enabled = promptObj.enabled !== false;
+			content = promptObj.content || '';
+		}
+		staticProvider = {
+			name: 'user-instruction',
+			type: ProviderType.STATIC,
+			priority: 100,
+			enabled,
+			config: { content },
+		};
 	}
+
+	// Load providers from cipher-advanced-prompt.yml
+	let advancedProviders: any[] = [];
+	let advancedSettings: any = {};
+	const advancedPromptPath = path.resolve(process.cwd(), 'memAgent/cipher-advanced-prompt.yml');
+	if (fs.existsSync(advancedPromptPath)) {
+		const fileContent = fs.readFileSync(advancedPromptPath, 'utf8');
+		const parsed = yaml.parse(fileContent);
+		if (Array.isArray(parsed.providers)) {
+			advancedProviders = parsed.providers;
+		}
+		if (parsed.settings) {
+			advancedSettings = parsed.settings;
+		}
+	}
+
+	// Merge providers: staticProvider (from cipher.yml) + advancedProviders (from cipher-advanced-prompt.yml)
+	const mergedProviders = [
+		...(staticProvider ? [staticProvider] : []),
+		...advancedProviders.filter(p => !staticProvider || p.name !== staticProvider.name),
+	];
+
+	// DEBUG: Print merged provider list
+	console.log('Merged system prompt providers:');
+	for (const p of mergedProviders) {
+		console.log(`  - ${p.name} (${p.type}) enabled: ${p.enabled}`);
+	}
+
+	// Merge settings: advancedSettings takes precedence, fallback to default
+	const mergedSettings = {
+		maxGenerationTime: 10000,
+		failOnProviderError: false,
+		contentSeparator: '\n\n',
+		...advancedSettings,
+	};
+
+	const mergedPromptConfig = {
+		providers: mergedProviders,
+		settings: mergedSettings,
+	};
+
+	await promptManager.initialize(mergedPromptConfig);
+	// --- END MERGE ADVANCED PROMPT CONFIG ---
 
 	// 6. Initialize state manager for runtime state tracking
 	const stateManager = new MemAgentStateManager(config);
@@ -240,6 +306,9 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 			provider: llmConfig.provider,
 			model: llmConfig.model,
 		});
+
+		// Inject llmService into promptManager for dynamic providers
+		promptManager.setLLMService(llmService);
 	} catch (error) {
 		logger.warn('Failed to initialize LLM service', {
 			error: error instanceof Error ? error.message : String(error),

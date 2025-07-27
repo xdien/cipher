@@ -5,7 +5,7 @@ import { AzureMessageFormatter } from './formatters/azure.js';
 import { IMessageFormatter } from './formatters/types.js';
 import { ContextManager } from './manager.js';
 import { logger } from '../../../logger/index.js';
-import { PromptManager } from '../../systemPrompt/manager.js';
+import { EnhancedPromptManager } from '../../systemPrompt/enhanced-manager.js';
 import { IConversationHistoryProvider } from './history/types.js';
 
 function getFormatter(provider: string): IMessageFormatter {
@@ -43,7 +43,7 @@ function getFormatter(provider: string): IMessageFormatter {
  */
 export function createContextManager(
 	config: LLMConfig,
-	promptManager: PromptManager,
+	promptManager: EnhancedPromptManager,
 	historyProvider?: IConversationHistoryProvider,
 	sessionId?: string
 ): ContextManager {
