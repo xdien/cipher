@@ -266,11 +266,11 @@ describe('UnifiedToolManager', () => {
 
 		it('should format tools for qwen provider', async () => {
 			const formattedTools = await unifiedManager.getToolsForProvider('qwen');
-			
+
 			// Verify the structure - should have the actual cipher tools
 			expect(Array.isArray(formattedTools)).toBe(true);
 			expect(formattedTools.length).toBeGreaterThan(0);
-			
+
 			// Check that all tools have the correct structure
 			formattedTools.forEach(tool => {
 				expect(tool).toHaveProperty('type', 'function');
@@ -280,7 +280,7 @@ describe('UnifiedToolManager', () => {
 				expect(tool.function).toHaveProperty('parameters');
 				expect(tool.function.parameters).toHaveProperty('type', 'object');
 			});
-			
+
 			// Verify at least one of the expected tools is present
 			const toolNames = formattedTools.map(tool => tool.function.name);
 			expect(toolNames).toContain('cipher_memory_search');

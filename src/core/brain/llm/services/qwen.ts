@@ -64,7 +64,11 @@ export class QwenService implements ILLMService {
 				iterationCount++;
 				const { message } = await this.getAIResponseWithRetries(formattedTools, userInput, stream);
 
-				if (!message.tool_calls || !Array.isArray(message.tool_calls) || message.tool_calls.length === 0) {
+				if (
+					!message.tool_calls ||
+					!Array.isArray(message.tool_calls) ||
+					message.tool_calls.length === 0
+				) {
 					const responseText = message.content || '';
 					await this.contextManager.addAssistantMessage(responseText);
 					return responseText;
@@ -204,7 +208,7 @@ export class QwenService implements ILLMService {
 				const requestBody: any = {
 					model: this.model,
 					messages: formattedMessages,
-					tools: attempts === 1 ? (tools || []) : [],
+					tools: attempts === 1 ? tools || [] : [],
 					tool_choice: attempts === 1 ? 'auto' : 'none',
 					...this.qwenOptions,
 				};

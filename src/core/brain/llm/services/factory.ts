@@ -174,9 +174,15 @@ function _createLLMService(
 			const OpenAIClass = require('openai');
 			const openai = new OpenAIClass({ apiKey, baseURL });
 			const qwenOptions: QwenOptions = {
-				...(config.qwenOptions?.enableThinking !== undefined && { enableThinking: config.qwenOptions.enableThinking }),
-				...(config.qwenOptions?.thinkingBudget !== undefined && { thinkingBudget: config.qwenOptions.thinkingBudget }),
-				...(config.qwenOptions?.temperature !== undefined && { temperature: config.qwenOptions.temperature }),
+				...(config.qwenOptions?.enableThinking !== undefined && {
+					enableThinking: config.qwenOptions.enableThinking,
+				}),
+				...(config.qwenOptions?.thinkingBudget !== undefined && {
+					thinkingBudget: config.qwenOptions.thinkingBudget,
+				}),
+				...(config.qwenOptions?.temperature !== undefined && {
+					temperature: config.qwenOptions.temperature,
+				}),
 				...(config.qwenOptions?.top_p !== undefined && { top_p: config.qwenOptions.top_p }),
 			};
 			return new QwenService(
