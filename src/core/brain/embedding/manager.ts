@@ -10,8 +10,13 @@
 
 import { logger } from '../../logger/index.js';
 import { type Embedder, type BackendConfig } from './backend/index.js';
-import { createEmbedder, createEmbedderFromEnv } from './factory.js';
+import {
+	createEmbedder,
+	createEmbedderFromEnv,
+	type BackendConfig as FactoryBackendConfig,
+} from './factory.js';
 import { LOG_PREFIXES } from './constants.js';
+import { type EmbeddingConfig } from './config.js';
 
 /**
  * Health check result for an embedder instance
@@ -151,6 +156,59 @@ export class EmbeddingManager {
 	}
 
 	/**
+	 * Create and register an embedder from YAML configuration
+	 *
+	 * @param config - Embedding configuration from YAML
+	 * @param id - Optional custom ID for the embedder
+	 * @returns Promise resolving to embedder instance and info, or null
+	 */
+	async createEmbedderFromConfig(
+		config: EmbeddingConfig,
+		id?: string
+	): Promise<{ embedder: Embedder; info: EmbedderInfo } | null> {
+		logger.debug(`${LOG_PREFIXES.MANAGER} Creating embedder from YAML configuration`, {
+			provider: config.type,
+			model: config.model,
+		});
+
+		// Check if embeddings are explicitly disabled in config
+		if ('disabled' in config && config.disabled) {
+			logger.info(`${LOG_PREFIXES.MANAGER} Embeddings are disabled via YAML configuration`);
+			return null;
+		}
+
+		const embedder = await createEmbedder(config as FactoryBackendConfig);
+		if (!embedder) {
+			logger.warn(`${LOG_PREFIXES.MANAGER} Failed to create embedder from YAML configuration`);
+			return null;
+		}
+
+		const embedderId = id || this.generateId();
+		const backendConfig = embedder.getConfig() as BackendConfig;
+
+		const info: EmbedderInfo = {
+			id: embedderId,
+			provider: backendConfig.type,
+			model: backendConfig.model || 'unknown',
+			dimension: embedder.getDimension(),
+			config: backendConfig,
+			createdAt: new Date(),
+		};
+
+		this.embedders.set(embedderId, embedder);
+		this.embedderInfo.set(embedderId, info);
+
+		logger.info(`${LOG_PREFIXES.MANAGER} Embedder registered successfully from YAML`, {
+			id: embedderId,
+			provider: info.provider,
+			model: info.model,
+			dimension: info.dimension,
+		});
+
+		return { embedder, info };
+	}
+
+	/**
 	 * Create embedder from environment variables
 	 *
 	 * @param id - Optional custom ID for the embedder
@@ -160,6 +218,12 @@ export class EmbeddingManager {
 		id?: string
 	): Promise<{ embedder: Embedder; info: EmbedderInfo } | null> {
 		logger.debug(`${LOG_PREFIXES.MANAGER} Creating embedder from environment`);
+
+		// Check if embeddings are explicitly disabled
+		if (process.env.DISABLE_EMBEDDINGS === 'true' || process.env.EMBEDDING_DISABLED === 'true') {
+			logger.info(`${LOG_PREFIXES.MANAGER} Embeddings are disabled via environment variable`);
+			return null;
+		}
 
 		const embedder = await createEmbedderFromEnv();
 		if (!embedder) {

@@ -1,5 +1,6 @@
 import { ServerConfigsSchema } from '../../mcp/config.js';
 import { LLMConfigSchema } from '../llm/config.js';
+import { EmbeddingConfigSchema } from '../embedding/config.js';
 import { z } from 'zod';
 export const AgentCardSchema = z
 	.object({
@@ -68,6 +69,9 @@ export const AgentConfigSchema = z
 		llm: LLMConfigSchema.describe('Core LLM configuration for the agent'),
 		evalLlm: LLMConfigSchema.optional().describe(
 			'Evaluation LLM configuration for non-thinking tasks (optional, falls back to main LLM if not provided)'
+		),
+		embedding: EmbeddingConfigSchema.optional().describe(
+			'Embedding configuration for the agent (optional, falls back to environment auto-detection if not provided)'
 		),
 		sessions: z
 			.object({

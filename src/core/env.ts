@@ -26,9 +26,15 @@ const envSchema = z.object({
 	OLLAMA_BASE_URL: z.string().optional(),
 	OPENAI_ORG_ID: z.string().optional(),
 	// Embedding Configuration
+	EMBEDDING_PROVIDER: z.string().optional(),
 	EMBEDDING_MODEL: z.string().optional(),
 	EMBEDDING_TIMEOUT: z.number().optional(),
 	EMBEDDING_MAX_RETRIES: z.number().optional(),
+	EMBEDDING_DIMENSIONS: z.number().optional(),
+	DISABLE_EMBEDDINGS: z.boolean().default(false),
+	EMBEDDING_DISABLED: z.boolean().default(false),
+	GEMINI_API_KEY: z.string().optional(),
+	GEMINI_BASE_URL: z.string().optional(),
 	// Storage Configuration
 	STORAGE_CACHE_TYPE: z.enum(['in-memory', 'redis']).default('in-memory'),
 	STORAGE_CACHE_HOST: z.string().optional(),
@@ -94,6 +100,8 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 			case 'OPENAI_ORG_ID':
 				return process.env.OPENAI_ORG_ID;
 			// Embedding Configuration
+			case 'EMBEDDING_PROVIDER':
+				return process.env.EMBEDDING_PROVIDER;
 			case 'EMBEDDING_MODEL':
 				return process.env.EMBEDDING_MODEL;
 			case 'EMBEDDING_TIMEOUT':
@@ -104,6 +112,18 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 				return process.env.EMBEDDING_MAX_RETRIES
 					? parseInt(process.env.EMBEDDING_MAX_RETRIES, 10)
 					: undefined;
+			case 'EMBEDDING_DIMENSIONS':
+				return process.env.EMBEDDING_DIMENSIONS
+					? parseInt(process.env.EMBEDDING_DIMENSIONS, 10)
+					: undefined;
+			case 'DISABLE_EMBEDDINGS':
+				return process.env.DISABLE_EMBEDDINGS === 'true';
+			case 'EMBEDDING_DISABLED':
+				return process.env.EMBEDDING_DISABLED === 'true';
+			case 'GEMINI_API_KEY':
+				return process.env.GEMINI_API_KEY;
+			case 'GEMINI_BASE_URL':
+				return process.env.GEMINI_BASE_URL;
 			// Storage Configuration
 			case 'STORAGE_CACHE_TYPE':
 				return process.env.STORAGE_CACHE_TYPE || 'in-memory';
@@ -195,16 +215,37 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 });
 
 export const validateEnv = () => {
-	// Critical validation: OPENAI_API_KEY is always required for embedding functionality
-	if (!process.env.OPENAI_API_KEY) {
-		const errorMsg =
-			'OPENAI_API_KEY is required for embedding functionality, even when using other LLM providers (Anthropic, OpenRouter, etc.)';
-		if (isMcpMode) {
-			process.stderr.write(`[CIPHER-MCP] ERROR: ${errorMsg}\n`);
-		} else {
-			console.error(errorMsg);
+	// Check if embeddings are explicitly disabled
+	const embeddingsDisabled =
+		process.env.DISABLE_EMBEDDINGS === 'true' || process.env.EMBEDDING_DISABLED === 'true';
+
+	if (!embeddingsDisabled) {
+		// Check if at least one embedding provider is available
+		const hasOpenAI = !!process.env.OPENAI_API_KEY;
+		const hasGemini = !!process.env.GEMINI_API_KEY;
+		const hasOpenRouter = !!process.env.OPENROUTER_API_KEY;
+		const hasOllama = !!process.env.OLLAMA_BASE_URL;
+
+		const hasAnyEmbeddingProvider = hasOpenAI || hasGemini || hasOpenRouter || hasOllama;
+
+		if (!hasAnyEmbeddingProvider) {
+			const errorMsg =
+				'No embedding provider configured. Set one of: OPENAI_API_KEY, GEMINI_API_KEY, OPENROUTER_API_KEY, OLLAMA_BASE_URL, or set DISABLE_EMBEDDINGS=true to run without memory capabilities';
+			if (isMcpMode) {
+				process.stderr.write(`[CIPHER-MCP] WARNING: ${errorMsg}\n`);
+			} else {
+				console.warn(errorMsg);
+			}
+			// Don't fail validation, just warn - allow running without embeddings
 		}
-		return false;
+	} else {
+		// Embeddings are disabled, log this for clarity
+		const infoMsg = 'Embeddings are disabled - Cipher will run without memory capabilities';
+		if (isMcpMode) {
+			process.stderr.write(`[CIPHER-MCP] INFO: ${infoMsg}\n`);
+		} else {
+			console.info(infoMsg);
+		}
 	}
 
 	// Get current env values for validation
@@ -220,6 +261,7 @@ export const validateEnv = () => {
 		OLLAMA_BASE_URL: process.env.OLLAMA_BASE_URL,
 		OPENAI_ORG_ID: process.env.OPENAI_ORG_ID,
 		// Embedding Configuration
+		EMBEDDING_PROVIDER: process.env.EMBEDDING_PROVIDER,
 		EMBEDDING_MODEL: process.env.EMBEDDING_MODEL,
 		EMBEDDING_TIMEOUT: process.env.EMBEDDING_TIMEOUT
 			? parseInt(process.env.EMBEDDING_TIMEOUT, 10)
@@ -227,6 +269,13 @@ export const validateEnv = () => {
 		EMBEDDING_MAX_RETRIES: process.env.EMBEDDING_MAX_RETRIES
 			? parseInt(process.env.EMBEDDING_MAX_RETRIES, 10)
 			: undefined,
+		EMBEDDING_DIMENSIONS: process.env.EMBEDDING_DIMENSIONS
+			? parseInt(process.env.EMBEDDING_DIMENSIONS, 10)
+			: undefined,
+		DISABLE_EMBEDDINGS: process.env.DISABLE_EMBEDDINGS === 'true',
+		EMBEDDING_DISABLED: process.env.EMBEDDING_DISABLED === 'true',
+		GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+		GEMINI_BASE_URL: process.env.GEMINI_BASE_URL,
 		// Storage Configuration
 		STORAGE_CACHE_TYPE: process.env.STORAGE_CACHE_TYPE || 'in-memory',
 		STORAGE_CACHE_HOST: process.env.STORAGE_CACHE_HOST,

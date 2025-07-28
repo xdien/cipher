@@ -1,5 +1,5 @@
 # describes the mcp servers to use
-mcpServers:
+mcpServers: 
   filesystem:
     type: stdio
     command: npx
@@ -86,6 +86,41 @@ llm:
 #   model: qwen3:32b      # Use the model you downloaded
 #   maxIterations: 50
 #   baseURL: $OLLAMA_BASE_URL
+
+# Embedding configuration (optional)
+# If not specified, uses environment-based auto-detection with priority: OpenAI > Gemini > Ollama
+# YAML config takes priority over environment auto-detection
+
+# embedding:
+#   type: openai                 # openai, gemini, ollama
+#   model: text-embedding-3-small # Provider-specific model
+#   apiKey: $OPENAI_API_KEY      # API key (environment variable)
+#   dimensions: 1536             # Optional: custom dimensions
+#   timeout: 30000               # Optional: request timeout (ms)
+#   maxRetries: 3                # Optional: max retry attempts
+
+# Examples for different providers:
+# OpenAI (default, reliable):
+# embedding:
+#   type: openai
+#   model: text-embedding-3-small
+#   apiKey: $OPENAI_API_KEY
+
+# Gemini (free alternative):
+# embedding:
+#   type: gemini
+#   model: gemini-embedding-001
+#   apiKey: $GEMINI_API_KEY
+
+# Ollama (self-hosted):
+# embedding:
+#   type: ollama
+#   model: mxbai-embed-large
+#   baseUrl: $OLLAMA_BASE_URL
+
+# Disable embeddings entirely:
+# embedding:
+#   disabled: true
 
 # System prompt - User customizable
 # This prompt will be combined with built-in tool usage instructions
