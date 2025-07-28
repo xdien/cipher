@@ -12,6 +12,8 @@
  */
 export const PROVIDER_TYPES = {
 	OPENAI: 'openai',
+	GEMINI: 'gemini',
+	OLLAMA: 'ollama',
 } as const;
 
 /**
@@ -27,12 +29,42 @@ export const OPENAI_MODELS = {
 } as const;
 
 /**
+ * Gemini embedding models with their specifications
+ */
+export const GEMINI_MODELS = {
+	/** Latest Gemini embedding model (768, 1536, or 3072 dimensions) */
+	TEXT_EMBEDDING_004: 'text-embedding-004',
+	/** Gemini embedding model (768, 1536, or 3072 dimensions) */
+	GEMINI_EMBEDDING_001: 'gemini-embedding-001',
+	/** Previous Gemini embedding model (768 dimensions) */
+	EMBEDDING_001: 'embedding-001',
+} as const;
+
+/**
+ * Popular Ollama embedding models
+ */
+export const OLLAMA_MODELS = {
+	/** Nomic Embed text model */
+	NOMIC_EMBED_TEXT: 'nomic-embed-text',
+	/** All-MiniLM model */
+	ALL_MINILM: 'all-minilm',
+	/** MXBAI Embed Large */
+	MXBAI_EMBED_LARGE: 'mxbai-embed-large',
+} as const;
+
+/**
  * Model dimension specifications
  */
 export const MODEL_DIMENSIONS = {
 	[OPENAI_MODELS.TEXT_EMBEDDING_3_SMALL]: 1536,
 	[OPENAI_MODELS.TEXT_EMBEDDING_3_LARGE]: 3072,
 	[OPENAI_MODELS.TEXT_EMBEDDING_ADA_002]: 1536,
+	[GEMINI_MODELS.TEXT_EMBEDDING_004]: 768, // Default, configurable up to 3072
+	[GEMINI_MODELS.GEMINI_EMBEDDING_001]: 768, // Default, configurable up to 3072
+	[GEMINI_MODELS.EMBEDDING_001]: 768,
+	[OLLAMA_MODELS.NOMIC_EMBED_TEXT]: 768,
+	[OLLAMA_MODELS.ALL_MINILM]: 384,
+	[OLLAMA_MODELS.MXBAI_EMBED_LARGE]: 1024,
 } as const;
 
 /**
@@ -51,6 +83,12 @@ export const DEFAULTS = {
 	/** Default OpenAI model */
 	OPENAI_MODEL: OPENAI_MODELS.TEXT_EMBEDDING_3_SMALL,
 
+	/** Default Gemini model */
+	GEMINI_MODEL: GEMINI_MODELS.GEMINI_EMBEDDING_001,
+
+	/** Default Ollama model */
+	OLLAMA_MODEL: OLLAMA_MODELS.NOMIC_EMBED_TEXT,
+
 	/** Default request timeout in milliseconds */
 	TIMEOUT: 30000, // 30 seconds
 
@@ -62,6 +100,12 @@ export const DEFAULTS = {
 
 	/** Default OpenAI API base URL */
 	OPENAI_BASE_URL: 'https://api.openai.com/v1',
+
+	/** Default Gemini API base URL */
+	GEMINI_BASE_URL: 'https://generativelanguage.googleapis.com/v1beta',
+
+	/** Default Ollama API base URL */
+	OLLAMA_BASE_URL: 'http://localhost:11434/api',
 
 	/** Default embedding dimension */
 	DIMENSION: MODEL_DIMENSIONS[OPENAI_MODELS.TEXT_EMBEDDING_3_SMALL],
@@ -147,12 +191,24 @@ export const LOG_PREFIXES = {
  * Environment variable names
  */
 export const ENV_VARS = {
+	// OpenAI
 	OPENAI_API_KEY: 'OPENAI_API_KEY',
 	OPENAI_ORG_ID: 'OPENAI_ORG_ID',
 	OPENAI_BASE_URL: 'OPENAI_BASE_URL',
+	// Gemini
+	GEMINI_API_KEY: 'GEMINI_API_KEY',
+	GEMINI_BASE_URL: 'GEMINI_BASE_URL',
+	// Ollama
+	OLLAMA_BASE_URL: 'OLLAMA_BASE_URL',
+	// General embedding config
+	EMBEDDING_PROVIDER: 'EMBEDDING_PROVIDER',
 	EMBEDDING_MODEL: 'EMBEDDING_MODEL',
 	EMBEDDING_TIMEOUT: 'EMBEDDING_TIMEOUT',
 	EMBEDDING_MAX_RETRIES: 'EMBEDDING_MAX_RETRIES',
+	EMBEDDING_DIMENSIONS: 'EMBEDDING_DIMENSIONS',
+	// Optional embedding configuration
+	DISABLE_EMBEDDINGS: 'DISABLE_EMBEDDINGS',
+	EMBEDDING_DISABLED: 'EMBEDDING_DISABLED',
 } as const;
 
 /**

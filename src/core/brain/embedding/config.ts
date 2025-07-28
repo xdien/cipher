@@ -9,7 +9,14 @@
  */
 
 import { z } from 'zod';
-import { DEFAULTS, OPENAI_MODELS, PROVIDER_TYPES, ENV_VARS } from './constants.js';
+import {
+	DEFAULTS,
+	OPENAI_MODELS,
+	GEMINI_MODELS,
+	OLLAMA_MODELS,
+	PROVIDER_TYPES,
+	ENV_VARS,
+} from './constants.js';
 
 /**
  * Base Embedding Configuration Schema
@@ -96,22 +103,116 @@ const OpenAIEmbeddingSchema = BaseEmbeddingSchema.extend({
 export type OpenAIEmbeddingConfig = z.infer<typeof OpenAIEmbeddingSchema>;
 
 /**
+ * Gemini Embedding Configuration Schema
+ *
+ * Configuration specific to Google Gemini embedding services.
+ * Supports configurable dimensions for the latest models.
+ *
+ * @example
+ * ```typescript
+ * const config: GeminiEmbeddingConfig = {
+ *   type: 'gemini',
+ *   apiKey: process.env.GEMINI_API_KEY,
+ *   model: 'text-embedding-004',
+ *   dimensions: 1536
+ * };
+ * ```
+ */
+const GeminiEmbeddingSchema = BaseEmbeddingSchema.extend({
+	type: z.literal(PROVIDER_TYPES.GEMINI),
+
+	/** Gemini embedding model */
+	model: z
+		.enum([
+			GEMINI_MODELS.TEXT_EMBEDDING_004,
+			GEMINI_MODELS.GEMINI_EMBEDDING_001,
+			GEMINI_MODELS.EMBEDDING_001,
+		] as const)
+		.default(DEFAULTS.GEMINI_MODEL)
+		.describe('Gemini embedding model'),
+
+	/** Custom dimensions for embedding models */
+	dimensions: z
+		.number()
+		.int()
+		.positive()
+		.max(3072)
+		.optional()
+		.describe('Custom embedding dimensions (768, 1536, or 3072)'),
+
+	/** Base URL override */
+	baseUrl: z.string().url().default(DEFAULTS.GEMINI_BASE_URL).describe('Gemini API base URL'),
+}).strict();
+
+export type GeminiEmbeddingConfig = z.infer<typeof GeminiEmbeddingSchema>;
+
+/**
+ * Ollama Embedding Configuration Schema
+ *
+ * Configuration for local Ollama embedding services.
+ * Supports various open-source embedding models.
+ *
+ * @example
+ * ```typescript
+ * const config: OllamaEmbeddingConfig = {
+ *   type: 'ollama',
+ *   model: 'nomic-embed-text',
+ *   baseUrl: 'http://localhost:11434/api'
+ * };
+ * ```
+ */
+const OllamaEmbeddingSchema = BaseEmbeddingSchema.extend({
+	type: z.literal(PROVIDER_TYPES.OLLAMA),
+
+	/** Ollama embedding model */
+	model: z
+		.enum([
+			OLLAMA_MODELS.NOMIC_EMBED_TEXT,
+			OLLAMA_MODELS.ALL_MINILM,
+			OLLAMA_MODELS.MXBAI_EMBED_LARGE,
+		] as const)
+		.default(DEFAULTS.OLLAMA_MODEL)
+		.describe('Ollama embedding model'),
+
+	/** Custom dimensions if supported by the model */
+	dimensions: z
+		.number()
+		.int()
+		.positive()
+		.max(3072)
+		.optional()
+		.describe('Custom embedding dimensions (if supported by the model)'),
+
+	/** Base URL override */
+	baseUrl: z.string().url().default(DEFAULTS.OLLAMA_BASE_URL).describe('Ollama API base URL'),
+
+	/** API key not required for local Ollama */
+	apiKey: z.string().optional().describe('API key (not required for local Ollama)'),
+}).strict();
+
+export type OllamaEmbeddingConfig = z.infer<typeof OllamaEmbeddingSchema>;
+
+/**
  * Backend Configuration Union Schema
  *
  * Discriminated union of all supported embedding provider configurations.
  * Uses the 'type' field to determine which configuration schema to apply.
  */
 const BackendConfigSchema = z
-	.discriminatedUnion('type', [OpenAIEmbeddingSchema], {
-		errorMap: (issue, ctx) => {
-			if (issue.code === z.ZodIssueCode.invalid_union_discriminator) {
-				return {
-					message: `Invalid embedding provider type. Expected: ${Object.values(PROVIDER_TYPES).join(', ')}.`,
-				};
-			}
-			return { message: ctx.defaultError };
-		},
-	})
+	.discriminatedUnion(
+		'type',
+		[OpenAIEmbeddingSchema, GeminiEmbeddingSchema, OllamaEmbeddingSchema],
+		{
+			errorMap: (issue, ctx) => {
+				if (issue.code === z.ZodIssueCode.invalid_union_discriminator) {
+					return {
+						message: `Invalid embedding provider type. Expected: ${Object.values(PROVIDER_TYPES).join(', ')}.`,
+					};
+				}
+				return { message: ctx.defaultError };
+			},
+		}
+	)
 	.describe('Backend configuration for embedding system')
 	.superRefine((data, ctx) => {
 		// Validate OpenAI-specific requirements
@@ -141,6 +242,20 @@ const BackendConfigSchema = z
 			}
 		}
 
+		// Validate Gemini-specific requirements
+		if (data.type === PROVIDER_TYPES.GEMINI) {
+			if (data.dimensions) {
+				// Gemini supports 768, 1536, or 3072 dimensions
+				if (![768, 1536, 3072].includes(data.dimensions)) {
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: `Gemini models support dimensions: 768, 1536, or 3072`,
+						path: ['dimensions'],
+					});
+				}
+			}
+		}
+
 		// Validate API key format (basic checks)
 		if (data.apiKey) {
 			if (data.type === PROVIDER_TYPES.OPENAI && !data.apiKey.startsWith('sk-')) {
@@ -150,6 +265,15 @@ const BackendConfigSchema = z
 					path: ['apiKey'],
 				});
 			}
+		}
+
+		// Validate that API key is provided for remote providers
+		if ([PROVIDER_TYPES.OPENAI, PROVIDER_TYPES.GEMINI].includes(data.type as any) && !data.apiKey) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: `API key is required for ${data.type} provider`,
+				path: ['apiKey'],
+			});
 		}
 	});
 
@@ -174,7 +298,7 @@ export type EmbeddingConfig = z.infer<typeof EmbeddingConfigSchema>;
 export const EmbeddingEnvConfigSchema = z.object({
 	/** Provider type from environment */
 	type: z
-		.enum([PROVIDER_TYPES.OPENAI] as const)
+		.enum([PROVIDER_TYPES.OPENAI, PROVIDER_TYPES.GEMINI, PROVIDER_TYPES.OLLAMA] as const)
 		.default(PROVIDER_TYPES.OPENAI)
 		.describe('Embedding provider type'),
 
@@ -186,6 +310,14 @@ export const EmbeddingEnvConfigSchema = z.object({
 
 	/** Base URL from environment */
 	baseUrl: z.string().url().optional().describe('Base URL from environment'),
+
+	/** Dimensions from environment */
+	dimensions: z
+		.string()
+		.transform(val => parseInt(val, 10))
+		.pipe(z.number().int().positive())
+		.optional()
+		.describe('Dimensions from environment (string converted to number)'),
 
 	/** Timeout from environment */
 	timeout: z
@@ -227,29 +359,72 @@ export function parseEmbeddingConfigFromEnv(
 	env: Record<string, string | undefined> = process.env
 ): EmbeddingConfig | null {
 	try {
-		// Try to build config from environment variables
-		const rawConfig: any = {
-			type: env[ENV_VARS.EMBEDDING_MODEL] ? PROVIDER_TYPES.OPENAI : PROVIDER_TYPES.OPENAI,
-		};
+		// Determine provider type from environment
+		let providerType = env[ENV_VARS.EMBEDDING_PROVIDER] as keyof typeof PROVIDER_TYPES;
 
-		// Add OpenAI-specific config
-		if (env[ENV_VARS.OPENAI_API_KEY]) {
-			rawConfig.apiKey = env[ENV_VARS.OPENAI_API_KEY];
-		} else {
-			// No API key found, cannot create config
-			return null;
+		// Auto-detect provider based on available API keys if not specified
+		if (!providerType) {
+			if (env[ENV_VARS.OPENAI_API_KEY]) {
+				providerType = 'OPENAI';
+			} else if (env[ENV_VARS.GEMINI_API_KEY]) {
+				providerType = 'GEMINI';
+			} else if (env[ENV_VARS.OLLAMA_BASE_URL]) {
+				providerType = 'OLLAMA';
+			} else {
+				// No supported provider found
+				return null;
+			}
 		}
 
+		const rawConfig: any = {
+			type: PROVIDER_TYPES[providerType],
+		};
+
+		// Add provider-specific configuration
+		switch (PROVIDER_TYPES[providerType]) {
+			case PROVIDER_TYPES.OPENAI:
+				if (env[ENV_VARS.OPENAI_API_KEY]) {
+					rawConfig.apiKey = env[ENV_VARS.OPENAI_API_KEY];
+				} else {
+					return null;
+				}
+				if (env[ENV_VARS.OPENAI_BASE_URL]) {
+					rawConfig.baseUrl = env[ENV_VARS.OPENAI_BASE_URL];
+				}
+				if (env[ENV_VARS.OPENAI_ORG_ID]) {
+					rawConfig.organization = env[ENV_VARS.OPENAI_ORG_ID];
+				}
+				break;
+
+			case PROVIDER_TYPES.GEMINI:
+				if (env[ENV_VARS.GEMINI_API_KEY]) {
+					rawConfig.apiKey = env[ENV_VARS.GEMINI_API_KEY];
+				} else {
+					return null;
+				}
+				if (env[ENV_VARS.GEMINI_BASE_URL]) {
+					rawConfig.baseUrl = env[ENV_VARS.GEMINI_BASE_URL];
+				}
+				break;
+
+			case PROVIDER_TYPES.OLLAMA:
+				// API key is optional for Ollama
+				if (env[ENV_VARS.OLLAMA_BASE_URL]) {
+					rawConfig.baseUrl = env[ENV_VARS.OLLAMA_BASE_URL];
+				}
+				break;
+
+			default:
+				return null;
+		}
+
+		// Add common configuration
 		if (env[ENV_VARS.EMBEDDING_MODEL]) {
 			rawConfig.model = env[ENV_VARS.EMBEDDING_MODEL];
 		}
 
-		if (env[ENV_VARS.OPENAI_BASE_URL]) {
-			rawConfig.baseUrl = env[ENV_VARS.OPENAI_BASE_URL];
-		}
-
-		if (env[ENV_VARS.OPENAI_ORG_ID]) {
-			rawConfig.organization = env[ENV_VARS.OPENAI_ORG_ID];
+		if (env[ENV_VARS.EMBEDDING_DIMENSIONS]) {
+			rawConfig.dimensions = parseInt(env[ENV_VARS.EMBEDDING_DIMENSIONS] || '1536', 10);
 		}
 
 		if (env[ENV_VARS.EMBEDDING_TIMEOUT]) {
