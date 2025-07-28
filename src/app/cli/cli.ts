@@ -183,18 +183,19 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 					console.log(chalk.gray('🤔 Thinking...'));
 					const result = await agent.run(trimmedInput);
 
-					if (result && result.backgroundOperations) {
-						try {
-							await result.backgroundOperations;
-						} catch {
-							/* no-op: background operation errors are intentionally ignored */
-						}
-					}
+					// Display the AI response immediately
 					if (result && result.response) {
 						// Display the AI response with nice formatting
 						logger.displayAIResponse(result.response);
 					} else {
 						console.log(chalk.gray('No response received.'));
+					}
+
+					// Let background operations run without blocking the response
+					if (result && result.backgroundOperations) {
+						result.backgroundOperations.catch(() => {
+							// Background operation errors are intentionally ignored
+						});
 					}
 
 					// Show compression info after processing

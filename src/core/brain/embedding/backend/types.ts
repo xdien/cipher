@@ -96,9 +96,29 @@ export interface OpenAIEmbeddingConfig extends EmbeddingConfig {
 }
 
 /**
+ * Gemini-specific embedding configuration
+ */
+export interface GeminiEmbeddingConfig extends EmbeddingConfig {
+	type: 'gemini';
+	model?: 'text-embedding-004' | 'gemini-embedding-001' | 'embedding-001';
+	/** Custom dimensions for Gemini models */
+	dimensions?: number;
+}
+
+/**
+ * Ollama-specific embedding configuration
+ */
+export interface OllamaEmbeddingConfig extends EmbeddingConfig {
+	type: 'ollama';
+	model?: 'nomic-embed-text' | 'all-minilm' | 'mxbai-embed-large' | string;
+	/** Custom dimensions if supported by the model */
+	dimensions?: number;
+}
+
+/**
  * Union type for all supported backend configurations
  */
-export type BackendConfig = OpenAIEmbeddingConfig;
+export type BackendConfig = OpenAIEmbeddingConfig | GeminiEmbeddingConfig | OllamaEmbeddingConfig;
 
 /**
  * Result from embedding operation with metadata

@@ -114,13 +114,27 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 		timestamp: Date.now(),
 	});
 
-	// 2. Initialize embedding manager with environment configuration
+	// 2. Initialize embedding manager with YAML configuration first, then environment fallback
 	logger.debug('Initializing embedding manager...');
 	const embeddingManager = new EmbeddingManager();
 
 	try {
-		// Try to create embedder from environment variables
-		const embeddingResult = await embeddingManager.createEmbedderFromEnv('default');
+		let embeddingResult: { embedder: any; info: any } | null = null;
+
+		// First try YAML embedding configuration if available
+		if (config.embedding) {
+			logger.debug('Found embedding configuration in YAML, using it');
+			embeddingResult = await embeddingManager.createEmbedderFromConfig(
+				config.embedding as any,
+				'default'
+			);
+		}
+
+		// If no YAML config or it failed, fallback to environment variables
+		if (!embeddingResult) {
+			logger.debug('No YAML embedding config or it failed, trying environment variables');
+			embeddingResult = await embeddingManager.createEmbedderFromEnv('default');
+		}
 		if (embeddingResult) {
 			logger.info('Embedding manager initialized successfully', {
 				provider: embeddingResult.info.provider,
