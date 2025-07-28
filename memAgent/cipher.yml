@@ -1,5 +1,5 @@
 # describes the mcp servers to use
-mcpServers:
+mcpServers: 
   filesystem:
     type: stdio
     command: npx
