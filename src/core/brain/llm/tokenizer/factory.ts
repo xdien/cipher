@@ -61,6 +61,15 @@ export function getTokenizerConfigForModel(model: string): TokenizerConfig {
 		};
 	}
 
+	if (model.startsWith('qwen') || model.includes('qwen')) {
+		return {
+			provider: 'openai', // Qwen uses OpenAI-compatible tokenization
+			model,
+			fallbackToApproximation: true,
+			hybridTracking: true,
+		};
+	}
+
 	return {
 		provider: 'default',
 		model,

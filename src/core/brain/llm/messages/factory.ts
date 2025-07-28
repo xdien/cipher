@@ -15,6 +15,7 @@ function getFormatter(provider: string): IMessageFormatter {
 		case 'openai':
 		case 'openrouter':
 		case 'ollama':
+		case 'qwen':
 			formatter = new OpenAIMessageFormatter();
 			break;
 		case 'azure':
@@ -26,7 +27,7 @@ function getFormatter(provider: string): IMessageFormatter {
 			break;
 		default:
 			throw new Error(
-				`Unsupported provider: ${provider}. Supported providers: openai, anthropic, openrouter, ollama, aws, azure`
+				`Unsupported provider: ${provider}. Supported providers: openai, anthropic, openrouter, ollama, qwen, aws, azure`
 			);
 	}
 	return formatter;
