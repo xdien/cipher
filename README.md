@@ -19,16 +19,16 @@
 
 ## Overview
 
-Cipher is an opensource memory layer specifically designed for coding agents. Compatible with **Cursor, Windsurf, Claude Desktop, Claude Code, Gemini CLI, VS Code, and Roo Code** through MCP, and coding agents, such as **Kimi K2**. (see more on [examples](./examples))
+Cipher is an opensource memory layer specifically designed for coding agents. Compatible with **Cursor, Windsurf, Claude Desktop, Claude Code, Gemini CLI, AWS's Kiro, VS Code, and Roo Code** through MCP, and coding agents, such as **Kimi K2**. (see more on [examples](./examples))
 
 **Key Features:**
 
-- Connect with your favorite IDEs through MCP.
-- Auto-generated memories that scale with your codebase.
-- Dual Memory Layer that captures **System 1** (Programming Concepts & Business Logic & Past Interaction) and **System 2** (reasoning steps of the model when generating code).
-- Install on your IDE with zero configuration needed.
-- Switch seamlessly between IDEs without losing memory.
-- Shared memory workspace across the team in real time.
+- ⁠MCP integration with any IDE you want.
+- ⁠Auto-generate AI coding memories that scale with your codebase.
+- ⁠Switch seamlessly between IDEs without losing memory and context.
+- ⁠Easily share coding memories across your dev team in real time.
+- ⁠Dual Memory Layer that captures System 1 (Programming Concepts & Business Logic & Past Interaction) and System 2 (reasoning steps of the model when generating code).
+- ⁠Install on your IDE with zero configuration needed.
 
 ## Quick Start
 
@@ -89,55 +89,21 @@ Configure Cipher using environment variables and YAML config:
 ### Environment Variables (.env)
 
 ```bash
-# Required: At least one API key (except OPENAI_API_KEY is always required for embedding)
-OPENAI_API_KEY=your_openai_api_key
-ANTHROPIC_API_KEY=your_anthropic_api_key
-OPENROUTER_API_KEY=your_openrouter_api_key
+# Required: At least one API key
+OPENAI_API_KEY=your_openai_api_key          # Recommended for LLM + embeddings
+ANTHROPIC_API_KEY=your_anthropic_api_key    # Alternative LLM provider
+OPENROUTER_API_KEY=your_openrouter_api_key  # Alternative LLM provider
+GEMINI_API_KEY=your_gemini_api_key         # Free embeddings alternative
 
 # Ollama (self-hosted, no API key needed)
 OLLAMA_BASE_URL=http://localhost:11434/v1
 
+# Embedding configuration (optional)
+DISABLE_EMBEDDINGS=false                    # Set to true to disable embeddings entirely
+
 # Optional
 CIPHER_LOG_LEVEL=info
 NODE_ENV=production
-```
-
-### Multi-Backend Conversation History Persistence
-
-Cipher supports a multi-backend mode for conversation history, providing high durability and redundancy by writing to both a primary (PostgreSQL) and a backup (SQLite) database, with a write-ahead log (WAL) for zero data loss.
-
-**To enable multi-backend mode:**
-
-Set the following environment variables:
-
-```bash
-# Enable multi-backend mode
-CIPHER_MULTI_BACKEND=1
-
-# PostgreSQL connection string (primary backend)
-CIPHER_PG_URL=postgres://cipheruser:cipherpass@localhost:5432/cipherdb
-
-# (Optional) WAL flush interval in milliseconds (default: 5000)
-CIPHER_WAL_FLUSH_INTERVAL=5000
-```
-
-- The backup SQLite database will be created as `cipher-backup.db` in your working directory by default.
-- Cipher will automatically create all required tables in both databases.
-- If either backend fails to connect, Cipher will fall back to in-memory storage (with a warning in logs).
-
-**Verifying Multi-Backend Persistence:**
-
-- PostgreSQL tables: `cipher_store`, `cipher_lists`, `cipher_list_metadata`
-- SQLite tables: `store`, `lists`, `list_metadata`
-- Messages are stored under keys like `messages:<sessionId>` in the `lists`/`cipher_lists` tables.
-
-**Example:**
-
-```bash
-export CIPHER_MULTI_BACKEND=1
-export CIPHER_PG_URL="postgres://cipheruser:cipherpass@localhost:5432/cipherdb"
-export CIPHER_WAL_FLUSH_INTERVAL=5000
-cipher
 ```
 
 ### Agent Configuration (memAgent/cipher.yml)
@@ -169,6 +135,116 @@ mcpServers:
 - **Multi-LLM Support**: OpenAI, Anthropic, OpenRouter, and Ollama compatibility
 - **Knowledge Graph**: Structured memory with entity relationships (Neo4j, in-memory)
 - **Real-time Learning**: Memory layers that improve automatically with usage
+
+## Embedding Providers
+
+Cipher supports multiple embedding providers with OpenAI as the default choice for reliability and consistency. Other providers can be configured via YAML for specific needs:
+
+### Configuration Priority
+
+1. **YAML Configuration** (highest priority) - `embedding:` section in `cipher.yml`
+2. **Environment Auto-detection** (fallback) - Based on available API keys
+
+### Environment Priority Order (when no YAML config)
+
+1. **OpenAI** (default, reliable) - `OPENAI_API_KEY=your_key`
+2. **Gemini** (free alternative) - `GEMINI_API_KEY=your_key`
+3. **Ollama** (self-hosted) - `OLLAMA_BASE_URL=http://localhost:11434`
+4. **Disabled mode** - `DISABLE_EMBEDDINGS=true`
+
+### YAML Configuration (Recommended for Alternative Providers)
+
+**For users who prefer free or local alternatives to OpenAI**, configure embeddings explicitly in `cipher.yml`:
+
+```yaml
+# OpenAI (default, reliable)
+embedding:
+  type: openai
+  model: text-embedding-3-small
+  apiKey: $OPENAI_API_KEY
+
+# Gemini (free alternative)
+embedding:
+  type: gemini
+  model: gemini-embedding-001
+  apiKey: $GEMINI_API_KEY
+
+# Ollama (self-hosted)
+embedding:
+  type: ollama
+  model: mxbai-embed-large
+  baseUrl: $OLLAMA_BASE_URL
+
+# Disable embeddings
+embedding:
+  disabled: true
+```
+
+### Environment-Only Setup (Simple)
+
+```bash
+# Option 1: OpenAI embeddings (default, reliable)
+OPENAI_API_KEY=your_openai_key
+
+# Option 2: Free Gemini embeddings
+GEMINI_API_KEY=your_gemini_key
+
+# Option 3: Self-hosted Ollama embeddings
+OLLAMA_BASE_URL=http://localhost:11434
+
+# Option 4: Disable embeddings (lightweight mode)
+DISABLE_EMBEDDINGS=true
+```
+
+### Setting up Ollama (Self-hosted)
+
+To use Ollama for local embeddings:
+
+1. **Install Ollama**:
+
+   ```bash
+   # macOS
+   brew install ollama
+
+   # Or download from https://ollama.ai
+   ```
+
+2. **Start Ollama service**:
+
+   ```bash
+   ollama serve
+   ```
+
+3. **Pull embedding model**:
+
+   ```bash
+   # Recommended embedding model
+   ollama pull nomic-embed-text
+
+   # Alternative models
+   ollama pull all-minilm
+   ollama pull mxbai-embed-large
+   ```
+
+4. **Configure in YAML**:
+
+   ```yaml
+   embedding:
+     type: ollama
+     model: mxbai-embed-large # or your chosen model
+     baseUrl: $OLLAMA_BASE_URL
+   ```
+
+5. **Set environment**:
+
+   ```bash
+   OLLAMA_BASE_URL=http://localhost:11434
+   ```
+
+6. **Test connection**:
+   ```bash
+   cipher "🧪 Testing Ollama: What is machine learning?"
+   ```
 
 ## LLM Providers
 
@@ -325,13 +401,15 @@ Add to your Claude Desktop MCP configuration file:
 The MCP server requires at least one LLM provider API key:
 
 ```bash
-# Required (at least one)
-OPENAI_API_KEY=your_openai_api_key      # Always required for embedding
-ANTHROPIC_API_KEY=your_anthropic_api_key
-OPENROUTER_API_KEY=your_openrouter_api_key
+# Required (at least one API key)
+OPENAI_API_KEY=your_openai_api_key          # Required for LLM + embeddings
+ANTHROPIC_API_KEY=your_anthropic_api_key    # Alternative LLM provider
+OPENROUTER_API_KEY=your_openrouter_api_key  # Alternative LLM provider
+GEMINI_API_KEY=your_gemini_api_key         # Free embeddings alternative
 
 # Optional
 OLLAMA_BASE_URL=http://localhost:11434/v1
+DISABLE_EMBEDDINGS=false                    # Set to true to disable embeddings
 CIPHER_LOG_LEVEL=info
 NODE_ENV=production
 ```
@@ -380,6 +458,8 @@ AGGREGATOR_TIMEOUT=60000
 
 - In **aggregator** mode, all tools are exposed. Tool name conflicts are resolved according to `AGGREGATOR_CONFLICT_RESOLUTION`.
 - If you want only the `ask_cipher` tool, set `MCP_SERVER_MODE=default` or omit the variable.
+
+Check out the [MCP Aggregator Hub example](./examples/04-mcp-aggregator-hub/) that further demonstrates the usecase of this MCP server mode.
 
 ---
 
@@ -433,6 +513,16 @@ Every interaction with Claude Code can be automatically stored in Cipher's dual 
 <img src="./assets/cipher_retrieve_memory.png" alt="Cipher retrieving previous conversation context" />
 
 When you ask Claude Code to recall previous conversations, Cipher's memory layer instantly retrieves relevant context, allowing you to continue where you left off without losing important details.
+
+---
+
+### 🚀 Demo Video: Claude Code + Cipher MCP Server
+
+<a href="https://drive.google.com/file/d/1az9t9jFOHAhRN21VMnuHPybRYwA0q0aF/view?usp=drive_link" target="_blank">
+  <img src="assets/demo_claude_code.png" alt="Watch the demo" width="60%" />
+</a>
+
+> **Click the image above to watch a short demo of Claude Code using Cipher as an MCP server.**
 
 For detailed configuration instructions, see the [CLI Coding Agents guide](./examples/02-cli-coding-agents/README.md).
 
