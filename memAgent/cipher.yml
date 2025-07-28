@@ -83,10 +83,10 @@ llm:
 #   apiKey: $GEMINI_API_KEY
 
 # Ollama (self-hosted):
-embedding:
-  type: ollama
-  model: mxbai-embed-large
-  baseUrl: $OLLAMA_BASE_URL
+# embedding:
+#   type: ollama
+#   model: mxbai-embed-large
+#   baseUrl: $OLLAMA_BASE_URL
 
 # Disable embeddings entirely:
 # embedding:
