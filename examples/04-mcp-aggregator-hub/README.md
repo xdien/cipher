@@ -5,11 +5,9 @@
 ## Key Benefits of Aggregator Mode
 
 - **Single Integration Point**: Connect to multiple MCP servers through one Cipher instance
-- **Unified Tool Access**: Access 18+ specialized tools from different providers through one interface
 - **Memory-Enhanced**: Persistent cross-session learning and context retention
 - **Transport Flexibility**: Supports stdio, SSE, and streamable-http connections seamlessly
 - **IDE Compatibility**: Works with Cursor, Claude Code, VS Code, and other MCP-compatible editors
-- **Conflict Resolution**: Intelligent handling of tool name conflicts across multiple servers
 
 ## MCP Servers Overview
 
@@ -180,12 +178,6 @@ mcpServers:
 
 ## Quick Start
 
-1. **Start Aggregator**:
-   ```bash
-   cd examples/04-mcp-aggregator-hub
-   cipher --mode mcp --agent ./cipher.yml
-   ```
-
-2. **Connect from IDE**: Use the configuration example above with your specific paths and API keys. All required environment variables are defined directly in the MCP client configuration.
+Use the configuration example above with your specific paths and API keys. All required environment variables are defined directly in the MCP client configuration.
 
 **Available Transport Types**: The aggregator seamlessly supports all three MCP transport protocols (stdio, sse, streamable-http) allowing you to mix local and remote MCP servers in a single unified interface.
