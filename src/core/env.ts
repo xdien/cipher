@@ -21,6 +21,7 @@ const envSchema = z.object({
 	OPENAI_API_KEY: z.string().optional(),
 	ANTHROPIC_API_KEY: z.string().optional(),
 	OPENROUTER_API_KEY: z.string().optional(),
+	QWEN_API_KEY: z.string().optional(),
 	OPENAI_BASE_URL: z.string().optional(),
 	OLLAMA_BASE_URL: z.string().optional(),
 	OPENAI_ORG_ID: z.string().optional(),
@@ -90,6 +91,8 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 				return process.env.ANTHROPIC_API_KEY;
 			case 'OPENROUTER_API_KEY':
 				return process.env.OPENROUTER_API_KEY;
+			case 'QWEN_API_KEY':
+				return process.env.QWEN_API_KEY;
 			case 'OPENAI_BASE_URL':
 				return process.env.OPENAI_BASE_URL;
 			case 'OLLAMA_BASE_URL':
@@ -253,6 +256,7 @@ export const validateEnv = () => {
 		OPENAI_API_KEY: process.env.OPENAI_API_KEY,
 		ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
 		OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
+		QWEN_API_KEY: process.env.QWEN_API_KEY,
 		OPENAI_BASE_URL: process.env.OPENAI_BASE_URL,
 		OLLAMA_BASE_URL: process.env.OLLAMA_BASE_URL,
 		OPENAI_ORG_ID: process.env.OPENAI_ORG_ID,

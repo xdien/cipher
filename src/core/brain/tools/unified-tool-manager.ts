@@ -353,8 +353,9 @@ export class UnifiedToolManager {
 	/**
 	 * Get tools formatted for specific LLM providers
 	 */
+
 	async getToolsForProvider(
-		provider: 'openai' | 'anthropic' | 'openrouter' | 'aws' | 'azure'
+		provider: 'openai' | 'anthropic' | 'openrouter' | 'aws' | 'azure' | 'qwen'
 	): Promise<any[]> {
 		logger.info(`UnifiedToolManager: Getting tools for provider: ${provider}`);
 		const allTools = await this.getAllTools();
@@ -364,6 +365,8 @@ export class UnifiedToolManager {
 			case 'openai':
 			case 'openrouter':
 				logger.info('UnifiedToolManager: Formatting tools for OpenAI');
+				return this.formatToolsForOpenAI(allTools);
+			case 'qwen':
 				return this.formatToolsForOpenAI(allTools);
 			case 'anthropic':
 				logger.info('UnifiedToolManager: Formatting tools for Anthropic');

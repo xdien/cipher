@@ -45,11 +45,25 @@ export class OpenAITokenizer implements ITokenizer {
 			const modelName = this.model || 'gpt-3.5-turbo';
 
 			// Get encoding for the specific model
-			if (this.isO1Model(modelName)) {
-				// o1 models use o200k_base encoding
-				this.encoding = this.tiktoken.encoding_for_model('gpt-4o');
-			} else {
-				this.encoding = this.tiktoken.encoding_for_model(modelName);
+			try {
+				if (this.isO1Model(modelName)) {
+					// o1 models use o200k_base encoding
+					this.encoding = this.tiktoken.encoding_for_model('gpt-4o');
+				} else if (this.isQwenModel(modelName)) {
+					// Qwen models use cl100k_base encoding (same as GPT-4)
+					this.encoding = this.tiktoken.encoding_for_model('gpt-4');
+				} else {
+					this.encoding = this.tiktoken.encoding_for_model(modelName);
+				}
+			} catch (encodingError) {
+				// If the specific model encoding fails, try with a fallback
+				logger.debug('Failed to get encoding for specific model, trying fallback', {
+					model: modelName,
+					error: (encodingError as Error).message,
+				});
+
+				// Use gpt-4 encoding as fallback for most models
+				this.encoding = this.tiktoken.encoding_for_model('gpt-4');
 			}
 
 			logger.debug('OpenAI tokenizer initialized with tiktoken', { model: modelName });
@@ -64,6 +78,10 @@ export class OpenAITokenizer implements ITokenizer {
 
 	private isO1Model(model: string): boolean {
 		return model.startsWith('o1-');
+	}
+
+	private isQwenModel(model: string): boolean {
+		return model.startsWith('qwen') || model.includes('qwen');
 	}
 
 	private getTokenLimitsForModel(model: string): ProviderTokenLimits {

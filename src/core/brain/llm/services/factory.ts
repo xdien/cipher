@@ -4,13 +4,12 @@ import { ContextManager } from '../messages/manager.js';
 import { LLMConfig } from '../config.js';
 import { ILLMService } from './types.js';
 import { env } from '../../../env.js';
-import OpenAI from 'openai';
 import { logger } from '../../../logger/index.js';
-import Anthropic from '@anthropic-ai/sdk';
 import { OpenAIService } from './openai.js';
 import { AnthropicService } from './anthropic.js';
 import { OpenRouterService } from './openrouter.js';
 import { OllamaService } from './ollama.js';
+import { QwenService, QwenOptions } from './qwen.js';
 import { AwsService } from './aws.js';
 import { AzureService } from './azure.js';
 
@@ -72,10 +71,11 @@ function _createLLMService(
 	switch (config.provider.toLowerCase()) {
 		case 'openai': {
 			const baseURL = getOpenAICompatibleBaseURL(config);
-			// This will correctly handle both cases:
-			// 1. When baseURL is set, it will be included in the options
-			// 2. When baseURL is undefined/null/empty, the spread operator won't add the baseURL property
-			const openai = new OpenAI({ apiKey, ...(baseURL ? { baseURL } : {}) });
+			// Use require for OpenAI SDK for compatibility
+			// @ts-ignore
+			// eslint-disable-next-line @typescript-eslint/no-var-requires
+			const OpenAIClass = require('openai');
+			const openai = new OpenAIClass({ apiKey, ...(baseURL ? { baseURL } : {}) });
 			return new OpenAIService(
 				openai,
 				config.model,
@@ -87,8 +87,11 @@ function _createLLMService(
 		}
 		case 'openrouter': {
 			const baseURL = getOpenAICompatibleBaseURL(config);
-			// OpenRouter uses OpenAI-compatible API but with specific headers
-			const openai = new OpenAI({
+			// Use require for OpenAI SDK for compatibility
+			// @ts-ignore
+			// eslint-disable-next-line @typescript-eslint/no-var-requires
+			const OpenAIClass = require('openai');
+			const openai = new OpenAIClass({
 				apiKey,
 				baseURL,
 				defaultHeaders: {
@@ -106,7 +109,11 @@ function _createLLMService(
 			);
 		}
 		case 'anthropic': {
-			const anthropic = new Anthropic({ apiKey });
+			// Use require for Anthropic SDK for compatibility
+			// @ts-ignore
+			// eslint-disable-next-line @typescript-eslint/no-var-requires
+			const AnthropicClass = require('@anthropic-ai/sdk');
+			const anthropic = new AnthropicClass({ apiKey });
 			return new AnthropicService(
 				anthropic,
 				config.model,
@@ -118,8 +125,12 @@ function _createLLMService(
 		}
 		case 'ollama': {
 			const baseURL = getOpenAICompatibleBaseURL(config);
+			// Use require for OpenAI SDK for compatibility
+			// @ts-ignore
+			// eslint-disable-next-line @typescript-eslint/no-var-requires
+			const OpenAIClass = require('openai');
 			// Ollama uses OpenAI-compatible API but runs locally
-			const openai = new OpenAI({
+			const openai = new OpenAIClass({
 				apiKey: 'not-required', // Ollama doesn't require an API key
 				baseURL,
 			});
@@ -150,6 +161,38 @@ function _createLLMService(
 				unifiedToolManager,
 				config.maxIterations,
 				config.azure
+			);
+		}
+		case 'qwen': {
+			// QwenService: OpenAI-compatible endpoint for Alibaba Cloud Qwen
+			// Accepts Qwen-specific options via config.qwenOptions
+			// Default endpoint: https://dashscope-intl.aliyuncs.com/compatible-mode/v1
+			const baseURL = config.baseURL || 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1';
+			// Use require for OpenAI SDK for compatibility
+			// @ts-ignore
+			// eslint-disable-next-line @typescript-eslint/no-var-requires
+			const OpenAIClass = require('openai');
+			const openai = new OpenAIClass({ apiKey, baseURL });
+			const qwenOptions: QwenOptions = {
+				...(config.qwenOptions?.enableThinking !== undefined && {
+					enableThinking: config.qwenOptions.enableThinking,
+				}),
+				...(config.qwenOptions?.thinkingBudget !== undefined && {
+					thinkingBudget: config.qwenOptions.thinkingBudget,
+				}),
+				...(config.qwenOptions?.temperature !== undefined && {
+					temperature: config.qwenOptions.temperature,
+				}),
+				...(config.qwenOptions?.top_p !== undefined && { top_p: config.qwenOptions.top_p }),
+			};
+			return new QwenService(
+				openai,
+				config.model,
+				mcpManager,
+				contextManager,
+				config.maxIterations,
+				qwenOptions,
+				unifiedToolManager
 			);
 		}
 		default:

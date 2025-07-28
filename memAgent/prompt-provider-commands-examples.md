@@ -7,9 +7,11 @@ Below are example usages for all prompt-related commands in Cipher CLI. Each exa
 ## 1. List Active and Available Providers
 
 **Command:**
+
 ```bash
 /prompt-providers list
 ```
+
 <details>
 <summary>Show Output</summary>
 
@@ -24,6 +26,7 @@ Below are example usages for all prompt-related commands in Cipher CLI. Each exa
   🟡 project-guidelines (file-based)
 💡 Use /prompt-providers add-dynamic or add-file to activate more providers.
 ```
+
 </details>
 
 ---
@@ -31,9 +34,11 @@ Below are example usages for all prompt-related commands in Cipher CLI. Each exa
 ## 2. Show All Providers (Enabled and Disabled)
 
 **Command:**
+
 ```bash
 /prompt-providers show-all
 ```
+
 <details>
 <summary>Show Output</summary>
 
@@ -48,6 +53,7 @@ Below are example usages for all prompt-related commands in Cipher CLI. Each exa
   🔴 project-guidelines (file-based)
 💡 Use /prompt-providers enable/disable to manage provider status.
 ```
+
 </details>
 
 ---
@@ -55,9 +61,11 @@ Below are example usages for all prompt-related commands in Cipher CLI. Each exa
 ## 3. Add a Dynamic Provider
 
 **Command:**
+
 ```bash
 /prompt-providers add-dynamic summary --history 10
 ```
+
 <details>
 <summary>Show Output</summary>
 
@@ -66,6 +74,7 @@ Below are example usages for all prompt-related commands in Cipher CLI. Each exa
 📝 Generated summary for 'summary':
 Summary: The conversation covers project setup, coding standards, and collaboration rules.
 ```
+
 </details>
 
 ---
@@ -73,9 +82,11 @@ Summary: The conversation covers project setup, coding standards, and collaborat
 ## 4. Add a File-Based Provider
 
 **Command:**
+
 ```bash
 /prompt-providers add-file project-guidelines --summarize true
 ```
+
 <details>
 <summary>Show Output</summary>
 
@@ -83,6 +94,7 @@ Summary: The conversation covers project setup, coding standards, and collaborat
 💡 LLM summary generated and cached for file-based provider.
 ✅ File-based provider 'project-guidelines' added/updated.
 ```
+
 </details>
 
 ---
@@ -90,15 +102,18 @@ Summary: The conversation covers project setup, coding standards, and collaborat
 ## 5. Remove a Provider
 
 **Command:**
+
 ```bash
 /prompt-providers remove summary
 ```
+
 <details>
 <summary>Show Output</summary>
 
 ```
 ✅ Provider 'summary' removed.
 ```
+
 </details>
 
 ---
@@ -106,15 +121,18 @@ Summary: The conversation covers project setup, coding standards, and collaborat
 ## 6. Update a Provider’s Config
 
 **Command:**
+
 ```bash
 /prompt-providers update project-guidelines --summarize false
 ```
+
 <details>
 <summary>Show Output</summary>
 
 ```
 ✅ Provider 'project-guidelines' updated.
 ```
+
 </details>
 
 ---
@@ -122,15 +140,18 @@ Summary: The conversation covers project setup, coding standards, and collaborat
 ## 7. Enable a Provider
 
 **Command:**
+
 ```bash
 /prompt-providers enable project-guidelines
 ```
+
 <details>
 <summary>Show Output</summary>
 
 ```
 ✅ Provider 'project-guidelines' enabled.
 ```
+
 </details>
 
 ---
@@ -138,15 +159,18 @@ Summary: The conversation covers project setup, coding standards, and collaborat
 ## 8. Disable a Provider
 
 **Command:**
+
 ```bash
 /prompt-providers disable project-guidelines
 ```
+
 <details>
 <summary>Show Output</summary>
 
 ```
 ✅ Provider 'project-guidelines' disabled.
 ```
+
 </details>
 
 ---
@@ -154,9 +178,11 @@ Summary: The conversation covers project setup, coding standards, and collaborat
 ## 9. Show Current System Prompt
 
 **Command:**
+
 ```bash
 /prompt
 ```
+
 <details>
 <summary>Show Output</summary>
 
@@ -169,6 +195,7 @@ Summary: The conversation covers project setup, coding standards, and collaborat
 💡 Prompt length: 1200 characters
 💡 Line count: 30 lines
 ```
+
 </details>
 
 ---
@@ -176,9 +203,11 @@ Summary: The conversation covers project setup, coding standards, and collaborat
 ## 10. Show Prompt Statistics
 
 **Command:**
+
 ```bash
 /prompt-stats
 ```
+
 <details>
 <summary>Show Output</summary>
 
@@ -190,4 +219,5 @@ Summary: The conversation covers project setup, coding standards, and collaborat
    - Generation time: 120 ms
    - Success: ✅
 ```
-</details> 
+
+</details>
