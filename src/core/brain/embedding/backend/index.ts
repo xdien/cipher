@@ -12,6 +12,8 @@ export type {
 	Embedder,
 	EmbeddingConfig,
 	OpenAIEmbeddingConfig,
+	GeminiEmbeddingConfig,
+	OllamaEmbeddingConfig,
 	BackendConfig,
 	EmbeddingResult,
 	BatchEmbeddingResult,
@@ -29,3 +31,5 @@ export {
 
 // Export backend implementations
 export { OpenAIEmbedder } from './openai.js';
+export { GeminiEmbedder } from './gemini.js';
+export { OllamaEmbedder } from './ollama.js';

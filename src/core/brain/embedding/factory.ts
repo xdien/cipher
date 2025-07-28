@@ -13,18 +13,30 @@ import {
 	parseEmbeddingConfigFromEnv,
 	validateEmbeddingConfig,
 	type OpenAIEmbeddingConfig as ZodOpenAIEmbeddingConfig,
+	type GeminiEmbeddingConfig as ZodGeminiEmbeddingConfig,
+	type OllamaEmbeddingConfig as ZodOllamaEmbeddingConfig,
 } from './config.js';
 import {
 	type Embedder,
 	type OpenAIEmbeddingConfig as InterfaceOpenAIEmbeddingConfig,
+	type GeminiEmbeddingConfig as InterfaceGeminiEmbeddingConfig,
+	type OllamaEmbeddingConfig as InterfaceOllamaEmbeddingConfig,
 	EmbeddingError,
 	EmbeddingValidationError,
 	OpenAIEmbedder,
+	GeminiEmbedder,
+	OllamaEmbedder,
 } from './backend/index.js';
 import { PROVIDER_TYPES, ERROR_MESSAGES, LOG_PREFIXES, DEFAULTS } from './constants.js';
 
+// Import the backend config type from types
+import { type BackendConfig as TypesBackendConfig } from './backend/types.js';
+
 // Use Zod-inferred types for validation, but convert to interface types for backend
-export type BackendConfig = ZodOpenAIEmbeddingConfig;
+export type BackendConfig =
+	| ZodOpenAIEmbeddingConfig
+	| ZodGeminiEmbeddingConfig
+	| ZodOllamaEmbeddingConfig;
 
 /**
  * Embedding factory interface
@@ -60,18 +72,48 @@ export interface EmbeddingFactory {
 /**
  * Convert Zod config to interface config for backend compatibility
  */
-function convertToInterfaceConfig(config: BackendConfig): InterfaceOpenAIEmbeddingConfig {
-	return {
-		type: PROVIDER_TYPES.OPENAI,
-		apiKey: config.apiKey,
-		model: config.model,
-		baseUrl: config.baseUrl,
-		timeout: config.timeout,
-		maxRetries: config.maxRetries,
-		options: config.options,
-		organization: config.organization,
-		dimensions: config.dimensions,
-	} as InterfaceOpenAIEmbeddingConfig;
+function convertToInterfaceConfig(config: BackendConfig): any {
+	switch (config.type) {
+		case PROVIDER_TYPES.OPENAI:
+			return {
+				type: PROVIDER_TYPES.OPENAI,
+				apiKey: config.apiKey,
+				model: config.model,
+				baseUrl: config.baseUrl,
+				timeout: config.timeout,
+				maxRetries: config.maxRetries,
+				options: config.options,
+				organization: (config as ZodOpenAIEmbeddingConfig).organization,
+				dimensions: config.dimensions,
+			} as InterfaceOpenAIEmbeddingConfig;
+
+		case PROVIDER_TYPES.GEMINI:
+			return {
+				type: PROVIDER_TYPES.GEMINI,
+				apiKey: config.apiKey,
+				model: config.model,
+				baseUrl: config.baseUrl,
+				timeout: config.timeout,
+				maxRetries: config.maxRetries,
+				options: config.options,
+				dimensions: config.dimensions,
+			} as InterfaceGeminiEmbeddingConfig;
+
+		case PROVIDER_TYPES.OLLAMA:
+			return {
+				type: PROVIDER_TYPES.OLLAMA,
+				apiKey: config.apiKey,
+				model: config.model,
+				baseUrl: config.baseUrl,
+				timeout: config.timeout,
+				maxRetries: config.maxRetries,
+				options: config.options,
+				dimensions: config.dimensions,
+			} as InterfaceOllamaEmbeddingConfig;
+
+		default:
+			throw new Error(`Unsupported provider type: ${(config as any).type}`);
+	}
 }
 
 /**
@@ -84,7 +126,7 @@ class OpenAIEmbeddingFactory implements EmbeddingFactory {
 		logger.debug(`${LOG_PREFIXES.FACTORY} Creating OpenAI embedder`, {
 			model: config.model,
 			baseUrl: config.baseUrl,
-			hasOrganization: !!config.organization,
+			hasOrganization: !!(config as any).organization,
 		});
 
 		try {
@@ -137,10 +179,135 @@ class OpenAIEmbeddingFactory implements EmbeddingFactory {
 }
 
 /**
+ * Gemini Embedding Factory
+ *
+ * Factory implementation for creating Gemini embedding instances.
+ */
+class GeminiEmbeddingFactory implements EmbeddingFactory {
+	async createEmbedder(config: BackendConfig): Promise<Embedder> {
+		logger.debug(`${LOG_PREFIXES.FACTORY} Creating Gemini embedder`, {
+			model: config.model,
+			baseUrl: config.baseUrl,
+		});
+
+		try {
+			// Convert Zod config to interface config for backend compatibility
+			const interfaceConfig = convertToInterfaceConfig(config);
+			const embedder = new GeminiEmbedder(interfaceConfig);
+
+			// Test the connection
+			const isHealthy = await embedder.isHealthy();
+			if (!isHealthy) {
+				throw new EmbeddingError(ERROR_MESSAGES.CONNECTION_FAILED('Gemini'), 'gemini');
+			}
+
+			logger.info(`${LOG_PREFIXES.FACTORY} Successfully created Gemini embedder`, {
+				model: config.model,
+				dimension: embedder.getDimension(),
+			});
+
+			return embedder;
+		} catch (error) {
+			logger.error(`${LOG_PREFIXES.FACTORY} Failed to create Gemini embedder`, {
+				error: error instanceof Error ? error.message : String(error),
+				model: config.model,
+			});
+
+			if (error instanceof EmbeddingError) {
+				throw error;
+			}
+
+			throw new EmbeddingError(
+				`Failed to create Gemini embedder: ${error instanceof Error ? error.message : String(error)}`,
+				'gemini',
+				error instanceof Error ? error : undefined
+			);
+		}
+	}
+
+	validateConfig(config: unknown): boolean {
+		try {
+			const validationResult = validateEmbeddingConfig(config);
+			return validationResult.success && validationResult.data?.type === PROVIDER_TYPES.GEMINI;
+		} catch {
+			return false;
+		}
+	}
+
+	getProviderType(): string {
+		return PROVIDER_TYPES.GEMINI;
+	}
+}
+
+/**
+ * Ollama Embedding Factory
+ *
+ * Factory implementation for creating Ollama embedding instances.
+ * Supports various local open-source embedding models.
+ */
+class OllamaEmbeddingFactory implements EmbeddingFactory {
+	async createEmbedder(config: BackendConfig): Promise<Embedder> {
+		logger.debug(`${LOG_PREFIXES.FACTORY} Creating Ollama embedder`, {
+			model: config.model,
+			baseUrl: config.baseUrl,
+		});
+
+		try {
+			// Convert Zod config to interface config for backend compatibility
+			const interfaceConfig = convertToInterfaceConfig(config);
+			const embedder = new OllamaEmbedder(interfaceConfig);
+
+			// Test the connection
+			const isHealthy = await embedder.isHealthy();
+			if (!isHealthy) {
+				throw new EmbeddingError(ERROR_MESSAGES.CONNECTION_FAILED('Ollama'), 'ollama');
+			}
+
+			logger.info(`${LOG_PREFIXES.FACTORY} Successfully created Ollama embedder`, {
+				model: config.model,
+				dimension: embedder.getDimension(),
+			});
+
+			return embedder;
+		} catch (error) {
+			logger.error(`${LOG_PREFIXES.FACTORY} Failed to create Ollama embedder`, {
+				error: error instanceof Error ? error.message : String(error),
+				model: config.model,
+			});
+
+			if (error instanceof EmbeddingError) {
+				throw error;
+			}
+
+			throw new EmbeddingError(
+				`Failed to create Ollama embedder: ${error instanceof Error ? error.message : String(error)}`,
+				'ollama',
+				error instanceof Error ? error : undefined
+			);
+		}
+	}
+
+	validateConfig(config: unknown): boolean {
+		try {
+			const validationResult = validateEmbeddingConfig(config);
+			return validationResult.success && validationResult.data?.type === PROVIDER_TYPES.OLLAMA;
+		} catch {
+			return false;
+		}
+	}
+
+	getProviderType(): string {
+		return PROVIDER_TYPES.OLLAMA;
+	}
+}
+
+/**
  * Registry of embedding factories
  */
 const EMBEDDING_FACTORIES = new Map<string, EmbeddingFactory>([
 	[PROVIDER_TYPES.OPENAI, new OpenAIEmbeddingFactory()],
+	[PROVIDER_TYPES.GEMINI, new GeminiEmbeddingFactory()],
+	[PROVIDER_TYPES.OLLAMA, new OllamaEmbeddingFactory()],
 ]);
 
 /**
@@ -220,11 +387,41 @@ export async function createOpenAIEmbedder(
 		baseUrl: config.baseUrl || DEFAULTS.OPENAI_BASE_URL,
 		timeout: config.timeout || DEFAULTS.TIMEOUT,
 		maxRetries: config.maxRetries || DEFAULTS.MAX_RETRIES,
-		...(config.organization && { organization: config.organization }),
+		...((config as any).organization && { organization: (config as any).organization }),
 		...(config.dimensions && { dimensions: config.dimensions }),
 		...(config.options && { options: config.options }),
 	};
 	return createEmbedder(openaiConfig);
+}
+
+/**
+ * Create Gemini embedder with simplified configuration
+ *
+ * @param config - Gemini-specific configuration
+ * @returns Promise resolving to Gemini embedder instance
+ *
+ * @example
+ * ```typescript
+ * const embedder = await createGeminiEmbedder({
+ *   apiKey: process.env.GEMINI_API_KEY,
+ *   model: 'text-embedding-004'
+ * });
+ * ```
+ */
+export async function createGeminiEmbedder(
+	config: Omit<ZodGeminiEmbeddingConfig, 'type'>
+): Promise<Embedder> {
+	const geminiConfig: ZodGeminiEmbeddingConfig = {
+		type: PROVIDER_TYPES.GEMINI,
+		apiKey: config.apiKey || '',
+		model: config.model || DEFAULTS.GEMINI_MODEL,
+		baseUrl: config.baseUrl || DEFAULTS.GEMINI_BASE_URL,
+		timeout: config.timeout || DEFAULTS.TIMEOUT,
+		maxRetries: config.maxRetries || DEFAULTS.MAX_RETRIES,
+		...(config.dimensions && { dimensions: config.dimensions }),
+		...(config.options && { options: config.options }),
+	};
+	return createEmbedder(geminiConfig);
 }
 
 /**
@@ -264,35 +461,68 @@ export async function createEmbedderFromEnv(
 /**
  * Create a default embedder with minimal configuration
  *
- * Uses OpenAI provider with default settings.
- * Requires OPENAI_API_KEY environment variable.
+ * Tries providers in priority order: Gemini > OpenRouter > OpenAI > Ollama
+ * Uses environment variables to determine available providers.
  *
  * @returns Promise resolving to default embedder instance
- * @throws {EmbeddingValidationError} If API key is not available
+ * @throws {EmbeddingValidationError} If no API keys are available
  *
  * @example
  * ```typescript
- * // Requires OPENAI_API_KEY environment variable
+ * // Uses available API keys from environment variables
  * const embedder = await createDefaultEmbedder();
  * ```
  */
 export async function createDefaultEmbedder(): Promise<Embedder> {
 	logger.debug(`${LOG_PREFIXES.FACTORY} Creating default embedder`);
 
-	const apiKey = process.env.OPENAI_API_KEY;
-	if (!apiKey) {
-		throw new EmbeddingValidationError(ERROR_MESSAGES.API_KEY_REQUIRED('OpenAI'));
+	// Try OpenAI first (default, reliable)
+	if (process.env.OPENAI_API_KEY) {
+		const openaiConfig: ZodOpenAIEmbeddingConfig = {
+			type: PROVIDER_TYPES.OPENAI,
+			apiKey: process.env.OPENAI_API_KEY,
+			model: DEFAULTS.OPENAI_MODEL,
+			baseUrl: DEFAULTS.OPENAI_BASE_URL,
+			timeout: DEFAULTS.TIMEOUT,
+			maxRetries: DEFAULTS.MAX_RETRIES,
+		};
+		return createEmbedder(openaiConfig);
 	}
 
-	const openaiConfig: ZodOpenAIEmbeddingConfig = {
-		type: PROVIDER_TYPES.OPENAI,
-		apiKey,
-		model: DEFAULTS.OPENAI_MODEL,
-		baseUrl: DEFAULTS.OPENAI_BASE_URL,
-		timeout: DEFAULTS.TIMEOUT,
-		maxRetries: DEFAULTS.MAX_RETRIES,
-	};
-	return createEmbedder(openaiConfig);
+	// Try Gemini second (free alternative)
+	if (process.env.GEMINI_API_KEY) {
+		const geminiConfig: ZodGeminiEmbeddingConfig = {
+			type: PROVIDER_TYPES.GEMINI,
+			apiKey: process.env.GEMINI_API_KEY,
+			model: DEFAULTS.GEMINI_MODEL,
+			baseUrl: DEFAULTS.GEMINI_BASE_URL,
+			timeout: DEFAULTS.TIMEOUT,
+			maxRetries: DEFAULTS.MAX_RETRIES,
+		};
+		return createEmbedder(geminiConfig);
+	}
+
+	// Try Ollama third (local, free)
+	if (process.env.OLLAMA_BASE_URL) {
+		try {
+			const ollamaConfig: ZodOllamaEmbeddingConfig = {
+				type: PROVIDER_TYPES.OLLAMA,
+				model: DEFAULTS.OLLAMA_MODEL,
+				baseUrl: process.env.OLLAMA_BASE_URL,
+				timeout: DEFAULTS.TIMEOUT,
+				maxRetries: DEFAULTS.MAX_RETRIES,
+			};
+			return createEmbedder(ollamaConfig);
+		} catch (error) {
+			logger.debug(
+				`${LOG_PREFIXES.FACTORY} Ollama embeddings failed (${error instanceof Error ? error.message : String(error)}), no more options`
+			);
+		}
+	}
+
+	throw new EmbeddingValidationError(
+		'No embedding API keys found. Please set OPENAI_API_KEY, GEMINI_API_KEY, or configure OLLAMA_BASE_URL'
+	);
 }
 
 /**
