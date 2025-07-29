@@ -146,18 +146,35 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 				// Show compression info after processing
 				await _showCompressionInfo(agent);
 
-				// Let background operations run in the background without blocking the UI
+				// At info log level, display prompt immediately and let background operations run silently
 				if (result && result.backgroundOperations) {
-					result.backgroundOperations
-						.catch(() => {
-							// Background operations failures are already logged, don't show to user
-						})
-						.finally(() => {
-							// Small delay to ensure any error logs are fully written before redisplaying prompt
-							setTimeout(() => {
-								rl.prompt();
-							}, COMPRESSION_CHECK_DELAY);
+					// Check if we're at info log level or higher (info level = 2, anything higher means less verbose)
+					const currentLogLevel = process.env.CIPHER_LOG_LEVEL || 'info';
+					const isInfoLevelOrHigher = ['error', 'warn', 'info'].includes(currentLogLevel);
+					
+					if (isInfoLevelOrHigher) {
+						// At info level, show prompt immediately
+						rl.prompt();
+						
+						// Let background operations run silently in the background
+						result.backgroundOperations.catch(() => {
+							// Background operation errors are intentionally ignored at info level
 						});
+					} else {
+						// At debug/verbose levels, wait for background operations to complete
+						result.backgroundOperations
+							.catch(() => {
+								// Background operations failures are already logged, don't show to user
+							})
+							.finally(() => {
+								// Small delay to ensure any error logs are fully written before redisplaying prompt
+								setTimeout(() => {
+									rl.prompt();
+								}, COMPRESSION_CHECK_DELAY);
+							});
+					}
+				} else {
+					rl.prompt();
 				}
 			} else {
 				const parsedInput = commandParser.parseInput(trimmedInput);
@@ -178,6 +195,8 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 						console.log(chalk.red('❌ Invalid command format'));
 						commandParser.displayHelp();
 					}
+					// Always redisplay prompt after slash commands
+					rl.prompt();
 				} else {
 					// Handle regular user prompt - pass to agent
 					console.log(chalk.gray('🤔 Thinking...'));
@@ -191,28 +210,36 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 						console.log(chalk.gray('No response received.'));
 					}
 
-					// Let background operations run without blocking the response
-					if (result && result.backgroundOperations) {
-						result.backgroundOperations.catch(() => {
-							// Background operation errors are intentionally ignored
-						});
-					}
-
 					// Show compression info after processing
 					await _showCompressionInfo(agent);
 
-					// Let background operations run in the background without blocking the UI
+					// At info log level, display prompt immediately and let background operations run silently
 					if (result && result.backgroundOperations) {
-						result.backgroundOperations
-							.catch(() => {
-								// Background operations failures are already logged, don't show to user
-							})
-							.finally(() => {
-								// Small delay to ensure any error logs are fully written before redisplaying prompt
-								setTimeout(() => {
-									rl.prompt();
-								}, COMPRESSION_CHECK_DELAY);
+						// Check if we're at info log level or higher (info level = 2, anything higher means less verbose)
+						const currentLogLevel = process.env.CIPHER_LOG_LEVEL || 'info';
+						const isInfoLevelOrHigher = ['error', 'warn', 'info'].includes(currentLogLevel);
+						
+						if (isInfoLevelOrHigher) {
+							// At info level, show prompt immediately
+							rl.prompt();
+							
+							// Let background operations run silently in the background
+							result.backgroundOperations.catch(() => {
+								// Background operation errors are intentionally ignored at info level
 							});
+						} else {
+							// At debug/verbose levels, wait for background operations to complete
+							result.backgroundOperations
+								.catch(() => {
+									// Background operations failures are already logged, don't show to user
+								})
+								.finally(() => {
+									// Small delay to ensure any error logs are fully written before redisplaying prompt
+									setTimeout(() => {
+										rl.prompt();
+									}, COMPRESSION_CHECK_DELAY);
+								});
+						}
 					} else {
 						rl.prompt();
 					}
