@@ -71,6 +71,9 @@ const envSchema = z.object({
 	// Reflection Memory Configuration
 	REFLECTION_VECTOR_STORE_COLLECTION: z.string().default('reflection_memory'),
 	DISABLE_REFLECTION_MEMORY: z.boolean().default(false),
+	// Event Persistence Configuration
+	EVENT_PERSISTENCE_ENABLED: z.boolean().default(false),
+	EVENT_PERSISTENCE_PATH: z.string().optional(),
 });
 
 type EnvSchema = z.infer<typeof envSchema>;
@@ -208,6 +211,11 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 			}
 			case 'DISABLE_REFLECTION_MEMORY':
 				return process.env.DISABLE_REFLECTION_MEMORY === 'true';
+			// Event Persistence Configuration
+			case 'EVENT_PERSISTENCE_ENABLED':
+				return process.env.EVENT_PERSISTENCE_ENABLED === 'true';
+			case 'EVENT_PERSISTENCE_PATH':
+				return process.env.EVENT_PERSISTENCE_PATH;
 			default:
 				return process.env[prop];
 		}
