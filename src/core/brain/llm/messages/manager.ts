@@ -78,6 +78,18 @@ export class ContextManager {
 		}
 	}
 
+	async restoreHistory(): Promise<void> {
+		if (this.historyProvider && this.sessionId) {
+			try {
+				this.messages = await this.historyProvider.getHistory(this.sessionId);
+				logger.debug(`Restored ${this.messages.length} messages from persistent history.`);
+			} catch (err) {
+				logger.error(`Failed to restore history from provider: ${err}`);
+				this.fallbackToMemory = true;
+			}
+		}
+	}
+
 	async addUserMessage(textContent: string, imageData?: ImageData): Promise<void> {
 		if (typeof textContent !== 'string' || textContent.trim() === '') {
 			throw new Error('Content must be a non-empty string.');
@@ -194,16 +206,9 @@ export class ContextManager {
 				this.fallbackToMemory = true;
 				return this.messages;
 			}
+		} else {
+			return this.messages;
 		}
-
-		return this.messages;
-	}
-
-	// History restoration methods
-	async restoreHistory(): Promise<void> {
-		logger.debug(
-			`ContextManager: restoreHistory called, in-memory messages: ${this.messages.length}`
-		);
 	}
 
 	async restoreHistoryPersistent(): Promise<void> {
