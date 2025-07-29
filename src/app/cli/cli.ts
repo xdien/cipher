@@ -151,11 +151,11 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 					// Check if we're at info log level or higher (info level = 2, anything higher means less verbose)
 					const currentLogLevel = process.env.CIPHER_LOG_LEVEL || 'info';
 					const isInfoLevelOrHigher = ['error', 'warn', 'info'].includes(currentLogLevel);
-					
+
 					if (isInfoLevelOrHigher) {
 						// At info level, show prompt immediately
 						rl.prompt();
-						
+
 						// Let background operations run silently in the background
 						result.backgroundOperations.catch(() => {
 							// Background operation errors are intentionally ignored at info level
@@ -218,11 +218,11 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 						// Check if we're at info log level or higher (info level = 2, anything higher means less verbose)
 						const currentLogLevel = process.env.CIPHER_LOG_LEVEL || 'info';
 						const isInfoLevelOrHigher = ['error', 'warn', 'info'].includes(currentLogLevel);
-						
+
 						if (isInfoLevelOrHigher) {
 							// At info level, show prompt immediately
 							rl.prompt();
-							
+
 							// Let background operations run silently in the background
 							result.backgroundOperations.catch(() => {
 								// Background operation errors are intentionally ignored at info level

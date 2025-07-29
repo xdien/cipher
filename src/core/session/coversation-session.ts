@@ -165,10 +165,10 @@ export class ConversationSession {
 					logger.debug(`Session ${this.id}: Multi-backend history provider initialized.`);
 				} else if (this.historyBackend === 'database') {
 					const storageConfig = {
-						database: { 
-							type: 'sqlite' as const, 
+						database: {
+							type: 'sqlite' as const,
 							path: env.STORAGE_DATABASE_PATH,
-							database: env.STORAGE_DATABASE_NAME
+							database: env.STORAGE_DATABASE_NAME,
 						},
 						cache: { type: 'in-memory' as const },
 					};
