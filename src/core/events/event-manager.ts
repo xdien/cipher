@@ -74,7 +74,7 @@ export class EventManager {
 			}, this.options.sessionCleanupInterval);
 		}
 
-		logger.info('EventManager initialized', {
+		logger.debug('EventManager initialized', {
 			instanceId: this.instanceId,
 			options: this.options,
 		});

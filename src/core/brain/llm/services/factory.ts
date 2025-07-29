@@ -12,6 +12,7 @@ import { OllamaService } from './ollama.js';
 import { QwenService, QwenOptions } from './qwen.js';
 import { AwsService } from './aws.js';
 import { AzureService } from './azure.js';
+import { GeminiService } from './gemini.js';
 
 function extractApiKey(config: LLMConfig): string {
 	const provider = config.provider.toLowerCase();
@@ -195,6 +196,25 @@ function _createLLMService(
 				unifiedToolManager
 			);
 		}
+		case 'gemini': {
+			logger.debug('Creating Gemini service', { model: config.model, hasApiKey: !!apiKey });
+			try {
+				return new GeminiService(
+					apiKey,
+					config.model,
+					mcpManager,
+					contextManager,
+					config.maxIterations,
+					unifiedToolManager
+				);
+			} catch (error) {
+				logger.error('Failed to create Gemini service', { 
+					error: error instanceof Error ? error.message : String(error),
+					model: config.model 
+				});
+				throw error;
+			}
+		}
 		default:
 			throw new Error(`Unsupported LLM provider: ${config.provider}`);
 	}
@@ -276,13 +296,20 @@ function getDefaultContextWindow(provider: string, model?: string): number {
 			'claude-instant-1.2': 100000,
 			default: 200000,
 		},
-		google: {
+		gemini: {
 			'gemini-pro': 32760,
 			'gemini-pro-vision': 16384,
 			'gemini-ultra': 32760,
 			'gemini-1.5-pro': 1000000,
 			'gemini-1.5-flash': 1000000,
-			default: 32760,
+			'gemini-1.5-pro-latest': 2000000,
+			'gemini-1.5-flash-latest': 1000000,
+			'gemini-2.0-flash': 1000000,
+			'gemini-2.0-flash-exp': 1000000,
+			'gemini-2.5-pro': 2000000,
+			'gemini-2.5-flash': 1000000,
+			'gemini-2.5-flash-lite': 1000000,
+			default: 1000000,
 		},
 		ollama: {
 			default: 8192, // Conservative default for local models

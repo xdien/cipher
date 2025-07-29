@@ -112,19 +112,19 @@ export class InternalToolManager implements IInternalToolManager {
 		}
 
 		if (!this.config.enabled) {
-			logger.info('InternalToolManager: Disabled by configuration');
+			logger.debug('InternalToolManager: Disabled by configuration');
 			this.initialized = true; // Mark as initialized even when disabled
 			return;
 		}
 
 		try {
-			logger.info('InternalToolManager: Initializing...');
+			logger.debug('InternalToolManager: Initializing...');
 
 			// Initialize the registry
 			await this.registry.initialize();
 
 			this.initialized = true;
-			logger.info(`InternalToolManager: Initialized successfully with config:`, {
+			logger.debug(`InternalToolManager: Initialized successfully with config:`, {
 				enabled: this.config.enabled,
 				timeout: this.config.timeout,
 				enableCache: this.config.enableCache,
@@ -153,7 +153,7 @@ export class InternalToolManager implements IInternalToolManager {
 			// Initialize stats for the new tool using normalized name
 			const normalizedName = createInternalToolName(tool.name);
 			this.initializeToolStats(normalizedName);
-			logger.info(`InternalToolManager: Successfully registered tool '${normalizedName}'`);
+			logger.debug(`InternalToolManager: Successfully registered tool '${normalizedName}'`);
 		} else {
 			logger.warn(`InternalToolManager: Failed to register tool '${tool.name}': ${result.message}`);
 		}

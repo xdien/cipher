@@ -16,6 +16,7 @@ function getFormatter(provider: string): IMessageFormatter {
 		case 'openrouter':
 		case 'ollama':
 		case 'qwen':
+		case 'gemini':
 			formatter = new OpenAIMessageFormatter();
 			break;
 		case 'azure':
@@ -27,7 +28,7 @@ function getFormatter(provider: string): IMessageFormatter {
 			break;
 		default:
 			throw new Error(
-				`Unsupported provider: ${provider}. Supported providers: openai, anthropic, openrouter, ollama, qwen, aws, azure`
+				`Unsupported provider: ${provider}. Supported providers: openai, anthropic, openrouter, ollama, qwen, aws, azure, gemini`
 			);
 	}
 	return formatter;
@@ -54,6 +55,7 @@ export function createContextManager(
 		logger.error('Invalid LLM configuration provided to createContextManager', {
 			config,
 			error: error instanceof Error ? error.message : String(error),
+			validationIssues: error instanceof Error && 'issues' in error ? error.issues : undefined,
 		});
 		throw new Error(
 			`Invalid LLM configuration: ${error instanceof Error ? error.message : String(error)}`

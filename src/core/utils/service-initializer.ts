@@ -28,6 +28,71 @@ import fs from 'fs';
 import path from 'path';
 import yaml from 'yaml';
 
+/**
+ * Create embedding configuration from LLM provider settings
+ */
+async function createEmbeddingFromLLMProvider(
+	embeddingManager: EmbeddingManager, 
+	llmConfig: any
+): Promise<{ embedder: any; info: any } | null> {
+	const provider = llmConfig.provider?.toLowerCase();
+	
+	try {
+		switch (provider) {
+			case 'openai': {
+				if (!llmConfig.apiKey && !process.env.OPENAI_API_KEY) {
+					logger.debug('No OpenAI API key available for embedding fallback');
+					return null;
+				}
+				const embeddingConfig = {
+					type: 'openai' as const,
+					apiKey: llmConfig.apiKey || process.env.OPENAI_API_KEY,
+					model: 'text-embedding-3-small' as const,
+					baseUrl: llmConfig.baseUrl,
+					organization: llmConfig.organization
+				};
+				logger.debug('Using OpenAI embedding fallback: text-embedding-3-small');
+				return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
+			}
+			
+			case 'ollama': {
+				const baseUrl = llmConfig.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+				const embeddingConfig = {
+					type: 'ollama' as const,
+					baseUrl,
+					model: 'nomic-embed-text' as const
+				};
+				logger.debug('Using Ollama embedding fallback: nomic-embed-text');
+				return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
+			}
+			
+			case 'gemini': {
+				if (!llmConfig.apiKey && !process.env.GEMINI_API_KEY) {
+					logger.debug('No Gemini API key available for embedding fallback');
+					return null;
+				}
+				const embeddingConfig = {
+					type: 'gemini' as const,
+					apiKey: llmConfig.apiKey || process.env.GEMINI_API_KEY,
+					model: 'gemini-embedding-001' as const
+				};
+				logger.debug('Using Gemini embedding fallback: gemini-embedding-001');
+				return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
+			}
+			
+			default: {
+				logger.debug(`No embedding fallback available for LLM provider: ${provider}`);
+				return null;
+			}
+		}
+	} catch (error) {
+		logger.warn(`Failed to create embedding from LLM provider ${provider}`, {
+			error: error instanceof Error ? error.message : String(error)
+		});
+		return null;
+	}
+}
+
 export type AgentServices = {
 	mcpManager: MCPManager;
 	promptManager: EnhancedPromptManager;
@@ -35,7 +100,7 @@ export type AgentServices = {
 	sessionManager: SessionManager;
 	internalToolManager: InternalToolManager;
 	unifiedToolManager: UnifiedToolManager;
-	embeddingManager: EmbeddingManager;
+	embeddingManager?: EmbeddingManager;
 	vectorStoreManager: VectorStoreManager | DualCollectionVectorManager;
 	eventManager: EventManager;
 	llmService?: ILLMService;
@@ -89,8 +154,6 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 		version: process.env.npm_package_version || '1.0.0',
 	});
 
-	logger.info('Event manager initialized successfully');
-
 	const mcpManager = new MCPManager();
 
 	// Set event manager for connection lifecycle events
@@ -103,7 +166,7 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 
 	const mcpServerCount = Object.keys(config.mcpServers || {}).length;
 	if (mcpServerCount === 0) {
-		logger.info('Agent initialized without MCP servers - only built-in capabilities available');
+		logger.debug('Agent initialized without MCP servers - only built-in capabilities available');
 	} else {
 		logger.debug(`Client manager initialized with ${mcpServerCount} MCP server(s)`);
 	}
@@ -114,48 +177,66 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 		timestamp: Date.now(),
 	});
 
-	// 2. Initialize embedding manager with YAML configuration first, then environment fallback
+	// 2. Initialize embedding manager with new fallback mechanism
 	logger.debug('Initializing embedding manager...');
 	const embeddingManager = new EmbeddingManager();
+	let embeddingEnabled = false;
 
 	try {
 		let embeddingResult: { embedder: any; info: any } | null = null;
 
-		// First try YAML embedding configuration if available
-		if (config.embedding) {
-			logger.debug('Found embedding configuration in YAML, using it');
-			embeddingResult = await embeddingManager.createEmbedderFromConfig(
-				config.embedding as any,
-				'default'
-			);
-		}
+		// Check if embeddings are explicitly disabled
+		const explicitlyDisabled = 
+			config.embedding === null ||
+			config.embedding === false ||
+			(config.embedding && typeof config.embedding === 'object' && 'disabled' in config.embedding && config.embedding.disabled === true) ||
+			process.env.DISABLE_EMBEDDINGS === 'true' || 
+			process.env.EMBEDDING_DISABLED === 'true';
+		
+		// When config.embedding is undefined (commented out), it should trigger fallback, not be treated as disabled
 
-		// If no YAML config or it failed, fallback to environment variables
-		if (!embeddingResult) {
-			logger.debug('No YAML embedding config or it failed, trying environment variables');
-			embeddingResult = await embeddingManager.createEmbedderFromEnv('default');
-		}
-		if (embeddingResult) {
-			logger.info('Embedding manager initialized successfully', {
-				provider: embeddingResult.info.provider,
-				model: embeddingResult.info.model,
-				dimension: embeddingResult.info.dimension,
-			});
-
-			// Emit embedding manager initialization event
-			eventManager.emitServiceEvent('cipher:serviceStarted', {
-				serviceType: 'EmbeddingManager',
-				timestamp: Date.now(),
-			});
+		if (explicitlyDisabled) {
+			logger.warn('Embeddings are explicitly disabled - all embedding-dependent tools will be unavailable');
+			embeddingEnabled = false;
 		} else {
-			logger.warn(
-				'No embedding configuration found in environment - memory operations will be limited'
-			);
+			// Try YAML embedding configuration if available
+			if (config.embedding && typeof config.embedding === 'object' && !('disabled' in config.embedding)) {
+				logger.debug('Found embedding configuration in YAML, using it');
+				embeddingResult = await embeddingManager.createEmbedderFromConfig(
+					config.embedding as any,
+					'default'
+				);
+			}
+
+			// If no YAML config, fallback to LLM provider's default embedding
+			if (!embeddingResult && config.llm?.provider) {
+				logger.debug('No embedding config found, falling back to LLM provider default embedding');
+				embeddingResult = await createEmbeddingFromLLMProvider(embeddingManager, config.llm);
+			}
+
+			if (embeddingResult) {
+				logger.debug('Embedding manager initialized successfully', {
+					provider: embeddingResult.info.provider,
+					model: embeddingResult.info.model,
+					dimension: embeddingResult.info.dimension,
+				});
+
+				// Emit embedding manager initialization event
+				eventManager.emitServiceEvent('cipher:serviceStarted', {
+					serviceType: 'EmbeddingManager',
+					timestamp: Date.now(),
+				});
+				embeddingEnabled = true;
+			} else {
+				logger.warn('No embedding configuration available - embedding-dependent tools will be disabled');
+				embeddingEnabled = false;
+			}
 		}
 	} catch (error) {
 		logger.warn('Failed to initialize embedding manager', {
 			error: error instanceof Error ? error.message : String(error),
 		});
+		embeddingEnabled = false;
 	}
 
 	// 3. Initialize vector storage manager with configuration
@@ -180,7 +261,7 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 			(vectorStoreManager as DualCollectionVectorManager).setEventManager(eventManager);
 
 			const info = (vectorStoreManager as DualCollectionVectorManager).getInfo();
-			logger.info('Dual collection vector storage manager initialized successfully', {
+			logger.debug('Dual collection vector storage manager initialized successfully', {
 				backend: info.knowledge.manager.getInfo().backend.type,
 				knowledgeCollection: info.knowledge.collectionName,
 				reflectionCollection: info.reflection.collectionName,
@@ -197,7 +278,7 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 			// Set event manager for memory operation events
 			(vectorStoreManager as VectorStoreManager).setEventManager(eventManager);
 
-			logger.info('Vector storage manager initialized successfully', {
+			logger.debug('Vector storage manager initialized successfully', {
 				backend: vectorStoreManager.getInfo().backend.type,
 				collection: vectorStoreManager.getInfo().backend.collectionName,
 				dimension: vectorStoreManager.getInfo().backend.dimension,
@@ -221,13 +302,13 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 		const kgFactory = await createKnowledgeGraphFromEnv();
 		if (kgFactory) {
 			knowledgeGraphManager = kgFactory.manager;
-			logger.info('Knowledge graph manager initialized successfully', {
+			logger.debug('Knowledge graph manager initialized successfully', {
 				backend: knowledgeGraphManager.getInfo().backend.type,
 				connected: knowledgeGraphManager.isConnected(),
 				fallback: knowledgeGraphManager.getInfo().backend.fallback || false,
 			});
 		} else {
-			logger.info('Knowledge graph is disabled in environment configuration');
+			logger.debug('Knowledge graph is disabled in environment configuration');
 		}
 	} catch (error) {
 		logger.warn('Failed to initialize knowledge graph manager', {
@@ -248,7 +329,7 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 			content = config.systemPrompt;
 		} else if (typeof config.systemPrompt === 'object' && config.systemPrompt !== null) {
 			const promptObj = config.systemPrompt as any;
-			enabled = promptObj.enabled !== false;
+			enabled = promptObj.enabled !== false && promptObj.enabled !== undefined;
 			content = promptObj.content || '';
 		}
 		staticProvider = {
@@ -312,6 +393,7 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 	try {
 		logger.debug('Initializing LLM service...');
 		const llmConfig = stateManager.getLLMConfig();
+		logger.debug('LLM Config retrieved', { llmConfig });
 		const contextManager = createContextManager(llmConfig, promptManager, undefined, undefined);
 
 		llmService = createLLMService(llmConfig, mcpManager, contextManager);
@@ -352,7 +434,7 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 	internalToolManager.setEventManager(eventManager);
 
 	// Register all internal tools
-	const toolRegistrationResult = await registerAllTools(internalToolManager);
+	const toolRegistrationResult = await registerAllTools(internalToolManager, { embeddingEnabled });
 	logger.info('Internal tools registration completed', {
 		totalTools: toolRegistrationResult.total,
 		registered: toolRegistrationResult.registered.length,
@@ -366,12 +448,18 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 	}
 
 	// Configure the internal tool manager with services for advanced tools
-	internalToolManager.setServices({
-		embeddingManager,
+	// Only include embeddingManager if embeddings are enabled
+	const services: any = {
 		vectorStoreManager,
 		llmService,
 		knowledgeGraphManager,
-	});
+	};
+	
+	if (embeddingEnabled) {
+		services.embeddingManager = embeddingManager;
+	}
+	
+	internalToolManager.setServices(services);
 
 	// 10. Initialize unified tool manager
 	const unifiedToolManager = new UnifiedToolManager(mcpManager, internalToolManager, {
@@ -409,14 +497,13 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 	});
 
 	// 12. Return the core services
-	const services: AgentServices = {
+	const agentServices: AgentServices = {
 		mcpManager,
 		promptManager,
 		stateManager,
 		sessionManager,
 		internalToolManager,
 		unifiedToolManager,
-		embeddingManager,
 		vectorStoreManager,
 		eventManager,
 		llmService: llmService || {
@@ -426,18 +513,23 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 			getConfig: () => ({ provider: 'unknown', model: 'unknown' }),
 		},
 	};
+	
+	// Only include embeddingManager if embeddings are enabled
+	if (embeddingEnabled) {
+		agentServices.embeddingManager = embeddingManager;
+	}
 
 	// Only include knowledgeGraphManager when it's defined
 	if (knowledgeGraphManager) {
-		services.knowledgeGraphManager = knowledgeGraphManager;
+		agentServices.knowledgeGraphManager = knowledgeGraphManager;
 	}
 
 	// Emit all services ready event
-	const serviceTypes = Object.keys(services).filter(key => services[key as keyof AgentServices]);
+	const serviceTypes = Object.keys(agentServices).filter(key => agentServices[key as keyof AgentServices]);
 	eventManager.emitServiceEvent('cipher:allServicesReady', {
 		timestamp: Date.now(),
 		services: serviceTypes,
 	});
 
-	return services;
+	return agentServices;
 }

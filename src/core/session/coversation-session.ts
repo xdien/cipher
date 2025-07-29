@@ -131,7 +131,6 @@ export class ConversationSession {
 	 * Initializes the services for the session, including the history provider.
 	 */
 	private async initializeServices(): Promise<void> {
-		console.log(`[Cipher DEBUG] Initializing session with historyBackend='${this.historyBackend}'`);
 		const llmConfig = this.services.stateManager.getLLMConfig(this.id);
 		let historyProvider: IConversationHistoryProvider | undefined = undefined;
 		// Multi-backend config example (can be extended to use env/config)
@@ -322,6 +321,13 @@ export class ConversationSession {
 		// This ensures users see the response immediately without waiting for memory operations
 		const backgroundOperations = new Promise<void>(resolve => {
 			setImmediate(async () => {
+				// Quick check to skip all background operations if embeddings are disabled
+				if (env.DISABLE_EMBEDDINGS || env.EMBEDDING_DISABLED) {
+					logger.debug('Skipping all background memory operations - embeddings disabled', { sessionId: this.id });
+					resolve();
+					return;
+				}
+				
 				logger.debug('Starting background memory operations', { sessionId: this.id });
 				try {
 					await this.enforceMemoryExtraction(input, response, options);
@@ -364,10 +370,31 @@ export class ConversationSession {
 		try {
 			logger.debug('ConversationSession: Enforcing memory extraction for interaction');
 
+			// Check if embeddings are disabled via environment variables or configuration
+			const embeddingsDisabled = env.DISABLE_EMBEDDINGS || env.EMBEDDING_DISABLED;
+			
 			// Check if the unifiedToolManager is available
 			if (!this.services.unifiedToolManager) {
 				logger.debug(
 					'ConversationSession: UnifiedToolManager not available, skipping memory extraction'
+				);
+				return;
+			}
+
+			// Load all tools once to avoid redundant loading
+			const allTools = await this.services.unifiedToolManager.getAllTools();
+			
+			// Check if the memory extraction tool is available
+			const memoryToolAvailable = allTools['cipher_extract_and_operate_memory'];
+			
+			if (embeddingsDisabled || !memoryToolAvailable) {
+				logger.debug(
+					'ConversationSession: Memory extraction skipped',
+					{ 
+						embeddingsDisabled, 
+						memoryToolAvailable: !!memoryToolAvailable,
+						reason: embeddingsDisabled ? 'embeddings disabled' : 'memory tool unavailable'
+					}
 				);
 				return;
 			}
@@ -409,7 +436,8 @@ export class ConversationSession {
 			}
 
 			// Call the extract_and_operate_memory tool directly (with cipher_ prefix)
-			const memoryResult = await this.services.unifiedToolManager.executeTool(
+			// Use executeToolWithoutLoading to avoid redundant tool loading
+			const memoryResult = await this.services.unifiedToolManager.executeToolWithoutLoading(
 				'cipher_extract_and_operate_memory',
 				{
 					interaction: comprehensiveInteractionData,
@@ -442,7 +470,8 @@ export class ConversationSession {
 
 			// **NEW: Automatic Reflection Memory Processing**
 			// Process reasoning traces in the background, similar to knowledge memory
-			await this.enforceReflectionMemoryProcessing(userInput, aiResponse);
+			// NOTE: Pass the already-loaded tools to avoid redundant loading
+			await this.enforceReflectionMemoryProcessing(userInput, aiResponse, allTools);
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			logger.error('ConversationSession: Memory extraction failed', {
@@ -487,13 +516,44 @@ export class ConversationSession {
 	 * Programmatically enforce reflection memory processing after each interaction (runs in background)
 	 * This automatically extracts, evaluates, and stores reasoning patterns in the background
 	 * NOTE: This method is called from enforceMemoryExtraction which already runs asynchronously
+	 * @param userInput - The user input string
+	 * @param aiResponse - The AI response string
+	 * @param allTools - Pre-loaded tools to avoid redundant loading
 	 */
 	private async enforceReflectionMemoryProcessing(
 		userInput: string,
-		aiResponse: string
+		aiResponse: string,
+		allTools: Record<string, any>
 	): Promise<void> {
 		try {
 			logger.debug('ConversationSession: Enforcing reflection memory processing');
+
+			// Check if embeddings are disabled via environment variables or configuration
+			const embeddingsDisabled = env.DISABLE_EMBEDDINGS || env.EMBEDDING_DISABLED;
+			
+			// Check if the unifiedToolManager is available
+			if (!this.services.unifiedToolManager) {
+				logger.debug(
+					'ConversationSession: UnifiedToolManager not available, skipping reflection memory processing'
+				);
+				return;
+			}
+
+			// Check if reflection memory tools are available (using pre-loaded tools)
+			const reflectionToolsAvailable = allTools['cipher_extract_reasoning_steps'] && 
+				allTools['cipher_store_reasoning_memory'];
+			
+			if (embeddingsDisabled || !reflectionToolsAvailable) {
+				logger.debug(
+					'ConversationSession: Reflection memory processing skipped',
+					{ 
+						embeddingsDisabled, 
+						reflectionToolsAvailable: !!reflectionToolsAvailable,
+						reason: embeddingsDisabled ? 'embeddings disabled' : 'reflection tools unavailable'
+					}
+				);
+				return;
+			}
 
 			// Check if reflection memory is force disabled
 			if (env.DISABLE_REFLECTION_MEMORY) {

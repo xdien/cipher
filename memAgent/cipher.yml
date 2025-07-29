@@ -10,9 +10,14 @@ mcpServers:
 
 # describes the llm configuration
 llm:
-  provider: openai
-  model: gpt-4.1-mini
-  apiKey: $OPENAI_API_KEY
+  # provider: openai
+  # model: gpt-4.1-mini
+  # apiKey: $OPENAI_API_KEY
+  # maxIterations: 50
+
+  provider: gemini
+  model: gemini-2.5-flash
+  apiKey: $GEMINI_API_KEY
   maxIterations: 50
 
   # provider: anthropic
@@ -57,11 +62,6 @@ llm:
   # apiKey: $OPENROUTER_API_KEY
   # maxIterations: 50
 
-# Evaluation LLM configuration (non-thinking model for evaluation step)
-# evalLlm:
-#   provider: anthropic
-#   model: claude-3-7-sonnet-20250219
-#   apiKey: $ANTHROPIC_API_KEY
 
 # --- AWS Bedrock LLM Configuration (Active Example) ---
 # llm:
@@ -123,8 +123,8 @@ llm:
 #   baseUrl: $OLLAMA_BASE_URL
 
 # Disable embeddings entirely:
-# embedding:
-#   disabled: true
+embedding:
+  disabled: true
 
 # System prompt - User customizable
 # This prompt will be combined with built-in tool usage instructions

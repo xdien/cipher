@@ -97,16 +97,16 @@ export class UnifiedToolManager {
 	 * Get all available tools from both sources
 	 */
 	async getAllTools(): Promise<CombinedToolSet> {
-		logger.info('UnifiedToolManager: Getting all tools');
+		logger.debug('UnifiedToolManager: Getting all tools');
 		const combinedTools: CombinedToolSet = {};
 
 		try {
 			// Get MCP tools if enabled
 			if (this.config.enableMcpTools) {
-				logger.info('UnifiedToolManager: Loading MCP tools');
+				logger.debug('UnifiedToolManager: Loading MCP tools');
 				try {
 					const mcpTools = await this.mcpManager.getAllTools();
-					logger.info(`UnifiedToolManager: Retrieved ${Object.keys(mcpTools).length} MCP tools`);
+					logger.debug(`UnifiedToolManager: Retrieved ${Object.keys(mcpTools).length} MCP tools`);
 					for (const [toolName, tool] of Object.entries(mcpTools)) {
 						combinedTools[toolName] = {
 							description: tool.description,
@@ -122,28 +122,26 @@ export class UnifiedToolManager {
 
 			// Get internal tools if enabled
 			if (this.config.enableInternalTools) {
-				logger.info('UnifiedToolManager: Loading internal tools');
+				logger.debug('UnifiedToolManager: Loading internal tools');
 				try {
 					const internalTools = this.internalToolManager.getAllTools();
-					logger.info(
+					logger.debug(
 						`UnifiedToolManager: Retrieved ${Object.keys(internalTools).length} internal tools`
 					);
 					for (const [toolName, tool] of Object.entries(internalTools)) {
-						// Special handling for cipher_extract_and_operate_memory in aggregator mode
-						if (
-							toolName === 'extract_and_operate_memory' ||
-							toolName === 'cipher_extract_and_operate_memory'
-						) {
-							if (this.config.mode === 'aggregator') {
-								logger.debug(`UnifiedToolManager: Exposing '${toolName}' in aggregator mode`);
-								// Allow this tool in aggregator mode even though agentAccessible is false
+						// Skip tools that are not agent-accessible (internal-only tools)
+						// But allow memory tools in all modes when embeddings are available
+						if (tool.agentAccessible === false) {
+							// Allow memory and search tools in all modes, not just aggregator mode
+							const isMemoryTool = toolName === 'extract_and_operate_memory' || 
+								toolName === 'cipher_extract_and_operate_memory' ||
+								toolName === 'memory_search' ||
+								toolName === 'cipher_memory_search';
+							
+							if (isMemoryTool) {
+								logger.debug(`UnifiedToolManager: Allowing memory tool '${toolName}' in ${this.config.mode} mode`);
+								// Allow memory tools in all modes
 							} else {
-								logger.debug(`UnifiedToolManager: Skipping '${toolName}' in non-aggregator mode`);
-								continue;
-							}
-						} else {
-							// Skip tools that are not agent-accessible (internal-only tools)
-							if (tool.agentAccessible === false) {
 								logger.debug(`UnifiedToolManager: Skipping internal-only tool '${toolName}'`);
 								continue;
 							}
@@ -163,30 +161,30 @@ export class UnifiedToolManager {
 							source: 'internal',
 						};
 					}
-					const totalInternalTools = Object.keys(internalTools).length;
-					const agentAccessibleTools = Object.values(internalTools).filter(
-						tool => tool.agentAccessible !== false
-					).length;
-					logger.debug(
-						`UnifiedToolManager: Loaded ${totalInternalTools} internal tools (${agentAccessibleTools} agent-accessible, ${totalInternalTools - agentAccessibleTools} internal-only)`
-					);
+					logger.debug(`UnifiedToolManager: Loaded ${Object.keys(internalTools).length} internal tools (${Object.keys(internalTools).filter(name => {
+						const tool = internalTools[name];
+						return tool.agentAccessible !== false || 
+							name === 'extract_and_operate_memory' || 
+							name === 'cipher_extract_and_operate_memory' ||
+							name === 'memory_search' ||
+							name === 'cipher_memory_search';
+					}).length} agent-accessible, ${Object.keys(internalTools).filter(name => {
+						const tool = internalTools[name];
+						return tool.agentAccessible === false && 
+							name !== 'extract_and_operate_memory' && 
+							name !== 'cipher_extract_and_operate_memory' &&
+							name !== 'memory_search' &&
+							name !== 'cipher_memory_search';
+					}).length} internal-only)`);
 				} catch (error) {
 					logger.warn('UnifiedToolManager: Failed to load internal tools', { error });
 				}
 			}
 
-			logger.info('UnifiedToolManager: Combined tools loaded successfully', {
-				totalTools: Object.keys(combinedTools).length,
-				mcpTools: Object.values(combinedTools).filter(t => t.source === 'mcp').length,
-				internalTools: Object.values(combinedTools).filter(t => t.source === 'internal').length,
-			});
-
+			logger.debug('UnifiedToolManager: Combined tools loaded successfully');
 			return combinedTools;
 		} catch (error) {
-			logger.error('UnifiedToolManager: Failed to load combined tools', {
-				error: error instanceof Error ? error.message : String(error),
-				stack: error instanceof Error ? error.stack : undefined,
-			});
+			logger.error('UnifiedToolManager: Failed to get all tools', { error });
 			throw error;
 		}
 	}
@@ -281,6 +279,96 @@ export class UnifiedToolManager {
 	}
 
 	/**
+	 * Execute a tool without triggering redundant tool loading (for background operations)
+	 * This method bypasses the normal tool loading process when tools are already loaded
+	 */
+	async executeToolWithoutLoading(toolName: string, args: any, sessionId?: string): Promise<ToolExecutionResult> {
+		const executionId = uuidv4();
+		const startTime = Date.now();
+		const toolType =
+			this.config.enableInternalTools && isInternalToolName(toolName) ? 'internal' : 'mcp';
+
+		// Emit tool execution started event
+		if (this.eventManager && sessionId) {
+			this.eventManager.emitSessionEvent(sessionId, SessionEvents.TOOL_EXECUTION_STARTED, {
+				toolName,
+				toolType,
+				sessionId,
+				executionId,
+				timestamp: startTime,
+			});
+		}
+
+		try {
+			logger.debug(`UnifiedToolManager: Executing tool '${toolName}' (without loading)`, {
+				toolName,
+				hasArgs: !!args,
+				sessionId,
+				executionId,
+			});
+
+			let result: ToolExecutionResult;
+
+			// Determine which manager should handle this tool
+			if (this.config.enableInternalTools && isInternalToolName(toolName)) {
+				// Internal tool execution
+				if (!this.internalToolManager.isInternalTool(toolName)) {
+					throw new Error(`Internal tool '${toolName}' not found`);
+				}
+
+				logger.debug(`UnifiedToolManager: Routing '${toolName}' to internal tool manager (without loading)`);
+				result = await this.internalToolManager.executeTool(toolName, args);
+			} else if (this.config.enableMcpTools) {
+				// MCP tool execution
+				logger.debug(`UnifiedToolManager: Routing '${toolName}' to MCP manager (without loading)`);
+				result = await this.mcpManager.executeTool(toolName, args);
+			} else {
+				throw new Error(`Tool '${toolName}' not available - no suitable manager enabled`);
+			}
+
+			// Emit tool execution completed event
+			if (this.eventManager && sessionId) {
+				this.eventManager.emitSessionEvent(sessionId, SessionEvents.TOOL_EXECUTION_COMPLETED, {
+					toolName,
+					toolType,
+					sessionId,
+					executionId,
+					duration: Date.now() - startTime,
+					success: true,
+					timestamp: Date.now(),
+				});
+			}
+
+			return result;
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			const duration = Date.now() - startTime;
+
+			// Emit tool execution failed event
+			if (this.eventManager && sessionId) {
+				this.eventManager.emitSessionEvent(sessionId, SessionEvents.TOOL_EXECUTION_FAILED, {
+					toolName,
+					toolType,
+					sessionId,
+					executionId,
+					error: errorMessage,
+					duration,
+					timestamp: Date.now(),
+				});
+			}
+
+			logger.error(`UnifiedToolManager: Tool execution failed for '${toolName}' (without loading)`, {
+				toolName,
+				error: errorMessage,
+				sessionId,
+				executionId,
+				duration,
+			});
+			throw error;
+		}
+	}
+
+	/**
 	 * Check if a tool is available (to agents)
 	 */
 	async isToolAvailable(toolName: string): Promise<boolean> {
@@ -290,10 +378,13 @@ export class UnifiedToolManager {
 				const tool = this.internalToolManager.getTool(toolName);
 				if (!tool) return false;
 
-				// Special handling for cipher_extract_and_operate_memory in aggregator mode
+				// Allow memory tools in all modes when embeddings are available
 				const normalizedToolName = toolName.replace('cipher_', '');
-				if (normalizedToolName === 'extract_and_operate_memory') {
-					return this.config.mode === 'aggregator';
+				const isMemoryTool = normalizedToolName === 'extract_and_operate_memory' || 
+					normalizedToolName === 'memory_search';
+				
+				if (isMemoryTool) {
+					return true; // Allow memory tools in all modes
 				}
 
 				// Skip tools that are not agent-accessible (internal-only tools)
@@ -325,10 +416,13 @@ export class UnifiedToolManager {
 				const tool = this.internalToolManager.getTool(toolName);
 				if (!tool) return null;
 
-				// Special handling for cipher_extract_and_operate_memory in aggregator mode
+				// Allow memory tools in all modes when embeddings are available
 				const normalizedToolName = toolName.replace('cipher_', '');
-				if (normalizedToolName === 'extract_and_operate_memory') {
-					return this.config.mode === 'aggregator' ? 'internal' : null;
+				const isMemoryTool = normalizedToolName === 'extract_and_operate_memory' || 
+					normalizedToolName === 'memory_search';
+				
+				if (isMemoryTool) {
+					return 'internal'; // Allow memory tools in all modes
 				}
 
 				// Skip tools that are not agent-accessible (internal-only tools)
@@ -355,7 +449,7 @@ export class UnifiedToolManager {
 	 */
 
 	async getToolsForProvider(
-		provider: 'openai' | 'anthropic' | 'openrouter' | 'aws' | 'azure' | 'qwen'
+		provider: 'openai' | 'anthropic' | 'openrouter' | 'aws' | 'azure' | 'qwen' | 'gemini'
 	): Promise<any[]> {
 		logger.info(`UnifiedToolManager: Getting tools for provider: ${provider}`);
 		const allTools = await this.getAllTools();
@@ -368,6 +462,9 @@ export class UnifiedToolManager {
 				return this.formatToolsForOpenAI(allTools);
 			case 'qwen':
 				return this.formatToolsForOpenAI(allTools);
+			case 'gemini':
+				logger.info('UnifiedToolManager: Formatting tools for Gemini');
+				return this.formatToolsForGemini(allTools);
 			case 'anthropic':
 				logger.info('UnifiedToolManager: Formatting tools for Anthropic');
 				return this.formatToolsForAnthropic(allTools);
@@ -457,6 +554,20 @@ export class UnifiedToolManager {
 			name,
 			description: tool.description,
 			input_schema: tool.parameters,
+		}));
+	}
+
+	/**
+	 * Format tools for Gemini (function calling format - same as OpenAI)
+	 */
+	private formatToolsForGemini(tools: CombinedToolSet): any[] {
+		return Object.entries(tools).map(([name, tool]) => ({
+			type: 'function',
+			function: {
+				name,
+				description: tool.description,
+				parameters: tool.parameters,
+			},
 		}));
 	}
 }

@@ -17,12 +17,12 @@ import { env } from '../../../env.js';
 /**
  * Get all tools from all categories
  */
-export async function getAllToolDefinitions(): Promise<InternalToolSet> {
+export async function getAllToolDefinitions(options: { embeddingEnabled?: boolean } = {}): Promise<InternalToolSet> {
 	try {
-		logger.debug('Loading all tool definitions...');
+		logger.debug('Loading all tool definitions...', { embeddingEnabled: options.embeddingEnabled });
 
-		// Always load memory tools
-		const memoryTools = await import('./memory/index.js').then(m => m.getMemoryTools());
+		// Load memory tools with embedding status
+		const memoryTools = await import('./memory/index.js').then(m => m.getMemoryTools(options));
 
 		// Conditionally load knowledge graph tools based on environment setting
 		let knowledgeGraphTools: InternalToolSet = {};
@@ -41,11 +41,12 @@ export async function getAllToolDefinitions(): Promise<InternalToolSet> {
 			...knowledgeGraphTools,
 		};
 
-		logger.info('Tool definitions loaded successfully', {
+		logger.debug('Tool definitions loaded successfully', {
 			totalTools: Object.keys(allTools).length,
 			memoryTools: Object.keys(memoryTools).length,
 			knowledgeGraphTools: Object.keys(knowledgeGraphTools).length,
 			knowledgeGraphEnabled: env.KNOWLEDGE_GRAPH_ENABLED,
+			embeddingEnabled: options.embeddingEnabled,
 		});
 
 		return allTools;
@@ -59,15 +60,15 @@ export async function getAllToolDefinitions(): Promise<InternalToolSet> {
 /**
  * Register all tool definitions with the internal tool manager
  */
-export async function registerAllTools(toolManager: any): Promise<{
+export async function registerAllTools(toolManager: any, options: { embeddingEnabled?: boolean } = {}): Promise<{
 	registered: string[];
 	failed: { name: string; error: string }[];
 	total: number;
 }> {
 	try {
-		logger.info('Registering all internal tools...');
+		logger.debug('Registering all internal tools...', { embeddingEnabled: options.embeddingEnabled });
 
-		const tools = await getAllToolDefinitions();
+		const tools = await getAllToolDefinitions(options);
 		const registered: string[] = [];
 		const failed: { name: string; error: string }[] = [];
 
@@ -95,10 +96,11 @@ export async function registerAllTools(toolManager: any): Promise<{
 			total: Object.keys(tools).length,
 		};
 
-		logger.info('Tool registration completed', {
+		logger.debug('Tool registration completed', {
 			totalTools: result.total,
 			successfullyRegistered: result.registered.length,
 			failed: result.failed.length,
+			embeddingEnabled: options.embeddingEnabled,
 		});
 
 		return result;

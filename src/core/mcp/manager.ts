@@ -158,7 +158,7 @@ export class MCPManager implements IMCPManager {
 
 		this._cleanupCache(this.toolCache);
 
-		this.logger.info(
+		this.logger.debug(
 			`${LOG_PREFIXES.MANAGER} Retrieved ${Object.keys(allTools).length} total tools`,
 			{ toolCount: Object.keys(allTools).length, clientCount: this.clients.size }
 		);
