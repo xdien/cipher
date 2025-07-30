@@ -175,7 +175,9 @@ export class AWSBedrockEmbeddingFactory implements EmbeddingFactory {
 
 	validateConfig(config: unknown): boolean {
 		try {
-			return typeof config === 'object' && config !== null && (config as any).type === 'aws-bedrock';
+			return (
+				typeof config === 'object' && config !== null && (config as any).type === 'aws-bedrock'
+			);
 		} catch {
 			return false;
 		}

@@ -74,7 +74,7 @@ export class AWSBedrockEmbedder implements Embedder {
 
 			const response = await this.client.send(command);
 			const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-			
+
 			return this.extractEmbedding(responseBody);
 		} catch (error) {
 			if (error instanceof EmbeddingError) {
@@ -88,7 +88,7 @@ export class AWSBedrockEmbedder implements Embedder {
 		try {
 			// AWS Bedrock typically processes one text at a time, so we batch manually
 			const results: number[][] = [];
-			
+
 			for (const text of texts) {
 				const embedding = await this.embed(text);
 				results.push(embedding);
@@ -138,7 +138,7 @@ export class AWSBedrockEmbedder implements Embedder {
 				embedding_types: ['float'],
 			};
 		}
-		
+
 		throw new EmbeddingValidationError(`Unsupported AWS Bedrock model: ${this.model}`);
 	}
 
@@ -154,10 +154,9 @@ export class AWSBedrockEmbedder implements Embedder {
 			}
 			return response.embeddings[0].values;
 		}
-		
+
 		throw new EmbeddingError(`Unknown response format for model: ${this.model}`);
 	}
-
 }
 
 /**

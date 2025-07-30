@@ -37,11 +37,11 @@ export class MemAgent {
 	private isStopped: boolean = false;
 
 	private config: AgentConfig;
-	private appMode?: 'cli' | 'mcp' | 'api';
+	private appMode: 'cli' | 'mcp' | 'api' | null = null;
 
 	constructor(config: AgentConfig, appMode?: 'cli' | 'mcp' | 'api') {
 		this.config = config;
-		this.appMode = appMode;
+		this.appMode = appMode || null;
 		if (appMode !== 'cli') {
 			logger.debug('MemAgent created');
 		}
@@ -70,7 +70,7 @@ export class MemAgent {
 				logger.debug('Starting MemAgent...');
 			}
 			// 1. Initialize services
-			const services = await createAgentServices(this.config, this.appMode);
+			const services = await createAgentServices(this.config, this.appMode || undefined);
 			for (const service of requiredServices) {
 				if (!services[service]) {
 					throw new Error(`Required service ${service} is missing during agent start`);

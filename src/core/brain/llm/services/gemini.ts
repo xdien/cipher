@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI, GenerativeModel, ChatSession } from '@google/generative-ai';
-import { ILLMService, LLMResponseFormat } from './types.js';
+import { ILLMService } from './types.js';
 import { ImageData } from '../messages/types.js';
 import { MCPManager } from '../../../mcp/manager.js';
 import { UnifiedToolManager } from '../../tools/unified-tool-manager.js';
@@ -14,7 +14,7 @@ export class GeminiService implements ILLMService {
 	private mcpManager: MCPManager;
 	private contextManager: ContextManager;
 	private maxIterations: number;
-	private unifiedToolManager?: UnifiedToolManager;
+	private unifiedToolManager: UnifiedToolManager | null = null;
 
 	constructor(
 		apiKey: string,
@@ -30,19 +30,19 @@ export class GeminiService implements ILLMService {
 			this.mcpManager = mcpManager;
 			this.contextManager = contextManager;
 			this.maxIterations = maxIterations;
-			this.unifiedToolManager = unifiedToolManager;
+			this.unifiedToolManager = unifiedToolManager || null;
 
 			// Initialize the model
 			this.model = this.genAI.getGenerativeModel({ model: modelName });
-			
+
 			logger.debug('Gemini service initialized successfully', {
 				model: modelName,
-				hasUnifiedToolManager: !!unifiedToolManager
+				hasUnifiedToolManager: !!unifiedToolManager,
 			});
 		} catch (error) {
 			logger.error('Failed to initialize Gemini service', {
 				error: error instanceof Error ? error.message : String(error),
-				model: modelName
+				model: modelName,
 			});
 			throw error;
 		}
@@ -64,25 +64,25 @@ export class GeminiService implements ILLMService {
 
 		let iterationCount = 0;
 		let toolsUsedInThisConversation = false;
-		
+
 		try {
 			while (iterationCount < this.maxIterations) {
 				iterationCount++;
 
 				// Check if tools have already been used in this conversation
 				const conversationHistory = await this.contextManager.getAllFormattedMessages();
-				const hasToolCallsInHistory = conversationHistory.some(msg => 
-					msg.tool_calls && msg.tool_calls.length > 0
+				const hasToolCallsInHistory = conversationHistory.some(
+					msg => msg.tool_calls && msg.tool_calls.length > 0
 				);
-				
+
 				if (hasToolCallsInHistory) {
 					toolsUsedInThisConversation = true;
 				}
 
 				// Attempt to get a response, with retry logic
 				const { message } = await this.getAIResponseWithRetries(
-					formattedTools, 
-					userInput, 
+					formattedTools,
+					userInput,
 					toolsUsedInThisConversation
 				);
 
@@ -134,7 +134,7 @@ export class GeminiService implements ILLMService {
 
 						// Add tool result to message manager
 						await this.contextManager.addToolResult(toolCall.id, toolName, result);
-						
+
 						// Mark that tools have been used
 						toolsUsedInThisConversation = true;
 					} catch (error) {
@@ -191,7 +191,9 @@ export class GeminiService implements ILLMService {
 
 	async getAllTools(): Promise<Record<string, any>> {
 		const mcpTools = await this.mcpManager.getAllTools();
-		const internalTools = this.unifiedToolManager ? await this.unifiedToolManager.getAllTools() : {};
+		const internalTools = this.unifiedToolManager
+			? await this.unifiedToolManager.getAllTools()
+			: {};
 
 		return {
 			...mcpTools,
@@ -241,7 +243,7 @@ export class GeminiService implements ILLMService {
 
 				// Convert messages to Gemini format and create prompt
 				const prompt = this.convertMessagesToPrompt(formattedMessages);
-				
+
 				// Add tool information to the prompt if tools are available and haven't been used yet
 				let finalPrompt = prompt;
 				if (attempts === 1 && tools.length > 0 && !toolsUsedInHistory) {
@@ -294,9 +296,9 @@ While you are primarily a programming assistant, you can engage in general conve
 			messagesType: typeof messages,
 			isArray: Array.isArray(messages),
 			length: messages?.length,
-			messages: messages
+			messages: messages,
 		});
-		
+
 		if (!Array.isArray(messages) || messages.length === 0) {
 			logger.debug('convertMessagesToPrompt returning empty string - no valid messages');
 			return '';
@@ -317,7 +319,7 @@ While you are primarily a programming assistant, you can engage in general conve
 				} else {
 					content = String(msg.content || '');
 				}
-				
+
 				// Format based on role
 				if (msg.role === 'system') {
 					return `System: ${content}`;
@@ -332,25 +334,27 @@ While you are primarily a programming assistant, you can engage in general conve
 			})
 			.filter(line => line.trim().length > 0) // Remove empty lines
 			.join('\n\n');
-			
+
 		logger.debug('convertMessagesToPrompt result:', {
 			resultType: typeof result,
 			resultLength: result?.length || 0,
-			result: result
+			result: result,
 		});
-		
+
 		// Ensure we always return a string
 		return result || '';
 	}
 
 	private addToolsToPrompt(prompt: string, tools: any[]): string {
-		const toolDescriptions = tools.map(tool => {
-			const func = tool.function;
-			const params = func.parameters ? JSON.stringify(func.parameters, null, 2) : '{}';
-			return `Tool: ${func.name}
+		const toolDescriptions = tools
+			.map(tool => {
+				const func = tool.function;
+				const params = func.parameters ? JSON.stringify(func.parameters, null, 2) : '{}';
+				return `Tool: ${func.name}
 Description: ${func.description}
 Parameters: ${params}`;
-		}).join('\n\n');
+			})
+			.join('\n\n');
 
 		return `${prompt}
 
@@ -392,22 +396,24 @@ For the current request, determine if you need to use any tools and respond acco
 		const toolCallPattern = /```tool_code\s*\n?([^`]*)\n?```/gi;
 		const toolCalls: any[] = [];
 		let match;
-		
+
 		while ((match = toolCallPattern.exec(text)) !== null) {
 			try {
-				const toolCallData = JSON.parse(match[1].trim());
-				toolCalls.push({
-					id: `gemini_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-					type: 'function',
-					function: {
-						name: toolCallData.tool,
-						arguments: JSON.stringify(toolCallData.arguments || {}),
-					},
-				});
+				if (match[1]) {
+					const toolCallData = JSON.parse(match[1].trim());
+					toolCalls.push({
+						id: `gemini_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+						type: 'function',
+						function: {
+							name: toolCallData.tool,
+							arguments: JSON.stringify(toolCallData.arguments || {}),
+						},
+					});
+				}
 			} catch (e) {
-				logger.warn('Failed to parse tool call from Gemini response', { 
+				logger.warn('Failed to parse tool call from Gemini response', {
 					toolCallText: match[1],
-					error: e instanceof Error ? e.message : String(e)
+					error: e instanceof Error ? e.message : String(e),
 				});
 			}
 		}
@@ -425,15 +431,18 @@ For the current request, determine if you need to use any tools and respond acco
 			textContent = this.cleanToolMetadata(text);
 		}
 
-		// CRITICAL FIX: If there's significant text content AND tool calls, 
+		// CRITICAL FIX: If there's significant text content AND tool calls,
 		// prioritize the text content and ignore tool calls to prevent redundant calls
 		if (textContent.trim().length > 20 && toolCalls.length > 0) {
-			logger.debug('Gemini response contains both text and tool calls - prioritizing text to prevent redundant calls', {
-				textContentLength: textContent.length,
-				toolCallCount: toolCalls.length,
-				textPreview: textContent.substring(0, 100)
-			});
-			
+			logger.debug(
+				'Gemini response contains both text and tool calls - prioritizing text to prevent redundant calls',
+				{
+					textContentLength: textContent.length,
+					toolCallCount: toolCalls.length,
+					textPreview: textContent.substring(0, 100),
+				}
+			);
+
 			// Return only the text content, no tool calls
 			return {
 				content: textContent,
@@ -446,7 +455,7 @@ For the current request, determine if you need to use any tools and respond acco
 			hasToolCalls: toolCalls.length > 0,
 			toolCallCount: toolCalls.length,
 			textContentLength: textContent.length,
-			toolCalls: toolCalls.map(tc => tc.function.name)
+			toolCalls: toolCalls.map(tc => tc.function.name),
 		});
 
 		return {

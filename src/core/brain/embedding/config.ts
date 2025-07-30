@@ -13,7 +13,9 @@ import { z } from 'zod';
 export const OpenAIEmbeddingConfigSchema = z.object({
 	type: z.literal('openai'),
 	apiKey: z.string().optional(),
-	model: z.enum(['text-embedding-3-small', 'text-embedding-3-large', 'text-embedding-ada-002']).default('text-embedding-3-small'),
+	model: z
+		.enum(['text-embedding-3-small', 'text-embedding-3-large', 'text-embedding-ada-002'])
+		.default('text-embedding-3-small'),
 	baseUrl: z.string().optional(),
 	organization: z.string().optional(),
 	dimensions: z.number().optional(),
@@ -64,7 +66,10 @@ export const QwenEmbeddingConfigSchema = z.object({
 	apiKey: z.string().optional(),
 	model: z.enum(['text-embedding-v3']).default('text-embedding-v3'),
 	baseUrl: z.string().optional(),
-	dimensions: z.number().refine(val => [1024, 768, 512].includes(val)).default(1024),
+	dimensions: z
+		.number()
+		.refine(val => [1024, 768, 512].includes(val))
+		.default(1024),
 	timeout: z.number().default(30000),
 	maxRetries: z.number().default(3),
 });
@@ -74,12 +79,17 @@ export const QwenEmbeddingConfigSchema = z.object({
  */
 export const AWSBedrockEmbeddingConfigSchema = z.object({
 	type: z.literal('aws-bedrock'),
-	model: z.enum(['amazon.titan-embed-text-v2:0', 'cohere.embed-english-v3']).default('amazon.titan-embed-text-v2:0'),
+	model: z
+		.enum(['amazon.titan-embed-text-v2:0', 'cohere.embed-english-v3'])
+		.default('amazon.titan-embed-text-v2:0'),
 	region: z.string().optional(),
 	accessKeyId: z.string().optional(),
 	secretAccessKey: z.string().optional(),
 	sessionToken: z.string().optional(),
-	dimensions: z.number().refine(val => [1024, 512, 256].includes(val)).default(1024),
+	dimensions: z
+		.number()
+		.refine(val => [1024, 512, 256].includes(val))
+		.default(1024),
 	timeout: z.number().default(30000),
 	maxRetries: z.number().default(3),
 });

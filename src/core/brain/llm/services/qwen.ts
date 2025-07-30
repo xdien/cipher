@@ -148,11 +148,11 @@ export class QwenService implements ILLMService {
 			});
 			// Transform qwenOptions to API format (camelCase to snake_case) for direct generate
 			const apiOptions: any = {};
-			
+
 			// Always set enable_thinking explicitly for non-streaming calls
 			// Qwen API requires this to be explicitly set to false for non-streaming calls
 			apiOptions.enable_thinking = this.qwenOptions.enableThinking ?? false;
-			
+
 			if (this.qwenOptions.thinkingBudget !== undefined) {
 				apiOptions.thinking_budget = this.qwenOptions.thinkingBudget;
 			}
@@ -224,11 +224,11 @@ export class QwenService implements ILLMService {
 				});
 				// Transform qwenOptions to API format (camelCase to snake_case)
 				const apiOptions: any = {};
-				
+
 				// Always set enable_thinking explicitly for non-streaming calls
 				// Qwen API requires this to be explicitly set to false for non-streaming calls
 				apiOptions.enable_thinking = this.qwenOptions.enableThinking ?? false;
-				
+
 				if (this.qwenOptions.thinkingBudget !== undefined) {
 					apiOptions.thinking_budget = this.qwenOptions.thinkingBudget;
 				}
@@ -244,7 +244,7 @@ export class QwenService implements ILLMService {
 					qwenOptions: this.qwenOptions,
 					apiOptions: apiOptions,
 					enableThinking: this.qwenOptions.enableThinking,
-					enable_thinking: apiOptions.enable_thinking
+					enable_thinking: apiOptions.enable_thinking,
 				});
 
 				const requestBody: any = {

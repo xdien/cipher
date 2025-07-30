@@ -208,9 +208,9 @@ function _createLLMService(
 					unifiedToolManager
 				);
 			} catch (error) {
-				logger.error('Failed to create Gemini service', { 
+				logger.error('Failed to create Gemini service', {
 					error: error instanceof Error ? error.message : String(error),
-					model: config.model 
+					model: config.model,
 				});
 				throw error;
 			}

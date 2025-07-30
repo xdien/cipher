@@ -36,7 +36,9 @@ export class QwenEmbedder implements Embedder {
 		this.dimensions = config.dimensions || 1024;
 
 		if (!this.apiKey) {
-			throw new EmbeddingValidationError('Qwen API key is required (QWEN_API_KEY or DASHSCOPE_API_KEY)');
+			throw new EmbeddingValidationError(
+				'Qwen API key is required (QWEN_API_KEY or DASHSCOPE_API_KEY)'
+			);
 		}
 	}
 
@@ -125,7 +127,7 @@ export class QwenEmbedder implements Embedder {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
-						'Authorization': `Bearer ${this.apiKey}`,
+						Authorization: `Bearer ${this.apiKey}`,
 					},
 					body: JSON.stringify(body),
 					signal: controller.signal,
@@ -150,7 +152,9 @@ export class QwenEmbedder implements Embedder {
 					throw error;
 				}
 				if (attempt === maxRetries) {
-					throw new EmbeddingConnectionError(`Failed to connect to Qwen API after ${maxRetries} attempts: ${error}`);
+					throw new EmbeddingConnectionError(
+						`Failed to connect to Qwen API after ${maxRetries} attempts: ${error}`
+					);
 				}
 				await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
 			}

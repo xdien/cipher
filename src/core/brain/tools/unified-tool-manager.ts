@@ -45,7 +45,7 @@ export interface UnifiedToolManagerConfig {
 	/**
 	 * Operating mode - affects which tools are exposed
 	 * - 'cli': Only search tools exposed to Cipher's LLM (background tools still executable)
-	 * - 'default': Only ask_cipher tool exposed to external MCP clients 
+	 * - 'default': Only ask_cipher tool exposed to external MCP clients
 	 * - 'aggregator': All tools exposed to external MCP clients
 	 * - 'api': Similar to CLI mode
 	 * @default 'default'
@@ -122,19 +122,24 @@ export class UnifiedToolManager {
 						properties: {
 							query: {
 								type: 'string',
-								description: 'The task or question to ask Cipher'
-							}
+								description: 'The task or question to ask Cipher',
+							},
 						},
-						required: ['query']
+						required: ['query'],
 					},
-					source: 'internal'
+					source: 'internal',
 				};
 				logger.debug('UnifiedToolManager: Default MCP mode - only ask_cipher tool exposed');
 				return combinedTools;
 			}
 
 			// Get MCP tools if enabled (for CLI and aggregator modes)
-			if (this.config.enableMcpTools && (this.config.mode === 'cli' || this.config.mode === 'aggregator' || this.config.mode === 'api')) {
+			if (
+				this.config.enableMcpTools &&
+				(this.config.mode === 'cli' ||
+					this.config.mode === 'aggregator' ||
+					this.config.mode === 'api')
+			) {
 				if (!this.toolsAlreadyLogged && this.config.mode !== 'aggregator') {
 					logger.debug('UnifiedToolManager: Loading MCP tools');
 				}
@@ -175,15 +180,19 @@ export class UnifiedToolManager {
 						// Mode-specific tool filtering
 						if (this.config.mode === 'cli') {
 							// CLI mode: Only expose search tools to LLM, background tools are excluded from agent access
-							const isSearchTool = toolName.includes('search') || toolName.includes('memory_') || 
-								toolName.includes('knowledge_') || toolName.includes('vector_') ||
-								toolName === 'extract_and_operate_memory' || toolName === 'cipher_extract_and_operate_memory';
-							
+							const isSearchTool =
+								toolName.includes('search') ||
+								toolName.includes('memory_') ||
+								toolName.includes('knowledge_') ||
+								toolName.includes('vector_') ||
+								toolName === 'extract_and_operate_memory' ||
+								toolName === 'cipher_extract_and_operate_memory';
+
 							if (!isSearchTool && tool.agentAccessible === false) {
 								// Skip background tools in CLI mode - they will be executed after AI response
 								continue;
 							}
-							
+
 							// Only include search-related tools for agent access in CLI mode
 							if (!isSearchTool && tool.agentAccessible !== true) {
 								continue;
@@ -193,7 +202,9 @@ export class UnifiedToolManager {
 						} else {
 							// Default/API modes: Skip background tools that are not agent-accessible
 							if (tool.agentAccessible === false) {
-								logger.debug(`UnifiedToolManager: Skipping internal-only tool '${toolName}' in ${this.config.mode} mode`);
+								logger.debug(
+									`UnifiedToolManager: Skipping internal-only tool '${toolName}' in ${this.config.mode} mode`
+								);
 								continue;
 							}
 						}
@@ -215,13 +226,18 @@ export class UnifiedToolManager {
 
 					// Logging for different modes
 					if (this.config.mode === 'cli') {
-						const searchToolCount = Object.keys(combinedTools).filter(name => 
-							combinedTools[name].source === 'internal' && 
-							(name.includes('search') || name.includes('memory_') || name.includes('knowledge_'))
+						const searchToolCount = Object.keys(combinedTools).filter(
+							name =>
+								combinedTools[name]?.source === 'internal' &&
+								(name.includes('search') || name.includes('memory_') || name.includes('knowledge_'))
 						).length;
-						logger.debug(`UnifiedToolManager: CLI mode - ${searchToolCount} search tools accessible to LLM`);
+						logger.debug(
+							`UnifiedToolManager: CLI mode - ${searchToolCount} search tools accessible to LLM`
+						);
 					} else if (this.config.mode !== 'aggregator') {
-						logger.debug(`UnifiedToolManager: Loaded ${Object.keys(internalTools).length} internal tools (${Object.keys(combinedTools).filter(name => combinedTools[name].source === 'internal').length} agent-accessible)`);
+						logger.debug(
+							`UnifiedToolManager: Loaded ${Object.keys(internalTools).length} internal tools (${Object.keys(combinedTools).filter(name => combinedTools[name]?.source === 'internal').length} agent-accessible)`
+						);
 					}
 				} catch (error) {
 					logger.warn('UnifiedToolManager: Failed to load internal tools', { error });
@@ -229,7 +245,9 @@ export class UnifiedToolManager {
 			}
 
 			if (!this.toolsAlreadyLogged && this.config.mode !== 'aggregator') {
-				logger.debug(`UnifiedToolManager: Combined tools loaded successfully (mode: ${this.config.mode})`);
+				logger.debug(
+					`UnifiedToolManager: Combined tools loaded successfully (mode: ${this.config.mode})`
+				);
 				this.toolsAlreadyLogged = true;
 			}
 			return combinedTools;
@@ -332,7 +350,11 @@ export class UnifiedToolManager {
 	 * Execute a tool without triggering redundant tool loading (for background operations)
 	 * This method bypasses the normal tool loading process when tools are already loaded
 	 */
-	async executeToolWithoutLoading(toolName: string, args: any, sessionId?: string): Promise<ToolExecutionResult> {
+	async executeToolWithoutLoading(
+		toolName: string,
+		args: any,
+		sessionId?: string
+	): Promise<ToolExecutionResult> {
 		const executionId = uuidv4();
 		const startTime = Date.now();
 		const toolType =
@@ -366,7 +388,9 @@ export class UnifiedToolManager {
 					throw new Error(`Internal tool '${toolName}' not found`);
 				}
 
-				logger.debug(`UnifiedToolManager: Routing '${toolName}' to internal tool manager (without loading)`);
+				logger.debug(
+					`UnifiedToolManager: Routing '${toolName}' to internal tool manager (without loading)`
+				);
 				result = await this.internalToolManager.executeTool(toolName, args);
 			} else if (this.config.enableMcpTools) {
 				// MCP tool execution
@@ -407,13 +431,16 @@ export class UnifiedToolManager {
 				});
 			}
 
-			logger.error(`UnifiedToolManager: Tool execution failed for '${toolName}' (without loading)`, {
-				toolName,
-				error: errorMessage,
-				sessionId,
-				executionId,
-				duration,
-			});
+			logger.error(
+				`UnifiedToolManager: Tool execution failed for '${toolName}' (without loading)`,
+				{
+					toolName,
+					error: errorMessage,
+					sessionId,
+					executionId,
+					duration,
+				}
+			);
 			throw error;
 		}
 	}
@@ -436,10 +463,14 @@ export class UnifiedToolManager {
 				// Mode-specific availability
 				if (this.config.mode === 'cli') {
 					// CLI mode: Only search tools accessible to LLM
-					const isSearchTool = toolName.includes('search') || toolName.includes('memory_') || 
-						toolName.includes('knowledge_') || toolName.includes('vector_') ||
-						toolName === 'extract_and_operate_memory' || toolName === 'cipher_extract_and_operate_memory';
-						
+					const isSearchTool =
+						toolName.includes('search') ||
+						toolName.includes('memory_') ||
+						toolName.includes('knowledge_') ||
+						toolName.includes('vector_') ||
+						toolName === 'extract_and_operate_memory' ||
+						toolName === 'cipher_extract_and_operate_memory';
+
 					return isSearchTool && tool.agentAccessible !== false;
 				} else if (this.config.mode === 'aggregator') {
 					// Aggregator mode: All tools available
@@ -448,7 +479,12 @@ export class UnifiedToolManager {
 					// API mode: Only agent-accessible tools
 					return tool.agentAccessible !== false;
 				}
-			} else if (this.config.enableMcpTools && (this.config.mode === 'cli' || this.config.mode === 'aggregator' || this.config.mode === 'api')) {
+			} else if (
+				this.config.enableMcpTools &&
+				(this.config.mode === 'cli' ||
+					this.config.mode === 'aggregator' ||
+					this.config.mode === 'api')
+			) {
 				const mcpTools = await this.mcpManager.getAllTools();
 				return toolName in mcpTools;
 			}
@@ -479,11 +515,15 @@ export class UnifiedToolManager {
 				// Mode-specific source determination
 				if (this.config.mode === 'cli') {
 					// CLI mode: Only search tools accessible
-					const isSearchTool = toolName.includes('search') || toolName.includes('memory_') || 
-						toolName.includes('knowledge_') || toolName.includes('vector_') ||
-						toolName === 'extract_and_operate_memory' || toolName === 'cipher_extract_and_operate_memory';
-						
-					return (isSearchTool && tool.agentAccessible !== false) ? 'internal' : null;
+					const isSearchTool =
+						toolName.includes('search') ||
+						toolName.includes('memory_') ||
+						toolName.includes('knowledge_') ||
+						toolName.includes('vector_') ||
+						toolName === 'extract_and_operate_memory' ||
+						toolName === 'cipher_extract_and_operate_memory';
+
+					return isSearchTool && tool.agentAccessible !== false ? 'internal' : null;
 				} else if (this.config.mode === 'aggregator') {
 					// Aggregator mode: All tools available
 					return 'internal';
@@ -491,7 +531,12 @@ export class UnifiedToolManager {
 					// API mode: Only agent-accessible tools
 					return tool.agentAccessible !== false ? 'internal' : null;
 				}
-			} else if (this.config.enableMcpTools && (this.config.mode === 'cli' || this.config.mode === 'aggregator' || this.config.mode === 'api')) {
+			} else if (
+				this.config.enableMcpTools &&
+				(this.config.mode === 'cli' ||
+					this.config.mode === 'aggregator' ||
+					this.config.mode === 'api')
+			) {
 				const mcpTools = await this.mcpManager.getAllTools();
 				return toolName in mcpTools ? 'mcp' : null;
 			}

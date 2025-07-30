@@ -150,9 +150,9 @@ export interface AWSBedrockEmbeddingConfig extends EmbeddingConfig {
 /**
  * Union type for all supported backend configurations
  */
-export type BackendConfig = 
-	| OpenAIEmbeddingConfig 
-	| GeminiEmbeddingConfig 
+export type BackendConfig =
+	| OpenAIEmbeddingConfig
+	| GeminiEmbeddingConfig
 	| OllamaEmbeddingConfig
 	| VoyageEmbeddingConfig
 	| QwenEmbeddingConfig
@@ -203,11 +203,7 @@ export class EmbeddingError extends Error {
 	public readonly provider?: string;
 	public override readonly cause?: Error;
 
-	constructor(
-		message: string,
-		provider?: string,
-		cause?: Error
-	) {
+	constructor(message: string, provider?: string, cause?: Error) {
 		super(message);
 		this.name = 'EmbeddingError';
 		if (provider !== undefined) {

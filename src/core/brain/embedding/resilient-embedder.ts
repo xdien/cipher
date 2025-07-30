@@ -1,6 +1,6 @@
 /**
  * Resilient Embedder Wrapper
- * 
+ *
  * Provides fault-tolerant embedding operations with automatic fallback,
  * circuit breaker protection, and graceful degradation.
  */
@@ -9,7 +9,11 @@ import { logger } from '../../logger/index.js';
 import { LOG_PREFIXES } from './constants.js';
 import { EmbeddingCircuitBreaker, CircuitState } from './circuit-breaker.js';
 import type { Embedder, EmbeddingConfig } from './backend/types.js';
-import { EmbeddingError, EmbeddingConnectionError, EmbeddingValidationError } from './backend/types.js';
+import {
+	EmbeddingError,
+	EmbeddingConnectionError,
+	EmbeddingValidationError,
+} from './backend/types.js';
 
 export interface ResilientEmbedderConfig {
 	/** Enable circuit breaker protection */
@@ -36,7 +40,7 @@ export enum EmbeddingStatus {
 	HEALTHY = 'HEALTHY',
 	DEGRADED = 'DEGRADED',
 	DISABLED = 'DISABLED',
-	RECOVERING = 'RECOVERING'
+	RECOVERING = 'RECOVERING',
 }
 
 /**
@@ -47,14 +51,14 @@ export class ResilientEmbedder implements Embedder {
 	private readonly circuitBreaker: EmbeddingCircuitBreaker;
 	private readonly config: ResilientEmbedderConfig;
 	private readonly providerName: string;
-	
+
 	private status: EmbeddingStatus = EmbeddingStatus.HEALTHY;
 	private consecutiveFailures = 0;
 	private lastHealthCheck: number = 0;
 	private lastRecoveryAttempt: number = 0;
 	private isTemporarilyDisabled = false;
-	
-	private healthCheckTimer?: NodeJS.Timeout;
+
+	private healthCheckTimer: NodeJS.Timeout | null = null;
 
 	constructor(
 		embedder: Embedder,
@@ -92,10 +96,12 @@ export class ResilientEmbedder implements Embedder {
 
 	async embed(text: string): Promise<number[]> {
 		const result = await this.executeWithFallback(() => this.embedder.embed(text));
-		
+
 		if (!result.success) {
 			if (result.fallbackActivated) {
-				throw new Error(`Embedding temporarily unavailable for ${this.providerName} - operating in chat-only mode`);
+				throw new Error(
+					`Embedding temporarily unavailable for ${this.providerName} - operating in chat-only mode`
+				);
 			}
 			throw result.error || new Error('Embedding operation failed');
 		}
@@ -105,10 +111,12 @@ export class ResilientEmbedder implements Embedder {
 
 	async embedBatch(texts: string[]): Promise<number[][]> {
 		const result = await this.executeWithFallback(() => this.embedder.embedBatch(texts));
-		
+
 		if (!result.success) {
 			if (result.fallbackActivated) {
-				throw new Error(`Batch embedding temporarily unavailable for ${this.providerName} - operating in chat-only mode`);
+				throw new Error(
+					`Batch embedding temporarily unavailable for ${this.providerName} - operating in chat-only mode`
+				);
 			}
 			throw result.error || new Error('Batch embedding operation failed');
 		}
@@ -149,7 +157,7 @@ export class ResilientEmbedder implements Embedder {
 		// Stop health checking
 		if (this.healthCheckTimer) {
 			clearInterval(this.healthCheckTimer);
-			this.healthCheckTimer = undefined;
+			this.healthCheckTimer = null;
 		}
 
 		// Disconnect underlying embedder
@@ -188,7 +196,7 @@ export class ResilientEmbedder implements Embedder {
 		this.isTemporarilyDisabled = true;
 		this.status = EmbeddingStatus.DISABLED;
 		this.circuitBreaker.forceOpen();
-		
+
 		logger.warn(`${LOG_PREFIXES.FALLBACK} Embeddings force-disabled for ${this.providerName}`);
 	}
 
@@ -200,8 +208,10 @@ export class ResilientEmbedder implements Embedder {
 		this.consecutiveFailures = 0;
 		this.status = EmbeddingStatus.HEALTHY;
 		this.circuitBreaker.reset();
-		
-		logger.info(`${LOG_PREFIXES.FALLBACK} Embeddings reset to healthy state for ${this.providerName}`);
+
+		logger.info(
+			`${LOG_PREFIXES.FALLBACK} Embeddings reset to healthy state for ${this.providerName}`
+		);
 	}
 
 	/**
@@ -235,7 +245,7 @@ export class ResilientEmbedder implements Embedder {
 
 		try {
 			let result: T;
-			
+
 			if (this.config.enableCircuitBreaker) {
 				// Execute with circuit breaker protection
 				result = await this.circuitBreaker.execute(operation);
@@ -246,18 +256,17 @@ export class ResilientEmbedder implements Embedder {
 
 			// Operation succeeded
 			this.onOperationSuccess();
-			
+
 			return {
 				success: true,
 				data: result,
 				fallbackActivated: false,
 				circuitOpen: false,
 			};
-
 		} catch (error) {
 			// Operation failed
 			const shouldFallback = this.onOperationFailure(error);
-			
+
 			return {
 				success: false,
 				error: error instanceof Error ? error : new Error(String(error)),
@@ -277,9 +286,9 @@ export class ResilientEmbedder implements Embedder {
 				previousFailures: this.consecutiveFailures,
 			});
 		}
-		
+
 		this.consecutiveFailures = 0;
-		
+
 		// Update status based on current state
 		if (this.status === EmbeddingStatus.RECOVERING) {
 			this.status = EmbeddingStatus.HEALTHY;
@@ -295,10 +304,10 @@ export class ResilientEmbedder implements Embedder {
 	 */
 	private onOperationFailure(error: any): boolean {
 		this.consecutiveFailures++;
-		
+
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		const errorType = this.classifyError(error);
-		
+
 		logger.warn(`${LOG_PREFIXES.FALLBACK} ${this.providerName} embedding operation failed`, {
 			error: errorMessage,
 			errorType,
@@ -307,12 +316,17 @@ export class ResilientEmbedder implements Embedder {
 		});
 
 		// Check if we should activate fallback
-		if (this.config.enableFallback && this.consecutiveFailures >= this.config.maxConsecutiveFailures) {
+		if (
+			this.config.enableFallback &&
+			this.consecutiveFailures >= this.config.maxConsecutiveFailures
+		) {
 			this.isTemporarilyDisabled = true;
 			this.status = EmbeddingStatus.DISABLED;
-			
-			logger.error(`${LOG_PREFIXES.FALLBACK} ${this.providerName} embeddings disabled after ${this.consecutiveFailures} consecutive failures - switching to chat-only mode`);
-			
+
+			logger.error(
+				`${LOG_PREFIXES.FALLBACK} ${this.providerName} embeddings disabled after ${this.consecutiveFailures} consecutive failures - switching to chat-only mode`
+			);
+
 			return true; // Fallback activated
 		}
 
@@ -337,9 +351,10 @@ export class ResilientEmbedder implements Embedder {
 		if (error instanceof EmbeddingError) {
 			return 'embedding';
 		}
-		
-		const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
-		
+
+		const message =
+			error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+
 		if (message.includes('timeout') || message.includes('timed out')) {
 			return 'timeout';
 		}
@@ -355,7 +370,7 @@ export class ResilientEmbedder implements Embedder {
 		if (message.includes('network') || message.includes('connection')) {
 			return 'network';
 		}
-		
+
 		return 'unknown';
 	}
 
@@ -392,20 +407,22 @@ export class ResilientEmbedder implements Embedder {
 				}
 
 				this.lastRecoveryAttempt = Date.now();
-				
+
 				logger.debug(`${LOG_PREFIXES.FALLBACK} Attempting recovery for ${this.providerName}`);
 
 				// Try a simple health check
 				const isHealthy = await this.embedder.isHealthy();
-				
+
 				if (isHealthy) {
 					// Service appears to be back online
 					this.isTemporarilyDisabled = false;
 					this.consecutiveFailures = 0;
 					this.status = EmbeddingStatus.RECOVERING;
 					this.circuitBreaker.reset();
-					
-					logger.info(`${LOG_PREFIXES.FALLBACK} ${this.providerName} embeddings health check passed - enabling recovery mode`);
+
+					logger.info(
+						`${LOG_PREFIXES.FALLBACK} ${this.providerName} embeddings health check passed - enabling recovery mode`
+					);
 				}
 			}
 		} catch (error) {

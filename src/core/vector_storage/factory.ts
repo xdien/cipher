@@ -212,7 +212,9 @@ export async function createVectorStoreFromEnv(agentConfig?: any): Promise<Vecto
  * const { manager, knowledgeStore, reflectionStore } = await createDualCollectionVectorStoreFromEnv();
  * ```
  */
-export async function createDualCollectionVectorStoreFromEnv(agentConfig?: any): Promise<DualCollectionVectorFactory> {
+export async function createDualCollectionVectorStoreFromEnv(
+	agentConfig?: any
+): Promise<DualCollectionVectorFactory> {
 	const logger = createLogger({ level: env.CIPHER_LOG_LEVEL });
 
 	// Get base configuration from environment variables
@@ -285,7 +287,7 @@ export async function createDualCollectionVectorStoreFromEnv(agentConfig?: any):
  *
  * Returns the configuration object that would be used by createVectorStoreFromEnv
  * without actually creating the vector store. Useful for debugging and validation.
- * 
+ *
  * @param agentConfig - Optional agent configuration to override dimension from embedding config
  * @returns Vector storage configuration based on environment variables
  *
@@ -300,7 +302,7 @@ export async function createDualCollectionVectorStoreFromEnv(agentConfig?: any):
  */
 export function getVectorStoreConfigFromEnv(agentConfig?: any): VectorStoreConfig {
 	const logger = createLogger({ level: env.CIPHER_LOG_LEVEL });
-	
+
 	// Get configuration from centralized env object with fallbacks for invalid values
 	const storeType = env.VECTOR_STORE_TYPE;
 	const collectionName = env.VECTOR_STORE_COLLECTION;
@@ -310,7 +312,11 @@ export function getVectorStoreConfigFromEnv(agentConfig?: any): VectorStoreConfi
 		: env.VECTOR_STORE_MAX_VECTORS;
 
 	// Override dimension from agent config if embedding configuration is present
-	if (agentConfig?.embedding && typeof agentConfig.embedding === 'object' && agentConfig.embedding.dimensions) {
+	if (
+		agentConfig?.embedding &&
+		typeof agentConfig.embedding === 'object' &&
+		agentConfig.embedding.dimensions
+	) {
 		const embeddingDimension = agentConfig.embedding.dimensions;
 		if (typeof embeddingDimension === 'number' && embeddingDimension > 0) {
 			logger.debug('Overriding vector store dimension from agent config', {

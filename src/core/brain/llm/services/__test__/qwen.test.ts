@@ -89,8 +89,8 @@ describe('QwenService', () => {
 					{ role: 'system', content: 'test system prompt' },
 					{ role: 'user', content: 'test input' },
 				],
-				enableThinking: true,
-				thinkingBudget: 1000,
+				enable_thinking: true,
+				thinking_budget: 1000,
 			});
 
 			expect(result).toBe('Test response from Qwen');

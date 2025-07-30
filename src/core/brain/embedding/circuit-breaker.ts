@@ -1,6 +1,6 @@
 /**
  * Circuit Breaker Pattern for Embedding Operations
- * 
+ *
  * Implements circuit breaker pattern to prevent cascading failures
  * and provide automatic recovery for embedding services.
  */
@@ -9,9 +9,9 @@ import { logger } from '../../logger/index.js';
 import { LOG_PREFIXES } from './constants.js';
 
 export enum CircuitState {
-	CLOSED = 'CLOSED',       // Normal operation
-	OPEN = 'OPEN',           // Failing, reject all calls
-	HALF_OPEN = 'HALF_OPEN'  // Testing recovery
+	CLOSED = 'CLOSED', // Normal operation
+	OPEN = 'OPEN', // Failing, reject all calls
+	HALF_OPEN = 'HALF_OPEN', // Testing recovery
 }
 
 export interface CircuitBreakerConfig {
@@ -137,7 +137,7 @@ export class EmbeddingCircuitBreaker {
 		this.failureCount = 0;
 		this.successCount = 0;
 		this.lastFailureTime = null;
-		
+
 		logger.info(`${LOG_PREFIXES.CIRCUIT_BREAKER} Circuit breaker reset`, {
 			name: this.name,
 		});
@@ -149,7 +149,7 @@ export class EmbeddingCircuitBreaker {
 	forceOpen(): void {
 		this.state = CircuitState.OPEN;
 		this.lastFailureTime = Date.now();
-		
+
 		logger.warn(`${LOG_PREFIXES.CIRCUIT_BREAKER} Circuit breaker forced OPEN`, {
 			name: this.name,
 		});
@@ -164,7 +164,7 @@ export class EmbeddingCircuitBreaker {
 				this.state = CircuitState.CLOSED;
 				this.failureCount = 0;
 				this.successCount = 0;
-				
+
 				logger.info(`${LOG_PREFIXES.CIRCUIT_BREAKER} Circuit breaker CLOSED - service recovered`, {
 					name: this.name,
 					successCount: this.successCount,
@@ -182,7 +182,7 @@ export class EmbeddingCircuitBreaker {
 		this.totalFailures++;
 
 		const errorMessage = error instanceof Error ? error.message : String(error);
-		
+
 		logger.warn(`${LOG_PREFIXES.CIRCUIT_BREAKER} Operation failed`, {
 			name: this.name,
 			error: errorMessage,
@@ -194,7 +194,7 @@ export class EmbeddingCircuitBreaker {
 			if (this.failureCount >= this.config.failureThreshold) {
 				this.state = CircuitState.OPEN;
 				this.successCount = 0;
-				
+
 				logger.error(`${LOG_PREFIXES.CIRCUIT_BREAKER} Circuit breaker OPENED - too many failures`, {
 					name: this.name,
 					failureCount: this.failureCount,
@@ -208,7 +208,7 @@ export class EmbeddingCircuitBreaker {
 		if (!this.lastFailureTime) {
 			return true;
 		}
-		
+
 		const timeSinceLastFailure = Date.now() - this.lastFailureTime;
 		return timeSinceLastFailure >= this.config.recoveryTimeout;
 	}

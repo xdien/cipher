@@ -10,7 +10,7 @@ export class BedrockAnthropicMessageFormatter implements IMessageFormatter {
 	): any[] {
 		const role = message.role;
 		let contentArr: any[] = [];
-		
+
 		// Handle different message roles and content types
 		if (role === 'user' || role === 'assistant') {
 			if (typeof message.content === 'string') {
@@ -22,14 +22,17 @@ export class BedrockAnthropicMessageFormatter implements IMessageFormatter {
 				// Array content - process each item
 				for (const c of message.content) {
 					if (typeof c === 'string') {
-						if (c.trim()) {
-							contentArr.push({ type: 'text', text: c });
+						const textContent = c as string;
+						if (textContent.trim()) {
+							contentArr.push({ type: 'text', text: textContent });
 						}
-					} else if (c.type === 'image') {
-						contentArr.push({ type: 'image', image: c.image, mimeType: c.mimeType });
-					} else if (c.type === 'text') {
-						if (c.text && c.text.trim()) {
-							contentArr.push({ type: 'text', text: c.text });
+					} else if (c && typeof c === 'object' && 'type' in c) {
+						if (c.type === 'image' && 'image' in c) {
+							contentArr.push({ type: 'image', image: c.image, mimeType: c.mimeType });
+						} else if (c.type === 'text' && 'text' in c && typeof c.text === 'string') {
+							if (c.text.trim()) {
+								contentArr.push({ type: 'text', text: c.text });
+							}
 						}
 					}
 				}
@@ -42,13 +45,13 @@ export class BedrockAnthropicMessageFormatter implements IMessageFormatter {
 			// System messages are handled separately in the AWS service
 			return [];
 		}
-		
+
 		// AWS Bedrock requires non-empty text content blocks
 		// If we have no content, skip this message entirely
 		if (contentArr.length === 0) {
 			return [];
 		}
-		
+
 		return [{ role, content: contentArr }];
 	}
 	parseResponse(response: any): InternalMessage[] {

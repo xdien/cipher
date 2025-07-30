@@ -32,11 +32,11 @@ import yaml from 'yaml';
  * Create embedding configuration from LLM provider settings
  */
 async function createEmbeddingFromLLMProvider(
-	embeddingManager: EmbeddingManager, 
+	embeddingManager: EmbeddingManager,
 	llmConfig: any
 ): Promise<{ embedder: any; info: any } | null> {
 	const provider = llmConfig.provider?.toLowerCase();
-	
+
 	try {
 		switch (provider) {
 			case 'openai': {
@@ -51,25 +51,26 @@ async function createEmbeddingFromLLMProvider(
 					baseUrl: llmConfig.baseUrl,
 					organization: llmConfig.organization,
 					timeout: 30000,
-					maxRetries: 3
+					maxRetries: 3,
 				};
 				logger.debug('Using OpenAI embedding fallback: text-embedding-3-small');
 				return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
 			}
-			
+
 			case 'ollama': {
-				const baseUrl = llmConfig.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+				const baseUrl =
+					llmConfig.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
 				const embeddingConfig = {
 					type: 'ollama' as const,
 					baseUrl,
 					model: 'nomic-embed-text' as const,
 					timeout: 30000,
-					maxRetries: 3
+					maxRetries: 3,
 				};
 				logger.debug('Using Ollama embedding fallback: nomic-embed-text');
 				return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
 			}
-			
+
 			case 'gemini': {
 				if (!llmConfig.apiKey && !process.env.GEMINI_API_KEY) {
 					logger.debug('No Gemini API key available for embedding fallback');
@@ -80,12 +81,12 @@ async function createEmbeddingFromLLMProvider(
 					apiKey: llmConfig.apiKey || process.env.GEMINI_API_KEY,
 					model: 'gemini-embedding-001' as const,
 					timeout: 30000,
-					maxRetries: 3
+					maxRetries: 3,
 				};
 				logger.debug('Using Gemini embedding fallback: gemini-embedding-001');
 				return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
 			}
-			
+
 			case 'anthropic': {
 				// Anthropic doesn't have native embeddings, use Voyage as recommended fallback
 				if (llmConfig.apiKey || process.env.VOYAGE_API_KEY) {
@@ -95,7 +96,7 @@ async function createEmbeddingFromLLMProvider(
 						model: 'voyage-3-large' as const,
 						timeout: 30000,
 						maxRetries: 3,
-						dimensions: 1024
+						dimensions: 1024,
 					};
 					logger.debug('Using Voyage embedding for Anthropic LLM', {
 						voyageModel: 'voyage-3-large',
@@ -104,10 +105,12 @@ async function createEmbeddingFromLLMProvider(
 					});
 					return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
 				}
-				logger.debug('No Voyage API key available for Anthropic - embeddings disabled (set VOYAGE_API_KEY)');
+				logger.debug(
+					'No Voyage API key available for Anthropic - embeddings disabled (set VOYAGE_API_KEY)'
+				);
 				return null;
 			}
-			
+
 			case 'aws': {
 				// AWS Bedrock has native embeddings via Amazon Titan and Cohere
 				if (llmConfig.accessKeyId || process.env.AWS_ACCESS_KEY_ID) {
@@ -120,15 +123,17 @@ async function createEmbeddingFromLLMProvider(
 						model: 'amazon.titan-embed-text-v2:0' as const,
 						timeout: 30000,
 						maxRetries: 3,
-						dimensions: 1024
+						dimensions: 1024,
 					};
 					logger.debug('Using AWS Bedrock native embedding: amazon.titan-embed-text-v2:0');
 					return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
 				}
-				logger.debug('No AWS credentials available for AWS Bedrock embedding (need AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY)');
+				logger.debug(
+					'No AWS credentials available for AWS Bedrock embedding (need AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY)'
+				);
 				return null;
 			}
-			
+
 			case 'azure': {
 				// Azure OpenAI - try to use same Azure setup for embeddings
 				if (!llmConfig.apiKey && !process.env.AZURE_OPENAI_API_KEY) {
@@ -140,7 +145,7 @@ async function createEmbeddingFromLLMProvider(
 							apiKey: process.env.OPENAI_API_KEY,
 							model: 'text-embedding-3-small' as const,
 							timeout: 30000,
-							maxRetries: 3
+							maxRetries: 3,
 						};
 						logger.debug('Using OpenAI embedding fallback for Azure LLM: text-embedding-3-small');
 						return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
@@ -153,12 +158,12 @@ async function createEmbeddingFromLLMProvider(
 					model: 'text-embedding-3-small' as const,
 					baseUrl: llmConfig.azure?.endpoint || process.env.AZURE_OPENAI_ENDPOINT,
 					timeout: 30000,
-					maxRetries: 3
+					maxRetries: 3,
 				};
 				logger.debug('Using Azure OpenAI embedding fallback: text-embedding-3-small');
 				return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
 			}
-			
+
 			case 'qwen': {
 				// Qwen has native embeddings via DashScope API
 				if (llmConfig.apiKey || process.env.QWEN_API_KEY || process.env.DASHSCOPE_API_KEY) {
@@ -169,21 +174,25 @@ async function createEmbeddingFromLLMProvider(
 						baseUrl: llmConfig.baseUrl,
 						timeout: 30000,
 						maxRetries: 3,
-						dimensions: 1024
+						dimensions: 1024,
 					};
 					logger.debug('Using Qwen native embedding: text-embedding-v3');
 					return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
 				}
-				logger.debug('No Qwen API key available for native embedding (need QWEN_API_KEY or DASHSCOPE_API_KEY)');
+				logger.debug(
+					'No Qwen API key available for native embedding (need QWEN_API_KEY or DASHSCOPE_API_KEY)'
+				);
 				return null;
 			}
-			
+
 			case 'openrouter': {
 				// OpenRouter doesn't support embeddings and no fallback should be used
-				logger.debug('OpenRouter does not support embedding models - embeddings disabled for this provider');
+				logger.debug(
+					'OpenRouter does not support embedding models - embeddings disabled for this provider'
+				);
 				return null;
 			}
-			
+
 			default: {
 				logger.debug(`No embedding fallback available for LLM provider: ${provider}`);
 				return null;
@@ -191,7 +200,7 @@ async function createEmbeddingFromLLMProvider(
 		}
 	} catch (error) {
 		logger.warn(`Failed to create embedding from LLM provider ${provider}`, {
-			error: error instanceof Error ? error.message : String(error)
+			error: error instanceof Error ? error.message : String(error),
 		});
 		return null;
 	}
@@ -211,7 +220,10 @@ export type AgentServices = {
 	knowledgeGraphManager?: KnowledgeGraphManager;
 };
 
-export async function createAgentServices(agentConfig: AgentConfig, appMode?: 'cli' | 'mcp' | 'api'): Promise<AgentServices> {
+export async function createAgentServices(
+	agentConfig: AgentConfig,
+	appMode?: 'cli' | 'mcp' | 'api'
+): Promise<AgentServices> {
 	// 1. Initialize agent config
 	const config = agentConfig;
 
@@ -279,7 +291,7 @@ export async function createAgentServices(agentConfig: AgentConfig, appMode?: 'c
 
 	// Set event manager for connection lifecycle events
 	mcpManager.setEventManager(eventManager);
-	
+
 	// Set quiet mode for CLI to reduce MCP logging noise
 	if (appMode === 'cli') {
 		mcpManager.setQuietMode(true);
@@ -318,19 +330,28 @@ export async function createAgentServices(agentConfig: AgentConfig, appMode?: 'c
 		let embeddingResult: { embedder: any; info: any } | null = null;
 
 		// Check if embeddings are explicitly disabled
-		const explicitlyDisabled = 
-			(config.embedding && typeof config.embedding === 'object' && 'disabled' in config.embedding && config.embedding.disabled === true) ||
+		const explicitlyDisabled =
+			(config.embedding &&
+				typeof config.embedding === 'object' &&
+				'disabled' in config.embedding &&
+				config.embedding.disabled === true) ||
 			config.embedding === null ||
 			config.embedding === false ||
-			process.env.DISABLE_EMBEDDINGS === 'true' || 
+			process.env.DISABLE_EMBEDDINGS === 'true' ||
 			process.env.EMBEDDING_DISABLED === 'true';
 
 		if (explicitlyDisabled) {
-			logger.warn('Embeddings are explicitly disabled - all embedding-dependent tools will be unavailable (chat-only mode)');
+			logger.warn(
+				'Embeddings are explicitly disabled - all embedding-dependent tools will be unavailable (chat-only mode)'
+			);
 			embeddingEnabled = false;
 		} else {
 			// Priority 1: Try explicit YAML embedding configuration if available
-			if (config.embedding && typeof config.embedding === 'object' && !('disabled' in config.embedding)) {
+			if (
+				config.embedding &&
+				typeof config.embedding === 'object' &&
+				!('disabled' in config.embedding)
+			) {
 				logger.debug('Found explicit embedding configuration in YAML, using it');
 				embeddingResult = await embeddingManager.createEmbedderFromConfig(
 					config.embedding as any,
@@ -341,9 +362,11 @@ export async function createAgentServices(agentConfig: AgentConfig, appMode?: 'c
 			// Priority 2: If no explicit embedding config (undefined) or disabled:false, fallback to LLM provider's embedding
 			if (!embeddingResult) {
 				if (config.llm?.provider) {
-					logger.debug('No explicit embedding config found, falling back to LLM provider embedding');
+					logger.debug(
+						'No explicit embedding config found, falling back to LLM provider embedding'
+					);
 					embeddingResult = await createEmbeddingFromLLMProvider(embeddingManager, config.llm);
-					
+
 					// Update agent config with the embedding info so vector store can use correct dimension
 					if (embeddingResult && embeddingResult.info) {
 						// Create embedding config object for the agent config
@@ -352,10 +375,10 @@ export async function createAgentServices(agentConfig: AgentConfig, appMode?: 'c
 							model: embeddingResult.info.model,
 							dimensions: embeddingResult.info.dimension,
 						};
-						
+
 						// Update the agent config with the embedding configuration
 						(config as any).embedding = embeddingConfig;
-						
+
 						logger.debug('Updated agent config with embedding fallback configuration', {
 							provider: embeddingResult.info.provider,
 							model: embeddingResult.info.model,
@@ -363,7 +386,9 @@ export async function createAgentServices(agentConfig: AgentConfig, appMode?: 'c
 						});
 					}
 				} else {
-					logger.debug('No LLM provider available for embedding fallback, trying environment auto-detection');
+					logger.debug(
+						'No LLM provider available for embedding fallback, trying environment auto-detection'
+					);
 					embeddingResult = await embeddingManager.createEmbedderFromEnv('default');
 				}
 			}
@@ -384,7 +409,9 @@ export async function createAgentServices(agentConfig: AgentConfig, appMode?: 'c
 				});
 				embeddingEnabled = true;
 			} else {
-				logger.warn('No embedding configuration available - embedding-dependent tools will be disabled (chat-only mode)');
+				logger.warn(
+					'No embedding configuration available - embedding-dependent tools will be disabled (chat-only mode)'
+				);
 				embeddingEnabled = false;
 			}
 		}
@@ -394,12 +421,17 @@ export async function createAgentServices(agentConfig: AgentConfig, appMode?: 'c
 			fallbackMode: 'chat-only',
 		});
 		embeddingEnabled = false;
-		
+
 		// Log detailed fallback information
 		logger.warn('🔄 Embedding system in fallback mode:', {
 			mode: 'chat-only',
 			availableFeatures: ['LLM conversation', 'MCP tools', 'System prompts'],
-			unavailableFeatures: ['Memory search', 'Knowledge storage', 'Reasoning patterns', 'Vector operations'],
+			unavailableFeatures: [
+				'Memory search',
+				'Knowledge storage',
+				'Reasoning patterns',
+				'Vector operations',
+			],
 			recoveryAction: 'Check embedding configuration and credentials, then restart the service',
 		});
 	}
@@ -632,16 +664,16 @@ export async function createAgentServices(agentConfig: AgentConfig, appMode?: 'c
 		llmService,
 		knowledgeGraphManager,
 	};
-	
+
 	if (embeddingEnabled) {
 		services.embeddingManager = embeddingManager;
 	}
-	
+
 	internalToolManager.setServices(services);
 
 	// 10. Initialize unified tool manager with proper mode handling
 	let unifiedToolManagerConfig: any;
-	
+
 	if (appMode === 'cli') {
 		// CLI Mode: Only search tools accessible to Cipher's LLM, background tools executed separately
 		unifiedToolManagerConfig = {
@@ -668,8 +700,12 @@ export async function createAgentServices(agentConfig: AgentConfig, appMode?: 'c
 			mode: 'api',
 		};
 	}
-	
-	const unifiedToolManager = new UnifiedToolManager(mcpManager, internalToolManager, unifiedToolManagerConfig);
+
+	const unifiedToolManager = new UnifiedToolManager(
+		mcpManager,
+		internalToolManager,
+		unifiedToolManagerConfig
+	);
 
 	// Set event manager for tool execution events
 	unifiedToolManager.setEventManager(eventManager);
@@ -720,7 +756,7 @@ export async function createAgentServices(agentConfig: AgentConfig, appMode?: 'c
 			getConfig: () => ({ provider: 'unknown', model: 'unknown' }),
 		},
 	};
-	
+
 	// Only include embeddingManager if embeddings are enabled
 	if (embeddingEnabled) {
 		agentServices.embeddingManager = embeddingManager;
@@ -732,7 +768,9 @@ export async function createAgentServices(agentConfig: AgentConfig, appMode?: 'c
 	}
 
 	// Emit all services ready event
-	const serviceTypes = Object.keys(agentServices).filter(key => agentServices[key as keyof AgentServices]);
+	const serviceTypes = Object.keys(agentServices).filter(
+		key => agentServices[key as keyof AgentServices]
+	);
 	eventManager.emitServiceEvent('cipher:allServicesReady', {
 		timestamp: Date.now(),
 		services: serviceTypes,

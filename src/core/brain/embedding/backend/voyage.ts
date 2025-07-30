@@ -34,7 +34,7 @@ export class VoyageEmbedder implements Embedder {
 		this.apiKey = config.apiKey || process.env.VOYAGE_API_KEY || '';
 		this.baseUrl = config.baseUrl || 'https://api.voyageai.com/v1';
 		this.model = config.model || 'voyage-3-large';
-		
+
 		// Set dimension based on model (all Voyage models have 1024 dimensions)
 		this.dimension = 1024;
 
@@ -175,7 +175,7 @@ export class VoyageEmbedder implements Embedder {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
-						'Authorization': `Bearer ${this.apiKey}`,
+						Authorization: `Bearer ${this.apiKey}`,
 					},
 					body: JSON.stringify(body),
 					signal: controller.signal,
@@ -200,7 +200,9 @@ export class VoyageEmbedder implements Embedder {
 					throw error;
 				}
 				if (attempt === maxRetries) {
-					throw new EmbeddingConnectionError(`Failed to connect to Voyage API after ${maxRetries} attempts: ${error}`);
+					throw new EmbeddingConnectionError(
+						`Failed to connect to Voyage API after ${maxRetries} attempts: ${error}`
+					);
 				}
 				await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
 			}

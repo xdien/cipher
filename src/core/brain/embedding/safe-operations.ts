@@ -1,6 +1,6 @@
 /**
  * Safe Embedding Operations
- * 
+ *
  * Provides safe wrappers for embedding operations that gracefully handle
  * failures and provide meaningful error messages for fallback scenarios.
  */
@@ -10,7 +10,7 @@ import { LOG_PREFIXES } from './constants.js';
 
 export interface SafeOperationResult<T> {
 	success: boolean;
-	data?: T;
+	data?: T | undefined;
 	error?: string;
 	fallbackActivated: boolean;
 }
@@ -32,9 +32,9 @@ export async function safeEmbeddingOperation<T>(
 		};
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
-		
+
 		// Check if this is a fallback scenario (embedding temporarily unavailable)
-		const isFallbackScenario = 
+		const isFallbackScenario =
 			errorMessage.includes('temporarily unavailable') ||
 			errorMessage.includes('chat-only mode') ||
 			errorMessage.includes('Circuit breaker OPEN') ||
@@ -75,11 +75,7 @@ export async function safeVectorStoreOperation<T>(
 	operationName: string,
 	fallbackMessage?: string
 ): Promise<SafeOperationResult<T>> {
-	return safeEmbeddingOperation(
-		operation,
-		`Vector store ${operationName}`,
-		undefined
-	);
+	return safeEmbeddingOperation(operation, `Vector store ${operationName}`, undefined);
 }
 
 /**
@@ -91,7 +87,7 @@ export async function safeMemoryOperation<T>(
 	userFriendlyFallback: string
 ): Promise<SafeOperationResult<T>> {
 	const result = await safeEmbeddingOperation(operation, operationName);
-	
+
 	if (result.fallbackActivated) {
 		// Override with user-friendly message
 		return {
@@ -99,7 +95,7 @@ export async function safeMemoryOperation<T>(
 			error: userFriendlyFallback,
 		};
 	}
-	
+
 	return result;
 }
 
@@ -122,11 +118,16 @@ export function isEmbeddingFallbackError(error: any): boolean {
  */
 export function getFriendlyFallbackMessage(operationType: string): string {
 	const messages = {
-		search: 'Memory search is temporarily unavailable. The system is operating in chat-only mode. Your conversation history is still maintained.',
-		store: 'Memory storage is temporarily unavailable. The system is operating in chat-only mode. Your current conversation will continue normally.',
-		reasoning: 'Reasoning pattern analysis is temporarily unavailable. The system is operating in chat-only mode with basic conversation capabilities.',
-		knowledge: 'Knowledge graph operations are temporarily unavailable. The system is operating in chat-only mode.',
-		default: 'This feature is temporarily unavailable due to embedding service issues. The system is operating in chat-only mode.',
+		search:
+			'Memory search is temporarily unavailable. The system is operating in chat-only mode. Your conversation history is still maintained.',
+		store:
+			'Memory storage is temporarily unavailable. The system is operating in chat-only mode. Your current conversation will continue normally.',
+		reasoning:
+			'Reasoning pattern analysis is temporarily unavailable. The system is operating in chat-only mode with basic conversation capabilities.',
+		knowledge:
+			'Knowledge graph operations are temporarily unavailable. The system is operating in chat-only mode.',
+		default:
+			'This feature is temporarily unavailable due to embedding service issues. The system is operating in chat-only mode.',
 	};
 
 	return messages[operationType as keyof typeof messages] || messages.default;
@@ -137,14 +138,16 @@ export function getFriendlyFallbackMessage(operationType: string): string {
  */
 export function logEmbeddingStatus(embeddingManager?: any): void {
 	if (!embeddingManager) {
-		logger.debug(`${LOG_PREFIXES.FALLBACK} No embedding manager available - operating in chat-only mode`);
+		logger.debug(
+			`${LOG_PREFIXES.FALLBACK} No embedding manager available - operating in chat-only mode`
+		);
 		return;
 	}
 
 	try {
 		const hasAvailable = embeddingManager.hasAvailableEmbeddings?.();
 		const status = embeddingManager.getEmbeddingStatus?.();
-		
+
 		logger.debug(`${LOG_PREFIXES.FALLBACK} Embedding status check`, {
 			hasAvailableEmbeddings: hasAvailable,
 			embeddingStatus: status,

@@ -323,11 +323,13 @@ export class ConversationSession {
 			setImmediate(async () => {
 				// Quick check to skip all background operations if embeddings are disabled
 				if (env.DISABLE_EMBEDDINGS || env.EMBEDDING_DISABLED) {
-					logger.debug('Skipping all background memory operations - embeddings disabled', { sessionId: this.id });
+					logger.debug('Skipping all background memory operations - embeddings disabled', {
+						sessionId: this.id,
+					});
 					resolve();
 					return;
 				}
-				
+
 				logger.debug('Starting background memory operations', { sessionId: this.id });
 				try {
 					await this.enforceMemoryExtraction(input, response, options);
@@ -372,7 +374,7 @@ export class ConversationSession {
 
 			// Check if embeddings are disabled via environment variables or configuration
 			const embeddingsDisabled = env.DISABLE_EMBEDDINGS || env.EMBEDDING_DISABLED;
-			
+
 			// Check if the unifiedToolManager is available
 			if (!this.services.unifiedToolManager) {
 				logger.debug(
@@ -383,19 +385,16 @@ export class ConversationSession {
 
 			// Load all tools once to avoid redundant loading
 			const allTools = await this.services.unifiedToolManager.getAllTools();
-			
+
 			// Check if the memory extraction tool is available
 			const memoryToolAvailable = allTools['cipher_extract_and_operate_memory'];
-			
+
 			if (embeddingsDisabled || !memoryToolAvailable) {
-				logger.debug(
-					'ConversationSession: Memory extraction skipped',
-					{ 
-						embeddingsDisabled, 
-						memoryToolAvailable: !!memoryToolAvailable,
-						reason: embeddingsDisabled ? 'embeddings disabled' : 'memory tool unavailable'
-					}
-				);
+				logger.debug('ConversationSession: Memory extraction skipped', {
+					embeddingsDisabled,
+					memoryToolAvailable: !!memoryToolAvailable,
+					reason: embeddingsDisabled ? 'embeddings disabled' : 'memory tool unavailable',
+				});
 				return;
 			}
 
@@ -530,7 +529,7 @@ export class ConversationSession {
 
 			// Check if embeddings are disabled via environment variables or configuration
 			const embeddingsDisabled = env.DISABLE_EMBEDDINGS || env.EMBEDDING_DISABLED;
-			
+
 			// Check if the unifiedToolManager is available
 			if (!this.services.unifiedToolManager) {
 				logger.debug(
@@ -540,18 +539,15 @@ export class ConversationSession {
 			}
 
 			// Check if reflection memory tools are available (using pre-loaded tools)
-			const reflectionToolsAvailable = allTools['cipher_extract_reasoning_steps'] && 
-				allTools['cipher_store_reasoning_memory'];
-			
+			const reflectionToolsAvailable =
+				allTools['cipher_extract_reasoning_steps'] && allTools['cipher_store_reasoning_memory'];
+
 			if (embeddingsDisabled || !reflectionToolsAvailable) {
-				logger.debug(
-					'ConversationSession: Reflection memory processing skipped',
-					{ 
-						embeddingsDisabled, 
-						reflectionToolsAvailable: !!reflectionToolsAvailable,
-						reason: embeddingsDisabled ? 'embeddings disabled' : 'reflection tools unavailable'
-					}
-				);
+				logger.debug('ConversationSession: Reflection memory processing skipped', {
+					embeddingsDisabled,
+					reflectionToolsAvailable: !!reflectionToolsAvailable,
+					reason: embeddingsDisabled ? 'embeddings disabled' : 'reflection tools unavailable',
+				});
 				return;
 			}
 

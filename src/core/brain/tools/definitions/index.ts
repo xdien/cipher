@@ -17,7 +17,9 @@ import { env } from '../../../env.js';
 /**
  * Get all tools from all categories
  */
-export async function getAllToolDefinitions(options: { embeddingEnabled?: boolean } = {}): Promise<InternalToolSet> {
+export async function getAllToolDefinitions(
+	options: { embeddingEnabled?: boolean } = {}
+): Promise<InternalToolSet> {
 	try {
 		// Tool loading logging reduced for cleaner CLI experience
 
@@ -54,7 +56,10 @@ export async function getAllToolDefinitions(options: { embeddingEnabled?: boolea
 /**
  * Register all tool definitions with the internal tool manager
  */
-export async function registerAllTools(toolManager: any, options: { embeddingEnabled?: boolean } = {}): Promise<{
+export async function registerAllTools(
+	toolManager: any,
+	options: { embeddingEnabled?: boolean } = {}
+): Promise<{
 	registered: string[];
 	failed: { name: string; error: string }[];
 	total: number;

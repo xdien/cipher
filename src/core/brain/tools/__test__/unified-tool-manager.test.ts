@@ -79,25 +79,17 @@ describe('UnifiedToolManager', () => {
 		it('should load internal tools when enabled', async () => {
 			const tools = await unifiedManager.getAllTools();
 
-			// Check memory tools (always available)
-			expect(tools['cipher_memory_search']).toBeDefined();
-			expect(tools['cipher_search_reasoning_patterns']).toBeDefined();
+			// In default mode, only ask_cipher should be available
+			expect(tools['ask_cipher']).toBeDefined();
 
-			// Internal-only tools should not be accessible to agents
+			// Internal-only tools should not be accessible to agents in default mode
 			expect(tools['cipher_store_reasoning_memory']).toBeUndefined();
 			expect(tools['cipher_extract_and_operate_memory']).toBeUndefined();
 			expect(tools['cipher_extract_reasoning_steps']).toBeUndefined();
 			expect(tools['cipher_evaluate_reasoning']).toBeUndefined();
 
-			// Check knowledge graph tools (conditionally available)
-			const { env } = await import('../../../env.js');
-			if (env.KNOWLEDGE_GRAPH_ENABLED) {
-				// Should have 13 agent-accessible tools total (2 memory search tools + 11 knowledge graph tools)
-				expect(Object.keys(tools)).toHaveLength(13);
-			} else {
-				// Should have 2 agent-accessible tools total (only memory search tools)
-				expect(Object.keys(tools)).toHaveLength(2);
-			}
+			// Should have 1 tool total in default mode (only ask_cipher)
+			expect(Object.keys(tools)).toHaveLength(1);
 
 			// All accessible tools should be marked as internal
 			for (const tool of Object.values(tools)) {
@@ -113,9 +105,13 @@ describe('UnifiedToolManager', () => {
 
 			const tools = await manager.getAllTools();
 
-			// Should not have any internal tools
-			const internalTools = Object.values(tools).filter(t => t.source === 'internal');
-			expect(internalTools).toHaveLength(0);
+			// In default mode, ask_cipher is hardcoded and always available
+			// even when internal tools are disabled
+			expect(tools['ask_cipher']).toBeDefined();
+			expect(Object.keys(tools)).toHaveLength(1);
+
+			// The ask_cipher tool is marked as internal source
+			expect(tools['ask_cipher']?.source).toBe('internal');
 		});
 
 		it('should handle disabled MCP tools', async () => {
@@ -183,7 +179,7 @@ describe('UnifiedToolManager', () => {
 
 		it('should check tool availability correctly', async () => {
 			// Agent-accessible tools should be available
-			const isAvailable = await unifiedManager.isToolAvailable('cipher_memory_search');
+			const isAvailable = await unifiedManager.isToolAvailable('ask_cipher');
 			expect(isAvailable).toBe(true);
 
 			// Internal-only tools should not be available to agents
@@ -203,15 +199,8 @@ describe('UnifiedToolManager', () => {
 
 			expect(Array.isArray(formattedTools)).toBe(true);
 
-			// Check based on environment setting
-			const { env } = await import('../../../env.js');
-			if (env.KNOWLEDGE_GRAPH_ENABLED) {
-				// Should have 13 agent-accessible tools total (2 memory search tools + 11 knowledge graph tools)
-				expect(formattedTools.length).toBe(13);
-			} else {
-				// Should have 2 agent-accessible tools total (only memory search tools)
-				expect(formattedTools.length).toBe(2);
-			}
+			// In default mode, should have 1 tool total (only ask_cipher)
+			expect(formattedTools.length).toBe(1);
 
 			// Check OpenAI format
 			const tool = formattedTools[0];
@@ -227,15 +216,8 @@ describe('UnifiedToolManager', () => {
 
 			expect(Array.isArray(formattedTools)).toBe(true);
 
-			// Check based on environment setting
-			const { env } = await import('../../../env.js');
-			if (env.KNOWLEDGE_GRAPH_ENABLED) {
-				// Should have 13 agent-accessible tools total (2 memory search tools + 11 knowledge graph tools)
-				expect(formattedTools.length).toBe(13);
-			} else {
-				// Should have 2 agent-accessible tools total (only memory search tools)
-				expect(formattedTools.length).toBe(2);
-			}
+			// In default mode, should have 1 tool total (only ask_cipher)
+			expect(formattedTools.length).toBe(1);
 
 			// Check Anthropic format
 			const tool = formattedTools[0];
@@ -249,15 +231,8 @@ describe('UnifiedToolManager', () => {
 
 			expect(Array.isArray(formattedTools)).toBe(true);
 
-			// Check based on environment setting
-			const { env } = await import('../../../env.js');
-			if (env.KNOWLEDGE_GRAPH_ENABLED) {
-				// OpenRouter uses OpenAI format - should have 13 agent-accessible tools total
-				expect(formattedTools.length).toBe(13);
-			} else {
-				// Should have 2 agent-accessible tools total (only memory search tools)
-				expect(formattedTools.length).toBe(2);
-			}
+			// In default mode, should have 1 tool total (only ask_cipher)
+			expect(formattedTools.length).toBe(1);
 
 			const tool = formattedTools[0];
 			expect(tool.type).toBe('function');
@@ -283,7 +258,7 @@ describe('UnifiedToolManager', () => {
 
 			// Verify at least one of the expected tools is present
 			const toolNames = formattedTools.map(tool => tool.function.name);
-			expect(toolNames).toContain('cipher_memory_search');
+			expect(toolNames).toContain('ask_cipher');
 		});
 
 		it('should throw error for unsupported provider', async () => {
@@ -363,7 +338,7 @@ describe('UnifiedToolManager', () => {
 	describe('Tool Source Detection', () => {
 		it('should correctly identify internal tool sources', async () => {
 			// Agent-accessible tools should return 'internal'
-			const source = await unifiedManager.getToolSource('cipher_memory_search');
+			const source = await unifiedManager.getToolSource('ask_cipher');
 			expect(source).toBe('internal');
 
 			// Internal-only tools should return null (not accessible to agents)
