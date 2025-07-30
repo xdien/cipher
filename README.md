@@ -84,28 +84,6 @@ cipher --mode mcp
 
 ## Configuration
 
-Configure Cipher using environment variables and YAML config:
-
-### Environment Variables (.env)
-
-```bash
-# Required: At least one API key
-OPENAI_API_KEY=your_openai_api_key          # Recommended for LLM + embeddings
-ANTHROPIC_API_KEY=your_anthropic_api_key    # Alternative LLM provider
-OPENROUTER_API_KEY=your_openrouter_api_key  # Alternative LLM provider
-GEMINI_API_KEY=your_gemini_api_key         # Free embeddings alternative
-
-# Ollama (self-hosted, no API key needed)
-OLLAMA_BASE_URL=http://localhost:11434/v1
-
-# Embedding configuration (optional)
-DISABLE_EMBEDDINGS=false                    # Set to true to disable embeddings entirely
-
-# Optional
-CIPHER_LOG_LEVEL=info
-NODE_ENV=production
-```
-
 ### Agent Configuration (memAgent/cipher.yml)
 
 ```yaml
@@ -126,125 +104,79 @@ mcpServers:
     args: ['-y', '@modelcontextprotocol/server-filesystem', '.']
 ```
 
-## Capabilities
+## Embedding Configuration
 
-- **Multiple Operation Modes**: CLI interactive, one-shot commands, REST API server, MCP server
-- **Session Management**: Create, switch, and manage multiple conversation sessions
-- **Memory Integration**: Persistent memory that learns from every interaction
-- **MCP Protocol Support**: Full Model Context Protocol integration for tools and resources
-- **Multi-LLM Support**: OpenAI, Anthropic, OpenRouter, Ollama, and Alibaba Cloud Qwen compatibility
-- **Knowledge Graph**: Structured memory with entity relationships (Neo4j, in-memory)
-- **Real-time Learning**: Memory layers that improve automatically with usage
+Configure embeddings in `memAgent/cipher.yml`. If not specified, uses automatic fallback based on your LLM provider. Below is the table of fallback embedding models:
 
-## Embedding Providers
+### Supported Providers
 
-Cipher supports multiple embedding providers with OpenAI as the default choice for reliability and consistency. Other providers can be configured via YAML for specific needs:
+| Provider         | Config              | Fallback Model                 | Fixed Dimensions           |
+| ---------------- | ------------------- | ------------------------------ | -------------------------- |
+| **OpenAI**       | `type: openai`      | `text-embedding-3-small`       | No                         |
+| **Gemini**       | `type: gemini`      | `gemini-embedding-001`         | No                         |
+| **Qwen**         | `type: qwen`        | `text-embedding-v3`            | Yes (1024, 768, 512)       |
+| **Voyage**       | `type: voyage`      | `voyage-3-large`               | Yes (1024, 256, 512, 2048) |
+| **AWS Bedrock**  | `type: aws-bedrock` | `amazon.titan-embed-text-v2:0` | Yes (1024, 512, 256)       |
+| **Azure OpenAI** | `type: openai`      | `text-embedding-3-small`       | No                         |
+| **Ollama**       | `type: ollama`      | `nomic-embed-text`             | No                         |
 
-### Configuration Priority
-
-1. **YAML Configuration** (highest priority) - `embedding:` section in `cipher.yml`
-2. **Environment Auto-detection** (fallback) - Based on available API keys
-
-### Environment Priority Order (when no YAML config)
-
-1. **OpenAI** (default, reliable) - `OPENAI_API_KEY=your_key`
-2. **Gemini** (free alternative) - `GEMINI_API_KEY=your_key`
-3. **Ollama** (self-hosted) - `OLLAMA_BASE_URL=http://localhost:11434`
-4. **Disabled mode** - `DISABLE_EMBEDDINGS=true`
-
-### YAML Configuration (Recommended for Alternative Providers)
-
-**For users who prefer free or local alternatives to OpenAI**, configure embeddings explicitly in `cipher.yml`:
+### Configuration Examples
 
 ```yaml
-# OpenAI (default, reliable)
+# OpenAI
 embedding:
   type: openai
   model: text-embedding-3-small
   apiKey: $OPENAI_API_KEY
 
-# Gemini (free alternative)
+# Qwen (fixed dimensions - must specify)
 embedding:
-  type: gemini
-  model: gemini-embedding-001
-  apiKey: $GEMINI_API_KEY
+  type: qwen
+  model: text-embedding-v3
+  apiKey: $QWEN_API_KEY
+  dimensions: 1024  # Required: 1024, 768, or 512
 
-# Ollama (self-hosted)
+# AWS Bedrock (fixed dimensions - must specify)
 embedding:
-  type: ollama
-  model: mxbai-embed-large
-  baseUrl: $OLLAMA_BASE_URL
+  type: aws-bedrock
+  model: amazon.titan-embed-text-v2:0
+  region: $AWS_REGION
+  accessKeyId: $AWS_ACCESS_KEY_ID
+  secretAccessKey: $AWS_SECRET_ACCESS_KEY
+  dimensions: 1024  # Required: 1024, 512, or 256
 
-# Disable embeddings
+# Azure OpenAI
+embedding:
+  type: openai
+  model: text-embedding-3-small
+  apiKey: $AZURE_OPENAI_API_KEY
+  baseUrl: $AZURE_OPENAI_ENDPOINT
+
+# Voyage (fixed dimensions - must specify)
+embedding:
+  type: voyage
+  model: voyage-3-large
+  apiKey: $VOYAGE_API_KEY
+  dimensions: 1024  # Required: 1024, 256, 512, or 2048
+
+# Disable embeddings (chat-only mode)
 embedding:
   disabled: true
 ```
 
-### Environment-Only Setup (Simple)
+**Note:** Setting `embedding: disabled: true` disables all memory-related tools (`cipher_memory_search`, `cipher_extract_and_operate_memory`, etc.) and operates in chat-only mode.
 
-```bash
-# Option 1: OpenAI embeddings (default, reliable)
-OPENAI_API_KEY=your_openai_key
+### Automatic Fallback
 
-# Option 2: Free Gemini embeddings
-GEMINI_API_KEY=your_gemini_key
+If no embedding config is specified, automatically uses your LLM provider's embedding:
 
-# Option 3: Self-hosted Ollama embeddings
-OLLAMA_BASE_URL=http://localhost:11434
+- **Anthropic LLM** → Voyage embedding (needs `VOYAGE_API_KEY`)
+- **AWS LLM** → AWS Bedrock embedding (uses same credentials)
+- **Azure LLM** → Azure OpenAI embedding (uses same endpoint)
+- **Qwen LLM** → Qwen embedding (uses same API key)
+- **OpenAI/Gemini/Ollama** → Same provider embedding
 
-# Option 4: Disable embeddings (lightweight mode)
-DISABLE_EMBEDDINGS=true
-```
-
-### Setting up Ollama (Self-hosted)
-
-To use Ollama for local embeddings:
-
-1. **Install Ollama**:
-
-   ```bash
-   # macOS
-   brew install ollama
-
-   # Or download from https://ollama.ai
-   ```
-
-2. **Start Ollama service**:
-
-   ```bash
-   ollama serve
-   ```
-
-3. **Pull embedding model**:
-
-   ```bash
-   # Recommended embedding model
-   ollama pull nomic-embed-text
-
-   # Alternative models
-   ollama pull all-minilm
-   ollama pull mxbai-embed-large
-   ```
-
-4. **Configure in YAML**:
-
-   ```yaml
-   embedding:
-     type: ollama
-     model: mxbai-embed-large # or your chosen model
-     baseUrl: $OLLAMA_BASE_URL
-   ```
-
-5. **Set environment**:
-
-   ```bash
-   OLLAMA_BASE_URL=http://localhost:11434
-   ```
-
-6. **Test connection**:
-   ```bash
-   cipher "🧪 Testing Ollama: What is machine learning?"
-   ```
+**Note:** For providers with fixed dimensions (Qwen, Voyage, AWS), you must specify `dimensions:` in the config to override the default value in `.env`.
 
 ## LLM Providers
 

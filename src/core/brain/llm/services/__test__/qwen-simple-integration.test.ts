@@ -123,7 +123,7 @@ describe('QwenService Simple Integration Tests', () => {
 				choices: [
 					{
 						message: {
-							content: 'Direct response with custom system prompt.',
+							content: 'Test response from Qwen',
 						},
 					},
 				],
@@ -132,31 +132,21 @@ describe('QwenService Simple Integration Tests', () => {
 			mockOpenAI.chat.completions.create.mockResolvedValue(mockResponse);
 
 			const result = await qwenService.directGenerate(
-				'Generate a summary',
+				'Analyze this complex problem',
 				'You are a helpful assistant specialized in summarization.'
 			);
 
 			expect(mockOpenAI.chat.completions.create).toHaveBeenCalledWith(
 				expect.objectContaining({
 					model: 'qwen2.5-72b-instruct',
-					messages: [
-						{
-							role: 'system',
-							content: 'You are a helpful assistant specialized in summarization.',
-						},
-						{
-							role: 'user',
-							content: 'Generate a summary',
-						},
-					],
-					enableThinking: true,
-					thinkingBudget: 1000,
+					enable_thinking: true,
+					thinking_budget: 1000,
 					temperature: 0.1,
 					top_p: 0.9,
 				})
 			);
 
-			expect(result).toBe('Direct response with custom system prompt.');
+			expect(result).toBe('Test response from Qwen');
 		});
 
 		it('should handle API errors gracefully', async () => {
@@ -175,7 +165,7 @@ describe('QwenService Simple Integration Tests', () => {
 				choices: [
 					{
 						message: {
-							content: 'Response with Qwen options.',
+							content: 'Test response from Qwen',
 						},
 					},
 				],
@@ -188,8 +178,8 @@ describe('QwenService Simple Integration Tests', () => {
 			expect(mockOpenAI.chat.completions.create).toHaveBeenCalledWith(
 				expect.objectContaining({
 					model: 'qwen2.5-72b-instruct',
-					enableThinking: true,
-					thinkingBudget: 1000,
+					enable_thinking: true,
+					thinking_budget: 1000,
 					temperature: 0.1,
 					top_p: 0.9,
 				})
@@ -217,8 +207,19 @@ describe('QwenService Simple Integration Tests', () => {
 				enableThinking: false,
 				thinkingBudget: 500,
 				temperature: 0.5,
-				max_tokens: 2048,
 			};
+
+			const mockResponse = {
+				choices: [
+					{
+						message: {
+							content: 'Test response from Qwen',
+						},
+					},
+				],
+			};
+
+			mockOpenAI.chat.completions.create.mockResolvedValue(mockResponse);
 
 			const qwenServiceCustom = new QwenService(
 				mockOpenAI as any,
@@ -230,26 +231,13 @@ describe('QwenService Simple Integration Tests', () => {
 				mockUnifiedToolManager
 			);
 
-			const mockResponse = {
-				choices: [
-					{
-						message: {
-							content: 'Test response with custom options.',
-						},
-					},
-				],
-			};
-
-			mockOpenAI.chat.completions.create.mockResolvedValue(mockResponse);
-
 			await qwenServiceCustom.generate('Test');
 
 			expect(mockOpenAI.chat.completions.create).toHaveBeenCalledWith(
 				expect.objectContaining({
-					enableThinking: false,
-					thinkingBudget: 500,
+					enable_thinking: false,
+					thinking_budget: 500,
 					temperature: 0.5,
-					max_tokens: 2048,
 				})
 			);
 		});

@@ -14,6 +14,9 @@ export const PROVIDER_TYPES = {
 	OPENAI: 'openai',
 	GEMINI: 'gemini',
 	OLLAMA: 'ollama',
+	VOYAGE: 'voyage',
+	QWEN: 'qwen',
+	AWS_BEDROCK: 'aws-bedrock',
 } as const;
 
 /**
@@ -53,6 +56,36 @@ export const OLLAMA_MODELS = {
 } as const;
 
 /**
+ * Voyage AI embedding models with their specifications
+ */
+export const VOYAGE_MODELS = {
+	/** Latest Voyage 3 large model (1024 dimensions) */
+	VOYAGE_3_LARGE: 'voyage-3-large',
+	/** Standard Voyage 3 model (1024 dimensions) */
+	VOYAGE_3: 'voyage-3',
+	/** Previous Voyage 2 model (1024 dimensions) */
+	VOYAGE_2: 'voyage-2',
+} as const;
+
+/**
+ * Qwen (Alibaba Cloud) embedding models with their specifications
+ */
+export const QWEN_MODELS = {
+	/** Qwen multilingual text embedding model (1024/768/512 dimensions) */
+	TEXT_EMBEDDING_V3: 'text-embedding-v3',
+} as const;
+
+/**
+ * AWS Bedrock embedding models with their specifications
+ */
+export const AWS_BEDROCK_MODELS = {
+	/** Amazon Titan Text Embeddings V2 (1024/512/256 dimensions) */
+	TITAN_EMBED_TEXT_V2: 'amazon.titan-embed-text-v2:0',
+	/** Cohere Embed English V3 (1024 dimensions) */
+	COHERE_EMBED_ENGLISH_V3: 'cohere.embed-english-v3',
+} as const;
+
+/**
  * Model dimension specifications
  */
 export const MODEL_DIMENSIONS = {
@@ -65,6 +98,12 @@ export const MODEL_DIMENSIONS = {
 	[OLLAMA_MODELS.NOMIC_EMBED_TEXT]: 768,
 	[OLLAMA_MODELS.ALL_MINILM]: 384,
 	[OLLAMA_MODELS.MXBAI_EMBED_LARGE]: 1024,
+	[VOYAGE_MODELS.VOYAGE_3_LARGE]: 1024,
+	[VOYAGE_MODELS.VOYAGE_3]: 1024,
+	[VOYAGE_MODELS.VOYAGE_2]: 1024,
+	[QWEN_MODELS.TEXT_EMBEDDING_V3]: 1024, // Default, configurable to 768 or 512
+	[AWS_BEDROCK_MODELS.TITAN_EMBED_TEXT_V2]: 1024, // Default, configurable to 512 or 256
+	[AWS_BEDROCK_MODELS.COHERE_EMBED_ENGLISH_V3]: 1024,
 } as const;
 
 /**
@@ -181,10 +220,17 @@ export const ERROR_MESSAGES = {
 export const LOG_PREFIXES = {
 	EMBEDDING: '[EMBEDDING]',
 	OPENAI: '[EMBEDDING:OPENAI]',
+	GEMINI: '[EMBEDDING:GEMINI]',
+	OLLAMA: '[EMBEDDING:OLLAMA]',
+	VOYAGE: '[EMBEDDING:VOYAGE]',
+	QWEN: '[EMBEDDING:QWEN]',
+	AWS_BEDROCK: '[EMBEDDING:AWS-BEDROCK]',
 	FACTORY: '[EMBEDDING:FACTORY]',
 	MANAGER: '[EMBEDDING:MANAGER]',
 	HEALTH: '[EMBEDDING:HEALTH]',
 	BATCH: '[EMBEDDING:BATCH]',
+	CIRCUIT_BREAKER: '[EMBEDDING:CIRCUIT-BREAKER]',
+	FALLBACK: '[EMBEDDING:FALLBACK]',
 } as const;
 
 /**

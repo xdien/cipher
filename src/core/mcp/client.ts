@@ -47,6 +47,7 @@ export class MCPClient implements IMCPClient {
 	private serverName: string = '';
 	private logger: Logger;
 	private connectionPromise: Promise<Client> | null = null;
+	private quietMode = false;
 
 	// Server process information (for stdio connections)
 	private serverInfo = {
@@ -61,6 +62,13 @@ export class MCPClient implements IMCPClient {
 
 	constructor() {
 		this.logger = createLogger({ level: 'info' });
+	}
+
+	/**
+	 * Enable quiet mode to reduce logging verbosity (useful for CLI mode)
+	 */
+	setQuietMode(quiet: boolean): void {
+		this.quietMode = quiet;
 	}
 
 	/**
@@ -96,10 +104,12 @@ export class MCPClient implements IMCPClient {
 		this.serverConfig = config;
 		this.serverName = serverName;
 
-		this.logger.info(`${LOG_PREFIXES.CONNECT} Connecting to ${serverName} (${config.type})`, {
-			serverName,
-			transportType: config.type,
-		});
+		if (!this.quietMode) {
+			this.logger.info(`${LOG_PREFIXES.CONNECT} Connecting to ${serverName} (${config.type})`, {
+				serverName,
+				transportType: config.type,
+			});
+		}
 
 		try {
 			// Create transport based on configuration type
@@ -127,10 +137,12 @@ export class MCPClient implements IMCPClient {
 
 			this.connected = true;
 
-			this.logger.info(`${LOG_PREFIXES.CONNECT} Successfully connected to ${serverName}`, {
-				serverName,
-				timeout,
-			});
+			if (!this.quietMode) {
+				this.logger.info(`${LOG_PREFIXES.CONNECT} Successfully connected to ${serverName}`, {
+					serverName,
+					timeout,
+				});
+			}
 
 			return this.client;
 		} catch (error) {

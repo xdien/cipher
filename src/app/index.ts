@@ -192,7 +192,7 @@ program
 				}
 			}
 
-			agent = new MemAgent(cfg);
+			agent = new MemAgent(cfg, opts.mode);
 
 			// Start the agent (initialize async services)
 			await agent.start();

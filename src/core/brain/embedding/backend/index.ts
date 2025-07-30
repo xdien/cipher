@@ -1,20 +1,23 @@
 /**
- * Embedding Backend Module Exports
+ * Embedding Backend Module
  *
- * Central export point for all embedding backend implementations and types.
- * Provides a clean interface for accessing embedding providers and utilities.
+ * Exports all embedding backend types and implementations.
+ * Provides a unified interface for different embedding providers.
  *
  * @module embedding/backend
  */
 
-// Export core types and interfaces
+// Export core types
 export type {
 	Embedder,
 	EmbeddingConfig,
+	BackendConfig,
 	OpenAIEmbeddingConfig,
 	GeminiEmbeddingConfig,
 	OllamaEmbeddingConfig,
-	BackendConfig,
+	VoyageEmbeddingConfig,
+	QwenEmbeddingConfig,
+	AWSBedrockEmbeddingConfig,
 	EmbeddingResult,
 	BatchEmbeddingResult,
 } from './types.js';
@@ -33,3 +36,6 @@ export {
 export { OpenAIEmbedder } from './openai.js';
 export { GeminiEmbedder } from './gemini.js';
 export { OllamaEmbedder } from './ollama.js';
+export { VoyageEmbedder } from './voyage.js';
+export { QwenEmbedder } from './qwen.js';
+export { AWSBedrockEmbedder } from './aws.js';

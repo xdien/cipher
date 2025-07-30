@@ -17,6 +17,8 @@ import {
 } from './factory.js';
 import { LOG_PREFIXES } from './constants.js';
 import { type EmbeddingConfig } from './config.js';
+import { ResilientEmbedder, EmbeddingStatus } from './resilient-embedder.js';
+import { CircuitBreakerManager } from './circuit-breaker.js';
 
 /**
  * Health check result for an embedder instance
@@ -87,6 +89,8 @@ export interface EmbeddingStats {
 export class EmbeddingManager {
 	private embedders = new Map<string, Embedder>();
 	private embedderInfo = new Map<string, EmbedderInfo>();
+	private resilientEmbedders = new Map<string, ResilientEmbedder>();
+	private circuitBreakerManager = new CircuitBreakerManager();
 	private stats: EmbeddingStats = {
 		totalEmbeds: 0,
 		totalBatchEmbeds: 0,
@@ -97,9 +101,10 @@ export class EmbeddingManager {
 		averageProcessingTime: 0,
 	};
 	private healthCheckInterval: NodeJS.Timeout | undefined;
+	private fallbackEnabled = true;
 
 	constructor() {
-		logger.debug(`${LOG_PREFIXES.MANAGER} Embedding manager initialized`);
+		logger.debug(`${LOG_PREFIXES.MANAGER} Embedding manager with resilient fallback initialized`);
 	}
 
 	/**
@@ -122,28 +127,39 @@ export class EmbeddingManager {
 
 		try {
 			const configWithApiKey = { ...config, apiKey: config.apiKey || '' };
-			const embedder = await createEmbedder(configWithApiKey as any);
+			const baseEmbedder = await createEmbedder(configWithApiKey as any);
+
+			// Wrap with resilient embedder for fault tolerance
+			const resilientEmbedder = new ResilientEmbedder(baseEmbedder, config.type, {
+				enableCircuitBreaker: this.fallbackEnabled,
+				enableFallback: this.fallbackEnabled,
+				healthCheckInterval: 300000, // 5 minutes
+				maxConsecutiveFailures: 5,
+				recoveryInterval: 60000, // 1 minute
+			});
 
 			const info: EmbedderInfo = {
 				id: embedderId,
 				provider: config.type,
 				model: config.model || 'unknown',
-				dimension: embedder.getDimension(),
+				dimension: baseEmbedder.getDimension(),
 				config,
 				createdAt: new Date(),
 			};
 
-			this.embedders.set(embedderId, embedder);
+			this.embedders.set(embedderId, resilientEmbedder);
 			this.embedderInfo.set(embedderId, info);
+			this.resilientEmbedders.set(embedderId, resilientEmbedder);
 
-			logger.info(`${LOG_PREFIXES.MANAGER} Successfully created embedder`, {
+			logger.info(`${LOG_PREFIXES.MANAGER} Successfully created resilient embedder`, {
 				id: embedderId,
 				provider: info.provider,
 				model: info.model,
 				dimension: info.dimension,
+				fallbackEnabled: this.fallbackEnabled,
 			});
 
-			return { embedder, info };
+			return { embedder: resilientEmbedder, info };
 		} catch (error) {
 			logger.error(`${LOG_PREFIXES.MANAGER} Failed to create embedder`, {
 				id: embedderId,
@@ -198,12 +214,39 @@ export class EmbeddingManager {
 		this.embedders.set(embedderId, embedder);
 		this.embedderInfo.set(embedderId, info);
 
-		logger.info(`${LOG_PREFIXES.MANAGER} Embedder registered successfully from YAML`, {
+		// Enhanced logging with provider-specific details
+		const logDetails: any = {
 			id: embedderId,
 			provider: info.provider,
 			model: info.model,
 			dimension: info.dimension,
-		});
+		};
+
+		// Add provider-specific details
+		if (info.provider === 'voyage') {
+			logDetails.voyageModel = info.model;
+			logDetails.voyageDimensions = info.dimension;
+			logger.info(
+				`${LOG_PREFIXES.MANAGER} Voyage embedder registered successfully from YAML`,
+				logDetails
+			);
+		} else if (info.provider === 'openai') {
+			logDetails.openaiModel = info.model;
+			logDetails.openaiDimensions = info.dimension;
+			logger.info(
+				`${LOG_PREFIXES.MANAGER} OpenAI embedder registered successfully from YAML`,
+				logDetails
+			);
+		} else if (info.provider === 'qwen') {
+			logDetails.qwenModel = info.model;
+			logDetails.qwenDimensions = info.dimension;
+			logger.info(
+				`${LOG_PREFIXES.MANAGER} Qwen embedder registered successfully from YAML`,
+				logDetails
+			);
+		} else {
+			logger.info(`${LOG_PREFIXES.MANAGER} Embedder registered successfully from YAML`, logDetails);
+		}
 
 		return { embedder, info };
 	}
@@ -225,12 +268,13 @@ export class EmbeddingManager {
 			return null;
 		}
 
-		const embedder = await createEmbedderFromEnv();
-		if (!embedder) {
+		const result = await createEmbedderFromEnv();
+		if (!result) {
 			logger.warn(`${LOG_PREFIXES.MANAGER} No embedder configuration found in environment`);
 			return null;
 		}
 
+		const { embedder, info: factoryInfo } = result;
 		const embedderId = id || this.generateId();
 		const config = embedder.getConfig() as BackendConfig;
 
@@ -524,6 +568,103 @@ export class EmbeddingManager {
 	}
 
 	/**
+	 * Get embedding status for all embedders
+	 */
+	getEmbeddingStatus(): Record<
+		string,
+		{
+			status: EmbeddingStatus;
+			provider: string;
+			isHealthy: boolean;
+			stats: any;
+		}
+	> {
+		const status: Record<string, any> = {};
+
+		for (const [id, resilientEmbedder] of this.resilientEmbedders) {
+			const info = this.embedderInfo.get(id);
+			if (info) {
+				status[id] = {
+					status: resilientEmbedder.getStatus(),
+					provider: info.provider,
+					isHealthy: resilientEmbedder.getStatus() === EmbeddingStatus.HEALTHY,
+					stats: resilientEmbedder.getStats(),
+				};
+			}
+		}
+
+		return status;
+	}
+
+	/**
+	 * Check if any embeddings are currently available
+	 */
+	hasAvailableEmbeddings(): boolean {
+		for (const resilientEmbedder of this.resilientEmbedders.values()) {
+			const status = resilientEmbedder.getStatus();
+			if (status === EmbeddingStatus.HEALTHY || status === EmbeddingStatus.RECOVERING) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Get circuit breaker statistics
+	 */
+	getCircuitBreakerStats() {
+		return this.circuitBreakerManager.getAllStats();
+	}
+
+	/**
+	 * Reset all circuit breakers and recover from disabled state
+	 */
+	resetAllEmbedders(): void {
+		logger.info(`${LOG_PREFIXES.MANAGER} Resetting all embedders to healthy state`);
+
+		// Reset circuit breakers
+		this.circuitBreakerManager.resetAll();
+
+		// Reset all resilient embedders
+		for (const resilientEmbedder of this.resilientEmbedders.values()) {
+			resilientEmbedder.reset();
+		}
+
+		logger.info(`${LOG_PREFIXES.MANAGER} All embedders reset successfully`);
+	}
+
+	/**
+	 * Force disable all embeddings (emergency fallback)
+	 */
+	forceDisableAllEmbeddings(): void {
+		logger.warn(
+			`${LOG_PREFIXES.MANAGER} Force disabling all embeddings - switching to chat-only mode`
+		);
+
+		for (const resilientEmbedder of this.resilientEmbedders.values()) {
+			resilientEmbedder.forceDisable();
+		}
+
+		this.fallbackEnabled = false;
+	}
+
+	/**
+	 * Enable fallback functionality
+	 */
+	enableFallback(): void {
+		this.fallbackEnabled = true;
+		logger.info(`${LOG_PREFIXES.MANAGER} Embedding fallback enabled`);
+	}
+
+	/**
+	 * Disable fallback functionality
+	 */
+	disableFallback(): void {
+		this.fallbackEnabled = false;
+		logger.info(`${LOG_PREFIXES.MANAGER} Embedding fallback disabled`);
+	}
+
+	/**
 	 * Disconnect all embedders and cleanup
 	 */
 	async disconnect(): Promise<void> {
@@ -550,6 +691,7 @@ export class EmbeddingManager {
 		// Clear all maps
 		this.embedders.clear();
 		this.embedderInfo.clear();
+		this.resilientEmbedders.clear();
 
 		logger.info(`${LOG_PREFIXES.MANAGER} Successfully disconnected all embedders`);
 	}

@@ -78,31 +78,32 @@ describe('UnifiedToolManager - Aggregator Mode', () => {
 
 	describe('Default Mode', () => {
 		it('should NOT expose cipher_extract_and_operate_memory in default mode', async () => {
-			process.env.MCP_SERVER_MODE = 'default';
-
-			const manager = new UnifiedToolManager(mockMcpManager, mockInternalToolManager);
+			const manager = new UnifiedToolManager(mockMcpManager, mockInternalToolManager, {
+				mode: 'default',
+			});
 			const allTools = await manager.getAllTools();
 
 			// cipher_extract_and_operate_memory should NOT be in the tools list
 			expect(allTools).not.toHaveProperty('cipher_extract_and_operate_memory');
 
-			// But other agent-accessible tools should be present
-			expect(allTools).toHaveProperty('cipher_memory_search');
+			// In default mode, only ask_cipher should be present
+			expect(allTools).toHaveProperty('ask_cipher');
+			expect(Object.keys(allTools)).toHaveLength(1);
 		});
 
 		it('should return false for isToolAvailable for cipher_extract_and_operate_memory in default mode', async () => {
-			process.env.MCP_SERVER_MODE = 'default';
-
-			const manager = new UnifiedToolManager(mockMcpManager, mockInternalToolManager);
+			const manager = new UnifiedToolManager(mockMcpManager, mockInternalToolManager, {
+				mode: 'default',
+			});
 
 			const isAvailable = await manager.isToolAvailable('cipher_extract_and_operate_memory');
 			expect(isAvailable).toBe(false);
 		});
 
 		it('should return null for getToolSource for cipher_extract_and_operate_memory in default mode', async () => {
-			process.env.MCP_SERVER_MODE = 'default';
-
-			const manager = new UnifiedToolManager(mockMcpManager, mockInternalToolManager);
+			const manager = new UnifiedToolManager(mockMcpManager, mockInternalToolManager, {
+				mode: 'default',
+			});
 
 			const source = await manager.getToolSource('cipher_extract_and_operate_memory');
 			expect(source).toBe(null);
@@ -111,9 +112,9 @@ describe('UnifiedToolManager - Aggregator Mode', () => {
 
 	describe('Aggregator Mode', () => {
 		it('should expose cipher_extract_and_operate_memory in aggregator mode', async () => {
-			process.env.MCP_SERVER_MODE = 'aggregator';
-
-			const manager = new UnifiedToolManager(mockMcpManager, mockInternalToolManager);
+			const manager = new UnifiedToolManager(mockMcpManager, mockInternalToolManager, {
+				mode: 'aggregator',
+			});
 			const allTools = await manager.getAllTools();
 
 			// cipher_extract_and_operate_memory SHOULD be in the tools list
@@ -129,18 +130,18 @@ describe('UnifiedToolManager - Aggregator Mode', () => {
 		});
 
 		it('should return true for isToolAvailable for cipher_extract_and_operate_memory in aggregator mode', async () => {
-			process.env.MCP_SERVER_MODE = 'aggregator';
-
-			const manager = new UnifiedToolManager(mockMcpManager, mockInternalToolManager);
+			const manager = new UnifiedToolManager(mockMcpManager, mockInternalToolManager, {
+				mode: 'aggregator',
+			});
 
 			const isAvailable = await manager.isToolAvailable('cipher_extract_and_operate_memory');
 			expect(isAvailable).toBe(true);
 		});
 
 		it('should return "internal" for getToolSource for cipher_extract_and_operate_memory in aggregator mode', async () => {
-			process.env.MCP_SERVER_MODE = 'aggregator';
-
-			const manager = new UnifiedToolManager(mockMcpManager, mockInternalToolManager);
+			const manager = new UnifiedToolManager(mockMcpManager, mockInternalToolManager, {
+				mode: 'aggregator',
+			});
 
 			const source = await manager.getToolSource('cipher_extract_and_operate_memory');
 			expect(source).toBe('internal');
@@ -149,8 +150,6 @@ describe('UnifiedToolManager - Aggregator Mode', () => {
 
 	describe('Explicit Configuration Override', () => {
 		it('should allow explicit mode override via config', async () => {
-			process.env.MCP_SERVER_MODE = 'default';
-
 			// Override via config
 			const manager = new UnifiedToolManager(mockMcpManager, mockInternalToolManager, {
 				mode: 'aggregator',

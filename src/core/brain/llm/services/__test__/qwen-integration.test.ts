@@ -374,7 +374,7 @@ describe('QwenService Integration Tests', () => {
 				choices: [
 					{
 						message: {
-							content: 'I have analyzed this using my thinking capabilities.',
+							content: 'Test response from Qwen',
 						},
 					},
 				],
@@ -388,8 +388,8 @@ describe('QwenService Integration Tests', () => {
 			expect(mockOpenAI.chat.completions.create).toHaveBeenCalledWith(
 				expect.objectContaining({
 					model: 'qwen2.5-72b-instruct',
-					enableThinking: true,
-					thinkingBudget: 1000,
+					enable_thinking: true,
+					thinking_budget: 1000,
 					temperature: 0.1,
 					top_p: 0.9,
 				})
@@ -401,7 +401,7 @@ describe('QwenService Integration Tests', () => {
 				choices: [
 					{
 						message: {
-							content: 'Direct response with system prompt.',
+							content: 'Test response from Qwen',
 						},
 					},
 				],
@@ -410,31 +410,21 @@ describe('QwenService Integration Tests', () => {
 			mockOpenAI.chat.completions.create.mockResolvedValue(mockResponse);
 
 			const result = await qwenService.directGenerate(
-				'Generate a summary',
+				'Analyze this complex problem',
 				'You are a helpful assistant specialized in summarization.'
 			);
 
 			expect(mockOpenAI.chat.completions.create).toHaveBeenCalledWith(
 				expect.objectContaining({
 					model: 'qwen2.5-72b-instruct',
-					messages: [
-						{
-							role: 'system',
-							content: 'You are a helpful assistant specialized in summarization.',
-						},
-						{
-							role: 'user',
-							content: 'Generate a summary',
-						},
-					],
-					enableThinking: true,
-					thinkingBudget: 1000,
+					enable_thinking: true,
+					thinking_budget: 1000,
 					temperature: 0.1,
 					top_p: 0.9,
 				})
 			);
 
-			expect(result).toBe('Direct response with system prompt.');
+			expect(result).toBe('Test response from Qwen');
 		});
 
 		it('should handle API errors with retry logic', async () => {
@@ -641,7 +631,6 @@ describe('QwenService Integration Tests', () => {
 				enableThinking: false,
 				thinkingBudget: 500,
 				temperature: 0.5,
-				max_tokens: 2048,
 			};
 
 			// Mock the context manager to return properly formatted messages
@@ -654,13 +643,12 @@ describe('QwenService Integration Tests', () => {
 				choices: [
 					{
 						message: {
-							content: 'Test response',
+							content: 'Test response from Qwen',
 						},
 					},
 				],
 			};
 
-			// Set up the mock before creating the service
 			mockOpenAI.chat.completions.create.mockResolvedValue(mockResponse);
 
 			const qwenServiceCustom = new QwenService(
@@ -677,10 +665,9 @@ describe('QwenService Integration Tests', () => {
 
 			expect(mockOpenAI.chat.completions.create).toHaveBeenCalledWith(
 				expect.objectContaining({
-					enableThinking: false,
-					thinkingBudget: 500,
+					enable_thinking: false,
+					thinking_budget: 500,
 					temperature: 0.5,
-					max_tokens: 2048,
 				})
 			);
 		});

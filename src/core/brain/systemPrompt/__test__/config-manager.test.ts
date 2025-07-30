@@ -17,7 +17,14 @@ describe('SystemPromptConfigManager', () => {
 
 		// Create temporary directory for test config files
 		tempDir = path.join(process.cwd(), 'temp-test-configs');
-		await fs.mkdir(tempDir, { recursive: true });
+		try {
+			await fs.mkdir(tempDir, { recursive: true });
+		} catch (error) {
+			// If directory already exists, that's fine
+			if ((error as any).code !== 'EEXIST') {
+				throw error;
+			}
+		}
 	});
 
 	afterEach(async () => {

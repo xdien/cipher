@@ -31,16 +31,30 @@ export class MemAgent {
 	private defaultSession: ConversationSession | null = null;
 
 	private currentDefaultSessionId: string = 'default';
-	private currentActiveSessionId: string = 'default';
+	private currentActiveSessionId: string = this.generateUniqueSessionId();
 
 	private isStarted: boolean = false;
 	private isStopped: boolean = false;
 
 	private config: AgentConfig;
+	private appMode: 'cli' | 'mcp' | 'api' | null = null;
 
-	constructor(config: AgentConfig) {
+	constructor(config: AgentConfig, appMode?: 'cli' | 'mcp' | 'api') {
 		this.config = config;
-		logger.info('MemAgent created');
+		this.appMode = appMode || null;
+		if (appMode !== 'cli') {
+			logger.debug('MemAgent created');
+		}
+	}
+
+	/**
+	 * Generate a unique session ID for each CLI invocation
+	 * This ensures session isolation - each new CLI start gets a fresh conversation
+	 */
+	private generateUniqueSessionId(): string {
+		const timestamp = Date.now();
+		const random = Math.random().toString(36).substring(2, 8);
+		return `cli-${timestamp}-${random}`;
 	}
 
 	/**
@@ -52,9 +66,11 @@ export class MemAgent {
 		}
 
 		try {
-			logger.info('Starting MemAgent...');
+			if (this.appMode !== 'cli') {
+				logger.debug('Starting MemAgent...');
+			}
 			// 1. Initialize services
-			const services = await createAgentServices(this.config);
+			const services = await createAgentServices(this.config, this.appMode || undefined);
 			for (const service of requiredServices) {
 				if (!services[service]) {
 					throw new Error(`Required service ${service} is missing during agent start`);
@@ -71,7 +87,9 @@ export class MemAgent {
 				services: services,
 			});
 			this.isStarted = true;
-			logger.info('MemAgent started successfully');
+			if (this.appMode !== 'cli') {
+				logger.debug('MemAgent started successfully');
+			}
 		} catch (error) {
 			logger.error('Failed to start MemAgent:', error);
 			throw error;
@@ -170,6 +188,9 @@ export class MemAgent {
 					(await this.sessionManager.createSession(this.currentActiveSessionId));
 			}
 			logger.debug(`MemAgent.run: using session ${session.id}`);
+			if (session.id.startsWith('cli-')) {
+				logger.debug('Using isolated CLI session - no previous conversation history');
+			}
 			const { response, backgroundOperations } = await session.run(
 				userInput,
 				imageDataInput,
