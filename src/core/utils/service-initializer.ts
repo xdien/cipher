@@ -87,16 +87,21 @@ async function createEmbeddingFromLLMProvider(
 			}
 			
 			case 'anthropic': {
-				// Anthropic doesn't have native embeddings, use Voyage (recommended by Anthropic) with no fallback
-				if (process.env.VOYAGE_API_KEY) {
+				// Anthropic doesn't have native embeddings, use Voyage as recommended fallback
+				if (llmConfig.apiKey || process.env.VOYAGE_API_KEY) {
 					const embeddingConfig = {
 						type: 'voyage' as const,
-						apiKey: process.env.VOYAGE_API_KEY,
+						apiKey: llmConfig.apiKey || process.env.VOYAGE_API_KEY,
 						model: 'voyage-3-large' as const,
 						timeout: 30000,
-						maxRetries: 3
+						maxRetries: 3,
+						dimensions: 1024
 					};
-					logger.debug('Using Voyage embedding for Anthropic LLM: voyage-3-large');
+					logger.debug('Using Voyage embedding for Anthropic LLM', {
+						voyageModel: 'voyage-3-large',
+						voyageDimensions: 1024,
+						provider: 'voyage',
+					});
 					return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
 				}
 				logger.debug('No Voyage API key available for Anthropic - embeddings disabled (set VOYAGE_API_KEY)');
@@ -206,7 +211,7 @@ export type AgentServices = {
 	knowledgeGraphManager?: KnowledgeGraphManager;
 };
 
-export async function createAgentServices(agentConfig: AgentConfig): Promise<AgentServices> {
+export async function createAgentServices(agentConfig: AgentConfig, appMode?: 'cli' | 'mcp' | 'api'): Promise<AgentServices> {
 	// 1. Initialize agent config
 	const config = agentConfig;
 
@@ -274,6 +279,11 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 
 	// Set event manager for connection lifecycle events
 	mcpManager.setEventManager(eventManager);
+	
+	// Set quiet mode for CLI to reduce MCP logging noise
+	if (appMode === 'cli') {
+		mcpManager.setQuietMode(true);
+	}
 
 	// Parse and validate the MCP server configurations to ensure required fields are present
 	// The ServerConfigsSchema.parse() will transform input types to output types with required fields
@@ -282,9 +292,13 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 
 	const mcpServerCount = Object.keys(config.mcpServers || {}).length;
 	if (mcpServerCount === 0) {
-		logger.debug('Agent initialized without MCP servers - only built-in capabilities available');
+		if (appMode !== 'cli') {
+			logger.debug('Agent initialized without MCP servers - only built-in capabilities available');
+		}
 	} else {
-		logger.debug(`Client manager initialized with ${mcpServerCount} MCP server(s)`);
+		if (appMode !== 'cli') {
+			logger.debug(`Client manager initialized with ${mcpServerCount} MCP server(s)`);
+		}
 	}
 
 	// Emit MCP manager initialization event
@@ -294,7 +308,9 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 	});
 
 	// 2. Initialize embedding manager with new fallback mechanism
-	logger.debug('Initializing embedding manager...');
+	if (appMode !== 'cli') {
+		logger.debug('Initializing embedding manager...');
+	}
 	const embeddingManager = new EmbeddingManager();
 	let embeddingEnabled = false;
 
@@ -327,6 +343,25 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 				if (config.llm?.provider) {
 					logger.debug('No explicit embedding config found, falling back to LLM provider embedding');
 					embeddingResult = await createEmbeddingFromLLMProvider(embeddingManager, config.llm);
+					
+					// Update agent config with the embedding info so vector store can use correct dimension
+					if (embeddingResult && embeddingResult.info) {
+						// Create embedding config object for the agent config
+						const embeddingConfig = {
+							type: embeddingResult.info.provider,
+							model: embeddingResult.info.model,
+							dimensions: embeddingResult.info.dimension,
+						};
+						
+						// Update the agent config with the embedding configuration
+						(config as any).embedding = embeddingConfig;
+						
+						logger.debug('Updated agent config with embedding fallback configuration', {
+							provider: embeddingResult.info.provider,
+							model: embeddingResult.info.model,
+							dimension: embeddingResult.info.dimension,
+						});
+					}
 				} else {
 					logger.debug('No LLM provider available for embedding fallback, trying environment auto-detection');
 					embeddingResult = await embeddingManager.createEmbedderFromEnv('default');
@@ -334,11 +369,13 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 			}
 
 			if (embeddingResult) {
-				logger.info('Embedding manager initialized successfully', {
-					provider: embeddingResult.info.provider,
-					model: embeddingResult.info.model,
-					dimension: embeddingResult.info.dimension,
-				});
+				if (appMode !== 'cli') {
+					logger.info('Embedding manager initialized successfully', {
+						provider: embeddingResult.info.provider,
+						model: embeddingResult.info.model,
+						dimension: embeddingResult.info.dimension,
+					});
+				}
 
 				// Emit embedding manager initialization event
 				eventManager.emitServiceEvent('cipher:serviceStarted', {
@@ -352,15 +389,26 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 			}
 		}
 	} catch (error) {
-		logger.warn('Failed to initialize embedding manager', {
+		logger.error('Failed to initialize embedding manager - activating fallback mode', {
 			error: error instanceof Error ? error.message : String(error),
+			fallbackMode: 'chat-only',
 		});
 		embeddingEnabled = false;
+		
+		// Log detailed fallback information
+		logger.warn('🔄 Embedding system in fallback mode:', {
+			mode: 'chat-only',
+			availableFeatures: ['LLM conversation', 'MCP tools', 'System prompts'],
+			unavailableFeatures: ['Memory search', 'Knowledge storage', 'Reasoning patterns', 'Vector operations'],
+			recoveryAction: 'Check embedding configuration and credentials, then restart the service',
+		});
 	}
 
 	// 3. Initialize vector storage manager with configuration
 	// Use dual collection manager if reflection memory is enabled, otherwise use regular manager
-	logger.debug('Initializing vector storage manager...');
+	if (appMode !== 'cli') {
+		logger.debug('Initializing vector storage manager...');
+	}
 
 	let vectorStoreManager: VectorStoreManager | DualCollectionVectorManager;
 
@@ -373,7 +421,7 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 
 		if (reflectionEnabled) {
 			logger.debug('Reflection memory enabled, using dual collection vector manager');
-			const { manager } = await createDualCollectionVectorStoreFromEnv();
+			const { manager } = await createDualCollectionVectorStoreFromEnv(config);
 			vectorStoreManager = manager;
 
 			// Set event manager for memory operation events
@@ -391,7 +439,7 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 			});
 		} else {
 			logger.debug('Reflection memory disabled, using single collection vector manager');
-			const { manager } = await createVectorStoreFromEnv();
+			const { manager } = await createVectorStoreFromEnv(config);
 			vectorStoreManager = manager;
 
 			// Set event manager for memory operation events
@@ -409,12 +457,14 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 			error: error instanceof Error ? error.message : String(error),
 		});
 		// Fallback to regular manager in case of error
-		const { manager } = await createVectorStoreFromEnv();
+		const { manager } = await createVectorStoreFromEnv(config);
 		vectorStoreManager = manager;
 	}
 
 	// 4. Initialize knowledge graph manager with configuration
-	logger.debug('Initializing knowledge graph manager...');
+	if (appMode !== 'cli') {
+		logger.debug('Initializing knowledge graph manager...');
+	}
 	let knowledgeGraphManager: KnowledgeGraphManager | undefined = undefined;
 
 	try {
@@ -505,22 +555,28 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 
 	// 6. Initialize state manager for runtime state tracking
 	const stateManager = new MemAgentStateManager(config);
-	logger.debug('Agent state manager initialized');
+	if (appMode !== 'cli') {
+		logger.debug('Agent state manager initialized');
+	}
 
 	// 7. Initialize LLM service
 	let llmService: ILLMService | undefined = undefined;
 	try {
-		logger.debug('Initializing LLM service...');
+		if (appMode !== 'cli') {
+			logger.debug('Initializing LLM service...');
+		}
 		const llmConfig = stateManager.getLLMConfig();
 		logger.debug('LLM Config retrieved', { llmConfig });
 		const contextManager = createContextManager(llmConfig, promptManager, undefined, undefined);
 
 		llmService = createLLMService(llmConfig, mcpManager, contextManager);
 
-		logger.info('LLM service initialized successfully', {
-			provider: llmConfig.provider,
-			model: llmConfig.model,
-		});
+		if (appMode !== 'cli') {
+			logger.info('LLM service initialized successfully', {
+				provider: llmConfig.provider,
+				model: llmConfig.model,
+			});
+		}
 
 		// Inject llmService into promptManager for dynamic providers
 		promptManager.setLLMService(llmService);
@@ -554,11 +610,14 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 
 	// Register all internal tools
 	const toolRegistrationResult = await registerAllTools(internalToolManager, { embeddingEnabled });
-	logger.info('Internal tools registration completed', {
-		totalTools: toolRegistrationResult.total,
-		registered: toolRegistrationResult.registered.length,
-		failed: toolRegistrationResult.failed.length,
-	});
+	// Only log tool registration results if there are failures or in non-CLI mode
+	if (appMode !== 'cli' || toolRegistrationResult.failed.length > 0) {
+		logger.info('Internal tools registration completed', {
+			totalTools: toolRegistrationResult.total,
+			registered: toolRegistrationResult.registered.length,
+			failed: toolRegistrationResult.failed.length,
+		});
+	}
 
 	if (toolRegistrationResult.failed.length > 0) {
 		logger.warn('Some internal tools failed to register', {
@@ -580,17 +639,44 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 	
 	internalToolManager.setServices(services);
 
-	// 10. Initialize unified tool manager
-	const unifiedToolManager = new UnifiedToolManager(mcpManager, internalToolManager, {
-		enableInternalTools: true,
-		enableMcpTools: true,
-		conflictResolution: 'prefix-internal',
-	});
+	// 10. Initialize unified tool manager with proper mode handling
+	let unifiedToolManagerConfig: any;
+	
+	if (appMode === 'cli') {
+		// CLI Mode: Only search tools accessible to Cipher's LLM, background tools executed separately
+		unifiedToolManagerConfig = {
+			enableInternalTools: true,
+			enableMcpTools: true,
+			conflictResolution: 'prefix-internal',
+			mode: 'cli', // Special CLI mode
+		};
+	} else if (appMode === 'mcp') {
+		// MCP Mode: Respect MCP_SERVER_MODE for external tool exposure
+		const mcpServerMode = (process.env.MCP_SERVER_MODE as 'default' | 'aggregator') || 'default';
+		unifiedToolManagerConfig = {
+			enableInternalTools: true,
+			enableMcpTools: true,
+			conflictResolution: 'prefix-internal',
+			mode: mcpServerMode,
+		};
+	} else {
+		// API Mode: Similar to CLI for now
+		unifiedToolManagerConfig = {
+			enableInternalTools: true,
+			enableMcpTools: true,
+			conflictResolution: 'prefix-internal',
+			mode: 'api',
+		};
+	}
+	
+	const unifiedToolManager = new UnifiedToolManager(mcpManager, internalToolManager, unifiedToolManagerConfig);
 
 	// Set event manager for tool execution events
 	unifiedToolManager.setEventManager(eventManager);
 
-	logger.debug('Unified tool manager initialized');
+	if (appMode !== 'cli') {
+		logger.debug('Unified tool manager initialized');
+	}
 
 	// 11. Create session manager with unified tool manager
 	const sessionManager = new SessionManager(
@@ -607,7 +693,9 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 	// Initialize the session manager with persistent storage
 	await sessionManager.init();
 
-	logger.debug('Session manager with unified tools initialized');
+	if (appMode !== 'cli') {
+		logger.debug('Session manager with unified tools initialized');
+	}
 
 	// Emit session manager initialization event
 	eventManager.emitServiceEvent('cipher:serviceStarted', {

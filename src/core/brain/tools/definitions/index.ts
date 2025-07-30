@@ -19,7 +19,7 @@ import { env } from '../../../env.js';
  */
 export async function getAllToolDefinitions(options: { embeddingEnabled?: boolean } = {}): Promise<InternalToolSet> {
 	try {
-		logger.debug('Loading all tool definitions...', { embeddingEnabled: options.embeddingEnabled });
+		// Tool loading logging reduced for cleaner CLI experience
 
 		// Load memory tools with embedding status
 		const memoryTools = await import('./memory/index.js').then(m => m.getMemoryTools(options));
@@ -41,13 +41,7 @@ export async function getAllToolDefinitions(options: { embeddingEnabled?: boolea
 			...knowledgeGraphTools,
 		};
 
-		logger.debug('Tool definitions loaded successfully', {
-			totalTools: Object.keys(allTools).length,
-			memoryTools: Object.keys(memoryTools).length,
-			knowledgeGraphTools: Object.keys(knowledgeGraphTools).length,
-			knowledgeGraphEnabled: env.KNOWLEDGE_GRAPH_ENABLED,
-			embeddingEnabled: options.embeddingEnabled,
-		});
+		// Tool loading completion logging reduced for cleaner CLI experience
 
 		return allTools;
 	} catch (error) {
@@ -66,7 +60,7 @@ export async function registerAllTools(toolManager: any, options: { embeddingEna
 	total: number;
 }> {
 	try {
-		logger.debug('Registering all internal tools...', { embeddingEnabled: options.embeddingEnabled });
+		// Tool registration logging reduced for cleaner CLI experience
 
 		const tools = await getAllToolDefinitions(options);
 		const registered: string[] = [];
@@ -78,7 +72,7 @@ export async function registerAllTools(toolManager: any, options: { embeddingEna
 				const result = toolManager.registerTool(tool);
 				if (result.success) {
 					registered.push(toolName);
-					logger.debug(`Successfully registered tool: ${toolName}`);
+					// Individual tool registration logging removed to reduce CLI noise
 				} else {
 					failed.push({ name: toolName, error: result.message });
 					logger.warn(`Failed to register tool ${toolName}: ${result.message}`);
@@ -96,12 +90,15 @@ export async function registerAllTools(toolManager: any, options: { embeddingEna
 			total: Object.keys(tools).length,
 		};
 
-		logger.debug('Tool registration completed', {
-			totalTools: result.total,
-			successfullyRegistered: result.registered.length,
-			failed: result.failed.length,
-			embeddingEnabled: options.embeddingEnabled,
-		});
+		// Consolidated tool registration summary (only show if failures occurred)
+		if (result.failed.length > 0) {
+			logger.debug('Tool registration completed', {
+				totalTools: result.total,
+				successfullyRegistered: result.registered.length,
+				failed: result.failed.length,
+				embeddingEnabled: options.embeddingEnabled,
+			});
+		}
 
 		return result;
 	} catch (error) {

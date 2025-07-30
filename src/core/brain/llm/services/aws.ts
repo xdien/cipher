@@ -357,9 +357,10 @@ export class AwsService implements ILLMService {
 		let request: any;
 
 		if (this.modelFamily === ModelFamily.ANTHROPIC) {
-			const formattedMessages = messages.map(
-				(msg: any) => this.formatter.format(msg, systemPrompt)[0]
-			);
+			const formattedMessages = messages
+				.map((msg: any) => this.formatter.format(msg, systemPrompt))
+				.flat()
+				.filter((msg: any) => msg !== null && msg !== undefined);
 			request = {
 				messages: formattedMessages,
 				anthropic_version: 'bedrock-2023-05-31',

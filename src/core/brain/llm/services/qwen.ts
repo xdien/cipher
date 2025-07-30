@@ -146,10 +146,27 @@ export class QwenService implements ILLMService {
 				role: 'user',
 				content: userInput,
 			});
+			// Transform qwenOptions to API format (camelCase to snake_case) for direct generate
+			const apiOptions: any = {};
+			
+			// Always set enable_thinking explicitly for non-streaming calls
+			// Qwen API requires this to be explicitly set to false for non-streaming calls
+			apiOptions.enable_thinking = this.qwenOptions.enableThinking ?? false;
+			
+			if (this.qwenOptions.thinkingBudget !== undefined) {
+				apiOptions.thinking_budget = this.qwenOptions.thinkingBudget;
+			}
+			if (this.qwenOptions.temperature !== undefined) {
+				apiOptions.temperature = this.qwenOptions.temperature;
+			}
+			if (this.qwenOptions.top_p !== undefined) {
+				apiOptions.top_p = this.qwenOptions.top_p;
+			}
+
 			const response = await this.openai.chat.completions.create({
 				model: this.model,
 				messages: messages,
-				...this.qwenOptions,
+				...apiOptions,
 			});
 			const responseText = response.choices[0]?.message?.content || '';
 			logger.debug('[QwenService] Direct generate completed', {
@@ -205,12 +222,37 @@ export class QwenService implements ILLMService {
 						name: msg.name,
 					})),
 				});
+				// Transform qwenOptions to API format (camelCase to snake_case)
+				const apiOptions: any = {};
+				
+				// Always set enable_thinking explicitly for non-streaming calls
+				// Qwen API requires this to be explicitly set to false for non-streaming calls
+				apiOptions.enable_thinking = this.qwenOptions.enableThinking ?? false;
+				
+				if (this.qwenOptions.thinkingBudget !== undefined) {
+					apiOptions.thinking_budget = this.qwenOptions.thinkingBudget;
+				}
+				if (this.qwenOptions.temperature !== undefined) {
+					apiOptions.temperature = this.qwenOptions.temperature;
+				}
+				if (this.qwenOptions.top_p !== undefined) {
+					apiOptions.top_p = this.qwenOptions.top_p;
+				}
+
+				// Debug logging to see what's being sent
+				logger.debug('[Qwen] QwenOptions being sent to API:', {
+					qwenOptions: this.qwenOptions,
+					apiOptions: apiOptions,
+					enableThinking: this.qwenOptions.enableThinking,
+					enable_thinking: apiOptions.enable_thinking
+				});
+
 				const requestBody: any = {
 					model: this.model,
 					messages: formattedMessages,
 					tools: attempts === 1 ? tools || [] : [],
 					tool_choice: attempts === 1 ? 'auto' : 'none',
-					...this.qwenOptions,
+					...apiOptions,
 				};
 				if (stream !== undefined) {
 					requestBody.stream = stream;
