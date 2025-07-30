@@ -178,6 +178,51 @@ If no embedding config is specified, automatically uses your LLM provider's embe
 
 **Note:** For providers with fixed dimensions (Qwen, Voyage, AWS), you must specify `dimensions:` in the config to override the default value in `.env`.
 
+## Vector Store Configuration
+
+Cipher supports three vector databases for storing embeddings. Configure in `.env`:
+
+### Supported Vector Stores
+**Qdrant** ([Qdrant Cloud](https://qdrant.tech/))
+```bash
+# Remote (Qdrant Cloud)
+VECTOR_STORE_TYPE=qdrant
+VECTOR_STORE_URL=your-qdrant-endpoint
+VECTOR_STORE_API_KEY=your-qdrant-api-key
+
+# Local (Docker)
+VECTOR_STORE_TYPE=qdrant
+VECTOR_STORE_HOST=localhost
+VECTOR_STORE_PORT=6333
+VECTOR_STORE_URL=http://localhost:6333
+```
+
+**Milvus** ([Zilliz Cloud](https://zilliz.com/))
+```bash
+# Remote (Zilliz Cloud)
+VECTOR_STORE_TYPE=milvus
+VECTOR_STORE_URL=your-milvus-cluster-endpoint
+VECTOR_STORE_USERNAME=your-zilliz-username
+VECTOR_STORE_PASSWORD=your-zilliz-password
+
+# Local (Docker)
+VECTOR_STORE_TYPE=milvus
+VECTOR_STORE_HOST=localhost
+VECTOR_STORE_PORT=19530
+```
+
+### Additional Vector Store Settings
+```bash
+# Collection configuration
+VECTOR_STORE_COLLECTION=knowledge_memory
+VECTOR_STORE_DIMENSION=1536
+VECTOR_STORE_DISTANCE=Cosine
+
+# Reflection memory (optional)
+REFLECTION_VECTOR_STORE_COLLECTION=reflection_memory
+DISABLE_REFLECTION_MEMORY=true
+```
+
 ## LLM Providers
 
 Cipher supports multiple LLM providers:
@@ -278,7 +323,7 @@ cipher "Your prompt here"           # One-shot mode
 
 # Server modes
 cipher --mode api                   # REST API server
-cipher --mode mcp                   # MCP server
+cipher --mode mcp                   # MCP server (make sure all necessary environment variables are set in the shell environment)
 
 # Configuration
 cipher --agent /path/to/config.yml  # Custom config
@@ -338,23 +383,6 @@ Add to your Claude Desktop MCP configuration file:
 		}
 	}
 }
-```
-
-### Environment Variables
-
-The MCP server requires at least one LLM provider API key:
-
-```bash
-# Required (at least one)
-OPENAI_API_KEY=your_openai_api_key      # Always required for embedding
-ANTHROPIC_API_KEY=your_anthropic_api_key
-OPENROUTER_API_KEY=your_openrouter_api_key
-QWEN_API_KEY=your-alibaba_cloud_api_key
-# Optional
-OLLAMA_BASE_URL=http://localhost:11434/v1
-DISABLE_EMBEDDINGS=false                    # Set to true to disable embeddings
-CIPHER_LOG_LEVEL=info
-NODE_ENV=production
 ```
 
 ### MCP Aggregator Mode
