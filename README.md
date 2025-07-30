@@ -183,7 +183,9 @@ If no embedding config is specified, automatically uses your LLM provider's embe
 Cipher supports three vector databases for storing embeddings. Configure in `.env`:
 
 ### Supported Vector Stores
+
 **Qdrant** ([Qdrant Cloud](https://qdrant.tech/))
+
 ```bash
 # Remote (Qdrant Cloud)
 VECTOR_STORE_TYPE=qdrant
@@ -198,6 +200,7 @@ VECTOR_STORE_URL=http://localhost:6333
 ```
 
 **Milvus** ([Zilliz Cloud](https://zilliz.com/))
+
 ```bash
 # Remote (Zilliz Cloud)
 VECTOR_STORE_TYPE=milvus
@@ -212,6 +215,7 @@ VECTOR_STORE_PORT=19530
 ```
 
 ### Additional Vector Store Settings
+
 ```bash
 # Collection configuration
 VECTOR_STORE_COLLECTION=knowledge_memory
