@@ -1,465 +1,193 @@
 /**
- * Embedding Configuration Module
+ * Embedding Configuration Schema and Utilities
  *
- * Defines the configuration schemas for the embedding system using Zod for
- * runtime validation and type safety. Supports multiple embedding providers
- * with different configuration requirements.
- *
- * @module embedding/config
+ * This module provides Zod schemas for validating embedding configurations
+ * and utilities for parsing configurations from environment variables.
  */
 
 import { z } from 'zod';
-import {
-	DEFAULTS,
-	OPENAI_MODELS,
-	GEMINI_MODELS,
-	OLLAMA_MODELS,
-	PROVIDER_TYPES,
-	ENV_VARS,
-} from './constants.js';
 
 /**
- * Base Embedding Configuration Schema
- *
- * Common configuration options shared by all embedding providers.
- * These options control model selection, timeouts, and retry behavior.
+ * OpenAI embedding configuration schema
  */
-const BaseEmbeddingSchema = z.object({
-	/** API key for the provider (required for all providers) */
-	apiKey: z.string().min(1).describe('API key for the embedding provider'),
-
-	/** Model name to use for embeddings */
-	model: z.string().min(1).optional().describe('Model name for embeddings'),
-
-	/** Base URL for the provider API */
-	baseUrl: z.string().url().optional().describe('Base URL for the provider API'),
-
-	/** Request timeout in milliseconds */
-	timeout: z
-		.number()
-		.int()
-		.positive()
-		.max(300000) // 5 minutes max
-		.default(DEFAULTS.TIMEOUT)
-		.describe('Request timeout in milliseconds'),
-
-	/** Maximum number of retry attempts */
-	maxRetries: z
-		.number()
-		.int()
-		.min(0)
-		.max(10)
-		.default(DEFAULTS.MAX_RETRIES)
-		.describe('Maximum retry attempts'),
-
-	/** Provider-specific options */
-	options: z.record(z.any()).optional().describe('Provider-specific configuration options'),
+export const OpenAIEmbeddingConfigSchema = z.object({
+	type: z.literal('openai'),
+	apiKey: z.string().optional(),
+	model: z.enum(['text-embedding-3-small', 'text-embedding-3-large', 'text-embedding-ada-002']).default('text-embedding-3-small'),
+	baseUrl: z.string().optional(),
+	organization: z.string().optional(),
+	dimensions: z.number().optional(),
+	timeout: z.number().default(30000),
+	maxRetries: z.number().default(3),
 });
 
 /**
- * OpenAI Embedding Configuration Schema
- *
- * Configuration specific to OpenAI embedding services.
- * Supports all OpenAI embedding models with validation.
- *
- * @example
- * ```typescript
- * const config: OpenAIEmbeddingConfig = {
- *   type: 'openai',
- *   apiKey: process.env.OPENAI_API_KEY,
- *   model: 'text-embedding-3-small'
- * };
- * ```
+ * Gemini embedding configuration schema
  */
-const OpenAIEmbeddingSchema = BaseEmbeddingSchema.extend({
-	type: z.literal(PROVIDER_TYPES.OPENAI),
-
-	/** OpenAI embedding model */
-	model: z
-		.enum([
-			OPENAI_MODELS.TEXT_EMBEDDING_3_SMALL,
-			OPENAI_MODELS.TEXT_EMBEDDING_3_LARGE,
-			OPENAI_MODELS.TEXT_EMBEDDING_ADA_002,
-		] as const)
-		.default(DEFAULTS.OPENAI_MODEL)
-		.describe('OpenAI embedding model'),
-
-	/** OpenAI organization ID */
-	organization: z.string().optional().describe('OpenAI organization ID'),
-
-	/** Custom dimensions for embedding-3 models */
-	dimensions: z
-		.number()
-		.int()
-		.positive()
-		.max(3072)
-		.optional()
-		.describe('Custom embedding dimensions (embedding-3 models only)'),
-
-	/** Base URL override */
-	baseUrl: z.string().url().default(DEFAULTS.OPENAI_BASE_URL).describe('OpenAI API base URL'),
-}).strict();
-
-export type OpenAIEmbeddingConfig = z.infer<typeof OpenAIEmbeddingSchema>;
-
-/**
- * Gemini Embedding Configuration Schema
- *
- * Configuration specific to Google Gemini embedding services.
- * Supports configurable dimensions for the latest models.
- *
- * @example
- * ```typescript
- * const config: GeminiEmbeddingConfig = {
- *   type: 'gemini',
- *   apiKey: process.env.GEMINI_API_KEY,
- *   model: 'text-embedding-004',
- *   dimensions: 1536
- * };
- * ```
- */
-const GeminiEmbeddingSchema = BaseEmbeddingSchema.extend({
-	type: z.literal(PROVIDER_TYPES.GEMINI),
-
-	/** Gemini embedding model */
-	model: z
-		.enum([
-			GEMINI_MODELS.TEXT_EMBEDDING_004,
-			GEMINI_MODELS.GEMINI_EMBEDDING_001,
-			GEMINI_MODELS.EMBEDDING_001,
-		] as const)
-		.default(DEFAULTS.GEMINI_MODEL)
-		.describe('Gemini embedding model'),
-
-	/** Custom dimensions for embedding models */
-	dimensions: z
-		.number()
-		.int()
-		.positive()
-		.max(3072)
-		.optional()
-		.describe('Custom embedding dimensions (768, 1536, or 3072)'),
-
-	/** Base URL override */
-	baseUrl: z.string().url().default(DEFAULTS.GEMINI_BASE_URL).describe('Gemini API base URL'),
-}).strict();
-
-export type GeminiEmbeddingConfig = z.infer<typeof GeminiEmbeddingSchema>;
-
-/**
- * Ollama Embedding Configuration Schema
- *
- * Configuration for local Ollama embedding services.
- * Supports various open-source embedding models.
- *
- * @example
- * ```typescript
- * const config: OllamaEmbeddingConfig = {
- *   type: 'ollama',
- *   model: 'nomic-embed-text',
- *   baseUrl: 'http://localhost:11434/api'
- * };
- * ```
- */
-const OllamaEmbeddingSchema = BaseEmbeddingSchema.extend({
-	type: z.literal(PROVIDER_TYPES.OLLAMA),
-
-	/** Ollama embedding model */
-	model: z
-		.enum([
-			OLLAMA_MODELS.NOMIC_EMBED_TEXT,
-			OLLAMA_MODELS.ALL_MINILM,
-			OLLAMA_MODELS.MXBAI_EMBED_LARGE,
-		] as const)
-		.default(DEFAULTS.OLLAMA_MODEL)
-		.describe('Ollama embedding model'),
-
-	/** Custom dimensions if supported by the model */
-	dimensions: z
-		.number()
-		.int()
-		.positive()
-		.max(3072)
-		.optional()
-		.describe('Custom embedding dimensions (if supported by the model)'),
-
-	/** Base URL override */
-	baseUrl: z.string().url().default(DEFAULTS.OLLAMA_BASE_URL).describe('Ollama API base URL'),
-
-	/** API key not required for local Ollama */
-	apiKey: z.string().optional().describe('API key (not required for local Ollama)'),
-}).strict();
-
-export type OllamaEmbeddingConfig = z.infer<typeof OllamaEmbeddingSchema>;
-
-/**
- * Backend Configuration Union Schema
- *
- * Discriminated union of all supported embedding provider configurations.
- * Uses the 'type' field to determine which configuration schema to apply.
- */
-const BackendConfigSchema = z
-	.discriminatedUnion(
-		'type',
-		[OpenAIEmbeddingSchema, GeminiEmbeddingSchema, OllamaEmbeddingSchema],
-		{
-			errorMap: (issue, ctx) => {
-				if (issue.code === z.ZodIssueCode.invalid_union_discriminator) {
-					return {
-						message: `Invalid embedding provider type. Expected: ${Object.values(PROVIDER_TYPES).join(', ')}.`,
-					};
-				}
-				return { message: ctx.defaultError };
-			},
-		}
-	)
-	.describe('Backend configuration for embedding system')
-	.superRefine((data, ctx) => {
-		// Validate OpenAI-specific requirements
-		if (data.type === PROVIDER_TYPES.OPENAI) {
-			// Check if dimensions are specified for models that support it
-			if (data.dimensions) {
-				const supportsCustomDimensions =
-					data.model === OPENAI_MODELS.TEXT_EMBEDDING_3_SMALL ||
-					data.model === OPENAI_MODELS.TEXT_EMBEDDING_3_LARGE;
-
-				if (!supportsCustomDimensions) {
-					ctx.addIssue({
-						code: z.ZodIssueCode.custom,
-						message: `Custom dimensions are only supported for embedding-3 models`,
-						path: ['dimensions'],
-					});
-				}
-
-				// Validate dimension range for specific models
-				if (data.model === OPENAI_MODELS.TEXT_EMBEDDING_3_SMALL && data.dimensions > 1536) {
-					ctx.addIssue({
-						code: z.ZodIssueCode.custom,
-						message: `text-embedding-3-small supports max 1536 dimensions`,
-						path: ['dimensions'],
-					});
-				}
-			}
-		}
-
-		// Validate Gemini-specific requirements
-		if (data.type === PROVIDER_TYPES.GEMINI) {
-			if (data.dimensions) {
-				// Gemini supports 768, 1536, or 3072 dimensions
-				if (![768, 1536, 3072].includes(data.dimensions)) {
-					ctx.addIssue({
-						code: z.ZodIssueCode.custom,
-						message: `Gemini models support dimensions: 768, 1536, or 3072`,
-						path: ['dimensions'],
-					});
-				}
-			}
-		}
-
-		// Validate API key format (basic checks)
-		if (data.apiKey) {
-			if (data.type === PROVIDER_TYPES.OPENAI && !data.apiKey.startsWith('sk-')) {
-				ctx.addIssue({
-					code: z.ZodIssueCode.custom,
-					message: 'OpenAI API key should start with "sk-"',
-					path: ['apiKey'],
-				});
-			}
-		}
-
-		// Validate that API key is provided for remote providers
-		if ([PROVIDER_TYPES.OPENAI, PROVIDER_TYPES.GEMINI].includes(data.type as any) && !data.apiKey) {
-			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
-				message: `API key is required for ${data.type} provider`,
-				path: ['apiKey'],
-			});
-		}
-	});
-
-export type BackendConfig = z.infer<typeof BackendConfigSchema>;
-
-/**
- * Embedding System Configuration Schema
- *
- * Top-level configuration for the embedding system.
- * Uses a single backend configuration.
- */
-export const EmbeddingConfigSchema = BackendConfigSchema;
-
-export type EmbeddingConfig = z.infer<typeof EmbeddingConfigSchema>;
-
-/**
- * Environment-based Configuration Schema
- *
- * Allows configuration to be loaded from environment variables.
- * Useful for deployment scenarios where config is provided via env vars.
- */
-export const EmbeddingEnvConfigSchema = z.object({
-	/** Provider type from environment */
-	type: z
-		.enum([PROVIDER_TYPES.OPENAI, PROVIDER_TYPES.GEMINI, PROVIDER_TYPES.OLLAMA] as const)
-		.default(PROVIDER_TYPES.OPENAI)
-		.describe('Embedding provider type'),
-
-	/** API key from environment variables */
-	apiKey: z.string().optional().describe('API key from environment variables'),
-
-	/** Model from environment */
-	model: z.string().optional().describe('Model name from environment'),
-
-	/** Base URL from environment */
-	baseUrl: z.string().url().optional().describe('Base URL from environment'),
-
-	/** Dimensions from environment */
-	dimensions: z
-		.string()
-		.transform(val => parseInt(val, 10))
-		.pipe(z.number().int().positive())
-		.optional()
-		.describe('Dimensions from environment (string converted to number)'),
-
-	/** Timeout from environment */
-	timeout: z
-		.string()
-		.transform(val => parseInt(val, 10))
-		.pipe(z.number().int().positive())
-		.optional()
-		.describe('Timeout from environment (string converted to number)'),
-
-	/** Max retries from environment */
-	maxRetries: z
-		.string()
-		.transform(val => parseInt(val, 10))
-		.pipe(z.number().int().min(0).max(10))
-		.optional()
-		.describe('Max retries from environment (string converted to number)'),
+export const GeminiEmbeddingConfigSchema = z.object({
+	type: z.literal('gemini'),
+	apiKey: z.string().optional(),
+	model: z.enum(['gemini-embedding-001', 'text-embedding-004']).default('gemini-embedding-001'),
+	baseUrl: z.string().optional(),
+	timeout: z.number().default(30000),
+	maxRetries: z.number().default(3),
 });
 
-export type EmbeddingEnvConfig = z.infer<typeof EmbeddingEnvConfigSchema>;
+/**
+ * Ollama embedding configuration schema
+ */
+export const OllamaEmbeddingConfigSchema = z.object({
+	type: z.literal('ollama'),
+	baseUrl: z.string().default('http://localhost:11434'),
+	model: z.string().default('nomic-embed-text'),
+	timeout: z.number().default(30000),
+	maxRetries: z.number().default(3),
+});
 
 /**
- * Parse and validate embedding configuration
- *
- * @param config - Raw configuration object
- * @returns Validated configuration
- * @throws {z.ZodError} If configuration is invalid
+ * Voyage embedding configuration schema (for Claude/Anthropic fallback)
  */
-export function parseEmbeddingConfig(config: unknown): EmbeddingConfig {
-	return EmbeddingConfigSchema.parse(config);
+export const VoyageEmbeddingConfigSchema = z.object({
+	type: z.literal('voyage'),
+	apiKey: z.string().optional(),
+	model: z.enum(['voyage-3-large', 'voyage-3', 'voyage-2']).default('voyage-3-large'),
+	baseUrl: z.string().optional(),
+	timeout: z.number().default(30000),
+	maxRetries: z.number().default(3),
+});
+
+/**
+ * Qwen embedding configuration schema
+ */
+export const QwenEmbeddingConfigSchema = z.object({
+	type: z.literal('qwen'),
+	apiKey: z.string().optional(),
+	model: z.enum(['text-embedding-v3']).default('text-embedding-v3'),
+	baseUrl: z.string().optional(),
+	dimensions: z.number().refine(val => [1024, 768, 512].includes(val)).default(1024),
+	timeout: z.number().default(30000),
+	maxRetries: z.number().default(3),
+});
+
+/**
+ * AWS Bedrock embedding configuration schema
+ */
+export const AWSBedrockEmbeddingConfigSchema = z.object({
+	type: z.literal('aws-bedrock'),
+	model: z.enum(['amazon.titan-embed-text-v2:0', 'cohere.embed-english-v3']).default('amazon.titan-embed-text-v2:0'),
+	region: z.string().optional(),
+	accessKeyId: z.string().optional(),
+	secretAccessKey: z.string().optional(),
+	sessionToken: z.string().optional(),
+	dimensions: z.number().refine(val => [1024, 512, 256].includes(val)).default(1024),
+	timeout: z.number().default(30000),
+	maxRetries: z.number().default(3),
+});
+
+/**
+ * Main embedding configuration schema
+ */
+export const EmbeddingConfigSchema = z.union([
+	OpenAIEmbeddingConfigSchema,
+	GeminiEmbeddingConfigSchema,
+	OllamaEmbeddingConfigSchema,
+	VoyageEmbeddingConfigSchema,
+	QwenEmbeddingConfigSchema,
+	AWSBedrockEmbeddingConfigSchema,
+]);
+
+/**
+ * Environment configuration type
+ */
+export interface EmbeddingEnvConfig {
+	type: string;
+	apiKey?: string | undefined;
+	baseUrl?: string | undefined;
+	model?: string | undefined;
+	region?: string | undefined;
+	accessKeyId?: string | undefined;
+	secretAccessKey?: string | undefined;
+	sessionToken?: string | undefined;
 }
 
 /**
  * Parse embedding configuration from environment variables
- *
- * @param env - Environment variables object (defaults to process.env)
- * @returns Validated configuration or null if required env vars are missing
  */
-export function parseEmbeddingConfigFromEnv(
-	env: Record<string, string | undefined> = process.env
-): EmbeddingConfig | null {
-	try {
-		// Determine provider type from environment
-		let providerType = env[ENV_VARS.EMBEDDING_PROVIDER] as keyof typeof PROVIDER_TYPES;
-
-		// Auto-detect provider based on available API keys if not specified
-		if (!providerType) {
-			if (env[ENV_VARS.OPENAI_API_KEY]) {
-				providerType = 'OPENAI';
-			} else if (env[ENV_VARS.GEMINI_API_KEY]) {
-				providerType = 'GEMINI';
-			} else if (env[ENV_VARS.OLLAMA_BASE_URL]) {
-				providerType = 'OLLAMA';
-			} else {
-				// No supported provider found
-				return null;
-			}
-		}
-
-		const rawConfig: any = {
-			type: PROVIDER_TYPES[providerType],
+export function parseEmbeddingConfigFromEnv(): EmbeddingEnvConfig | null {
+	// Priority order: OpenAI > Gemini > Ollama
+	if (process.env.OPENAI_API_KEY) {
+		return {
+			type: 'openai',
+			apiKey: process.env.OPENAI_API_KEY,
+			baseUrl: process.env.OPENAI_BASE_URL,
+			model: process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small',
 		};
-
-		// Add provider-specific configuration
-		switch (PROVIDER_TYPES[providerType]) {
-			case PROVIDER_TYPES.OPENAI:
-				if (env[ENV_VARS.OPENAI_API_KEY]) {
-					rawConfig.apiKey = env[ENV_VARS.OPENAI_API_KEY];
-				} else {
-					return null;
-				}
-				if (env[ENV_VARS.OPENAI_BASE_URL]) {
-					rawConfig.baseUrl = env[ENV_VARS.OPENAI_BASE_URL];
-				}
-				if (env[ENV_VARS.OPENAI_ORG_ID]) {
-					rawConfig.organization = env[ENV_VARS.OPENAI_ORG_ID];
-				}
-				break;
-
-			case PROVIDER_TYPES.GEMINI:
-				if (env[ENV_VARS.GEMINI_API_KEY]) {
-					rawConfig.apiKey = env[ENV_VARS.GEMINI_API_KEY];
-				} else {
-					return null;
-				}
-				if (env[ENV_VARS.GEMINI_BASE_URL]) {
-					rawConfig.baseUrl = env[ENV_VARS.GEMINI_BASE_URL];
-				}
-				break;
-
-			case PROVIDER_TYPES.OLLAMA:
-				// API key is optional for Ollama
-				if (env[ENV_VARS.OLLAMA_BASE_URL]) {
-					rawConfig.baseUrl = env[ENV_VARS.OLLAMA_BASE_URL];
-				}
-				break;
-
-			default:
-				return null;
-		}
-
-		// Add common configuration
-		if (env[ENV_VARS.EMBEDDING_MODEL]) {
-			rawConfig.model = env[ENV_VARS.EMBEDDING_MODEL];
-		}
-
-		if (env[ENV_VARS.EMBEDDING_DIMENSIONS]) {
-			rawConfig.dimensions = parseInt(env[ENV_VARS.EMBEDDING_DIMENSIONS] || '1536', 10);
-		}
-
-		if (env[ENV_VARS.EMBEDDING_TIMEOUT]) {
-			rawConfig.timeout = parseInt(env[ENV_VARS.EMBEDDING_TIMEOUT] ?? '30000', 10);
-		}
-
-		if (env[ENV_VARS.EMBEDDING_MAX_RETRIES]) {
-			rawConfig.maxRetries = parseInt(env[ENV_VARS.EMBEDDING_MAX_RETRIES] ?? '3', 10);
-		}
-
-		return parseEmbeddingConfig(rawConfig);
-	} catch {
-		// Configuration parsing failed
-		return null;
 	}
+
+	if (process.env.GEMINI_API_KEY) {
+		return {
+			type: 'gemini',
+			apiKey: process.env.GEMINI_API_KEY,
+			baseUrl: process.env.GEMINI_BASE_URL,
+			model: process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-001',
+		};
+	}
+
+	if (process.env.QWEN_API_KEY || process.env.DASHSCOPE_API_KEY) {
+		return {
+			type: 'qwen',
+			apiKey: process.env.QWEN_API_KEY || process.env.DASHSCOPE_API_KEY,
+			baseUrl: process.env.QWEN_BASE_URL,
+			model: process.env.QWEN_EMBEDDING_MODEL || 'text-embedding-v3',
+		};
+	}
+
+	if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+		return {
+			type: 'aws-bedrock',
+			region: process.env.AWS_DEFAULT_REGION || 'us-east-1',
+			accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+			secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+			sessionToken: process.env.AWS_SESSION_TOKEN,
+			model: process.env.AWS_BEDROCK_EMBEDDING_MODEL || 'amazon.titan-embed-text-v2:0',
+		};
+	}
+
+	if (process.env.OLLAMA_BASE_URL) {
+		return {
+			type: 'ollama',
+			baseUrl: process.env.OLLAMA_BASE_URL,
+			model: process.env.OLLAMA_EMBEDDING_MODEL || 'nomic-embed-text',
+		};
+	}
+
+	return null;
 }
 
 /**
- * Validate embedding configuration without throwing
- *
- * @param config - Raw configuration object
- * @returns Validation result with success flag and data/errors
+ * Parse and validate embedding configuration
  */
-export function validateEmbeddingConfig(config: unknown): {
-	success: boolean;
-	data?: EmbeddingConfig;
-	errors?: z.ZodError;
-} {
+export function parseEmbeddingConfig(config: unknown): z.infer<typeof EmbeddingConfigSchema> {
+	return EmbeddingConfigSchema.parse(config);
+}
+
+/**
+ * Validate embedding configuration
+ */
+export function validateEmbeddingConfig(config: unknown): boolean {
 	try {
-		const data = parseEmbeddingConfig(config);
-		return { success: true, data };
-	} catch (error) {
-		if (error instanceof z.ZodError) {
-			return { success: false, errors: error };
-		}
-		return { success: false, errors: error as z.ZodError };
+		EmbeddingConfigSchema.parse(config);
+		return true;
+	} catch {
+		return false;
 	}
 }
+
+// Export types
+export type OpenAIEmbeddingConfig = z.infer<typeof OpenAIEmbeddingConfigSchema>;
+export type GeminiEmbeddingConfig = z.infer<typeof GeminiEmbeddingConfigSchema>;
+export type OllamaEmbeddingConfig = z.infer<typeof OllamaEmbeddingConfigSchema>;
+export type VoyageEmbeddingConfig = z.infer<typeof VoyageEmbeddingConfigSchema>;
+export type QwenEmbeddingConfig = z.infer<typeof QwenEmbeddingConfigSchema>;
+export type AWSBedrockEmbeddingConfig = z.infer<typeof AWSBedrockEmbeddingConfigSchema>;
+export type EmbeddingConfig = z.infer<typeof EmbeddingConfigSchema>;

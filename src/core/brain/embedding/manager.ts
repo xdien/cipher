@@ -225,12 +225,13 @@ export class EmbeddingManager {
 			return null;
 		}
 
-		const embedder = await createEmbedderFromEnv();
-		if (!embedder) {
+		const result = await createEmbedderFromEnv();
+		if (!result) {
 			logger.warn(`${LOG_PREFIXES.MANAGER} No embedder configuration found in environment`);
 			return null;
 		}
 
+		const { embedder, info: factoryInfo } = result;
 		const embedderId = id || this.generateId();
 		const config = embedder.getConfig() as BackendConfig;
 

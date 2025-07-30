@@ -116,9 +116,47 @@ export interface OllamaEmbeddingConfig extends EmbeddingConfig {
 }
 
 /**
+ * Voyage-specific embedding configuration
+ */
+export interface VoyageEmbeddingConfig extends EmbeddingConfig {
+	type: 'voyage';
+	model?: 'voyage-3-large' | 'voyage-3' | 'voyage-2';
+}
+
+/**
+ * Qwen-specific embedding configuration
+ */
+export interface QwenEmbeddingConfig extends EmbeddingConfig {
+	type: 'qwen';
+	model?: 'text-embedding-v3';
+	/** Custom dimensions for Qwen models */
+	dimensions?: 1024 | 768 | 512;
+}
+
+/**
+ * AWS Bedrock-specific embedding configuration
+ */
+export interface AWSBedrockEmbeddingConfig extends EmbeddingConfig {
+	type: 'aws-bedrock';
+	model?: 'amazon.titan-embed-text-v2:0' | 'cohere.embed-english-v3';
+	region?: string;
+	accessKeyId?: string;
+	secretAccessKey?: string;
+	sessionToken?: string;
+	/** Custom dimensions for Titan V2 */
+	dimensions?: 1024 | 512 | 256;
+}
+
+/**
  * Union type for all supported backend configurations
  */
-export type BackendConfig = OpenAIEmbeddingConfig | GeminiEmbeddingConfig | OllamaEmbeddingConfig;
+export type BackendConfig = 
+	| OpenAIEmbeddingConfig 
+	| GeminiEmbeddingConfig 
+	| OllamaEmbeddingConfig
+	| VoyageEmbeddingConfig
+	| QwenEmbeddingConfig
+	| AWSBedrockEmbeddingConfig;
 
 /**
  * Result from embedding operation with metadata
@@ -162,13 +200,22 @@ export interface BatchEmbeddingResult {
  * Base error class for embedding operations
  */
 export class EmbeddingError extends Error {
+	public readonly provider?: string;
+	public override readonly cause?: Error;
+
 	constructor(
 		message: string,
-		public readonly provider?: string,
-		public override readonly cause?: Error
+		provider?: string,
+		cause?: Error
 	) {
 		super(message);
 		this.name = 'EmbeddingError';
+		if (provider !== undefined) {
+			this.provider = provider;
+		}
+		if (cause !== undefined) {
+			this.cause = cause;
+		}
 	}
 }
 

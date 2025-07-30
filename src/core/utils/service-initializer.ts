@@ -49,7 +49,9 @@ async function createEmbeddingFromLLMProvider(
 					apiKey: llmConfig.apiKey || process.env.OPENAI_API_KEY,
 					model: 'text-embedding-3-small' as const,
 					baseUrl: llmConfig.baseUrl,
-					organization: llmConfig.organization
+					organization: llmConfig.organization,
+					timeout: 30000,
+					maxRetries: 3
 				};
 				logger.debug('Using OpenAI embedding fallback: text-embedding-3-small');
 				return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
@@ -60,7 +62,9 @@ async function createEmbeddingFromLLMProvider(
 				const embeddingConfig = {
 					type: 'ollama' as const,
 					baseUrl,
-					model: 'nomic-embed-text' as const
+					model: 'nomic-embed-text' as const,
+					timeout: 30000,
+					maxRetries: 3
 				};
 				logger.debug('Using Ollama embedding fallback: nomic-embed-text');
 				return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
@@ -74,10 +78,105 @@ async function createEmbeddingFromLLMProvider(
 				const embeddingConfig = {
 					type: 'gemini' as const,
 					apiKey: llmConfig.apiKey || process.env.GEMINI_API_KEY,
-					model: 'gemini-embedding-001' as const
+					model: 'gemini-embedding-001' as const,
+					timeout: 30000,
+					maxRetries: 3
 				};
 				logger.debug('Using Gemini embedding fallback: gemini-embedding-001');
 				return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
+			}
+			
+			case 'anthropic': {
+				// Anthropic doesn't have native embeddings, use Voyage (recommended by Anthropic) with no fallback
+				if (process.env.VOYAGE_API_KEY) {
+					const embeddingConfig = {
+						type: 'voyage' as const,
+						apiKey: process.env.VOYAGE_API_KEY,
+						model: 'voyage-3-large' as const,
+						timeout: 30000,
+						maxRetries: 3
+					};
+					logger.debug('Using Voyage embedding for Anthropic LLM: voyage-3-large');
+					return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
+				}
+				logger.debug('No Voyage API key available for Anthropic - embeddings disabled (set VOYAGE_API_KEY)');
+				return null;
+			}
+			
+			case 'aws': {
+				// AWS Bedrock has native embeddings via Amazon Titan and Cohere
+				if (llmConfig.accessKeyId || process.env.AWS_ACCESS_KEY_ID) {
+					const embeddingConfig = {
+						type: 'aws-bedrock' as const,
+						region: llmConfig.region || process.env.AWS_DEFAULT_REGION || 'us-east-1',
+						accessKeyId: llmConfig.accessKeyId || process.env.AWS_ACCESS_KEY_ID,
+						secretAccessKey: llmConfig.secretAccessKey || process.env.AWS_SECRET_ACCESS_KEY,
+						sessionToken: llmConfig.sessionToken || process.env.AWS_SESSION_TOKEN,
+						model: 'amazon.titan-embed-text-v2:0' as const,
+						timeout: 30000,
+						maxRetries: 3,
+						dimensions: 1024
+					};
+					logger.debug('Using AWS Bedrock native embedding: amazon.titan-embed-text-v2:0');
+					return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
+				}
+				logger.debug('No AWS credentials available for AWS Bedrock embedding (need AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY)');
+				return null;
+			}
+			
+			case 'azure': {
+				// Azure OpenAI - try to use same Azure setup for embeddings
+				if (!llmConfig.apiKey && !process.env.AZURE_OPENAI_API_KEY) {
+					logger.debug('No Azure OpenAI API key available for embedding fallback');
+					// Fallback to regular OpenAI if Azure not available
+					if (process.env.OPENAI_API_KEY) {
+						const embeddingConfig = {
+							type: 'openai' as const,
+							apiKey: process.env.OPENAI_API_KEY,
+							model: 'text-embedding-3-small' as const,
+							timeout: 30000,
+							maxRetries: 3
+						};
+						logger.debug('Using OpenAI embedding fallback for Azure LLM: text-embedding-3-small');
+						return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
+					}
+					return null;
+				}
+				const embeddingConfig = {
+					type: 'openai' as const,
+					apiKey: llmConfig.apiKey || process.env.AZURE_OPENAI_API_KEY,
+					model: 'text-embedding-3-small' as const,
+					baseUrl: llmConfig.azure?.endpoint || process.env.AZURE_OPENAI_ENDPOINT,
+					timeout: 30000,
+					maxRetries: 3
+				};
+				logger.debug('Using Azure OpenAI embedding fallback: text-embedding-3-small');
+				return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
+			}
+			
+			case 'qwen': {
+				// Qwen has native embeddings via DashScope API
+				if (llmConfig.apiKey || process.env.QWEN_API_KEY || process.env.DASHSCOPE_API_KEY) {
+					const embeddingConfig = {
+						type: 'qwen' as const,
+						apiKey: llmConfig.apiKey || process.env.QWEN_API_KEY || process.env.DASHSCOPE_API_KEY,
+						model: 'text-embedding-v3' as const,
+						baseUrl: llmConfig.baseUrl,
+						timeout: 30000,
+						maxRetries: 3,
+						dimensions: 1024
+					};
+					logger.debug('Using Qwen native embedding: text-embedding-v3');
+					return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
+				}
+				logger.debug('No Qwen API key available for native embedding (need QWEN_API_KEY or DASHSCOPE_API_KEY)');
+				return null;
+			}
+			
+			case 'openrouter': {
+				// OpenRouter doesn't support embeddings and no fallback should be used
+				logger.debug('OpenRouter does not support embedding models - embeddings disabled for this provider');
+				return null;
 			}
 			
 			default: {
@@ -187,35 +286,38 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 
 		// Check if embeddings are explicitly disabled
 		const explicitlyDisabled = 
+			(config.embedding && typeof config.embedding === 'object' && 'disabled' in config.embedding && config.embedding.disabled === true) ||
 			config.embedding === null ||
 			config.embedding === false ||
-			(config.embedding && typeof config.embedding === 'object' && 'disabled' in config.embedding && config.embedding.disabled === true) ||
 			process.env.DISABLE_EMBEDDINGS === 'true' || 
 			process.env.EMBEDDING_DISABLED === 'true';
-		
-		// When config.embedding is undefined (commented out), it should trigger fallback, not be treated as disabled
 
 		if (explicitlyDisabled) {
-			logger.warn('Embeddings are explicitly disabled - all embedding-dependent tools will be unavailable');
+			logger.warn('Embeddings are explicitly disabled - all embedding-dependent tools will be unavailable (chat-only mode)');
 			embeddingEnabled = false;
 		} else {
-			// Try YAML embedding configuration if available
+			// Priority 1: Try explicit YAML embedding configuration if available
 			if (config.embedding && typeof config.embedding === 'object' && !('disabled' in config.embedding)) {
-				logger.debug('Found embedding configuration in YAML, using it');
+				logger.debug('Found explicit embedding configuration in YAML, using it');
 				embeddingResult = await embeddingManager.createEmbedderFromConfig(
 					config.embedding as any,
 					'default'
 				);
 			}
 
-			// If no YAML config, fallback to LLM provider's default embedding
-			if (!embeddingResult && config.llm?.provider) {
-				logger.debug('No embedding config found, falling back to LLM provider default embedding');
-				embeddingResult = await createEmbeddingFromLLMProvider(embeddingManager, config.llm);
+			// Priority 2: If no explicit embedding config (undefined) or disabled:false, fallback to LLM provider's embedding
+			if (!embeddingResult) {
+				if (config.llm?.provider) {
+					logger.debug('No explicit embedding config found, falling back to LLM provider embedding');
+					embeddingResult = await createEmbeddingFromLLMProvider(embeddingManager, config.llm);
+				} else {
+					logger.debug('No LLM provider available for embedding fallback, trying environment auto-detection');
+					embeddingResult = await embeddingManager.createEmbedderFromEnv('default');
+				}
 			}
 
 			if (embeddingResult) {
-				logger.debug('Embedding manager initialized successfully', {
+				logger.info('Embedding manager initialized successfully', {
 					provider: embeddingResult.info.provider,
 					model: embeddingResult.info.model,
 					dimension: embeddingResult.info.dimension,
@@ -228,7 +330,7 @@ export async function createAgentServices(agentConfig: AgentConfig): Promise<Age
 				});
 				embeddingEnabled = true;
 			} else {
-				logger.warn('No embedding configuration available - embedding-dependent tools will be disabled');
+				logger.warn('No embedding configuration available - embedding-dependent tools will be disabled (chat-only mode)');
 				embeddingEnabled = false;
 			}
 		}
