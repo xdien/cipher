@@ -99,11 +99,11 @@ llm:
 #   dimensions: 1024
 
 # Qwen:
-embedding:
-  type: qwen
-  model: text-embedding-v3
-  apiKey: $QWEN_API_KEY
-  dimensions: 1024          # (1024, 768 or 512)
+# embedding:
+#   type: qwen
+#   model: text-embedding-v3
+#   apiKey: $QWEN_API_KEY
+#   dimensions: 1024          # (1024, 768 or 512)
 
 # AWS Bedrock:
 # embedding:
