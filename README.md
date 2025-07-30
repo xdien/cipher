@@ -84,27 +84,6 @@ cipher --mode mcp
 
 ## Configuration
 
-Configure Cipher using environment variables and YAML config:
-
-### Environment Variables (.env)
-
-```bash
-# Required: At least one API key
-OPENAI_API_KEY=your_openai_api_key          # Recommended for LLM + embeddings
-ANTHROPIC_API_KEY=your_anthropic_api_key    # Alternative LLM provider
-OPENROUTER_API_KEY=your_openrouter_api_key  # Alternative LLM provider
-GEMINI_API_KEY=your_gemini_api_key         # Free embeddings alternative
-
-# Ollama (self-hosted, no API key needed)
-OLLAMA_BASE_URL=http://localhost:11434/v1
-
-# Embedding configuration (optional)
-DISABLE_EMBEDDINGS=false                    # Set to true to disable embeddings entirely
-
-# Optional
-CIPHER_LOG_LEVEL=info
-NODE_ENV=production
-```
 
 ### Agent Configuration (memAgent/cipher.yml)
 
@@ -126,31 +105,21 @@ mcpServers:
     args: ['-y', '@modelcontextprotocol/server-filesystem', '.']
 ```
 
-## Capabilities
-
-- **Multiple Operation Modes**: CLI interactive, one-shot commands, REST API server, MCP server
-- **Session Management**: Create, switch, and manage multiple conversation sessions
-- **Memory Integration**: Persistent memory that learns from every interaction
-- **MCP Protocol Support**: Full Model Context Protocol integration for tools and resources
-- **Multi-LLM Support**: OpenAI, Anthropic, OpenRouter, Ollama, and Alibaba Cloud Qwen compatibility
-- **Knowledge Graph**: Structured memory with entity relationships (Neo4j, in-memory)
-- **Real-time Learning**: Memory layers that improve automatically with usage
-
 ## Embedding Configuration
 
-Configure embeddings in `memAgent/cipher.yml`. If not specified, uses automatic fallback based on your LLM provider.
+Configure embeddings in `memAgent/cipher.yml`. If not specified, uses automatic fallback based on your LLM provider. Below is the table of fallback embedding models:
 
 ### Supported Providers
 
-| Provider | Config | Auto-Fallback | Fixed Dimensions |
-|----------|--------|---------------|------------------|
-| **OpenAI** | `type: openai` | ✅ OpenAI LLM | No |
-| **Gemini** | `type: gemini` | ✅ Gemini LLM | No |
-| **Qwen** | `type: qwen` | ✅ Qwen LLM | Yes (1024, 768, 512) |
-| **Voyage** | `type: voyage` | ✅ Anthropic LLM | Yes (1024, 256, 512, 2048) |
-| **AWS Bedrock** | `type: aws-bedrock` | ✅ AWS LLM | Yes (1024, 512, 256) |
-| **Azure OpenAI** | `type: openai` | ✅ Azure LLM | No |
-| **Ollama** | `type: ollama` | ✅ Ollama LLM | No |
+| Provider | Config | Fallback Model | Fixed Dimensions |
+|----------|--------|----------------|------------------|
+| **OpenAI** | `type: openai` | `text-embedding-3-small` | No |
+| **Gemini** | `type: gemini` | `gemini-embedding-001` | No |
+| **Qwen** | `type: qwen` | `text-embedding-v3` | Yes (1024, 768, 512) |
+| **Voyage** | `type: voyage` | `voyage-3-large` | Yes (1024, 256, 512, 2048) |
+| **AWS Bedrock** | `type: aws-bedrock` | `amazon.titan-embed-text-v2:0` | Yes (1024, 512, 256) |
+| **Azure OpenAI** | `type: openai` | `text-embedding-3-small` | No |
+| **Ollama** | `type: ollama` | `nomic-embed-text` | No |
 
 ### Configuration Examples
 
@@ -191,10 +160,12 @@ embedding:
   apiKey: $VOYAGE_API_KEY
   dimensions: 1024  # Required: 1024, 256, 512, or 2048
 
-# Disable embeddings
+# Disable embeddings (chat-only mode)
 embedding:
   disabled: true
 ```
+
+**Note:** Setting `embedding: disabled: true` disables all memory-related tools (`cipher_memory_search`, `cipher_extract_and_operate_memory`, etc.) and operates in chat-only mode.
 
 ### Automatic Fallback
 
