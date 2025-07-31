@@ -19,11 +19,7 @@ import {
 	EmbeddingError,
 	EmbeddingDimensionError,
 } from './types.js';
-import {
-	VALIDATION_LIMITS,
-	LOG_PREFIXES,
-	HTTP_STATUS,
-} from '../constants.js';
+import { VALIDATION_LIMITS, LOG_PREFIXES, HTTP_STATUS } from '../constants.js';
 
 /**
  * LM Studio-specific embedding configuration
@@ -289,10 +285,19 @@ export class LMStudioEmbedder implements Embedder {
 				lastError = error instanceof Error ? error : new Error(String(error));
 
 				logger.debug(`Attempt ${attempt + 1} failed with error:`, {
-					errorType: (error && typeof error === 'object' && 'constructor' in error) ? (error as any).constructor.name : undefined,
-					errorMessage: (error && typeof error === 'object' && 'message' in error) ? (error as any).message : String(error),
+					errorType:
+						error && typeof error === 'object' && 'constructor' in error
+							? (error as any).constructor.name
+							: undefined,
+					errorMessage:
+						error && typeof error === 'object' && 'message' in error
+							? (error as any).message
+							: String(error),
 					hasStatus: error && typeof error === 'object' && 'status' in error,
-					status: error && typeof error === 'object' && 'status' in error ? (error as any).status : 'none',
+					status:
+						error && typeof error === 'object' && 'status' in error
+							? (error as any).status
+							: 'none',
 				});
 
 				// Check if we should retry based on error type

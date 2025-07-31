@@ -297,7 +297,7 @@ describe('LMStudioEmbedder', () => {
 			console.log('Mock error object:', mockError);
 			console.log('Mock error has status:', 'status' in mockError);
 			console.log('Mock error status:', mockError.status);
-			
+
 			mockOpenAI.embeddings.create.mockRejectedValueOnce(mockError);
 
 			try {
