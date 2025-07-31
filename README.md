@@ -527,6 +527,10 @@ Thanks to all these amazing people for contributing to cipher!
 
 [Contributors](https://github.com/campfirein/cipher/graphs/contributors)
 
+## MseeP.ai Security Assessment Badge
+
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/campfirein-cipher-badge.png)](https://mseep.ai/app/campfirein-cipher)
+
 ## Star History
 
 <a href="https://star-history.com/#campfirein/cipher&Date">
