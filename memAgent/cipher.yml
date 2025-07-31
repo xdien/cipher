@@ -1,4 +1,8 @@
-# describes the mcp servers to use
+# List of MCP servers to use
+
+# If not specified, please set it like this:
+# mcpServers: {}
+
 mcpServers: 
   filesystem:
     type: stdio
@@ -71,14 +75,6 @@ llm:
   # baseURL: $LMSTUDIO_BASE_URL
 
 # Embedding configuration: ONLY ONE of the following
-# embedding:
-#   type: openai                 # openai, gemini, ollama
-#   model: text-embedding-3-small # Provider-specific model
-#   apiKey: $OPENAI_API_KEY      # API key (environment variable)
-#   dimensions: 1536             # Optional: custom dimensions
-#   timeout: 30000               # Optional: request timeout (ms)
-#   maxRetries: 3                # Optional: max retry attempts
-
 # OpenAI:
 # embedding:
 #   type: openai
