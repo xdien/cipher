@@ -70,6 +70,16 @@ export function getTokenizerConfigForModel(model: string): TokenizerConfig {
 		};
 	}
 
+	// LM Studio models use OpenAI-compatible tokenization
+	if (model.includes('lmstudio') || model.includes('llama') || model.includes('mistral')) {
+		return {
+			provider: 'openai', // LM Studio uses OpenAI-compatible tokenization
+			model,
+			fallbackToApproximation: true,
+			hybridTracking: true,
+		};
+	}
+
 	return {
 		provider: 'default',
 		model,

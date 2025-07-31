@@ -82,7 +82,7 @@ export {
 } from './factory.js';
 
 // Export manager
-export { EmbeddingManager } from './manager.js';
+export { EmbeddingManager, EmbeddingSystemState } from './manager.js';
 
 // Export configuration utilities
 export {

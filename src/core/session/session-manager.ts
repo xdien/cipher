@@ -35,6 +35,7 @@ export class SessionManager {
 			mcpManager: MCPManager;
 			unifiedToolManager: UnifiedToolManager;
 			eventManager: EventManager;
+			embeddingManager?: any; // Optional embedding manager for status checking
 		},
 		config: SessionManagerConfig = {}
 	) {

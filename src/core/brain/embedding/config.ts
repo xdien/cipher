@@ -95,6 +95,18 @@ export const AWSBedrockEmbeddingConfigSchema = z.object({
 });
 
 /**
+ * LM Studio embedding configuration schema
+ */
+export const LMStudioEmbeddingConfigSchema = z.object({
+	type: z.literal('lmstudio'),
+	baseUrl: z.string().default('http://localhost:1234/v1'),
+	model: z.string().default('nomic-embed-text-v1.5'),
+	dimensions: z.number().optional(),
+	timeout: z.number().default(30000),
+	maxRetries: z.number().default(3),
+});
+
+/**
  * Main embedding configuration schema
  */
 export const EmbeddingConfigSchema = z.union([
@@ -104,6 +116,7 @@ export const EmbeddingConfigSchema = z.union([
 	VoyageEmbeddingConfigSchema,
 	QwenEmbeddingConfigSchema,
 	AWSBedrockEmbeddingConfigSchema,
+	LMStudioEmbeddingConfigSchema,
 ]);
 
 /**
@@ -171,6 +184,14 @@ export function parseEmbeddingConfigFromEnv(): EmbeddingEnvConfig | null {
 		};
 	}
 
+	if (process.env.LMSTUDIO_BASE_URL) {
+		return {
+			type: 'lmstudio',
+			baseUrl: process.env.LMSTUDIO_BASE_URL,
+			model: process.env.LMSTUDIO_EMBEDDING_MODEL || 'nomic-embed-text-v1.5',
+		};
+	}
+
 	return null;
 }
 
@@ -200,4 +221,5 @@ export type OllamaEmbeddingConfig = z.infer<typeof OllamaEmbeddingConfigSchema>;
 export type VoyageEmbeddingConfig = z.infer<typeof VoyageEmbeddingConfigSchema>;
 export type QwenEmbeddingConfig = z.infer<typeof QwenEmbeddingConfigSchema>;
 export type AWSBedrockEmbeddingConfig = z.infer<typeof AWSBedrockEmbeddingConfigSchema>;
+export type LMStudioEmbeddingConfig = z.infer<typeof LMStudioEmbeddingConfigSchema>;
 export type EmbeddingConfig = z.infer<typeof EmbeddingConfigSchema>;

@@ -81,6 +81,7 @@ export class ConversationSession {
 			promptManager: EnhancedPromptManager;
 			mcpManager: MCPManager;
 			unifiedToolManager: UnifiedToolManager;
+			embeddingManager?: any; // Optional embedding manager for status checking
 		},
 		public readonly id: string,
 		options?: {
@@ -322,9 +323,43 @@ export class ConversationSession {
 		const backgroundOperations = new Promise<void>(resolve => {
 			setImmediate(async () => {
 				// Quick check to skip all background operations if embeddings are disabled
-				if (env.DISABLE_EMBEDDINGS || env.EMBEDDING_DISABLED) {
+				const embeddingsDisabled = env.DISABLE_EMBEDDINGS || env.EMBEDDING_DISABLED;
+
+				// Also check embedding manager status if available
+				let embeddingManagerDisabled = false;
+				if (this.services.embeddingManager) {
+					// Check global embedding state
+					try {
+						const { EmbeddingSystemState } = require('../embedding/manager.js');
+						if (EmbeddingSystemState.getInstance().isDisabled()) {
+							embeddingManagerDisabled = true;
+						}
+					} catch (error) {
+						// If EmbeddingSystemState is not available, continue with other checks
+					}
+
+					// Check if no embeddings are available
+					if (!this.services.embeddingManager?.hasAvailableEmbeddings()) {
+						embeddingManagerDisabled = true;
+					}
+
+					// Check if any embedders are disabled
+					const embeddingStatus = this.services.embeddingManager?.getEmbeddingStatus();
+					if (embeddingStatus) {
+						const disabledEmbedders = Object.values(embeddingStatus).filter(
+							(status: any) => status.status === 'DISABLED'
+						);
+						if (disabledEmbedders.length > 0) {
+							embeddingManagerDisabled = true;
+						}
+					}
+				}
+
+				if (embeddingsDisabled || embeddingManagerDisabled) {
 					logger.debug('Skipping all background memory operations - embeddings disabled', {
 						sessionId: this.id,
+						envDisabled: embeddingsDisabled,
+						managerDisabled: embeddingManagerDisabled,
 					});
 					resolve();
 					return;
@@ -374,6 +409,44 @@ export class ConversationSession {
 
 			// Check if embeddings are disabled via environment variables or configuration
 			const embeddingsDisabled = env.DISABLE_EMBEDDINGS || env.EMBEDDING_DISABLED;
+
+			// Also check embedding manager status if available
+			let embeddingManagerDisabled = false;
+			if (this.services.embeddingManager) {
+				// Check global embedding state
+				try {
+					const { EmbeddingSystemState } = require('../embedding/manager.js');
+					if (EmbeddingSystemState.getInstance().isDisabled()) {
+						embeddingManagerDisabled = true;
+					}
+				} catch (error) {
+					// If EmbeddingSystemState is not available, continue with other checks
+				}
+
+				// Check if no embeddings are available
+				if (!this.services.embeddingManager?.hasAvailableEmbeddings()) {
+					embeddingManagerDisabled = true;
+				}
+
+				// Check if any embedders are disabled
+				const embeddingStatus = this.services.embeddingManager?.getEmbeddingStatus();
+				if (embeddingStatus) {
+					const disabledEmbedders = Object.values(embeddingStatus).filter(
+						(status: any) => status.status === 'DISABLED'
+					);
+					if (disabledEmbedders.length > 0) {
+						embeddingManagerDisabled = true;
+					}
+				}
+			}
+
+			if (embeddingsDisabled || embeddingManagerDisabled) {
+				logger.debug('ConversationSession: Embeddings disabled, skipping memory extraction', {
+					envDisabled: embeddingsDisabled,
+					managerDisabled: embeddingManagerDisabled,
+				});
+				return;
+			}
 
 			// Check if the unifiedToolManager is available
 			if (!this.services.unifiedToolManager) {

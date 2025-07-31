@@ -16,6 +16,7 @@ import {
 	type VoyageEmbeddingConfig as ZodVoyageEmbeddingConfig,
 	type QwenEmbeddingConfig as ZodQwenEmbeddingConfig,
 	type AWSBedrockEmbeddingConfig as ZodAWSBedrockEmbeddingConfig,
+	type LMStudioEmbeddingConfig as ZodLMStudioEmbeddingConfig,
 } from './config.js';
 import {
 	type Embedder,
@@ -32,6 +33,7 @@ import { OllamaEmbedder } from './backend/ollama.js';
 import { VoyageEmbedder } from './backend/voyage.js';
 import { QwenEmbedder } from './backend/qwen.js';
 import { AWSBedrockEmbedder } from './backend/aws.js';
+import { LMStudioEmbedder } from './backend/lmstudio.js';
 
 /**
  * Embedding factory interface
@@ -189,6 +191,30 @@ export class AWSBedrockEmbeddingFactory implements EmbeddingFactory {
 }
 
 /**
+ * LM Studio embedding factory
+ */
+export class LMStudioEmbeddingFactory implements EmbeddingFactory {
+	async createEmbedder(config: BackendConfig): Promise<Embedder> {
+		if (config.type !== 'lmstudio') {
+			throw new EmbeddingValidationError('Invalid config type for LM Studio factory');
+		}
+		return new LMStudioEmbedder(config);
+	}
+
+	validateConfig(config: unknown): boolean {
+		try {
+			return typeof config === 'object' && config !== null && (config as any).type === 'lmstudio';
+		} catch {
+			return false;
+		}
+	}
+
+	getProviderType(): string {
+		return 'lmstudio';
+	}
+}
+
+/**
  * Registry of available embedding factories
  */
 export const EMBEDDING_FACTORIES = new Map<string, EmbeddingFactory>([
@@ -198,6 +224,7 @@ export const EMBEDDING_FACTORIES = new Map<string, EmbeddingFactory>([
 	['voyage', new VoyageEmbeddingFactory()],
 	['qwen', new QwenEmbeddingFactory()],
 	['aws-bedrock', new AWSBedrockEmbeddingFactory()],
+	['lmstudio', new LMStudioEmbeddingFactory()],
 ]);
 
 /**

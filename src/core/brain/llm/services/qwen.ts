@@ -6,7 +6,7 @@ import { ImageData } from '../messages/types.js';
 import { ILLMService, LLMServiceConfig } from './types.js';
 // Fix OpenAI import for compatibility
 // @ts-ignore
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+
 const OpenAI = require('openai');
 import { logger } from '../../../logger/index.js';
 import { formatToolResult } from '../utils/tool-result-formatter.js';

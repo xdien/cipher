@@ -21,6 +21,43 @@ import { ResilientEmbedder, EmbeddingStatus } from './resilient-embedder.js';
 import { CircuitBreakerManager } from './circuit-breaker.js';
 
 /**
+ * Global embedding system state
+ */
+export class EmbeddingSystemState {
+	private static instance: EmbeddingSystemState;
+	private isGloballyDisabled = false;
+	private disabledReason = '';
+
+	private constructor() {}
+
+	static getInstance(): EmbeddingSystemState {
+		if (!EmbeddingSystemState.instance) {
+			EmbeddingSystemState.instance = new EmbeddingSystemState();
+		}
+		return EmbeddingSystemState.instance;
+	}
+
+	disableGlobally(reason: string): void {
+		this.isGloballyDisabled = true;
+		this.disabledReason = reason;
+		logger.warn(`${LOG_PREFIXES.MANAGER} Embeddings disabled globally: ${reason}`);
+	}
+
+	isDisabled(): boolean {
+		return this.isGloballyDisabled;
+	}
+
+	getDisabledReason(): string {
+		return this.disabledReason;
+	}
+
+	reset(): void {
+		this.isGloballyDisabled = false;
+		this.disabledReason = '';
+	}
+}
+
+/**
  * Health check result for an embedder instance
  */
 export interface HealthCheckResult {
@@ -249,6 +286,59 @@ export class EmbeddingManager {
 		}
 
 		return { embedder, info };
+	}
+
+	/**
+	 * Handle runtime embedding failure and disable globally if needed
+	 *
+	 * This method is called when any embedding-related tool fails.
+	 * It immediately disables embeddings globally to prevent further failures
+	 * and allow the application to continue in chat-only mode.
+	 */
+	handleRuntimeFailure(error: Error, provider: string): void {
+		const errorMessage = error.message.toLowerCase();
+
+		// Check for critical errors that should immediately disable embeddings
+		const isCriticalError =
+			errorMessage.includes('unauthorized') ||
+			errorMessage.includes('invalid api key') ||
+			errorMessage.includes('authentication') ||
+			errorMessage.includes('401') ||
+			errorMessage.includes('403') ||
+			errorMessage.includes('api key') ||
+			errorMessage.includes('model is not embedding') ||
+			errorMessage.includes('failed to load model') ||
+			errorMessage.includes('cannot connect') ||
+			errorMessage.includes('connection') ||
+			errorMessage.includes('not found') ||
+			errorMessage.includes('model not found') ||
+			errorMessage.includes('server rejected') ||
+			errorMessage.includes('econnrefused') ||
+			errorMessage.includes('fetch failed') ||
+			errorMessage.includes('timeout') ||
+			errorMessage.includes('network') ||
+			// LM Studio specific errors
+			errorMessage.includes('lm studio server') ||
+			errorMessage.includes('embedding model') ||
+			errorMessage.includes('ensure the model is loaded');
+
+		// For any embedding failure, immediately disable globally to prevent cascading failures
+		logger.error(
+			`${LOG_PREFIXES.MANAGER} Runtime embedding failure detected - disabling embeddings globally`,
+			{
+				provider,
+				error: error.message,
+				reason: isCriticalError ? 'Critical embedding failure' : 'Embedding operation failed',
+				errorType: error.constructor.name,
+			}
+		);
+
+		EmbeddingSystemState.getInstance().disableGlobally(`Runtime failure: ${error.message}`);
+
+		// Also force disable all resilient embedders to ensure immediate fallback
+		for (const [id, resilientEmbedder] of this.resilientEmbedders) {
+			resilientEmbedder.forceDisable();
+		}
 	}
 
 	/**

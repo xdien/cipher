@@ -148,6 +148,18 @@ export interface AWSBedrockEmbeddingConfig extends EmbeddingConfig {
 }
 
 /**
+ * LM Studio-specific embedding configuration
+ */
+export interface LMStudioEmbeddingConfig extends EmbeddingConfig {
+	type: 'lmstudio';
+	model?: 'nomic-embed-text-v1.5' | 'text-embedding-nomic-embed-text-v1.5' | string;
+	/** Base URL for LM Studio server, defaults to http://localhost:1234/v1 */
+	baseUrl?: string;
+	/** Custom dimensions if supported by the model */
+	dimensions?: number;
+}
+
+/**
  * Union type for all supported backend configurations
  */
 export type BackendConfig =
@@ -156,7 +168,8 @@ export type BackendConfig =
 	| OllamaEmbeddingConfig
 	| VoyageEmbeddingConfig
 	| QwenEmbeddingConfig
-	| AWSBedrockEmbeddingConfig;
+	| AWSBedrockEmbeddingConfig
+	| LMStudioEmbeddingConfig;
 
 /**
  * Result from embedding operation with metadata

@@ -73,7 +73,6 @@ export class UnifiedToolManager {
 	private config: Required<UnifiedToolManagerConfig>;
 	private eventManager?: EventManager;
 	private toolsAlreadyLogged = false;
-	private embeddingManager?: any; // Reference to embedding manager for status checking
 
 	constructor(
 		mcpManager: MCPManager,
@@ -97,74 +96,6 @@ export class UnifiedToolManager {
 	 */
 	setEventManager(eventManager: EventManager): void {
 		this.eventManager = eventManager;
-	}
-
-	/**
-	 * Set the embedding manager for checking embedding status
-	 */
-	setEmbeddingManager(embeddingManager: any): void {
-		this.embeddingManager = embeddingManager;
-	}
-
-	/**
-	 * Check if embeddings are disabled globally
-	 */
-	private areEmbeddingsDisabled(): boolean {
-		// Check global embedding state
-		try {
-			const { EmbeddingSystemState } = require('../../embedding/manager.js');
-			if (EmbeddingSystemState.getInstance().isDisabled()) {
-				return true;
-			}
-		} catch (error) {
-			// If EmbeddingSystemState is not available, continue with other checks
-		}
-
-		// Check embedding manager status
-		if (this.embeddingManager) {
-			// Check if no embeddings are available
-			if (!this.embeddingManager.hasAvailableEmbeddings()) {
-				return true;
-			}
-
-			// Check if any embedders are disabled
-			const embeddingStatus = this.embeddingManager.getEmbeddingStatus();
-			if (embeddingStatus) {
-				const disabledEmbedders = Object.values(embeddingStatus).filter(
-					(status: any) => status.status === 'DISABLED'
-				);
-				if (disabledEmbedders.length > 0) {
-					return true;
-				}
-			}
-		}
-
-		return false;
-	}
-
-	/**
-	 * Check if a tool is embedding-related and should be excluded when embeddings are disabled
-	 */
-	private isEmbeddingRelatedTool(toolName: string): boolean {
-		const embeddingToolPatterns = [
-			'search_memory',
-			'search_reasoning',
-			'store_reasoning_memory',
-			'extract_and_operate_memory',
-			'memory_operation',
-			'knowledge_search',
-			'vector_search',
-			'embedding',
-			'similarity',
-			'cipher_search_memory',
-			'cipher_search_reasoning_patterns',
-			'cipher_store_reasoning_memory',
-			'cipher_extract_and_operate_memory',
-		];
-
-		return embeddingToolPatterns.some(pattern =>
-			toolName.toLowerCase().includes(pattern.toLowerCase())
-		);
 	}
 
 	/**
@@ -246,14 +177,6 @@ export class UnifiedToolManager {
 					}
 
 					for (const [toolName, tool] of Object.entries(internalTools)) {
-						// Check if embeddings are disabled and this is an embedding-related tool
-						if (this.areEmbeddingsDisabled() && this.isEmbeddingRelatedTool(toolName)) {
-							logger.debug(
-								`UnifiedToolManager: Skipping embedding-related tool '${toolName}' - embeddings are disabled`
-							);
-							continue;
-						}
-
 						// Mode-specific tool filtering
 						if (this.config.mode === 'cli') {
 							// CLI mode: Only expose search tools to LLM, background tools are excluded from agent access
@@ -363,14 +286,6 @@ export class UnifiedToolManager {
 			});
 
 			let result: ToolExecutionResult;
-
-			// Check if embeddings are disabled and this is an embedding-related tool
-			if (this.areEmbeddingsDisabled() && this.isEmbeddingRelatedTool(toolName)) {
-				logger.warn(
-					`UnifiedToolManager: Blocking execution of embedding-related tool '${toolName}' - embeddings are disabled`
-				);
-				throw new Error(`Tool '${toolName}' is not available - embeddings are disabled globally`);
-			}
 
 			// Determine which manager should handle this tool
 			if (this.config.enableInternalTools && isInternalToolName(toolName)) {

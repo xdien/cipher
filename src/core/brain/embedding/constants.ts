@@ -17,6 +17,7 @@ export const PROVIDER_TYPES = {
 	VOYAGE: 'voyage',
 	QWEN: 'qwen',
 	AWS_BEDROCK: 'aws-bedrock',
+	LMSTUDIO: 'lmstudio',
 } as const;
 
 /**
@@ -86,6 +87,24 @@ export const AWS_BEDROCK_MODELS = {
 } as const;
 
 /**
+ * LM Studio embedding models with their specifications
+ */
+export const LMSTUDIO_MODELS = {
+	/** Nomic Embed Text v1.5 (768 dimensions) */
+	NOMIC_EMBED_TEXT_V1_5: 'nomic-embed-text-v1.5',
+	/** Alternative Nomic model name */
+	TEXT_EMBEDDING_NOMIC_EMBED_TEXT_V1_5: 'text-embedding-nomic-embed-text-v1.5',
+	/** BGE Large (1024 dimensions) */
+	BGE_LARGE: 'bge-large',
+	/** BGE Base (768 dimensions) */
+	BGE_BASE: 'bge-base',
+	/** BGE Small (384 dimensions) */
+	BGE_SMALL: 'bge-small',
+	/** All-MiniLM (384 dimensions) */
+	ALL_MINILM: 'all-minilm',
+} as const;
+
+/**
  * Model dimension specifications
  */
 export const MODEL_DIMENSIONS = {
@@ -104,6 +123,12 @@ export const MODEL_DIMENSIONS = {
 	[QWEN_MODELS.TEXT_EMBEDDING_V3]: 1024, // Default, configurable to 768 or 512
 	[AWS_BEDROCK_MODELS.TITAN_EMBED_TEXT_V2]: 1024, // Default, configurable to 512 or 256
 	[AWS_BEDROCK_MODELS.COHERE_EMBED_ENGLISH_V3]: 1024,
+	[LMSTUDIO_MODELS.NOMIC_EMBED_TEXT_V1_5]: 768,
+	[LMSTUDIO_MODELS.TEXT_EMBEDDING_NOMIC_EMBED_TEXT_V1_5]: 768,
+	[LMSTUDIO_MODELS.BGE_LARGE]: 1024,
+	[LMSTUDIO_MODELS.BGE_BASE]: 768,
+	[LMSTUDIO_MODELS.BGE_SMALL]: 384,
+	// Note: ALL_MINILM already defined in OLLAMA_MODELS with same dimensions
 } as const;
 
 /**
@@ -128,6 +153,9 @@ export const DEFAULTS = {
 	/** Default Ollama model */
 	OLLAMA_MODEL: OLLAMA_MODELS.NOMIC_EMBED_TEXT,
 
+	/** Default LM Studio model */
+	LMSTUDIO_MODEL: LMSTUDIO_MODELS.NOMIC_EMBED_TEXT_V1_5,
+
 	/** Default request timeout in milliseconds */
 	TIMEOUT: 30000, // 30 seconds
 
@@ -145,6 +173,9 @@ export const DEFAULTS = {
 
 	/** Default Ollama API base URL */
 	OLLAMA_BASE_URL: 'http://localhost:11434/api',
+
+	/** Default LM Studio API base URL */
+	LMSTUDIO_BASE_URL: 'http://localhost:1234/v1',
 
 	/** Default embedding dimension */
 	DIMENSION: MODEL_DIMENSIONS[OPENAI_MODELS.TEXT_EMBEDDING_3_SMALL],
@@ -225,6 +256,7 @@ export const LOG_PREFIXES = {
 	VOYAGE: '[EMBEDDING:VOYAGE]',
 	QWEN: '[EMBEDDING:QWEN]',
 	AWS_BEDROCK: '[EMBEDDING:AWS-BEDROCK]',
+	LMSTUDIO: '[EMBEDDING:LMSTUDIO]',
 	FACTORY: '[EMBEDDING:FACTORY]',
 	MANAGER: '[EMBEDDING:MANAGER]',
 	HEALTH: '[EMBEDDING:HEALTH]',
@@ -246,6 +278,8 @@ export const ENV_VARS = {
 	GEMINI_BASE_URL: 'GEMINI_BASE_URL',
 	// Ollama
 	OLLAMA_BASE_URL: 'OLLAMA_BASE_URL',
+	// LM Studio
+	LMSTUDIO_BASE_URL: 'LMSTUDIO_BASE_URL',
 	// General embedding config
 	EMBEDDING_PROVIDER: 'EMBEDDING_PROVIDER',
 	EMBEDDING_MODEL: 'EMBEDDING_MODEL',
