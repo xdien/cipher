@@ -107,7 +107,9 @@ export const searchMemoryTool: InternalTool = {
 			// Check if embeddings are globally disabled
 			if (EmbeddingSystemState.getInstance().isDisabled()) {
 				const reason = EmbeddingSystemState.getInstance().getDisabledReason();
-				logger.debug('MemorySearch: Embeddings disabled globally, returning empty results', { reason });
+				logger.debug('MemorySearch: Embeddings disabled globally, returning empty results', {
+					reason,
+				});
 				return {
 					success: true,
 					query: args.query || '',
@@ -122,14 +124,17 @@ export const searchMemoryTool: InternalTool = {
 						knowledgeResults: 0,
 						reflectionResults: 0,
 						searchMode: 'knowledge',
-						usedFallback: true
+						usedFallback: true,
 					},
-					timestamp: new Date().toISOString()
+					timestamp: new Date().toISOString(),
 				};
 			}
 
 			// Check if embedding manager indicates no available embeddings
-			if (context?.services?.embeddingManager && !context.services.embeddingManager.hasAvailableEmbeddings()) {
+			if (
+				context?.services?.embeddingManager &&
+				!context.services.embeddingManager.hasAvailableEmbeddings()
+			) {
 				logger.debug('MemorySearch: No available embeddings, returning empty results');
 				return {
 					success: true,
@@ -145,9 +150,9 @@ export const searchMemoryTool: InternalTool = {
 						knowledgeResults: 0,
 						reflectionResults: 0,
 						searchMode: 'knowledge',
-						usedFallback: true
+						usedFallback: true,
 					},
-					timestamp: new Date().toISOString()
+					timestamp: new Date().toISOString(),
 				};
 			}
 
@@ -197,8 +202,11 @@ export const searchMemoryTool: InternalTool = {
 				});
 
 				// Immediately disable embeddings globally on first failure
-				if (context?.embeddingManager && embedError instanceof Error) {
-					context.embeddingManager.handleRuntimeFailure(embedError, embedder.getConfig().type);
+				if (context?.services?.embeddingManager && embedError instanceof Error) {
+					context.services.embeddingManager.handleRuntimeFailure(
+						embedError,
+						embedder.getConfig().type
+					);
 				}
 
 				// Return empty results since embeddings are now disabled
@@ -216,9 +224,9 @@ export const searchMemoryTool: InternalTool = {
 						knowledgeResults: 0,
 						reflectionResults: 0,
 						searchMode: 'knowledge',
-						usedFallback: true
+						usedFallback: true,
 					},
-					timestamp: new Date().toISOString()
+					timestamp: new Date().toISOString(),
 				};
 			}
 
@@ -392,8 +400,8 @@ export const searchMemoryTool: InternalTool = {
 			});
 
 			// Check if this is a runtime failure that should disable embeddings globally
-			if (context?.embeddingManager && error instanceof Error) {
-				const embeddingManager = context.services?.embeddingManager || context.embeddingManager;
+			if (context?.services?.embeddingManager && error instanceof Error) {
+				const embeddingManager = context.services.embeddingManager;
 				if (embeddingManager && typeof embeddingManager.handleRuntimeFailure === 'function') {
 					const embedder = embeddingManager.getEmbedder('default');
 					const providerType = embedder?.getConfig()?.type || 'unknown';

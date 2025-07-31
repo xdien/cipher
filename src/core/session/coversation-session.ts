@@ -324,7 +324,7 @@ export class ConversationSession {
 			setImmediate(async () => {
 				// Quick check to skip all background operations if embeddings are disabled
 				const embeddingsDisabled = env.DISABLE_EMBEDDINGS || env.EMBEDDING_DISABLED;
-				
+
 				// Also check embedding manager status if available
 				let embeddingManagerDisabled = false;
 				if (this.services.embeddingManager) {
@@ -409,7 +409,7 @@ export class ConversationSession {
 
 			// Check if embeddings are disabled via environment variables or configuration
 			const embeddingsDisabled = env.DISABLE_EMBEDDINGS || env.EMBEDDING_DISABLED;
-			
+
 			// Also check embedding manager status if available
 			let embeddingManagerDisabled = false;
 			if (this.services.embeddingManager) {

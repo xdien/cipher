@@ -290,16 +290,16 @@ export class EmbeddingManager {
 
 	/**
 	 * Handle runtime embedding failure and disable globally if needed
-	 * 
+	 *
 	 * This method is called when any embedding-related tool fails.
 	 * It immediately disables embeddings globally to prevent further failures
 	 * and allow the application to continue in chat-only mode.
 	 */
 	handleRuntimeFailure(error: Error, provider: string): void {
 		const errorMessage = error.message.toLowerCase();
-		
+
 		// Check for critical errors that should immediately disable embeddings
-		const isCriticalError = 
+		const isCriticalError =
 			errorMessage.includes('unauthorized') ||
 			errorMessage.includes('invalid api key') ||
 			errorMessage.includes('authentication') ||
@@ -323,15 +323,18 @@ export class EmbeddingManager {
 			errorMessage.includes('ensure the model is loaded');
 
 		// For any embedding failure, immediately disable globally to prevent cascading failures
-		logger.error(`${LOG_PREFIXES.MANAGER} Runtime embedding failure detected - disabling embeddings globally`, {
-			provider,
-			error: error.message,
-			reason: isCriticalError ? 'Critical embedding failure' : 'Embedding operation failed',
-			errorType: error.constructor.name
-		});
-		
+		logger.error(
+			`${LOG_PREFIXES.MANAGER} Runtime embedding failure detected - disabling embeddings globally`,
+			{
+				provider,
+				error: error.message,
+				reason: isCriticalError ? 'Critical embedding failure' : 'Embedding operation failed',
+				errorType: error.constructor.name,
+			}
+		);
+
 		EmbeddingSystemState.getInstance().disableGlobally(`Runtime failure: ${error.message}`);
-		
+
 		// Also force disable all resilient embedders to ensure immediate fallback
 		for (const [id, resilientEmbedder] of this.resilientEmbedders) {
 			resilientEmbedder.forceDisable();

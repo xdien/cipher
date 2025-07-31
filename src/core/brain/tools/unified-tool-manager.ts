@@ -159,10 +159,10 @@ export class UnifiedToolManager {
 			'cipher_search_memory',
 			'cipher_search_reasoning_patterns',
 			'cipher_store_reasoning_memory',
-			'cipher_extract_and_operate_memory'
+			'cipher_extract_and_operate_memory',
 		];
 
-		return embeddingToolPatterns.some(pattern => 
+		return embeddingToolPatterns.some(pattern =>
 			toolName.toLowerCase().includes(pattern.toLowerCase())
 		);
 	}
@@ -364,22 +364,24 @@ export class UnifiedToolManager {
 
 			let result: ToolExecutionResult;
 
-					// Check if embeddings are disabled and this is an embedding-related tool
-		if (this.areEmbeddingsDisabled() && this.isEmbeddingRelatedTool(toolName)) {
-			logger.warn(`UnifiedToolManager: Blocking execution of embedding-related tool '${toolName}' - embeddings are disabled`);
-			throw new Error(`Tool '${toolName}' is not available - embeddings are disabled globally`);
-		}
-
-		// Determine which manager should handle this tool
-		if (this.config.enableInternalTools && isInternalToolName(toolName)) {
-			// Internal tool execution
-			if (!this.internalToolManager.isInternalTool(toolName)) {
-				throw new Error(`Internal tool '${toolName}' not found`);
+			// Check if embeddings are disabled and this is an embedding-related tool
+			if (this.areEmbeddingsDisabled() && this.isEmbeddingRelatedTool(toolName)) {
+				logger.warn(
+					`UnifiedToolManager: Blocking execution of embedding-related tool '${toolName}' - embeddings are disabled`
+				);
+				throw new Error(`Tool '${toolName}' is not available - embeddings are disabled globally`);
 			}
 
-			logger.debug(`UnifiedToolManager: Routing '${toolName}' to internal tool manager`);
-			result = await this.internalToolManager.executeTool(toolName, args);
-		} else if (this.config.enableMcpTools) {
+			// Determine which manager should handle this tool
+			if (this.config.enableInternalTools && isInternalToolName(toolName)) {
+				// Internal tool execution
+				if (!this.internalToolManager.isInternalTool(toolName)) {
+					throw new Error(`Internal tool '${toolName}' not found`);
+				}
+
+				logger.debug(`UnifiedToolManager: Routing '${toolName}' to internal tool manager`);
+				result = await this.internalToolManager.executeTool(toolName, args);
+			} else if (this.config.enableMcpTools) {
 				// MCP tool execution
 				logger.debug(`UnifiedToolManager: Routing '${toolName}' to MCP manager`);
 				result = await this.mcpManager.executeTool(toolName, args);

@@ -429,27 +429,35 @@ export const extractAndOperateMemoryTool: InternalTool = {
 			// Check if embeddings are globally disabled
 			if (EmbeddingSystemState.getInstance().isDisabled()) {
 				const reason = EmbeddingSystemState.getInstance().getDisabledReason();
-				logger.debug('ExtractAndOperateMemory: Embeddings disabled globally, skipping memory operations', { reason });
+				logger.debug(
+					'ExtractAndOperateMemory: Embeddings disabled globally, skipping memory operations',
+					{ reason }
+				);
 				return {
 					success: true,
 					mode: 'chat-only',
 					message: `Memory operations disabled: ${reason}`,
 					extractedFacts: 0,
 					memoryActions: 0,
-					skipped: true
+					skipped: true,
 				};
 			}
 
 			// Check if embedding manager indicates no available embeddings
-			if (context?.services?.embeddingManager && !context.services.embeddingManager.hasAvailableEmbeddings()) {
-				logger.debug('ExtractAndOperateMemory: No available embeddings, skipping memory operations');
+			if (
+				context?.services?.embeddingManager &&
+				!context.services.embeddingManager.hasAvailableEmbeddings()
+			) {
+				logger.debug(
+					'ExtractAndOperateMemory: No available embeddings, skipping memory operations'
+				);
 				return {
 					success: true,
 					mode: 'chat-only',
 					message: 'No available embeddings - operating in chat-only mode',
 					extractedFacts: 0,
 					memoryActions: 0,
-					skipped: true
+					skipped: true,
 				};
 			}
 
@@ -460,14 +468,16 @@ export const extractAndOperateMemoryTool: InternalTool = {
 					(status: any) => status.status === 'DISABLED'
 				);
 				if (disabledEmbedders.length > 0) {
-					logger.debug('ExtractAndOperateMemory: Some embedders are disabled, skipping memory operations');
+					logger.debug(
+						'ExtractAndOperateMemory: Some embedders are disabled, skipping memory operations'
+					);
 					return {
 						success: true,
 						mode: 'chat-only',
 						message: 'Embedders are disabled - operating in chat-only mode',
 						extractedFacts: 0,
 						memoryActions: 0,
-						skipped: true
+						skipped: true,
 					};
 				}
 			}
@@ -692,8 +702,11 @@ export const extractAndOperateMemoryTool: InternalTool = {
 						);
 
 						// Immediately disable embeddings globally on first failure
-						if (context?.embeddingManager && embedError instanceof Error) {
-							context.embeddingManager.handleRuntimeFailure(embedError, embedder.getConfig().type);
+						if (context?.services?.embeddingManager && embedError instanceof Error) {
+							context.services.embeddingManager.handleRuntimeFailure(
+								embedError,
+								embedder.getConfig().type
+							);
 						}
 
 						// Return immediately with chat-only mode since embeddings are now disabled
@@ -704,7 +717,7 @@ export const extractAndOperateMemoryTool: InternalTool = {
 							extractedFacts: significantFacts.length,
 							memoryActions: 0,
 							skipped: true,
-							error: embedError instanceof Error ? embedError.message : String(embedError)
+							error: embedError instanceof Error ? embedError.message : String(embedError),
 						};
 					}
 
@@ -979,8 +992,11 @@ export const extractAndOperateMemoryTool: InternalTool = {
 						);
 
 						// Check if this is a runtime failure that should disable embeddings globally
-						if (context?.embeddingManager && persistError instanceof Error) {
-							context.embeddingManager.handleRuntimeFailure(persistError, embedder.getConfig().type);
+						if (context?.services?.embeddingManager && persistError instanceof Error) {
+							context.services.embeddingManager.handleRuntimeFailure(
+								persistError,
+								embedder.getConfig().type
+							);
 						}
 
 						// Continue with other actions even if one fails

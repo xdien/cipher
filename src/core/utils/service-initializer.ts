@@ -42,7 +42,9 @@ async function createEmbeddingFromLLMProvider(
 			case 'openai': {
 				const apiKey = llmConfig.apiKey || process.env.OPENAI_API_KEY;
 				if (!apiKey || apiKey.trim() === '') {
-					logger.debug('No OpenAI API key available for embedding fallback - switching to chat-only mode');
+					logger.debug(
+						'No OpenAI API key available for embedding fallback - switching to chat-only mode'
+					);
 					EmbeddingSystemState.getInstance().disableGlobally('OpenAI API key not provided');
 					return null;
 				}
@@ -92,7 +94,9 @@ async function createEmbeddingFromLLMProvider(
 			case 'gemini': {
 				const apiKey = llmConfig.apiKey || process.env.GEMINI_API_KEY;
 				if (!apiKey || apiKey.trim() === '') {
-					logger.debug('No Gemini API key available for embedding fallback - switching to chat-only mode');
+					logger.debug(
+						'No Gemini API key available for embedding fallback - switching to chat-only mode'
+					);
 					EmbeddingSystemState.getInstance().disableGlobally('Gemini API key not provided');
 					return null;
 				}
@@ -111,8 +115,12 @@ async function createEmbeddingFromLLMProvider(
 				// Anthropic doesn't have native embeddings, use Voyage as recommended fallback
 				const apiKey = llmConfig.apiKey || process.env.VOYAGE_API_KEY;
 				if (!apiKey || apiKey.trim() === '') {
-					logger.debug('No Voyage API key available for Anthropic - switching to chat-only mode (set VOYAGE_API_KEY)');
-					EmbeddingSystemState.getInstance().disableGlobally('Voyage API key not provided for Anthropic LLM');
+					logger.debug(
+						'No Voyage API key available for Anthropic - switching to chat-only mode (set VOYAGE_API_KEY)'
+					);
+					EmbeddingSystemState.getInstance().disableGlobally(
+						'Voyage API key not provided for Anthropic LLM'
+					);
 					return null;
 				}
 				const embeddingConfig = {
@@ -135,8 +143,15 @@ async function createEmbeddingFromLLMProvider(
 				// AWS Bedrock has native embeddings via Amazon Titan and Cohere
 				const accessKeyId = llmConfig.accessKeyId || process.env.AWS_ACCESS_KEY_ID;
 				const secretAccessKey = llmConfig.secretAccessKey || process.env.AWS_SECRET_ACCESS_KEY;
-				if (!accessKeyId || accessKeyId.trim() === '' || !secretAccessKey || secretAccessKey.trim() === '') {
-					logger.debug('No AWS credentials available for AWS Bedrock embedding - switching to chat-only mode (need AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY)');
+				if (
+					!accessKeyId ||
+					accessKeyId.trim() === '' ||
+					!secretAccessKey ||
+					secretAccessKey.trim() === ''
+				) {
+					logger.debug(
+						'No AWS credentials available for AWS Bedrock embedding - switching to chat-only mode (need AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY)'
+					);
 					EmbeddingSystemState.getInstance().disableGlobally('AWS credentials not provided');
 					return null;
 				}
@@ -174,7 +189,9 @@ async function createEmbeddingFromLLMProvider(
 						return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
 					}
 					logger.debug('No OpenAI API key available either - switching to chat-only mode');
-					EmbeddingSystemState.getInstance().disableGlobally('Neither Azure nor OpenAI API key provided');
+					EmbeddingSystemState.getInstance().disableGlobally(
+						'Neither Azure nor OpenAI API key provided'
+					);
 					return null;
 				}
 				const embeddingConfig = {
@@ -191,9 +208,12 @@ async function createEmbeddingFromLLMProvider(
 
 			case 'qwen': {
 				// Qwen has native embeddings via DashScope API
-				const apiKey = llmConfig.apiKey || process.env.QWEN_API_KEY || process.env.DASHSCOPE_API_KEY;
+				const apiKey =
+					llmConfig.apiKey || process.env.QWEN_API_KEY || process.env.DASHSCOPE_API_KEY;
 				if (!apiKey || apiKey.trim() === '') {
-					logger.debug('No Qwen API key available for native embedding - switching to chat-only mode (need QWEN_API_KEY or DASHSCOPE_API_KEY)');
+					logger.debug(
+						'No Qwen API key available for native embedding - switching to chat-only mode (need QWEN_API_KEY or DASHSCOPE_API_KEY)'
+					);
 					EmbeddingSystemState.getInstance().disableGlobally('Qwen API key not provided');
 					return null;
 				}
@@ -379,34 +399,58 @@ export async function createAgentServices(
 				!('disabled' in config.embedding)
 			) {
 				logger.debug('Found explicit embedding configuration in YAML, using it');
-				
+
 				// Validate API key for explicit embedding config
 				const embeddingConfig = config.embedding as any;
-				const needsApiKey = ['openai', 'gemini', 'anthropic', 'voyage', 'qwen'].includes(embeddingConfig.type);
+				const needsApiKey = ['openai', 'gemini', 'anthropic', 'voyage', 'qwen'].includes(
+					embeddingConfig.type
+				);
 				const needsAwsCredentials = embeddingConfig.type === 'aws-bedrock';
-				
+
 				if (needsApiKey) {
-					const apiKey = embeddingConfig.apiKey || process.env[`${embeddingConfig.type.toUpperCase()}_API_KEY`];
+					const apiKey =
+						embeddingConfig.apiKey || process.env[`${embeddingConfig.type.toUpperCase()}_API_KEY`];
 					if (!apiKey || apiKey.trim() === '') {
-						logger.debug(`No API key available for explicit ${embeddingConfig.type} embedding config - switching to chat-only mode`);
-						EmbeddingSystemState.getInstance().disableGlobally(`${embeddingConfig.type} API key not provided`);
+						logger.debug(
+							`No API key available for explicit ${embeddingConfig.type} embedding config - switching to chat-only mode`
+						);
+						EmbeddingSystemState.getInstance().disableGlobally(
+							`${embeddingConfig.type} API key not provided`
+						);
 						embeddingResult = null;
 					} else {
-						embeddingResult = await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
+						embeddingResult = await embeddingManager.createEmbedderFromConfig(
+							embeddingConfig,
+							'default'
+						);
 					}
 				} else if (needsAwsCredentials) {
 					const accessKeyId = embeddingConfig.accessKeyId || process.env.AWS_ACCESS_KEY_ID;
-					const secretAccessKey = embeddingConfig.secretAccessKey || process.env.AWS_SECRET_ACCESS_KEY;
-					if (!accessKeyId || accessKeyId.trim() === '' || !secretAccessKey || secretAccessKey.trim() === '') {
-						logger.debug('No AWS credentials available for explicit aws-bedrock embedding config - switching to chat-only mode');
+					const secretAccessKey =
+						embeddingConfig.secretAccessKey || process.env.AWS_SECRET_ACCESS_KEY;
+					if (
+						!accessKeyId ||
+						accessKeyId.trim() === '' ||
+						!secretAccessKey ||
+						secretAccessKey.trim() === ''
+					) {
+						logger.debug(
+							'No AWS credentials available for explicit aws-bedrock embedding config - switching to chat-only mode'
+						);
 						EmbeddingSystemState.getInstance().disableGlobally('AWS credentials not provided');
 						embeddingResult = null;
 					} else {
-						embeddingResult = await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
+						embeddingResult = await embeddingManager.createEmbedderFromConfig(
+							embeddingConfig,
+							'default'
+						);
 					}
 				} else {
 					// Ollama, LM Studio - no API key needed
-					embeddingResult = await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
+					embeddingResult = await embeddingManager.createEmbedderFromConfig(
+						embeddingConfig,
+						'default'
+					);
 				}
 			}
 
