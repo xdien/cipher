@@ -26,6 +26,12 @@ describe('UnifiedToolManager', () => {
 	let internalToolManager: InternalToolManager;
 	let mcpManager: MCPManager;
 
+	// Mock embedding manager
+	const mockEmbeddingManager = {
+		hasAvailableEmbeddings: vi.fn(() => true),
+		handleRuntimeFailure: vi.fn(),
+	};
+
 	beforeEach(async () => {
 		// Reset the registry singleton before each test
 		InternalToolRegistry.reset();
@@ -40,10 +46,14 @@ describe('UnifiedToolManager', () => {
 
 		// Create unified manager
 		unifiedManager = new UnifiedToolManager(mcpManager, internalToolManager);
+
+		// Set up mock embedding manager to enable embedding-related tools
+		unifiedManager.setEmbeddingManager(mockEmbeddingManager);
 	});
 
 	afterEach(() => {
 		InternalToolRegistry.reset();
+		vi.clearAllMocks();
 	});
 
 	describe('Initialization and Configuration', () => {

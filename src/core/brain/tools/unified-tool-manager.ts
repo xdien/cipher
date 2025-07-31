@@ -110,36 +110,11 @@ export class UnifiedToolManager {
 	 * Check if embeddings are disabled globally
 	 */
 	private areEmbeddingsDisabled(): boolean {
-		// Check global embedding state
-		try {
-			const { EmbeddingSystemState } = require('../../embedding/manager.js');
-			if (EmbeddingSystemState.getInstance().isDisabled()) {
-				return true;
-			}
-		} catch (error) {
-			// If EmbeddingSystemState is not available, continue with other checks
-		}
-
-		// Check embedding manager status
+		// Simple check: if embedding manager doesn't have available embeddings, disable tools
 		if (this.embeddingManager) {
-			// Check if no embeddings are available
-			if (!this.embeddingManager.hasAvailableEmbeddings()) {
-				return true;
-			}
-
-			// Check if any embedders are disabled
-			const embeddingStatus = this.embeddingManager.getEmbeddingStatus();
-			if (embeddingStatus) {
-				const disabledEmbedders = Object.values(embeddingStatus).filter(
-					(status: any) => status.status === 'DISABLED'
-				);
-				if (disabledEmbedders.length > 0) {
-					return true;
-				}
-			}
+			return !this.embeddingManager.hasAvailableEmbeddings();
 		}
-
-		return false;
+		return true; // No embedding manager means embeddings disabled
 	}
 
 	/**
@@ -369,7 +344,9 @@ export class UnifiedToolManager {
 				logger.warn(
 					`UnifiedToolManager: Blocking execution of embedding-related tool '${toolName}' - embeddings are disabled`
 				);
-				throw new Error(`Tool '${toolName}' is not available - embeddings are disabled globally`);
+				throw new Error(
+					`Tool '${toolName}' is not available - embeddings are disabled for this session`
+				);
 			}
 
 			// Determine which manager should handle this tool

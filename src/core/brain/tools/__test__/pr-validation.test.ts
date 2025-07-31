@@ -9,6 +9,7 @@ import { extractAndOperateMemoryTool, searchMemoryTool } from '../definitions/me
 import { InternalToolManager } from '../manager.js';
 import { InternalToolRegistry } from '../registry.js';
 import { UnifiedToolManager } from '../unified-tool-manager.js';
+import { MCPManager } from '../../../mcp/manager.js';
 
 // Mock the logger to avoid console output during tests
 vi.mock('../../../logger/index.js', () => ({
@@ -18,6 +19,12 @@ vi.mock('../../../logger/index.js', () => ({
 		error: vi.fn(),
 		debug: vi.fn(),
 	},
+	createLogger: vi.fn(() => ({
+		info: vi.fn(),
+		warn: vi.fn(),
+		error: vi.fn(),
+		debug: vi.fn(),
+	})),
 }));
 
 // Mock MCP Manager for UnifiedToolManager tests
@@ -48,7 +55,7 @@ const mockVectorStore = {
 	delete: vi.fn().mockResolvedValue(true),
 };
 
-const mockEmbeddingManager = {
+const mockEmbeddingManagerForContext = {
 	getEmbedder: vi.fn().mockReturnValue(mockEmbedder),
 };
 
@@ -71,7 +78,7 @@ const mockInternalToolContext = {
 	userId: 'test-user',
 	metadata: { test: true },
 	services: {
-		embeddingManager: mockEmbeddingManager,
+		embeddingManager: mockEmbeddingManagerForContext,
 		vectorStoreManager: mockVectorStoreManager,
 		llmService: mockLLMService,
 	},
@@ -80,6 +87,13 @@ const mockInternalToolContext = {
 describe('PR Validation Tests - Memory System Refactor', () => {
 	let internalToolManager: InternalToolManager;
 	let unifiedToolManager: UnifiedToolManager;
+	let mcpManager: MCPManager;
+
+	// Mock embedding manager for UnifiedToolManager
+	const mockUnifiedEmbeddingManager = {
+		hasAvailableEmbeddings: vi.fn(() => true),
+		handleRuntimeFailure: vi.fn(),
+	};
 
 	beforeEach(async () => {
 		// Reset the registry singleton before each test
@@ -88,16 +102,19 @@ describe('PR Validation Tests - Memory System Refactor', () => {
 		// Reset all mocks
 		vi.clearAllMocks();
 
+		// Create managers
 		internalToolManager = new InternalToolManager();
+		mcpManager = new MCPManager();
+
+		// Initialize internal tool manager and register tools
 		await internalToolManager.initialize();
-
-		unifiedToolManager = new UnifiedToolManager(mockMcpManager, internalToolManager, {
-			enableInternalTools: true,
-			enableMcpTools: false,
-		});
-
-		// Register all tools
 		await registerAllTools(internalToolManager);
+
+		// Create unified manager
+		unifiedToolManager = new UnifiedToolManager(mcpManager, internalToolManager);
+
+		// Set up mock embedding manager to enable embedding-related tools
+		unifiedToolManager.setEmbeddingManager(mockUnifiedEmbeddingManager);
 	});
 
 	afterEach(() => {

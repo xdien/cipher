@@ -1,6 +1,6 @@
 import { InternalTool, InternalToolContext } from '../../types.js';
 import { logger } from '../../../../logger/index.js';
-import { EmbeddingSystemState } from '../../../embedding/manager.js';
+import { SessionEmbeddingState } from '../../../embedding/manager.js';
 // Import helpers from memory_operation
 import {
 	parseLLMDecision,
@@ -426,11 +426,12 @@ export const extractAndOperateMemoryTool: InternalTool = {
 	},
 	handler: async (args: any, context?: InternalToolContext) => {
 		try {
-			// Check if embeddings are globally disabled
-			if (EmbeddingSystemState.getInstance().isDisabled()) {
-				const reason = EmbeddingSystemState.getInstance().getDisabledReason();
+			// Check if embeddings are disabled for this session
+			const sessionState = context?.services?.embeddingManager?.getSessionState?.();
+			if (sessionState?.isDisabled()) {
+				const reason = sessionState.getDisabledReason();
 				logger.debug(
-					'ExtractAndOperateMemory: Embeddings disabled globally, skipping memory operations',
+					'ExtractAndOperateMemory: Embeddings disabled for this session, skipping memory operations',
 					{ reason }
 				);
 				return {
@@ -693,7 +694,7 @@ export const extractAndOperateMemoryTool: InternalTool = {
 						embedding = await embedder.embed(fact);
 					} catch (embedError) {
 						logger.error(
-							`ExtractAndOperateMemory: Failed to embed fact ${i + 1}, disabling embeddings globally`,
+							`ExtractAndOperateMemory: Failed to embed fact ${i + 1}, disabling embeddings for session`,
 							{
 								error: embedError instanceof Error ? embedError.message : String(embedError),
 								factPreview: fact.substring(0, 50),
@@ -701,7 +702,7 @@ export const extractAndOperateMemoryTool: InternalTool = {
 							}
 						);
 
-						// Immediately disable embeddings globally on first failure
+						// Disable embeddings for this session on failure
 						if (context?.services?.embeddingManager && embedError instanceof Error) {
 							context.services.embeddingManager.handleRuntimeFailure(
 								embedError,

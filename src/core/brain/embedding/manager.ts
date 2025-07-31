@@ -17,43 +17,27 @@ import {
 } from './factory.js';
 import { LOG_PREFIXES } from './constants.js';
 import { type EmbeddingConfig } from './config.js';
-import { ResilientEmbedder, EmbeddingStatus } from './resilient-embedder.js';
-import { CircuitBreakerManager } from './circuit-breaker.js';
+// Removed complex resilient embedder and circuit breaker infrastructure
 
 /**
- * Global embedding system state
+ * Simple session-specific embedding state
  */
-export class EmbeddingSystemState {
-	private static instance: EmbeddingSystemState;
-	private isGloballyDisabled = false;
+export class SessionEmbeddingState {
+	private disabled = false;
 	private disabledReason = '';
 
-	private constructor() {}
-
-	static getInstance(): EmbeddingSystemState {
-		if (!EmbeddingSystemState.instance) {
-			EmbeddingSystemState.instance = new EmbeddingSystemState();
-		}
-		return EmbeddingSystemState.instance;
-	}
-
-	disableGlobally(reason: string): void {
-		this.isGloballyDisabled = true;
+	disableForSession(reason: string): void {
+		this.disabled = true;
 		this.disabledReason = reason;
-		logger.warn(`${LOG_PREFIXES.MANAGER} Embeddings disabled globally: ${reason}`);
+		logger.warn(`${LOG_PREFIXES.MANAGER} Embeddings disabled for this session: ${reason}`);
 	}
 
 	isDisabled(): boolean {
-		return this.isGloballyDisabled;
+		return this.disabled;
 	}
 
 	getDisabledReason(): string {
 		return this.disabledReason;
-	}
-
-	reset(): void {
-		this.isGloballyDisabled = false;
-		this.disabledReason = '';
 	}
 }
 
@@ -126,22 +110,10 @@ export interface EmbeddingStats {
 export class EmbeddingManager {
 	private embedders = new Map<string, Embedder>();
 	private embedderInfo = new Map<string, EmbedderInfo>();
-	private resilientEmbedders = new Map<string, ResilientEmbedder>();
-	private circuitBreakerManager = new CircuitBreakerManager();
-	private stats: EmbeddingStats = {
-		totalEmbeds: 0,
-		totalBatchEmbeds: 0,
-		totalTexts: 0,
-		totalProcessingTime: 0,
-		successfulOperations: 0,
-		failedOperations: 0,
-		averageProcessingTime: 0,
-	};
-	private healthCheckInterval: NodeJS.Timeout | undefined;
-	private fallbackEnabled = true;
+	private sessionState = new SessionEmbeddingState();
 
 	constructor() {
-		logger.debug(`${LOG_PREFIXES.MANAGER} Embedding manager with resilient fallback initialized`);
+		logger.debug(`${LOG_PREFIXES.MANAGER} Simple embedding manager initialized`);
 	}
 
 	/**
@@ -166,14 +138,7 @@ export class EmbeddingManager {
 			const configWithApiKey = { ...config, apiKey: config.apiKey || '' };
 			const baseEmbedder = await createEmbedder(configWithApiKey as any);
 
-			// Wrap with resilient embedder for fault tolerance
-			const resilientEmbedder = new ResilientEmbedder(baseEmbedder, config.type, {
-				enableCircuitBreaker: this.fallbackEnabled,
-				enableFallback: this.fallbackEnabled,
-				healthCheckInterval: 300000, // 5 minutes
-				maxConsecutiveFailures: 5,
-				recoveryInterval: 60000, // 1 minute
-			});
+			// No complex wrapping - use embedder directly
 
 			const info: EmbedderInfo = {
 				id: embedderId,
@@ -184,19 +149,18 @@ export class EmbeddingManager {
 				createdAt: new Date(),
 			};
 
-			this.embedders.set(embedderId, resilientEmbedder);
+			this.embedders.set(embedderId, baseEmbedder);
 			this.embedderInfo.set(embedderId, info);
-			this.resilientEmbedders.set(embedderId, resilientEmbedder);
+			// Removed resilient embedders - using simple embedders
 
-			logger.info(`${LOG_PREFIXES.MANAGER} Successfully created resilient embedder`, {
+			logger.info(`${LOG_PREFIXES.MANAGER} Successfully created embedder`, {
 				id: embedderId,
 				provider: info.provider,
 				model: info.model,
 				dimension: info.dimension,
-				fallbackEnabled: this.fallbackEnabled,
 			});
 
-			return { embedder: resilientEmbedder, info };
+			return { embedder: baseEmbedder, info };
 		} catch (error) {
 			logger.error(`${LOG_PREFIXES.MANAGER} Failed to create embedder`, {
 				id: embedderId,
@@ -248,6 +212,7 @@ export class EmbeddingManager {
 			createdAt: new Date(),
 		};
 
+		// Simple storage - no complex wrapping
 		this.embedders.set(embedderId, embedder);
 		this.embedderInfo.set(embedderId, info);
 
@@ -322,22 +287,22 @@ export class EmbeddingManager {
 			errorMessage.includes('embedding model') ||
 			errorMessage.includes('ensure the model is loaded');
 
-		// For any embedding failure, immediately disable globally to prevent cascading failures
-		logger.error(
-			`${LOG_PREFIXES.MANAGER} Runtime embedding failure detected - disabling embeddings globally`,
-			{
+		if (isCriticalError) {
+			logger.error(
+				`${LOG_PREFIXES.MANAGER} Critical embedding failure - disabling for this session`,
+				{
+					provider,
+					error: error.message,
+				}
+			);
+
+			this.sessionState.disableForSession(`${provider} embedding failed: ${error.message}`);
+		} else {
+			// For other errors, just log but don't disable
+			logger.warn(`${LOG_PREFIXES.MANAGER} Embedding operation failed but will retry`, {
 				provider,
 				error: error.message,
-				reason: isCriticalError ? 'Critical embedding failure' : 'Embedding operation failed',
-				errorType: error.constructor.name,
-			}
-		);
-
-		EmbeddingSystemState.getInstance().disableGlobally(`Runtime failure: ${error.message}`);
-
-		// Also force disable all resilient embedders to ensure immediate fallback
-		for (const [id, resilientEmbedder] of this.resilientEmbedders) {
-			resilientEmbedder.forceDisable();
+			});
 		}
 	}
 
@@ -561,67 +526,28 @@ export class EmbeddingManager {
 	}
 
 	/**
-	 * Start periodic health checks
+	 * Start periodic health checks (simplified - no automatic scheduling)
 	 *
 	 * @param intervalMs - Health check interval in milliseconds (default: 5 minutes)
 	 */
 	startHealthChecks(intervalMs: number = 5 * 60 * 1000): void {
-		if (this.healthCheckInterval) {
-			logger.warn(`${LOG_PREFIXES.HEALTH} Health checks already running`);
-			return;
-		}
-
-		logger.info(`${LOG_PREFIXES.HEALTH} Starting periodic health checks`, {
-			intervalMs,
-		});
-
-		this.healthCheckInterval = setInterval(async () => {
-			try {
-				await this.checkAllHealth();
-			} catch (error) {
-				logger.error(`${LOG_PREFIXES.HEALTH} Error during periodic health check`, {
-					error: error instanceof Error ? error.message : String(error),
-				});
-			}
-		}, intervalMs);
+		logger.debug(`${LOG_PREFIXES.HEALTH} Health checks can be run manually via checkAllHealth()`);
 	}
 
 	/**
-	 * Stop periodic health checks
+	 * Stop periodic health checks (simplified - no automatic scheduling)
 	 */
 	stopHealthChecks(): void {
-		if (this.healthCheckInterval) {
-			clearInterval(this.healthCheckInterval);
-			this.healthCheckInterval = undefined;
-			logger.info(`${LOG_PREFIXES.HEALTH} Stopped periodic health checks`);
-		}
+		logger.debug(`${LOG_PREFIXES.HEALTH} No periodic health checks to stop`);
 	}
 
 	/**
-	 * Get current statistics
+	 * Get current statistics (simplified - basic stats only)
 	 *
 	 * @returns Current embedding statistics
 	 */
 	getStats(): EmbeddingStats {
-		// Calculate average processing time
-		const avgTime =
-			this.stats.totalProcessingTime > 0 && this.stats.successfulOperations > 0
-				? this.stats.totalProcessingTime / this.stats.successfulOperations
-				: 0;
-
 		return {
-			...this.stats,
-			averageProcessingTime: avgTime,
-		};
-	}
-
-	/**
-	 * Reset statistics
-	 */
-	resetStats(): void {
-		logger.debug(`${LOG_PREFIXES.MANAGER} Resetting embedding statistics`);
-
-		this.stats = {
 			totalEmbeds: 0,
 			totalBatchEmbeds: 0,
 			totalTexts: 0,
@@ -633,7 +559,14 @@ export class EmbeddingManager {
 	}
 
 	/**
-	 * Update statistics (called internally after operations)
+	 * Reset statistics (simplified - no-op)
+	 */
+	resetStats(): void {
+		logger.debug(`${LOG_PREFIXES.MANAGER} Statistics reset (simplified implementation)`);
+	}
+
+	/**
+	 * Update statistics (simplified - no-op)
 	 */
 	private updateStats(
 		type: 'embed' | 'batch',
@@ -641,20 +574,13 @@ export class EmbeddingManager {
 		processingTime: number,
 		success: boolean
 	): void {
-		if (type === 'embed') {
-			this.stats.totalEmbeds++;
-		} else {
-			this.stats.totalBatchEmbeds++;
-		}
-
-		this.stats.totalTexts += textCount;
-
-		if (success) {
-			this.stats.successfulOperations++;
-			this.stats.totalProcessingTime += processingTime;
-		} else {
-			this.stats.failedOperations++;
-		}
+		// Simplified implementation - no statistics tracking
+		logger.silly(`${LOG_PREFIXES.MANAGER} Operation completed`, {
+			type,
+			textCount,
+			processingTime,
+			success,
+		});
 	}
 
 	/**
@@ -663,7 +589,7 @@ export class EmbeddingManager {
 	getEmbeddingStatus(): Record<
 		string,
 		{
-			status: EmbeddingStatus;
+			status: 'HEALTHY' | 'DISABLED';
 			provider: string;
 			isHealthy: boolean;
 			stats: any;
@@ -671,14 +597,15 @@ export class EmbeddingManager {
 	> {
 		const status: Record<string, any> = {};
 
-		for (const [id, resilientEmbedder] of this.resilientEmbedders) {
+		for (const [id, embedder] of this.embedders) {
 			const info = this.embedderInfo.get(id);
 			if (info) {
+				const isDisabled = this.sessionState.isDisabled();
 				status[id] = {
-					status: resilientEmbedder.getStatus(),
+					status: isDisabled ? 'DISABLED' : 'HEALTHY',
 					provider: info.provider,
-					isHealthy: resilientEmbedder.getStatus() === EmbeddingStatus.HEALTHY,
-					stats: resilientEmbedder.getStats(),
+					isHealthy: !isDisabled,
+					stats: { disabled: isDisabled, reason: this.sessionState.getDisabledReason() },
 				};
 			}
 		}
@@ -687,72 +614,25 @@ export class EmbeddingManager {
 	}
 
 	/**
-	 * Check if any embeddings are currently available
+	 * Check if embeddings are available for this session
 	 */
 	hasAvailableEmbeddings(): boolean {
-		for (const resilientEmbedder of this.resilientEmbedders.values()) {
-			const status = resilientEmbedder.getStatus();
-			if (status === EmbeddingStatus.HEALTHY || status === EmbeddingStatus.RECOVERING) {
-				return true;
-			}
+		// If disabled for this session, return false
+		if (this.sessionState.isDisabled()) {
+			return false;
 		}
-		return false;
+		// Otherwise, check if we have any embedders
+		return this.embedders.size > 0;
 	}
 
 	/**
-	 * Get circuit breaker statistics
+	 * Get session embedding state
 	 */
-	getCircuitBreakerStats() {
-		return this.circuitBreakerManager.getAllStats();
+	getSessionState(): SessionEmbeddingState {
+		return this.sessionState;
 	}
 
-	/**
-	 * Reset all circuit breakers and recover from disabled state
-	 */
-	resetAllEmbedders(): void {
-		logger.info(`${LOG_PREFIXES.MANAGER} Resetting all embedders to healthy state`);
-
-		// Reset circuit breakers
-		this.circuitBreakerManager.resetAll();
-
-		// Reset all resilient embedders
-		for (const resilientEmbedder of this.resilientEmbedders.values()) {
-			resilientEmbedder.reset();
-		}
-
-		logger.info(`${LOG_PREFIXES.MANAGER} All embedders reset successfully`);
-	}
-
-	/**
-	 * Force disable all embeddings (emergency fallback)
-	 */
-	forceDisableAllEmbeddings(): void {
-		logger.warn(
-			`${LOG_PREFIXES.MANAGER} Force disabling all embeddings - switching to chat-only mode`
-		);
-
-		for (const resilientEmbedder of this.resilientEmbedders.values()) {
-			resilientEmbedder.forceDisable();
-		}
-
-		this.fallbackEnabled = false;
-	}
-
-	/**
-	 * Enable fallback functionality
-	 */
-	enableFallback(): void {
-		this.fallbackEnabled = true;
-		logger.info(`${LOG_PREFIXES.MANAGER} Embedding fallback enabled`);
-	}
-
-	/**
-	 * Disable fallback functionality
-	 */
-	disableFallback(): void {
-		this.fallbackEnabled = false;
-		logger.info(`${LOG_PREFIXES.MANAGER} Embedding fallback disabled`);
-	}
+	// Removed complex circuit breaker and resilient embedder methods
 
 	/**
 	 * Disconnect all embedders and cleanup
@@ -781,7 +661,7 @@ export class EmbeddingManager {
 		// Clear all maps
 		this.embedders.clear();
 		this.embedderInfo.clear();
-		this.resilientEmbedders.clear();
+		// Removed resilientEmbedders map
 
 		logger.info(`${LOG_PREFIXES.MANAGER} Successfully disconnected all embedders`);
 	}
