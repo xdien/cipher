@@ -72,7 +72,7 @@ async function createEmbeddingFromLLMProvider(
 			}
 
 			case 'lmstudio': {
-				// LM Studio now supports embeddings natively using the same model as LLM
+				// LM Studio supports embeddings natively using the same model as LLM
 				try {
 					// First try: Use the same model that's loaded for LLM as embedding model
 					const embeddingModel = llmConfig.model || 'nomic-embed-text-v1.5'; // Fallback to default embedding model
@@ -92,7 +92,7 @@ async function createEmbeddingFromLLMProvider(
 					return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
 				} catch (error) {
 					logger.debug(
-						'LM Studio native embedding failed (model may not support embeddings), falling back to OpenAI',
+						'LM Studio native embedding failed (model may not support embeddings), trying default embedding model',
 						{
 							error: error instanceof Error ? error.message : String(error),
 							llmModel: llmConfig.model,
@@ -120,20 +120,7 @@ async function createEmbeddingFromLLMProvider(
 						}
 					}
 
-					// Final fallback: OpenAI embeddings
-					if (process.env.OPENAI_API_KEY) {
-						const embeddingConfig = {
-							type: 'openai' as const,
-							apiKey: process.env.OPENAI_API_KEY,
-							model: 'text-embedding-3-small' as const,
-							timeout: 30000,
-							maxRetries: 3,
-						};
-						logger.debug('Using OpenAI embedding fallback for LM Studio: text-embedding-3-small');
-						return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
-					}
-
-					logger.debug('No OpenAI API key available for LM Studio embedding fallback');
+					logger.debug('LM Studio embedding not available - embeddings disabled for this provider');
 					return null;
 				}
 			}
@@ -155,7 +142,7 @@ async function createEmbeddingFromLLMProvider(
 			}
 
 			case 'anthropic': {
-				// Anthropic doesn't have native embeddings, use Voyage as recommended fallback
+				// Anthropic/Claude uses Voyage as their official embedding model
 				if (llmConfig.apiKey || process.env.VOYAGE_API_KEY) {
 					const embeddingConfig = {
 						type: 'voyage' as const,
@@ -165,7 +152,7 @@ async function createEmbeddingFromLLMProvider(
 						maxRetries: 3,
 						dimensions: 1024,
 					};
-					logger.debug('Using Voyage embedding for Anthropic LLM', {
+					logger.debug('Using Voyage embedding for Anthropic/Claude LLM', {
 						voyageModel: 'voyage-3-large',
 						voyageDimensions: 1024,
 						provider: 'voyage',
@@ -173,7 +160,7 @@ async function createEmbeddingFromLLMProvider(
 					return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
 				}
 				logger.debug(
-					'No Voyage API key available for Anthropic - embeddings disabled (set VOYAGE_API_KEY)'
+					'No Voyage API key available for Anthropic/Claude - embeddings disabled (set VOYAGE_API_KEY)'
 				);
 				return null;
 			}
@@ -202,21 +189,9 @@ async function createEmbeddingFromLLMProvider(
 			}
 
 			case 'azure': {
-				// Azure OpenAI - try to use same Azure setup for embeddings
+				// Azure OpenAI - use same Azure setup for embeddings
 				if (!llmConfig.apiKey && !process.env.AZURE_OPENAI_API_KEY) {
 					logger.debug('No Azure OpenAI API key available for embedding fallback');
-					// Fallback to regular OpenAI if Azure not available
-					if (process.env.OPENAI_API_KEY) {
-						const embeddingConfig = {
-							type: 'openai' as const,
-							apiKey: process.env.OPENAI_API_KEY,
-							model: 'text-embedding-3-small' as const,
-							timeout: 30000,
-							maxRetries: 3,
-						};
-						logger.debug('Using OpenAI embedding fallback for Azure LLM: text-embedding-3-small');
-						return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
-					}
 					return null;
 				}
 				const embeddingConfig = {
