@@ -21,6 +21,8 @@
 
 Cipher is an opensource memory layer specifically designed for coding agents. Compatible with **Cursor, Windsurf, Claude Desktop, Claude Code, Gemini CLI, AWS's Kiro, VS Code, and Roo Code** through MCP, and coding agents, such as **Kimi K2**. (see more on [examples](./examples))
 
+Built by [Byterover team](https://byterover.dev/)
+
 **Key Features:**
 
 - ⁠MCP integration with any IDE you want.
