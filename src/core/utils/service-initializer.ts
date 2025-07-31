@@ -9,7 +9,7 @@ import { logger } from '../logger/index.js';
 import { AgentConfig } from '../brain/memAgent/config.js';
 import { ServerConfigsSchema } from '../mcp/config.js';
 import { ServerConfigs } from '../mcp/types.js';
-import { EmbeddingManager } from '../brain/embedding/index.js';
+import { EmbeddingManager, EmbeddingSystemState } from '../brain/embedding/index.js';
 import { VectorStoreManager, DualCollectionVectorManager } from '../vector_storage/index.js';
 import { createLLMService } from '../brain/llm/services/factory.js';
 import { createContextManager } from '../brain/llm/messages/factory.js';
@@ -40,13 +40,15 @@ async function createEmbeddingFromLLMProvider(
 	try {
 		switch (provider) {
 			case 'openai': {
-				if (!llmConfig.apiKey && !process.env.OPENAI_API_KEY) {
-					logger.debug('No OpenAI API key available for embedding fallback');
+				const apiKey = llmConfig.apiKey || process.env.OPENAI_API_KEY;
+				if (!apiKey || apiKey.trim() === '') {
+					logger.debug('No OpenAI API key available for embedding fallback - switching to chat-only mode');
+					EmbeddingSystemState.getInstance().disableGlobally('OpenAI API key not provided');
 					return null;
 				}
 				const embeddingConfig = {
 					type: 'openai' as const,
-					apiKey: llmConfig.apiKey || process.env.OPENAI_API_KEY,
+					apiKey,
 					model: 'text-embedding-3-small' as const,
 					baseUrl: llmConfig.baseUrl,
 					organization: llmConfig.organization,
@@ -60,6 +62,7 @@ async function createEmbeddingFromLLMProvider(
 			case 'ollama': {
 				const baseUrl =
 					llmConfig.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+				// Ollama doesn't require API key, so proceed with embedding config
 				const embeddingConfig = {
 					type: 'ollama' as const,
 					baseUrl,
@@ -72,65 +75,30 @@ async function createEmbeddingFromLLMProvider(
 			}
 
 			case 'lmstudio': {
-				// LM Studio supports embeddings natively using the same model as LLM
-				try {
-					// First try: Use the same model that's loaded for LLM as embedding model
-					const embeddingModel = llmConfig.model || 'nomic-embed-text-v1.5'; // Fallback to default embedding model
-					const embeddingConfig = {
-						type: 'lmstudio' as const,
-						baseUrl:
-							llmConfig.baseUrl || process.env.LMSTUDIO_BASE_URL || 'http://localhost:1234/v1',
-						model: embeddingModel,
-						timeout: 30000,
-						maxRetries: 3,
-					};
-					logger.debug('Using LM Studio native embedding with same model as LLM', {
-						embeddingModel,
-						llmModel: llmConfig.model,
-						baseUrl: embeddingConfig.baseUrl,
-					});
-					return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
-				} catch (error) {
-					logger.debug(
-						'LM Studio native embedding failed (model may not support embeddings), trying default embedding model',
-						{
-							error: error instanceof Error ? error.message : String(error),
-							llmModel: llmConfig.model,
-						}
-					);
-					// Second try: Fallback to known embedding model if the LLM model doesn't support embeddings
-					if (llmConfig.model && llmConfig.model !== 'nomic-embed-text-v1.5') {
-						try {
-							const fallbackConfig = {
-								type: 'lmstudio' as const,
-								baseUrl:
-									llmConfig.baseUrl || process.env.LMSTUDIO_BASE_URL || 'http://localhost:1234/v1',
-								model: 'nomic-embed-text-v1.5' as const, // Try default embedding model
-								timeout: 30000,
-								maxRetries: 3,
-							};
-							logger.debug('Trying LM Studio default embedding model: nomic-embed-text-v1.5');
-							return await embeddingManager.createEmbedderFromConfig(fallbackConfig, 'default');
-						} catch (fallbackError) {
-							logger.debug('LM Studio default embedding model also failed', {
-								error:
-								fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
-							});
-						}
-					}
-					logger.debug('LM Studio embedding not available - embeddings disabled for this provider');
-					return null;
-				}
+				const baseUrl =
+					llmConfig.baseUrl || process.env.LMSTUDIO_BASE_URL || 'http://localhost:1234/v1';
+				// LM Studio doesn't require API key, so proceed with embedding config
+				const embeddingConfig = {
+					type: 'lmstudio' as const,
+					baseUrl,
+					model: 'nomic-embed-text-v1.5' as const,
+					timeout: 30000,
+					maxRetries: 3,
+				};
+				logger.debug('Using LM Studio embedding fallback: nomic-embed-text-v1.5');
+				return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
 			}
 
 			case 'gemini': {
-				if (!llmConfig.apiKey && !process.env.GEMINI_API_KEY) {
-					logger.debug('No Gemini API key available for embedding fallback');
+				const apiKey = llmConfig.apiKey || process.env.GEMINI_API_KEY;
+				if (!apiKey || apiKey.trim() === '') {
+					logger.debug('No Gemini API key available for embedding fallback - switching to chat-only mode');
+					EmbeddingSystemState.getInstance().disableGlobally('Gemini API key not provided');
 					return null;
 				}
 				const embeddingConfig = {
 					type: 'gemini' as const,
-					apiKey: llmConfig.apiKey || process.env.GEMINI_API_KEY,
+					apiKey,
 					model: 'gemini-embedding-001' as const,
 					timeout: 30000,
 					maxRetries: 3,
@@ -140,61 +108,78 @@ async function createEmbeddingFromLLMProvider(
 			}
 
 			case 'anthropic': {
-				// Anthropic/Claude uses Voyage as their official embedding model
-				if (llmConfig.apiKey || process.env.VOYAGE_API_KEY) {
-					const embeddingConfig = {
-						type: 'voyage' as const,
-						apiKey: llmConfig.apiKey || process.env.VOYAGE_API_KEY,
-						model: 'voyage-3-large' as const,
-						timeout: 30000,
-						maxRetries: 3,
-						dimensions: 1024,
-					};
-					logger.debug('Using Voyage embedding for Anthropic/Claude LLM', {
-						voyageModel: 'voyage-3-large',
-						voyageDimensions: 1024,
-						provider: 'voyage',
-					});
-					return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
+				// Anthropic doesn't have native embeddings, use Voyage as recommended fallback
+				const apiKey = llmConfig.apiKey || process.env.VOYAGE_API_KEY;
+				if (!apiKey || apiKey.trim() === '') {
+					logger.debug('No Voyage API key available for Anthropic - switching to chat-only mode (set VOYAGE_API_KEY)');
+					EmbeddingSystemState.getInstance().disableGlobally('Voyage API key not provided for Anthropic LLM');
+					return null;
 				}
-				logger.debug(
-					'No Voyage API key available for Anthropic/Claude - embeddings disabled (set VOYAGE_API_KEY)'
-				);
-				return null;
+				const embeddingConfig = {
+					type: 'voyage' as const,
+					apiKey,
+					model: 'voyage-3-large' as const,
+					timeout: 30000,
+					maxRetries: 3,
+					dimensions: 1024,
+				};
+				logger.debug('Using Voyage embedding for Anthropic LLM', {
+					voyageModel: 'voyage-3-large',
+					voyageDimensions: 1024,
+					provider: 'voyage',
+				});
+				return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
 			}
 
 			case 'aws': {
 				// AWS Bedrock has native embeddings via Amazon Titan and Cohere
-				if (llmConfig.accessKeyId || process.env.AWS_ACCESS_KEY_ID) {
-					const embeddingConfig = {
-						type: 'aws-bedrock' as const,
-						region: llmConfig.region || process.env.AWS_DEFAULT_REGION || 'us-east-1',
-						accessKeyId: llmConfig.accessKeyId || process.env.AWS_ACCESS_KEY_ID,
-						secretAccessKey: llmConfig.secretAccessKey || process.env.AWS_SECRET_ACCESS_KEY,
-						sessionToken: llmConfig.sessionToken || process.env.AWS_SESSION_TOKEN,
-						model: 'amazon.titan-embed-text-v2:0' as const,
-						timeout: 30000,
-						maxRetries: 3,
-						dimensions: 1024,
-					};
-					logger.debug('Using AWS Bedrock native embedding: amazon.titan-embed-text-v2:0');
-					return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
+				const accessKeyId = llmConfig.accessKeyId || process.env.AWS_ACCESS_KEY_ID;
+				const secretAccessKey = llmConfig.secretAccessKey || process.env.AWS_SECRET_ACCESS_KEY;
+				if (!accessKeyId || accessKeyId.trim() === '' || !secretAccessKey || secretAccessKey.trim() === '') {
+					logger.debug('No AWS credentials available for AWS Bedrock embedding - switching to chat-only mode (need AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY)');
+					EmbeddingSystemState.getInstance().disableGlobally('AWS credentials not provided');
+					return null;
 				}
-				logger.debug(
-					'No AWS credentials available for AWS Bedrock embedding (need AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY)'
-				);
-				return null;
+				const embeddingConfig = {
+					type: 'aws-bedrock' as const,
+					region: llmConfig.region || process.env.AWS_DEFAULT_REGION || 'us-east-1',
+					accessKeyId,
+					secretAccessKey,
+					sessionToken: llmConfig.sessionToken || process.env.AWS_SESSION_TOKEN,
+					model: 'amazon.titan-embed-text-v2:0' as const,
+					timeout: 30000,
+					maxRetries: 3,
+					dimensions: 1024,
+				};
+				logger.debug('Using AWS Bedrock native embedding: amazon.titan-embed-text-v2:0');
+				return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
 			}
 
 			case 'azure': {
-				// Azure OpenAI - use same Azure setup for embeddings
-				if (!llmConfig.apiKey && !process.env.AZURE_OPENAI_API_KEY) {
+				// Azure OpenAI - try to use same Azure setup for embeddings
+				const azureApiKey = llmConfig.apiKey || process.env.AZURE_OPENAI_API_KEY;
+				if (!azureApiKey || azureApiKey.trim() === '') {
 					logger.debug('No Azure OpenAI API key available for embedding fallback');
+					// Fallback to regular OpenAI if Azure not available
+					const openaiApiKey = process.env.OPENAI_API_KEY;
+					if (openaiApiKey && openaiApiKey.trim() !== '') {
+						const embeddingConfig = {
+							type: 'openai' as const,
+							apiKey: openaiApiKey,
+							model: 'text-embedding-3-small' as const,
+							timeout: 30000,
+							maxRetries: 3,
+						};
+						logger.debug('Using OpenAI embedding fallback for Azure LLM: text-embedding-3-small');
+						return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
+					}
+					logger.debug('No OpenAI API key available either - switching to chat-only mode');
+					EmbeddingSystemState.getInstance().disableGlobally('Neither Azure nor OpenAI API key provided');
 					return null;
 				}
 				const embeddingConfig = {
 					type: 'openai' as const,
-					apiKey: llmConfig.apiKey || process.env.AZURE_OPENAI_API_KEY,
+					apiKey: azureApiKey,
 					model: 'text-embedding-3-small' as const,
 					baseUrl: llmConfig.azure?.endpoint || process.env.AZURE_OPENAI_ENDPOINT,
 					timeout: 30000,
@@ -206,23 +191,23 @@ async function createEmbeddingFromLLMProvider(
 
 			case 'qwen': {
 				// Qwen has native embeddings via DashScope API
-				if (llmConfig.apiKey || process.env.QWEN_API_KEY || process.env.DASHSCOPE_API_KEY) {
-					const embeddingConfig = {
-						type: 'qwen' as const,
-						apiKey: llmConfig.apiKey || process.env.QWEN_API_KEY || process.env.DASHSCOPE_API_KEY,
-						model: 'text-embedding-v3' as const,
-						baseUrl: llmConfig.baseUrl,
-						timeout: 30000,
-						maxRetries: 3,
-						dimensions: 1024,
-					};
-					logger.debug('Using Qwen native embedding: text-embedding-v3');
-					return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
+				const apiKey = llmConfig.apiKey || process.env.QWEN_API_KEY || process.env.DASHSCOPE_API_KEY;
+				if (!apiKey || apiKey.trim() === '') {
+					logger.debug('No Qwen API key available for native embedding - switching to chat-only mode (need QWEN_API_KEY or DASHSCOPE_API_KEY)');
+					EmbeddingSystemState.getInstance().disableGlobally('Qwen API key not provided');
+					return null;
 				}
-				logger.debug(
-					'No Qwen API key available for native embedding (need QWEN_API_KEY or DASHSCOPE_API_KEY)'
-				);
-				return null;
+				const embeddingConfig = {
+					type: 'qwen' as const,
+					apiKey,
+					model: 'text-embedding-v3' as const,
+					baseUrl: llmConfig.baseUrl,
+					timeout: 30000,
+					maxRetries: 3,
+					dimensions: 1024,
+				};
+				logger.debug('Using Qwen native embedding: text-embedding-v3');
+				return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
 			}
 
 			case 'openrouter': {
@@ -384,6 +369,7 @@ export async function createAgentServices(
 			logger.warn(
 				'Embeddings are explicitly disabled - all embedding-dependent tools will be unavailable (chat-only mode)'
 			);
+			EmbeddingSystemState.getInstance().disableGlobally('Explicitly disabled in configuration');
 			embeddingEnabled = false;
 		} else {
 			// Priority 1: Try explicit YAML embedding configuration if available
@@ -393,10 +379,35 @@ export async function createAgentServices(
 				!('disabled' in config.embedding)
 			) {
 				logger.debug('Found explicit embedding configuration in YAML, using it');
-				embeddingResult = await embeddingManager.createEmbedderFromConfig(
-					config.embedding as any,
-					'default'
-				);
+				
+				// Validate API key for explicit embedding config
+				const embeddingConfig = config.embedding as any;
+				const needsApiKey = ['openai', 'gemini', 'anthropic', 'voyage', 'qwen'].includes(embeddingConfig.type);
+				const needsAwsCredentials = embeddingConfig.type === 'aws-bedrock';
+				
+				if (needsApiKey) {
+					const apiKey = embeddingConfig.apiKey || process.env[`${embeddingConfig.type.toUpperCase()}_API_KEY`];
+					if (!apiKey || apiKey.trim() === '') {
+						logger.debug(`No API key available for explicit ${embeddingConfig.type} embedding config - switching to chat-only mode`);
+						EmbeddingSystemState.getInstance().disableGlobally(`${embeddingConfig.type} API key not provided`);
+						embeddingResult = null;
+					} else {
+						embeddingResult = await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
+					}
+				} else if (needsAwsCredentials) {
+					const accessKeyId = embeddingConfig.accessKeyId || process.env.AWS_ACCESS_KEY_ID;
+					const secretAccessKey = embeddingConfig.secretAccessKey || process.env.AWS_SECRET_ACCESS_KEY;
+					if (!accessKeyId || accessKeyId.trim() === '' || !secretAccessKey || secretAccessKey.trim() === '') {
+						logger.debug('No AWS credentials available for explicit aws-bedrock embedding config - switching to chat-only mode');
+						EmbeddingSystemState.getInstance().disableGlobally('AWS credentials not provided');
+						embeddingResult = null;
+					} else {
+						embeddingResult = await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
+					}
+				} else {
+					// Ollama, LM Studio - no API key needed
+					embeddingResult = await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
+				}
 			}
 
 			// Priority 2: If no explicit embedding config (undefined) or disabled:false, fallback to LLM provider's embedding
@@ -750,6 +761,11 @@ export async function createAgentServices(
 	// Set event manager for tool execution events
 	unifiedToolManager.setEventManager(eventManager);
 
+	// Set embedding manager for embedding status checking
+	if (embeddingManager) {
+		unifiedToolManager.setEmbeddingManager(embeddingManager);
+	}
+
 	if (appMode !== 'cli') {
 		logger.debug('Unified tool manager initialized');
 	}
@@ -762,6 +778,7 @@ export async function createAgentServices(
 			mcpManager,
 			unifiedToolManager,
 			eventManager,
+			...(embeddingManager && { embeddingManager }), // Only include if available
 		},
 		sessionConfig
 	);

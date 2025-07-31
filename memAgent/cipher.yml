@@ -1,19 +1,19 @@
 # describes the mcp servers to use
-mcpServers: {}
-  # filesystem:
-  #   type: stdio
-  #   command: npx
-  #   args:
-  #     - -y
-  #     - '@modelcontextprotocol/server-filesystem'
-  #     - .
+mcpServers: 
+  filesystem:
+    type: stdio
+    command: npx
+    args:
+      - -y
+      - '@modelcontextprotocol/server-filesystem'
+      - .
 
 # Choose ONLY ONE of the following LLM providers
 llm:
-  # provider: openai
-  # model: gpt-4.1-mini
-  # apiKey: $OPENAI_API_KEY
-  # maxIterations: 50
+  provider: openai
+  model: gpt-4.1-mini
+  apiKey: $OPENAI_API_KEY
+  maxIterations: 50
 
   # provider: gemini
   # model: gemini-2.5-flash
@@ -65,10 +65,10 @@ llm:
 #   baseURL: $OLLAMA_BASE_URL
 
 # --- LM Studio LLM Configuration (Sample, Commented Out) ---
-  provider: lmstudio
-  model: hermes-2-pro-llama-3-8b      # Use the model you have loaded
-  maxIterations: 50
-  baseURL: $LMSTUDIO_BASE_URL
+  # provider: lmstudio
+  # model: hermes-2-pro-llama-3-8b      # Use the model you have loaded
+  # maxIterations: 50
+  # baseURL: $LMSTUDIO_BASE_URL
 
 # Embedding configuration: ONLY ONE of the following
 # embedding:
