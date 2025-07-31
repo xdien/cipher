@@ -98,7 +98,6 @@ async function createEmbeddingFromLLMProvider(
 							llmModel: llmConfig.model,
 						}
 					);
-
 					// Second try: Fallback to known embedding model if the LLM model doesn't support embeddings
 					if (llmConfig.model && llmConfig.model !== 'nomic-embed-text-v1.5') {
 						try {
@@ -115,11 +114,10 @@ async function createEmbeddingFromLLMProvider(
 						} catch (fallbackError) {
 							logger.debug('LM Studio default embedding model also failed', {
 								error:
-									fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+								fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
 							});
 						}
 					}
-
 					logger.debug('LM Studio embedding not available - embeddings disabled for this provider');
 					return null;
 				}
