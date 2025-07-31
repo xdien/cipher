@@ -18,6 +18,7 @@ export type {
 	VoyageEmbeddingConfig,
 	QwenEmbeddingConfig,
 	AWSBedrockEmbeddingConfig,
+	LMStudioEmbeddingConfig,
 	EmbeddingResult,
 	BatchEmbeddingResult,
 } from './types.js';
@@ -39,3 +40,4 @@ export { OllamaEmbedder } from './ollama.js';
 export { VoyageEmbedder } from './voyage.js';
 export { QwenEmbedder } from './qwen.js';
 export { AWSBedrockEmbedder } from './aws.js';
+export { LMStudioEmbedder } from './lmstudio.js';

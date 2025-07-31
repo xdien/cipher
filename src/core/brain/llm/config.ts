@@ -39,14 +39,14 @@ export const LLMConfigSchema = z
 			.string()
 			.nonempty()
 			.describe(
-				"The LLM provider (e.g., 'openai', 'anthropic', 'openrouter', 'ollama', 'qwen', 'aws', 'azure', 'gemini')"
+				"The LLM provider (e.g., 'openai', 'anthropic', 'openrouter', 'ollama', 'lmstudio', 'qwen', 'aws', 'azure', 'gemini')"
 			),
 		model: z.string().nonempty().describe('The specific model name for the selected provider'),
 		apiKey: z
 			.string()
 			.optional()
 			.describe(
-				'API key for the LLM provider (can also be set via environment variables using $VAR syntax). Not required for Ollama or AWS (if using IAM roles).'
+				'API key for the LLM provider (can also be set via environment variables using $VAR syntax). Not required for Ollama, LM Studio, or AWS (if using IAM roles).'
 			),
 		maxIterations: z
 			.number()
@@ -62,7 +62,7 @@ export const LLMConfigSchema = z
 			.url()
 			.optional()
 			.describe(
-				'Base URL for the LLM provider (e.g., https://api.openai.com/v1, https://openrouter.ai/api/v1). \nSupported for OpenAI, OpenRouter, Ollama, and Qwen providers.'
+				'Base URL for the LLM provider (e.g., https://api.openai.com/v1, https://openrouter.ai/api/v1, http://localhost:1234/v1). \nSupported for OpenAI, OpenRouter, Ollama, LM Studio, and Qwen providers.'
 			),
 		qwenOptions: z
 			.object({
@@ -84,6 +84,7 @@ export const LLMConfigSchema = z
 			'anthropic',
 			'openrouter',
 			'ollama',
+			'lmstudio', // Added LM Studio as a supported provider
 			'qwen',
 			'aws',
 			'azure',
@@ -130,13 +131,17 @@ export const LLMConfigSchema = z
 					message: 'API key is required for Azure OpenAI provider',
 				});
 			}
-		} else if (providerLower !== 'ollama' && providerLower !== 'aws') {
-			// Non-Ollama, non-AWS providers require an API key
+		} else if (
+			providerLower !== 'ollama' &&
+			providerLower !== 'aws' &&
+			providerLower !== 'lmstudio'
+		) {
+			// Non-Ollama, non-AWS, non-LMStudio providers require an API key
 			if (!data.apiKey || data.apiKey.trim().length === 0) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
 					path: ['apiKey'],
-					message: `API key is required for provider '${data.provider}'. Only Ollama and AWS (with IAM roles) don't require an API key.`,
+					message: `API key is required for provider '${data.provider}'. Only Ollama, LM Studio, and AWS (with IAM roles) don't require an API key.`,
 				});
 			}
 		}

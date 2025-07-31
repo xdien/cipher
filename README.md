@@ -159,6 +159,13 @@ embedding:
   apiKey: $VOYAGE_API_KEY
   dimensions: 1024  # Required: 1024, 256, 512, or 2048
 
+# LM Studio (local, no API key required)
+embedding:
+  type: lmstudio
+  model: nomic-embed-text-v1.5  # or bge-large, bge-base, bge-small
+  baseUrl: http://localhost:1234/v1  # Optional, defaults to this
+  # dimensions: 768  # Optional, auto-detected based on model
+
 # Disable embeddings (chat-only mode)
 embedding:
   disabled: true
@@ -174,6 +181,8 @@ If no embedding config is specified, automatically uses your LLM provider's embe
 - **AWS LLM** → AWS Bedrock embedding (uses same credentials)
 - **Azure LLM** → Azure OpenAI embedding (uses same endpoint)
 - **Qwen LLM** → Qwen embedding (uses same API key)
+- **LM Studio LLM** → LM Studio embedding (tries same model first, then dedicated embedding model, finally OpenAI)
+- **Ollama LLM** → Ollama embedding (uses same local server)
 - **OpenAI/Gemini/Ollama** → Same provider embedding
 
 **Note:** For providers with fixed dimensions (Qwen, Voyage, AWS), you must specify `dimensions:` in the config to override the default value in `.env`.
@@ -266,6 +275,37 @@ llm:
   model: qwen2.5:32b # Recommended for best performance
   baseURL: $OLLAMA_BASE_URL
 ```
+
+### LM Studio (Self-Hosted, No API Key - Now with Embedding Support!)
+
+```yaml
+llm:
+  provider: lmstudio
+  model: hermes-2-pro-llama-3-8b # e.g. TheBloke/Mistral-7B-Instruct-v0.2-GGUF
+  # No apiKey required
+  # Optionally override the baseURL if not using the default
+  # baseURL: http://localhost:1234/v1
+
+# OPTIONAL: Configure specific embedding model
+# If not specified, Cipher will automatically try:
+# 1. Same model as LLM (if it supports embeddings)
+# 2. Default embedding model (nomic-embed-text-v1.5)
+# 3. OpenAI fallback (if OPENAI_API_KEY available)
+embedding:
+  provider: lmstudio
+  model: nomic-embed-text-v1.5 # Optional - smart fallback if not specified
+  # baseURL: http://localhost:1234/v1
+```
+
+> **Note:** LM Studio is fully OpenAI-compatible and now supports both LLM and embedding models! By default, Cipher will connect to LM Studio at `http://localhost:1234/v1`. No API key is required.
+>
+> **🆕 Embedding Support**: LM Studio now supports embedding models like `nomic-embed-text-v1.5`, `bge-large`, `bge-base`, and other BERT-based models in GGUF format.
+>
+> **Smart Fallback Logic:**
+>
+> 1. **First try**: Uses the same model loaded for LLM as the embedding model (many models support both)
+> 2. **Second try**: Falls back to `nomic-embed-text-v1.5` if the LLM model doesn't support embeddings
+> 3. **Final fallback**: Uses OpenAI embeddings when available
 
 ### Alibaba Cloud Qwen
 

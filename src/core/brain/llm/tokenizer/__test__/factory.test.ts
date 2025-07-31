@@ -97,6 +97,18 @@ describe('Tokenizer Factory', () => {
 			expect(geminiConfig.hybridTracking).toBe(true);
 		});
 
+		it('should return OpenAI config for LM Studio models', () => {
+			const llamaConfig = getTokenizerConfigForModel('llama-3.1-8b-instruct');
+			expect(llamaConfig.provider).toBe('openai');
+			expect(llamaConfig.model).toBe('llama-3.1-8b-instruct');
+			expect(llamaConfig.hybridTracking).toBe(true);
+
+			const mistralConfig = getTokenizerConfigForModel('mistral-7b-instruct');
+			expect(mistralConfig.provider).toBe('openai');
+			expect(mistralConfig.model).toBe('mistral-7b-instruct');
+			expect(mistralConfig.hybridTracking).toBe(true);
+		});
+
 		it('should return default config for unknown models', () => {
 			const unknownConfig = getTokenizerConfigForModel('unknown-model');
 			expect(unknownConfig.provider).toBe('default');

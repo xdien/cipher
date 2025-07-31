@@ -71,6 +71,73 @@ async function createEmbeddingFromLLMProvider(
 				return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
 			}
 
+			case 'lmstudio': {
+				// LM Studio now supports embeddings natively using the same model as LLM
+				try {
+					// First try: Use the same model that's loaded for LLM as embedding model
+					const embeddingModel = llmConfig.model || 'nomic-embed-text-v1.5'; // Fallback to default embedding model
+					const embeddingConfig = {
+						type: 'lmstudio' as const,
+						baseUrl:
+							llmConfig.baseUrl || process.env.LMSTUDIO_BASE_URL || 'http://localhost:1234/v1',
+						model: embeddingModel,
+						timeout: 30000,
+						maxRetries: 3,
+					};
+					logger.debug('Using LM Studio native embedding with same model as LLM', {
+						embeddingModel,
+						llmModel: llmConfig.model,
+						baseUrl: embeddingConfig.baseUrl,
+					});
+					return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
+				} catch (error) {
+					logger.debug(
+						'LM Studio native embedding failed (model may not support embeddings), falling back to OpenAI',
+						{
+							error: error instanceof Error ? error.message : String(error),
+							llmModel: llmConfig.model,
+						}
+					);
+
+					// Second try: Fallback to known embedding model if the LLM model doesn't support embeddings
+					if (llmConfig.model && llmConfig.model !== 'nomic-embed-text-v1.5') {
+						try {
+							const fallbackConfig = {
+								type: 'lmstudio' as const,
+								baseUrl:
+									llmConfig.baseUrl || process.env.LMSTUDIO_BASE_URL || 'http://localhost:1234/v1',
+								model: 'nomic-embed-text-v1.5' as const, // Try default embedding model
+								timeout: 30000,
+								maxRetries: 3,
+							};
+							logger.debug('Trying LM Studio default embedding model: nomic-embed-text-v1.5');
+							return await embeddingManager.createEmbedderFromConfig(fallbackConfig, 'default');
+						} catch (fallbackError) {
+							logger.debug('LM Studio default embedding model also failed', {
+								error:
+									fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+							});
+						}
+					}
+
+					// Final fallback: OpenAI embeddings
+					if (process.env.OPENAI_API_KEY) {
+						const embeddingConfig = {
+							type: 'openai' as const,
+							apiKey: process.env.OPENAI_API_KEY,
+							model: 'text-embedding-3-small' as const,
+							timeout: 30000,
+							maxRetries: 3,
+						};
+						logger.debug('Using OpenAI embedding fallback for LM Studio: text-embedding-3-small');
+						return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
+					}
+
+					logger.debug('No OpenAI API key available for LM Studio embedding fallback');
+					return null;
+				}
+			}
+
 			case 'gemini': {
 				if (!llmConfig.apiKey && !process.env.GEMINI_API_KEY) {
 					logger.debug('No Gemini API key available for embedding fallback');

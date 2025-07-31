@@ -13,12 +13,18 @@ import { QwenService, QwenOptions } from './qwen.js';
 import { AwsService } from './aws.js';
 import { AzureService } from './azure.js';
 import { GeminiService } from './gemini.js';
+import { LMStudioService } from './lmstudio.js';
 
 function extractApiKey(config: LLMConfig): string {
 	const provider = config.provider.toLowerCase();
 
 	// These providers don't require traditional API keys
-	if (provider === 'ollama' || provider === 'aws' || provider === 'azure') {
+	if (
+		provider === 'ollama' ||
+		provider === 'lmstudio' ||
+		provider === 'aws' ||
+		provider === 'azure'
+	) {
 		return 'not-required';
 	}
 
@@ -52,6 +58,11 @@ function getOpenAICompatibleBaseURL(llmConfig: LLMConfig): string {
 		return env.OLLAMA_BASE_URL || 'http://localhost:11434/v1';
 	}
 
+	if (provider === 'lmstudio') {
+		// Use environment variable if set, otherwise default to localhost:1234/v1
+		return env.LMSTUDIO_BASE_URL || 'http://localhost:1234/v1';
+	}
+
 	// Check for environment variable as fallback for OpenAI
 	if (provider === 'openai' && env.OPENAI_BASE_URL) {
 		return env.OPENAI_BASE_URL.replace(/\/$/, '');
@@ -74,7 +85,7 @@ function _createLLMService(
 			const baseURL = getOpenAICompatibleBaseURL(config);
 			// Use require for OpenAI SDK for compatibility
 			// @ts-ignore
-			// eslint-disable-next-line @typescript-eslint/no-var-requires
+			 
 			const OpenAIClass = require('openai');
 			const openai = new OpenAIClass({ apiKey, ...(baseURL ? { baseURL } : {}) });
 			return new OpenAIService(
@@ -90,7 +101,7 @@ function _createLLMService(
 			const baseURL = getOpenAICompatibleBaseURL(config);
 			// Use require for OpenAI SDK for compatibility
 			// @ts-ignore
-			// eslint-disable-next-line @typescript-eslint/no-var-requires
+			 
 			const OpenAIClass = require('openai');
 			const openai = new OpenAIClass({
 				apiKey,
@@ -109,10 +120,29 @@ function _createLLMService(
 				unifiedToolManager
 			);
 		}
+		case 'lmstudio': {
+			const baseURL = getOpenAICompatibleBaseURL(config);
+			// Use require for OpenAI SDK for compatibility
+			// @ts-ignore
+			 
+			const OpenAIClass = require('openai');
+			const openai = new OpenAIClass({
+				apiKey: 'lm-studio', // LM Studio uses "lm-studio" as the API key
+				baseURL,
+			});
+			return new LMStudioService(
+				openai,
+				config.model,
+				mcpManager,
+				contextManager,
+				config.maxIterations,
+				unifiedToolManager
+			);
+		}
 		case 'anthropic': {
 			// Use require for Anthropic SDK for compatibility
 			// @ts-ignore
-			// eslint-disable-next-line @typescript-eslint/no-var-requires
+			 
 			const AnthropicClass = require('@anthropic-ai/sdk');
 			const anthropic = new AnthropicClass({ apiKey });
 			return new AnthropicService(
@@ -128,7 +158,7 @@ function _createLLMService(
 			const baseURL = getOpenAICompatibleBaseURL(config);
 			// Use require for OpenAI SDK for compatibility
 			// @ts-ignore
-			// eslint-disable-next-line @typescript-eslint/no-var-requires
+			 
 			const OpenAIClass = require('openai');
 			// Ollama uses OpenAI-compatible API but runs locally
 			const openai = new OpenAIClass({
@@ -171,7 +201,7 @@ function _createLLMService(
 			const baseURL = config.baseURL || 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1';
 			// Use require for OpenAI SDK for compatibility
 			// @ts-ignore
-			// eslint-disable-next-line @typescript-eslint/no-var-requires
+			 
 			const OpenAIClass = require('openai');
 			const openai = new OpenAIClass({ apiKey, baseURL });
 			const qwenOptions: QwenOptions = {

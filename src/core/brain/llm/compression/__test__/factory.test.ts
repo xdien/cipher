@@ -101,6 +101,26 @@ describe('Compression Factory', () => {
 			expect(config.preserveEnd).toBe(10);
 		});
 
+		it('should return optimized config for LM Studio', () => {
+			const config = getCompressionConfigForProvider('lmstudio', 'mistral-7b-instruct', 4096);
+			expect(config.strategy).toBe('hybrid');
+			expect(config.warningThreshold).toBe(0.7);
+			expect(config.compressionThreshold).toBe(0.8);
+			expect(config.preserveStart).toBe(3);
+			expect(config.preserveEnd).toBe(4);
+			expect(config.minMessagesToKeep).toBe(3);
+		});
+
+		it('should return optimized config for Ollama', () => {
+			const config = getCompressionConfigForProvider('ollama', 'llama3.1:8b', 4096);
+			expect(config.strategy).toBe('hybrid');
+			expect(config.warningThreshold).toBe(0.7);
+			expect(config.compressionThreshold).toBe(0.8);
+			expect(config.preserveStart).toBe(3);
+			expect(config.preserveEnd).toBe(4);
+			expect(config.minMessagesToKeep).toBe(3);
+		});
+
 		it('should return default config for unknown providers', () => {
 			const config = getCompressionConfigForProvider('unknown', 'unknown-model', 4096);
 			expect(config.strategy).toBe('hybrid');

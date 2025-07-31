@@ -85,6 +85,19 @@ export function getCompressionConfigForProvider(
 				compressionThreshold: 0.92,
 			};
 
+		case 'lmstudio':
+		case 'ollama':
+			// Local models typically have smaller context windows
+			return {
+				...baseConfig,
+				strategy: 'hybrid',
+				warningThreshold: 0.7,
+				compressionThreshold: 0.8,
+				preserveStart: 3,
+				preserveEnd: 4,
+				minMessagesToKeep: 3,
+			};
+
 		case 'google':
 			if (model?.includes('1.5')) {
 				// Large context models need less aggressive compression

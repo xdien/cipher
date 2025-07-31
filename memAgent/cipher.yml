@@ -64,6 +64,12 @@ llm:
 #   maxIterations: 50
 #   baseURL: $OLLAMA_BASE_URL
 
+# --- LM Studio LLM Configuration (Sample, Commented Out) ---
+  # provider: lmstudio
+  # model: hermes-2-pro-llama-3-8b      # Use the model you have loaded
+  # maxIterations: 50
+  # baseURL: $LMSTUDIO_BASE_URL
+
 # Embedding configuration: ONLY ONE of the following
 # embedding:
 #   type: openai                 # openai, gemini, ollama

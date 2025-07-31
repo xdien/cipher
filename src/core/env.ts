@@ -24,6 +24,7 @@ const envSchema = z.object({
 	QWEN_API_KEY: z.string().optional(),
 	OPENAI_BASE_URL: z.string().optional(),
 	OLLAMA_BASE_URL: z.string().optional(),
+	LMSTUDIO_BASE_URL: z.string().optional(),
 	OPENAI_ORG_ID: z.string().optional(),
 	// Embedding Configuration
 	EMBEDDING_PROVIDER: z.string().optional(),
