@@ -9,7 +9,7 @@ import { logger } from '../logger/index.js';
 import { AgentConfig } from '../brain/memAgent/config.js';
 import { ServerConfigsSchema } from '../mcp/config.js';
 import { ServerConfigs } from '../mcp/types.js';
-import { EmbeddingManager, EmbeddingSystemState } from '../brain/embedding/index.js';
+import { EmbeddingManager, SessionEmbeddingState } from '../brain/embedding/index.js';
 import { VectorStoreManager, DualCollectionVectorManager } from '../vector_storage/index.js';
 import { createLLMService } from '../brain/llm/services/factory.js';
 import { createContextManager } from '../brain/llm/messages/factory.js';
@@ -45,7 +45,6 @@ async function createEmbeddingFromLLMProvider(
 					logger.debug(
 						'No OpenAI API key available for embedding fallback - switching to chat-only mode'
 					);
-					EmbeddingSystemState.getInstance().disableGlobally('OpenAI API key not provided');
 					return null;
 				}
 				const embeddingConfig = {
@@ -97,7 +96,7 @@ async function createEmbeddingFromLLMProvider(
 					logger.debug(
 						'No Gemini API key available for embedding fallback - switching to chat-only mode'
 					);
-					EmbeddingSystemState.getInstance().disableGlobally('Gemini API key not provided');
+					// API key not available - will skip embedding
 					return null;
 				}
 				const embeddingConfig = {
@@ -118,9 +117,7 @@ async function createEmbeddingFromLLMProvider(
 					logger.debug(
 						'No Voyage API key available for Anthropic - switching to chat-only mode (set VOYAGE_API_KEY)'
 					);
-					EmbeddingSystemState.getInstance().disableGlobally(
-						'Voyage API key not provided for Anthropic LLM'
-					);
+					// Voyage API key not available
 					return null;
 				}
 				const embeddingConfig = {
@@ -152,7 +149,7 @@ async function createEmbeddingFromLLMProvider(
 					logger.debug(
 						'No AWS credentials available for AWS Bedrock embedding - switching to chat-only mode (need AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY)'
 					);
-					EmbeddingSystemState.getInstance().disableGlobally('AWS credentials not provided');
+					// AWS credentials not available
 					return null;
 				}
 				const embeddingConfig = {
@@ -189,9 +186,7 @@ async function createEmbeddingFromLLMProvider(
 						return await embeddingManager.createEmbedderFromConfig(embeddingConfig, 'default');
 					}
 					logger.debug('No OpenAI API key available either - switching to chat-only mode');
-					EmbeddingSystemState.getInstance().disableGlobally(
-						'Neither Azure nor OpenAI API key provided'
-					);
+					// Neither Azure nor OpenAI API key provided
 					return null;
 				}
 				const embeddingConfig = {
@@ -214,7 +209,7 @@ async function createEmbeddingFromLLMProvider(
 					logger.debug(
 						'No Qwen API key available for native embedding - switching to chat-only mode (need QWEN_API_KEY or DASHSCOPE_API_KEY)'
 					);
-					EmbeddingSystemState.getInstance().disableGlobally('Qwen API key not provided');
+					// Removed global embedding state -('Qwen API key not provided');
 					return null;
 				}
 				const embeddingConfig = {
@@ -389,7 +384,7 @@ export async function createAgentServices(
 			logger.warn(
 				'Embeddings are explicitly disabled - all embedding-dependent tools will be unavailable (chat-only mode)'
 			);
-			EmbeddingSystemState.getInstance().disableGlobally('Explicitly disabled in configuration');
+			// Removed global embedding state -('Explicitly disabled in configuration');
 			embeddingEnabled = false;
 		} else {
 			// Priority 1: Try explicit YAML embedding configuration if available
@@ -414,9 +409,7 @@ export async function createAgentServices(
 						logger.debug(
 							`No API key available for explicit ${embeddingConfig.type} embedding config - switching to chat-only mode`
 						);
-						EmbeddingSystemState.getInstance().disableGlobally(
-							`${embeddingConfig.type} API key not provided`
-						);
+						// API key not provided for explicit embedding config
 						embeddingResult = null;
 					} else {
 						embeddingResult = await embeddingManager.createEmbedderFromConfig(
@@ -437,7 +430,7 @@ export async function createAgentServices(
 						logger.debug(
 							'No AWS credentials available for explicit aws-bedrock embedding config - switching to chat-only mode'
 						);
-						EmbeddingSystemState.getInstance().disableGlobally('AWS credentials not provided');
+						// AWS credentials not available
 						embeddingResult = null;
 					} else {
 						embeddingResult = await embeddingManager.createEmbedderFromConfig(

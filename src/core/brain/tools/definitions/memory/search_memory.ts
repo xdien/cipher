@@ -1,6 +1,5 @@
 import { InternalTool, InternalToolContext } from '../../types.js';
 import { logger } from '../../../../logger/index.js';
-import { EmbeddingSystemState } from '../../../embedding/manager.js';
 // Import payload migration utilities
 import { KnowledgePayload } from './payloads.js';
 // import { env } from '../../../../env.js';
@@ -104,10 +103,10 @@ export const searchMemoryTool: InternalTool = {
 				similarity_threshold: args.similarity_threshold || 0.3,
 			});
 
-			// Check if embeddings are globally disabled
-			if (EmbeddingSystemState.getInstance().isDisabled()) {
-				const reason = EmbeddingSystemState.getInstance().getDisabledReason();
-				logger.debug('MemorySearch: Embeddings disabled globally, returning empty results', {
+			// Check if embeddings are disabled for this session
+			if (context?.services?.embeddingManager?.getSessionState()?.isDisabled()) {
+				const reason = context.services.embeddingManager.getSessionState().getDisabledReason();
+				logger.debug('MemorySearch: Embeddings disabled for this session, returning empty results', {
 					reason,
 				});
 				return {
