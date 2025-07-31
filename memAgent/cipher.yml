@@ -14,15 +14,15 @@ mcpServers:
 
 # Choose ONLY ONE of the following LLM providers
 llm:
-  # provider: openai
-  # model: gpt-4.1-mini
-  # apiKey: $OPENAI_API_KEY
-  # maxIterations: 50
-
-  provider: gemini
-  model: gemini-2.5-flash
-  apiKey: $GEMINI_API_KEY
+  provider: openai
+  model: gpt-4.1-mini
+  apiKey: $OPENAI_API_KEY
   maxIterations: 50
+
+  # provider: gemini
+  # model: gemini-2.5-flash
+  # apiKey: $GEMINI_API_KEY
+  # maxIterations: 50
 
   # provider: anthropic
   # model: claude-3-5-haiku-20241022
@@ -82,10 +82,10 @@ llm:
 #   apiKey: $OPENAI_API_KEY
 
 # Gemini:
-# embedding:
-#   type: gemini
-#   model: gemini-embedding-001
-#   apiKey: $GEMINI_API_KEY
+embedding:
+  type: gemini
+  model: gemini-embedding-001
+  apiKey: $GEMINI_API_KEY
 
 # Ollama:
 # embedding:
@@ -107,11 +107,11 @@ llm:
 #   dimensions: 1024
 
 # Qwen:
-embedding:
-  type: qwen
-  model: text-embedding-v3
-  apiKey: $QWEN_API_KEY
-  dimensions: 1024          # (1024, 768 or 512)
+# embedding:
+#   type: qwen
+#   model: text-embedding-v3
+#   apiKey: $QWEN_API_KEY
+#   dimensions: 1024          # (1024, 768 or 512)
 
 # AWS Bedrock:
 # embedding:

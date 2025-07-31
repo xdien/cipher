@@ -106,9 +106,12 @@ export const searchMemoryTool: InternalTool = {
 			// Check if embeddings are disabled for this session
 			if (context?.services?.embeddingManager?.getSessionState()?.isDisabled()) {
 				const reason = context.services.embeddingManager.getSessionState().getDisabledReason();
-				logger.debug('MemorySearch: Embeddings disabled for this session, returning empty results', {
-					reason,
-				});
+				logger.debug(
+					'MemorySearch: Embeddings disabled for this session, returning empty results',
+					{
+						reason,
+					}
+				);
 				return {
 					success: true,
 					query: args.query || '',

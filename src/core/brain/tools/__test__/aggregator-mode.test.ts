@@ -1,7 +1,23 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { UnifiedToolManager } from '../unified-tool-manager.js';
 import { InternalToolManager } from '../manager.js';
 import { MCPManager } from '../../../mcp/manager.js';
+
+// Mock the logger to avoid console output during tests
+vi.mock('../../../logger/index.js', () => ({
+	logger: {
+		info: vi.fn(),
+		warn: vi.fn(),
+		error: vi.fn(),
+		debug: vi.fn(),
+	},
+	createLogger: vi.fn(() => ({
+		info: vi.fn(),
+		warn: vi.fn(),
+		error: vi.fn(),
+		debug: vi.fn(),
+	})),
+}));
 
 // Mock tools
 const mockMcpManager = {
@@ -62,6 +78,12 @@ const mockInternalToolManager = {
 describe('UnifiedToolManager - Aggregator Mode', () => {
 	let originalEnv: string | undefined;
 
+	// Mock embedding manager
+	const mockEmbeddingManager = {
+		hasAvailableEmbeddings: vi.fn(() => true),
+		handleRuntimeFailure: vi.fn(),
+	};
+
 	beforeEach(() => {
 		// Save original environment
 		originalEnv = process.env.MCP_SERVER_MODE;
@@ -74,6 +96,7 @@ describe('UnifiedToolManager - Aggregator Mode', () => {
 		} else {
 			process.env.MCP_SERVER_MODE = originalEnv;
 		}
+		vi.clearAllMocks();
 	});
 
 	describe('Default Mode', () => {
@@ -81,6 +104,9 @@ describe('UnifiedToolManager - Aggregator Mode', () => {
 			const manager = new UnifiedToolManager(mockMcpManager, mockInternalToolManager, {
 				mode: 'default',
 			});
+			// Set up mock embedding manager
+			manager.setEmbeddingManager(mockEmbeddingManager);
+
 			const allTools = await manager.getAllTools();
 
 			// cipher_extract_and_operate_memory should NOT be in the tools list
@@ -95,6 +121,8 @@ describe('UnifiedToolManager - Aggregator Mode', () => {
 			const manager = new UnifiedToolManager(mockMcpManager, mockInternalToolManager, {
 				mode: 'default',
 			});
+			// Set up mock embedding manager
+			manager.setEmbeddingManager(mockEmbeddingManager);
 
 			const isAvailable = await manager.isToolAvailable('cipher_extract_and_operate_memory');
 			expect(isAvailable).toBe(false);
@@ -104,6 +132,8 @@ describe('UnifiedToolManager - Aggregator Mode', () => {
 			const manager = new UnifiedToolManager(mockMcpManager, mockInternalToolManager, {
 				mode: 'default',
 			});
+			// Set up mock embedding manager
+			manager.setEmbeddingManager(mockEmbeddingManager);
 
 			const source = await manager.getToolSource('cipher_extract_and_operate_memory');
 			expect(source).toBe(null);
@@ -115,6 +145,9 @@ describe('UnifiedToolManager - Aggregator Mode', () => {
 			const manager = new UnifiedToolManager(mockMcpManager, mockInternalToolManager, {
 				mode: 'aggregator',
 			});
+			// Set up mock embedding manager
+			manager.setEmbeddingManager(mockEmbeddingManager);
+
 			const allTools = await manager.getAllTools();
 
 			// cipher_extract_and_operate_memory SHOULD be in the tools list
@@ -133,6 +166,8 @@ describe('UnifiedToolManager - Aggregator Mode', () => {
 			const manager = new UnifiedToolManager(mockMcpManager, mockInternalToolManager, {
 				mode: 'aggregator',
 			});
+			// Set up mock embedding manager
+			manager.setEmbeddingManager(mockEmbeddingManager);
 
 			const isAvailable = await manager.isToolAvailable('cipher_extract_and_operate_memory');
 			expect(isAvailable).toBe(true);
@@ -142,6 +177,8 @@ describe('UnifiedToolManager - Aggregator Mode', () => {
 			const manager = new UnifiedToolManager(mockMcpManager, mockInternalToolManager, {
 				mode: 'aggregator',
 			});
+			// Set up mock embedding manager
+			manager.setEmbeddingManager(mockEmbeddingManager);
 
 			const source = await manager.getToolSource('cipher_extract_and_operate_memory');
 			expect(source).toBe('internal');
@@ -154,6 +191,8 @@ describe('UnifiedToolManager - Aggregator Mode', () => {
 			const manager = new UnifiedToolManager(mockMcpManager, mockInternalToolManager, {
 				mode: 'aggregator',
 			});
+			// Set up mock embedding manager
+			manager.setEmbeddingManager(mockEmbeddingManager);
 
 			const allTools = await manager.getAllTools();
 

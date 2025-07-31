@@ -575,7 +575,12 @@ export class EmbeddingManager {
 		success: boolean
 	): void {
 		// Simplified implementation - no statistics tracking
-		logger.silly(`${LOG_PREFIXES.MANAGER} Operation completed`, { type, textCount, processingTime, success });
+		logger.silly(`${LOG_PREFIXES.MANAGER} Operation completed`, {
+			type,
+			textCount,
+			processingTime,
+			success,
+		});
 	}
 
 	/**

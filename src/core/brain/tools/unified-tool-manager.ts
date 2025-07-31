@@ -344,7 +344,9 @@ export class UnifiedToolManager {
 				logger.warn(
 					`UnifiedToolManager: Blocking execution of embedding-related tool '${toolName}' - embeddings are disabled`
 				);
-				throw new Error(`Tool '${toolName}' is not available - embeddings are disabled for this session`);
+				throw new Error(
+					`Tool '${toolName}' is not available - embeddings are disabled for this session`
+				);
 			}
 
 			// Determine which manager should handle this tool
