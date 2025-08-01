@@ -1173,7 +1173,7 @@ export class ConversationSession {
 	 * Force refresh conversation history from the database
 	 */
 	public async refreshConversationHistory(): Promise<void> {
-		if (this.historyProvider && this.historyEnabled && this.contextManager) {
+		if (this._historyProvider && this.historyEnabled && this.contextManager) {
 			try {
 				await this.contextManager.restoreHistory?.();
 			} catch (error) {
@@ -1186,9 +1186,9 @@ export class ConversationSession {
 	 * Get the current conversation history for debugging
 	 */
 	public async getConversationHistory(): Promise<any[]> {
-		if (this.historyProvider && this.historyEnabled) {
+		if (this._historyProvider && this.historyEnabled) {
 			try {
-				const history = await this.historyProvider.getHistory(this.id);
+				const history = await this._historyProvider.getHistory(this.id);
 				logger.debug(
 					`Session ${this.id}: Current conversation history has ${history.length} messages`
 				);
@@ -1225,9 +1225,9 @@ export class ConversationSession {
 		try {
 			// Get conversation history from the history provider
 			let conversationHistory: any[] = [];
-			if (this.historyProvider && this.historyEnabled) {
+			if (this._historyProvider && this.historyEnabled) {
 				try {
-					conversationHistory = await this.historyProvider.getHistory(this.id);
+					conversationHistory = await this._historyProvider.getHistory(this.id);
 				} catch (error) {
 					logger.warn(
 						`Session ${this.id}: Failed to retrieve history for session during serialization:`,
@@ -1320,21 +1320,26 @@ export class ConversationSession {
 				);
 			}
 
-			// Create new session instance
-			const session = new ConversationSession(services, data.id, options);
+			// Create new session instance  
+			// Ensure contextManager is included in services if available
+			const sessionServices = {
+				...services,
+				...((services as any).contextManager && { contextManager: (services as any).contextManager })
+			};
+			const session = new ConversationSession(sessionServices as any, data.id, options);
 
 			// Initialize the session
 			await session.init();
 
 			// Restore conversation history if we have a history provider and serialized history
-			if (session.historyProvider && data.conversationHistory.length > 0) {
+			if (session._historyProvider && data.conversationHistory.length > 0) {
 				try {
 					// Clear any existing history first
-					await session.historyProvider.clearHistory(data.id);
+					await session._historyProvider.clearHistory(data.id);
 
 					// Restore messages one by one to maintain order and validation
 					for (const message of data.conversationHistory) {
-						await session.historyProvider.saveMessage(data.id, message);
+						await session._historyProvider.saveMessage(data.id, message);
 					}
 
 					// Restore conversation history to context manager so AI can see previous messages
