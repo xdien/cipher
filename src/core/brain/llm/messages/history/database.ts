@@ -95,7 +95,6 @@ export class DatabaseHistoryProvider implements IConversationHistoryProvider {
 			logger.error(
 				`DatabaseHistoryProvider.saveMessage failed for session ${sessionId}: ${(err as Error).message}`
 			);
-			throw err;
 		}
 	}
 
