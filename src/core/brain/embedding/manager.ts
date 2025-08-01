@@ -597,7 +597,7 @@ export class EmbeddingManager {
 	> {
 		const status: Record<string, any> = {};
 
-		for (const [id, _embedder] of this.embedders) {
+		for (const [id] of this.embedders) {
 			const info = this.embedderInfo.get(id);
 			if (info) {
 				const isDisabled = this.sessionState.isDisabled();

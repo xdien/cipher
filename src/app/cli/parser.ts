@@ -1083,7 +1083,7 @@ export class CommandParser {
 											console.log(
 												chalk.gray('💡 LLM summary generated and cached for file-based provider.')
 											);
-										} catch (_err) {
+										} catch {
 											console.log(
 												chalk.yellow(
 													'⚠️  LLM summarization failed to cache immediately, will retry on next /prompt.'
@@ -1149,7 +1149,7 @@ export class CommandParser {
 										console.log(
 											chalk.gray('💡 LLM summary generated and cached for file-based provider.')
 										);
-									} catch (_err) {
+									} catch {
 										console.log(
 											chalk.yellow(
 												'⚠️  LLM summarization failed to cache immediately, will retry on next /prompt.'
