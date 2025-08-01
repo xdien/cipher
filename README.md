@@ -585,6 +585,7 @@ Watch our comprehensive tutorial on how to integrate Cipher with Claude Code thr
 > **Click the image above to watch the tutorial on YouTube.**
 
 This tutorial covers:
+
 - Setting up Cipher as an MCP server
 - Configuring Claude Code to use Cipher
 - Demonstrating memory storage and retrieval
