@@ -385,6 +385,67 @@ cipher --new-session [id]           # Start with new session
 /help                               # Show help
 ```
 
+## Chat History
+
+Cipher supports persistent chat history using PostgreSQL as the primary storage backend. This allows conversations to be restored across application restarts.
+
+### PostgreSQL Configuration
+
+To use PostgreSQL for chat history persistence, set the following environment variables:
+
+#### Option 1: Using Connection URL (Recommended)
+
+```bash
+export CIPHER_PG_URL="postgresql://username:password@localhost:5432/cipher_db"
+```
+
+#### Option 2: Using Individual Parameters
+
+```bash
+export STORAGE_DATABASE_HOST="localhost"
+export STORAGE_DATABASE_PORT="5432"
+export STORAGE_DATABASE_NAME="cipher_db"
+export STORAGE_DATABASE_USER="username"
+export STORAGE_DATABASE_PASSWORD="password"
+export STORAGE_DATABASE_SSL="false"
+```
+
+### Database Setup
+
+1. Create a PostgreSQL database:
+
+```sql
+CREATE DATABASE cipher_db;
+```
+
+2. The application will automatically create the necessary tables and indexes on first run.
+
+### Fallback Behavior
+
+If PostgreSQL is not available or fails to connect, Cipher will automatically fall back to:
+
+1. SQLite (local file-based storage)
+2. In-memory storage (no persistence)
+
+### Session Storage
+
+Sessions are stored with the following key pattern:
+
+- Session data: `cipher:sessions:{sessionId}`
+- Message history: `messages:{sessionId}`
+
+### Environment Variables
+
+| Variable                    | Description               | Default |
+| --------------------------- | ------------------------- | ------- |
+| `CIPHER_PG_URL`             | PostgreSQL connection URL | None    |
+| `STORAGE_DATABASE_HOST`     | PostgreSQL host           | None    |
+| `STORAGE_DATABASE_PORT`     | PostgreSQL port           | 5432    |
+| `STORAGE_DATABASE_NAME`     | Database name             | None    |
+| `STORAGE_DATABASE_USER`     | Username                  | None    |
+| `STORAGE_DATABASE_PASSWORD` | Password                  | None    |
+| `STORAGE_DATABASE_SSL`      | Enable SSL                | false   |
+
 ## MCP Server Usage
 
 Cipher can run as an MCP (Model Context Protocol) server, allowing integration with MCP-compatible clients like Claude Desktop, Cursor, Windsurf, and other AI coding assistants.
@@ -582,3 +643,5 @@ Thanks to all these amazing people for contributing to cipher!
 ## License
 
 Elastic License 2.0. See [LICENSE](LICENSE) for full terms.
+
+

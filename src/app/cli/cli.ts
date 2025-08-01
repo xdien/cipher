@@ -403,10 +403,17 @@ async function _initializeSessionAndCompression(agent: MemAgent): Promise<void> 
 	// Wait a bit for session to be ready
 	await new Promise(resolve => setTimeout(resolve, 50));
 
-	const session = await agent.getSession(agent.getCurrentSessionId());
+	const sessionId = agent.getCurrentSessionId();
+	logger.debug(`CLI: Initializing session: ${sessionId}`);
+
+	const session = await agent.getSession(sessionId);
 
 	if (session && typeof session.init === 'function') {
+		logger.debug(`CLI: Initializing session ${session.id}`);
 		await session.init();
+		logger.debug(`CLI: Session ${session.id} initialized successfully`);
+	} else {
+		logger.warn(`CLI: Failed to get or initialize session ${sessionId}`);
 	}
 
 	// Wait a bit more for compression system to be fully initialized
@@ -421,15 +428,20 @@ async function _initializeSessionAndCompression(agent: MemAgent): Promise<void> 
  */
 async function _showCompressionStartup(agent: MemAgent): Promise<void> {
 	try {
-		const session = await agent.getSession(agent.getCurrentSessionId());
+		const sessionId = agent.getCurrentSessionId();
+		logger.debug(`CLI: Getting session for compression info: ${sessionId}`);
+
+		const session = await agent.getSession(sessionId);
 
 		if (!session) {
+			logger.debug('CLI: No session available for compression info');
 			// Session not ready yet, skip compression info silently
 			return;
 		}
 
 		const ctx = session.getContextManager();
 		if (!ctx) {
+			logger.debug('CLI: No context manager available for compression info');
 			return;
 		}
 
@@ -445,7 +457,8 @@ async function _showCompressionStartup(agent: MemAgent): Promise<void> {
 
 			lastCompressionHistoryLength = ctx['compressionHistory']?.length || 0;
 		}
-	} catch {
+	} catch (error) {
+		logger.debug('CLI: Error during compression startup info:', error);
 		// Intentionally empty - compression info is optional
 	}
 }
