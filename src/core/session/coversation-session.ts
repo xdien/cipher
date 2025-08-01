@@ -450,7 +450,7 @@ export class ConversationSession {
 						if (EmbeddingSystemState.getInstance().isDisabled()) {
 							embeddingManagerDisabled = true;
 						}
-					} catch (error) {
+					} catch {
 						// If EmbeddingSystemState is not available, continue with other checks
 					}
 
@@ -535,7 +535,7 @@ export class ConversationSession {
 					if (EmbeddingSystemState.getInstance().isDisabled()) {
 						embeddingManagerDisabled = true;
 					}
-				} catch (error) {
+				} catch {
 					// If EmbeddingSystemState is not available, continue with other checks
 				}
 
@@ -998,7 +998,7 @@ export class ConversationSession {
 						// Summarize key arguments for memory (avoid storing full large content)
 						const keyArgs = this.summarizeToolArguments(toolName, parsedArgs);
 						args = keyArgs ? ` with ${keyArgs}` : '';
-					} catch (_e) {
+					} catch {
 						// If parsing fails, just note that there were arguments
 						args = ' with arguments';
 					}
@@ -1081,7 +1081,7 @@ export class ConversationSession {
 			}
 
 			return 'result received';
-		} catch (_e) {
+		} catch {
 			// If parsing fails, provide a basic summary
 			const contentStr = String(content);
 			return contentStr.length > 100 ? `${contentStr.substring(0, 100)}...` : contentStr;

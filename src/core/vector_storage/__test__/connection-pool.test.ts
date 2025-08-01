@@ -154,8 +154,8 @@ describe('MilvusConnectionPool', () => {
 				username: 'user1',
 			};
 
-			const client1 = await pool.getClient(config);
-			const client2 = await pool.getClient(config);
+			await pool.getClient(config);
+			await pool.getClient(config);
 
 			const stats = pool.getStats();
 			expect(stats.connectionDetails).toHaveLength(1);

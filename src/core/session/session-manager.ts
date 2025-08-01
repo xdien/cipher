@@ -778,7 +778,7 @@ export class SessionManager {
 		const session = await ConversationSession.deserialize(serialized, this.services);
 
 		// Add to active sessions
-		const now = Date.now();
+		// const now = Date.now();
 		this.sessions.set(sessionId, {
 			session,
 			lastActivity: serialized.metadata.lastActivity,

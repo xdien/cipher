@@ -12,7 +12,7 @@ import {
 	CompressionResult,
 	CompressionLevel,
 } from '../compression/index.js';
-import { assignMessagePriorities, calculateTotalTokens } from '../compression/utils.js';
+import { assignMessagePriorities } from '../compression/utils.js';
 import { IConversationHistoryProvider } from './history/types.js';
 
 export class ContextManager {
@@ -470,7 +470,7 @@ export class ContextManager {
 
 	private async calculateMessageTokens(): Promise<number[]> {
 		return Promise.all(
-			this.messages.map(async (message, index) => {
+			this.messages.map(async (message, _index) => {
 				const textContent = this.extractTextFromMessage(message);
 				const tokenCount = await this.tokenizer!.countTokens(textContent);
 
@@ -584,11 +584,11 @@ export class ContextManager {
 		// Convert back to InternalMessage format
 		this.messages = compressionResult.compressedMessages.map(msg => {
 			const {
-				messageId,
-				timestamp,
-				tokenCount,
-				priority,
-				preserveInCompression,
+				// messageId,
+				// timestamp,
+				// tokenCount,
+				// priority,
+				// preserveInCompression,
 				...internalMessage
 			} = msg;
 			return internalMessage;

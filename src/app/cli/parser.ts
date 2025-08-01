@@ -1083,7 +1083,7 @@ export class CommandParser {
 											console.log(
 												chalk.gray('💡 LLM summary generated and cached for file-based provider.')
 											);
-										} catch (err) {
+										} catch {
 											console.log(
 												chalk.yellow(
 													'⚠️  LLM summarization failed to cache immediately, will retry on next /prompt.'
@@ -1132,7 +1132,7 @@ export class CommandParser {
 							}
 							await enhanced.addOrUpdateProvider(newConfig);
 							// Fetch the new provider instance after update
-							const updatedProvider = enhanced.getProvider(name);
+							// const updatedProvider = enhanced.getProvider(name);
 							// If summarize flag is set to true for file-based provider, trigger LLM summarization immediately
 							if (summarizeFlag && typeof name === 'string') {
 								const updatedProvider = enhanced.getProvider(name);
@@ -1149,7 +1149,7 @@ export class CommandParser {
 										console.log(
 											chalk.gray('💡 LLM summary generated and cached for file-based provider.')
 										);
-									} catch (err) {
+									} catch {
 										console.log(
 											chalk.yellow(
 												'⚠️  LLM summarization failed to cache immediately, will retry on next /prompt.'
@@ -1545,7 +1545,7 @@ export class CommandParser {
 			}
 
 			// Load the session and wait for it to complete
-			const session = await agent.loadSession(sessionId);
+			await agent.loadSession(sessionId);
 
 			// Wait for background initialization to complete based on log level
 			// This prevents the CLI prompt from appearing before services are ready
@@ -1806,7 +1806,7 @@ export class CommandParser {
 				return false;
 			}
 
-			const providerName = args[0];
+			// const providerName = args[0];
 
 			console.log(chalk.yellow('⚠️ Enhanced Prompt System Active'));
 			console.log('');
@@ -1844,7 +1844,7 @@ export class CommandParser {
 				return false;
 			}
 
-			const providerName = args[0];
+			// const providerName = args[0];
 
 			console.log(chalk.yellow('⚠️ Enhanced Prompt System Active'));
 			console.log('');
