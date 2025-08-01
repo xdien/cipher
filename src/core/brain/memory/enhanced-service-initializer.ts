@@ -6,7 +6,7 @@
  */
 
 import { AgentConfig } from '../memAgent/config.js';
-import { createAgentServices, AgentServices } from '../../utils/service-initializer.js';
+import { createAgentServices } from '../../utils/service-initializer.js';
 import { logger } from '../../logger/index.js';
 import { EmbeddingManager } from '../embedding/index.js';
 import { VectorStoreManager, DualCollectionVectorManager } from '../../vector_storage/index.js';

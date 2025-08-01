@@ -154,7 +154,7 @@ export const lazyExtractAndOperateMemoryTool: InternalTool = {
  * Process simple operations without heavy services
  */
 function processLightweight(args: any, startTime: number) {
-	const interaction = args.interaction || '';
+	// const interaction = args.interaction || '';
 	const processingTime = Date.now() - startTime;
 
 	logger.debug(`LazyExtractAndOperate: Lightweight processing completed in ${processingTime}ms`);

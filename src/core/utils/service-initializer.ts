@@ -10,7 +10,7 @@ import { logger } from '../logger/index.js';
 import { AgentConfig } from '../brain/memAgent/config.js';
 import { ServerConfigsSchema } from '../mcp/config.js';
 import { ServerConfigs } from '../mcp/types.js';
-import { EmbeddingManager, SessionEmbeddingState } from '../brain/embedding/index.js';
+import { EmbeddingManager } from '../brain/embedding/index.js';
 import { VectorStoreManager, DualCollectionVectorManager } from '../vector_storage/index.js';
 import { createLLMService } from '../brain/llm/services/factory.js';
 import { createContextManager } from '../brain/llm/messages/factory.js';

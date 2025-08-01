@@ -450,7 +450,7 @@ export class ConversationSession {
 						if (EmbeddingSystemState.getInstance().isDisabled()) {
 							embeddingManagerDisabled = true;
 						}
-					} catch (error) {
+					} catch {
 						// If EmbeddingSystemState is not available, continue with other checks
 					}
 
@@ -535,7 +535,7 @@ export class ConversationSession {
 					if (EmbeddingSystemState.getInstance().isDisabled()) {
 						embeddingManagerDisabled = true;
 					}
-				} catch (error) {
+				} catch {
 					// If EmbeddingSystemState is not available, continue with other checks
 				}
 
