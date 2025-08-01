@@ -270,6 +270,7 @@ export class LazyLLMService {
  * Enhanced agent services with lazy loading support
  */
 export interface LazyAgentServices {
+	[key: string]: any;
 	// Always loaded core services
 	mcpManager: any;
 	promptManager: any;

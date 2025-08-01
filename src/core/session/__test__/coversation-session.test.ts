@@ -33,6 +33,7 @@ describe('Minimal ConversationSession direct invocation', () => {
 			{
 				stateManager: { getLLMConfig: () => ({ provider: 'test', model: 'test' }) } as any,
 				promptManager: { getInstruction: () => 'prompt' } as any,
+				contextManager: { addMessage: vi.fn() } as any,
 				mcpManager: { getAllTools: async () => ({}), getClients: () => new Map() } as any,
 				unifiedToolManager: mockUnifiedToolManager as any,
 			},
@@ -75,6 +76,7 @@ describe('ConversationSession', () => {
 		// Create mock services
 		mockStateManager = {
 			getLLMConfig: vi.fn().mockReturnValue(mockLLMConfig),
+			getEvalLLMConfig: vi.fn().mockReturnValue(mockLLMConfig),
 		};
 
 		mockPromptManager = {
@@ -120,7 +122,7 @@ describe('ConversationSession', () => {
 			mcpManager: undefined,
 			internalToolManager: undefined,
 			config: {},
-			getAllTools: vi.fn(),
+			getAllTools: vi.fn().mockResolvedValue({}),
 			isToolAvailable: vi.fn(),
 			getToolInfo: vi.fn(),
 			getToolSchema: vi.fn(),
@@ -158,6 +160,7 @@ describe('ConversationSession', () => {
 			{
 				stateManager: mockStateManager,
 				promptManager: mockPromptManager,
+				contextManager: mockContextManager,
 				mcpManager: mockMcpManager,
 				unifiedToolManager: mockUnifiedToolManager as any,
 			},
@@ -172,25 +175,19 @@ describe('ConversationSession', () => {
 
 		it('should initialize services correctly', async () => {
 			await session.init();
+			// init is now very simple, we check the side-effects of lazy loading later
+			expect(session.getContextManager()).toBe(mockContextManager);
+
+			// Trigger lazy loading of LLM service
+			await session.getLLMService();
 
 			expect(mockStateManager.getLLMConfig).toHaveBeenCalledWith(sessionId);
-			expect(mockCreateContextManager).toHaveBeenCalledWith(
+			expect(mockCreateLLMService).toHaveBeenCalledWith(
 				mockLLMConfig,
-				mockPromptManager,
-				undefined, // History provider is now lazy-loaded
-				sessionId
+				mockMcpManager,
+				mockContextManager,
+				mockUnifiedToolManager
 			);
-			// LLM service is now lazy-loaded and not created during init()
-			expect(mockCreateLLMService).not.toHaveBeenCalled();
-		});
-
-		it('should handle initialization errors gracefully', async () => {
-			const error = new Error('Initialization failed');
-			mockCreateContextManager.mockImplementation(() => {
-				throw error;
-			});
-
-			await expect(session.init()).rejects.toThrow('Initialization failed');
 		});
 
 		it('should handle LLM service creation errors during lazy initialization', async () => {
@@ -274,6 +271,7 @@ describe('ConversationSession', () => {
 				{
 					stateManager: mockStateManager,
 					promptManager: mockPromptManager,
+					contextManager: mockContextManager,
 					mcpManager: mockMcpManager,
 					unifiedToolManager: mockUnifiedToolManager as any,
 				},
@@ -292,6 +290,7 @@ describe('ConversationSession', () => {
 				{
 					stateManager: mockStateManager,
 					promptManager: mockPromptManager,
+					contextManager: mockContextManager,
 					mcpManager: mockMcpManager,
 					unifiedToolManager: mockUnifiedToolManager as any,
 				},
@@ -300,7 +299,7 @@ describe('ConversationSession', () => {
 			await session.init();
 
 			// Assert the session is using the correct mocks
-			expect(session.getLLMService()).toBe(mockLLMService);
+			expect(await session.getLLMService()).toBe(mockLLMService);
 			expect(session.getContextManager()).toBe(mockContextManager);
 			mockLLMService.generate.mockResolvedValue(expectedResponse);
 
@@ -340,6 +339,7 @@ describe('ConversationSession', () => {
 				{
 					stateManager: mockStateManager,
 					promptManager: mockPromptManager,
+					contextManager: mockContextManager,
 					mcpManager: mockMcpManager,
 					unifiedToolManager: mockUnifiedToolManager as any,
 				},
@@ -348,7 +348,7 @@ describe('ConversationSession', () => {
 			await session.init();
 
 			// Assert the session is using the correct mocks
-			expect(session.getLLMService()).toBe(mockLLMService);
+			expect(await session.getLLMService()).toBe(mockLLMService);
 			expect(session.getContextManager()).toBe(mockContextManager);
 			mockLLMService.generate.mockResolvedValue('debug response');
 
@@ -376,6 +376,7 @@ describe('ConversationSession', () => {
 				{
 					stateManager: mockStateManager,
 					promptManager: mockPromptManager,
+					contextManager: mockContextManager,
 					mcpManager: mockMcpManager,
 					unifiedToolManager: mockUnifiedToolManager as any,
 				},
@@ -432,6 +433,7 @@ describe('ConversationSession', () => {
 				{
 					stateManager: mockStateManager,
 					promptManager: mockPromptManager,
+					contextManager: mockContextManager,
 					mcpManager: mockMcpManager,
 					unifiedToolManager: mockUnifiedToolManager as any,
 				},
@@ -462,6 +464,7 @@ describe('ConversationSession', () => {
 				{
 					stateManager: mockStateManager,
 					promptManager: mockPromptManager,
+					contextManager: mockContextManager,
 					mcpManager: mockMcpManager,
 					unifiedToolManager: mockUnifiedToolManager as any,
 				},
@@ -492,6 +495,7 @@ describe('ConversationSession', () => {
 				{
 					stateManager: mockStateManager,
 					promptManager: mockPromptManager,
+					contextManager: mockContextManager,
 					mcpManager: mockMcpManager,
 					unifiedToolManager: mockUnifiedToolManager as any,
 				},
@@ -533,6 +537,7 @@ describe('ConversationSession', () => {
 				{
 					stateManager: mockStateManager,
 					promptManager: mockPromptManager,
+					contextManager: mockContextManager,
 					mcpManager: mockMcpManager,
 					unifiedToolManager: mockUnifiedToolManager as any,
 				},
@@ -559,18 +564,12 @@ describe('ConversationSession', () => {
 
 			await session.init();
 
-			expect(mockStateManager.getLLMConfig).toHaveBeenCalledWith(sessionId);
-			expect(mockCreateContextManager).toHaveBeenCalledWith(
-				sessionSpecificConfig,
-				mockPromptManager,
-				undefined, // History provider is lazy-loaded
-				sessionId
-			);
 			// LLM service is lazy-loaded and not created during init()
 			expect(mockCreateLLMService).not.toHaveBeenCalled();
 
 			// LLM service should be created when first accessed
 			await session.getLLMService();
+			expect(mockStateManager.getLLMConfig).toHaveBeenCalledWith(sessionId);
 			expect(mockCreateLLMService).toHaveBeenCalledWith(
 				sessionSpecificConfig,
 				mockMcpManager,
@@ -590,17 +589,12 @@ describe('ConversationSession', () => {
 
 			await session.init();
 
-			expect(mockCreateContextManager).toHaveBeenCalledWith(
-				anthropicConfig,
-				mockPromptManager,
-				undefined, // History provider is lazy-loaded
-				sessionId
-			);
 			// LLM service is lazy-loaded and not created during init()
 			expect(mockCreateLLMService).not.toHaveBeenCalled();
 
 			// LLM service should be created when first accessed
 			await session.getLLMService();
+			expect(mockStateManager.getLLMConfig).toHaveBeenCalledWith(sessionId);
 			expect(mockCreateLLMService).toHaveBeenCalledWith(
 				anthropicConfig,
 				mockMcpManager,
@@ -751,6 +745,7 @@ describe('ConversationSession Robustness & Validation', () => {
 			{
 				stateManager: mockStateManager,
 				promptManager: mockPromptManager,
+				contextManager: mockContextManager,
 				mcpManager: mockMcpManager,
 				unifiedToolManager: mockUnifiedToolManager,
 			},
@@ -765,6 +760,7 @@ describe('ConversationSession Robustness & Validation', () => {
 			{
 				stateManager: mockStateManager,
 				promptManager: mockPromptManager,
+				contextManager: mockContextManager,
 				mcpManager: mockMcpManager,
 				unifiedToolManager: mockUnifiedToolManager,
 			},
@@ -779,6 +775,7 @@ describe('ConversationSession Robustness & Validation', () => {
 			{
 				stateManager: mockStateManager,
 				promptManager: mockPromptManager,
+				contextManager: mockContextManager,
 				mcpManager: mockMcpManager,
 				unifiedToolManager: mockUnifiedToolManager,
 			},
@@ -795,6 +792,7 @@ describe('ConversationSession Robustness & Validation', () => {
 			{
 				stateManager: mockStateManager,
 				promptManager: mockPromptManager,
+				contextManager: mockContextManager,
 				mcpManager: mockMcpManager,
 				unifiedToolManager: mockUnifiedToolManager,
 			},
@@ -811,6 +809,7 @@ describe('ConversationSession Robustness & Validation', () => {
 			{
 				stateManager: mockStateManager,
 				promptManager: mockPromptManager,
+				contextManager: mockContextManager,
 				mcpManager: mockMcpManager,
 				unifiedToolManager: mockUnifiedToolManager,
 			},
@@ -828,6 +827,7 @@ describe('ConversationSession Robustness & Validation', () => {
 			{
 				stateManager: mockStateManager,
 				promptManager: mockPromptManager,
+				contextManager: mockContextManager,
 				mcpManager: mockMcpManager,
 				unifiedToolManager: mockUnifiedToolManager,
 			},
@@ -845,6 +845,7 @@ describe('ConversationSession Robustness & Validation', () => {
 			{
 				stateManager: mockStateManager,
 				promptManager: mockPromptManager,
+				contextManager: mockContextManager,
 				mcpManager: mockMcpManager,
 				unifiedToolManager: mockUnifiedToolManager,
 			},
@@ -915,6 +916,7 @@ describe('ConversationSession Advanced Metadata Integration', () => {
 			{
 				stateManager: mockStateManager,
 				promptManager: mockPromptManager,
+				contextManager: mockContextManager,
 				mcpManager: mockMcpManager,
 				unifiedToolManager: mockUnifiedToolManager,
 			},
@@ -951,6 +953,7 @@ describe('ConversationSession Advanced Metadata Integration', () => {
 			{
 				stateManager: mockStateManager,
 				promptManager: mockPromptManager,
+				contextManager: mockContextManager,
 				mcpManager: mockMcpManager,
 				unifiedToolManager: mockUnifiedToolManager,
 			},
@@ -974,6 +977,7 @@ describe('ConversationSession Advanced Metadata Integration', () => {
 			{
 				stateManager: mockStateManager,
 				promptManager: mockPromptManager,
+				contextManager: mockContextManager,
 				mcpManager: mockMcpManager,
 				unifiedToolManager: mockUnifiedToolManager,
 			},
@@ -1006,6 +1010,7 @@ describe('ConversationSession Advanced Metadata Integration', () => {
 			{
 				stateManager: mockStateManager,
 				promptManager: mockPromptManager,
+				contextManager: mockContextManager,
 				mcpManager: mockMcpManager,
 				unifiedToolManager: mockUnifiedToolManager,
 			},
@@ -1030,6 +1035,7 @@ describe('ConversationSession Advanced Metadata Integration', () => {
 			{
 				stateManager: mockStateManager,
 				promptManager: mockPromptManager,
+				contextManager: mockContextManager,
 				mcpManager: mockMcpManager,
 				unifiedToolManager: mockUnifiedToolManager,
 			},
@@ -1053,6 +1059,7 @@ describe('ConversationSession Advanced Metadata Integration', () => {
 			{
 				stateManager: mockStateManager,
 				promptManager: mockPromptManager,
+				contextManager: mockContextManager,
 				mcpManager: mockMcpManager,
 				unifiedToolManager: mockUnifiedToolManager,
 			},
@@ -1075,6 +1082,7 @@ describe('ConversationSession Advanced Metadata Integration', () => {
 			{
 				stateManager: mockStateManager,
 				promptManager: mockPromptManager,
+				contextManager: mockContextManager,
 				mcpManager: mockMcpManager,
 				unifiedToolManager: mockUnifiedToolManager,
 			},

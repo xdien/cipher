@@ -249,6 +249,7 @@ async function createEmbeddingFromLLMProvider(
 }
 
 export type AgentServices = {
+	[key: string]: any;
 	mcpManager: MCPManager;
 	promptManager: EnhancedPromptManager;
 	stateManager: MemAgentStateManager;
