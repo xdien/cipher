@@ -605,19 +605,26 @@ export const evaluateReasoning: InternalTool = {
 				description: 'The reasoning trace to evaluate (from extract_reasoning_steps)',
 				properties: {
 					id: { type: 'string' },
-					steps: { 
+					steps: {
 						type: 'array',
 						items: {
 							type: 'object',
 							properties: {
-								type: { 
+								type: {
 									type: 'string',
-									enum: ['thought', 'action', 'observation', 'decision', 'conclusion', 'reflection']
+									enum: [
+										'thought',
+										'action',
+										'observation',
+										'decision',
+										'conclusion',
+										'reflection',
+									],
 								},
-								content: { type: 'string' }
+								content: { type: 'string' },
 							},
-							required: ['type', 'content']
-						}
+							required: ['type', 'content'],
+						},
 					},
 					metadata: { type: 'object' },
 				},
