@@ -148,7 +148,7 @@ export class ConversationSession {
 	 */
 	private async initializeServices(): Promise<void> {
 		const llmConfig = this.services.stateManager.getLLMConfig(this.id);
-		
+
 		// Only create context manager eagerly - other services will be lazy-loaded
 		this.contextManager = createContextManager(
 			llmConfig,
@@ -156,7 +156,7 @@ export class ConversationSession {
 			undefined, // History provider will be lazy-loaded
 			this.id
 		);
-		
+
 		this._servicesInitialized = true;
 		logger.debug(`ChatSession ${this.id}: Core services initialized (lazy loading enabled)`);
 	}
@@ -166,9 +166,11 @@ export class ConversationSession {
 	 */
 	private async getLLMServiceLazy(): Promise<ILLMService> {
 		if (!this._servicesInitialized || !this.contextManager) {
-			throw new Error('ConversationSession is not initialized. Call init() before accessing services.');
+			throw new Error(
+				'ConversationSession is not initialized. Call init() before accessing services.'
+			);
 		}
-		
+
 		if (!this._llmServiceInitialized) {
 			try {
 				const llmConfig = this.services.stateManager.getLLMConfig(this.id);

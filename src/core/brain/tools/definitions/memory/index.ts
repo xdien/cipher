@@ -74,10 +74,10 @@ export async function getMemoryTools(
 
 	// Use lazy version of extract_and_operate_memory if lazy loading is enabled
 	const useLazyMemoryTool = env.ENABLE_LAZY_LOADING === 'true';
-	
-	const extractAndOperateTool = useLazyMemoryTool ? 
-		lazyExtractAndOperateMemoryTool : 
-		extractAndOperateMemoryTool;
+
+	const extractAndOperateTool = useLazyMemoryTool
+		? lazyExtractAndOperateMemoryTool
+		: extractAndOperateMemoryTool;
 
 	return {
 		cipher_extract_and_operate_memory: extractAndOperateTool,
@@ -104,10 +104,10 @@ export async function getAllMemoryToolDefinitions(
 
 	// Use lazy version of extract_and_operate_memory if lazy loading is enabled
 	const useLazyMemoryTool = env.ENABLE_LAZY_LOADING === 'true';
-	
-	const extractAndOperateTool = useLazyMemoryTool ? 
-		lazyExtractAndOperateMemoryTool : 
-		extractAndOperateMemoryTool;
+
+	const extractAndOperateTool = useLazyMemoryTool
+		? lazyExtractAndOperateMemoryTool
+		: extractAndOperateMemoryTool;
 
 	// Base tools always available when embeddings are enabled
 	const tools: Record<string, InternalTool> = {

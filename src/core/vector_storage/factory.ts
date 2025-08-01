@@ -220,29 +220,25 @@ export async function createDualCollectionVectorStoreFromEnv(
 
 	// Get base configuration from environment variables
 	const config = getVectorStoreConfigFromEnv(agentConfig);
-	
+
 	// Use ServiceCache to prevent duplicate dual collection vector store creation
 	const serviceCache = getServiceCache();
 	const cacheKey = createServiceKey('dualCollectionVectorStore', {
 		type: config.type,
 		collection: config.collectionName,
-		reflectionCollection: env.REFLECTION_VECTOR_STORE_COLLECTION
+		reflectionCollection: env.REFLECTION_VECTOR_STORE_COLLECTION,
 	});
-	
-	return await serviceCache.getOrCreate(
-		cacheKey,
-		async () => {
-			logger.debug('Creating new dual collection vector store instance');
-			return await createDualCollectionVectorStoreInternal(config, logger);
-		}
-	);
+
+	return await serviceCache.getOrCreate(cacheKey, async () => {
+		logger.debug('Creating new dual collection vector store instance');
+		return await createDualCollectionVectorStoreInternal(config, logger);
+	});
 }
 
 async function createDualCollectionVectorStoreInternal(
 	config: VectorStoreConfig,
 	logger: any
 ): Promise<DualCollectionVectorFactory> {
-
 	// If reflection collection is not set or is empty/whitespace, treat as disabled
 	const reflectionCollection = (env.REFLECTION_VECTOR_STORE_COLLECTION || '').trim();
 	if (!reflectionCollection) {

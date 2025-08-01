@@ -195,7 +195,7 @@ describe('ConversationSession', () => {
 
 		it('should handle LLM service creation errors during lazy initialization', async () => {
 			await session.init(); // This should succeed now
-			
+
 			const error = new Error('LLM service creation failed');
 			mockCreateLLMService.mockImplementation(() => {
 				throw error;
@@ -541,7 +541,9 @@ describe('ConversationSession', () => {
 
 			expect(uninitializedSession.getContextManager()).toBeUndefined();
 			// LLM service getter now returns a promise, so we need to await it
-			await expect(uninitializedSession.getLLMService()).rejects.toThrow('ConversationSession is not initialized');
+			await expect(uninitializedSession.getLLMService()).rejects.toThrow(
+				'ConversationSession is not initialized'
+			);
 		});
 	});
 
@@ -566,7 +568,7 @@ describe('ConversationSession', () => {
 			);
 			// LLM service is lazy-loaded and not created during init()
 			expect(mockCreateLLMService).not.toHaveBeenCalled();
-			
+
 			// LLM service should be created when first accessed
 			await session.getLLMService();
 			expect(mockCreateLLMService).toHaveBeenCalledWith(
@@ -596,7 +598,7 @@ describe('ConversationSession', () => {
 			);
 			// LLM service is lazy-loaded and not created during init()
 			expect(mockCreateLLMService).not.toHaveBeenCalled();
-			
+
 			// LLM service should be created when first accessed
 			await session.getLLMService();
 			expect(mockCreateLLMService).toHaveBeenCalledWith(

@@ -8,24 +8,20 @@ vi.mock('../providers/openai.js', () => ({
 	OpenAITokenizer: vi.fn().mockImplementation(config => ({
 		provider: config.provider,
 		model: config.model,
-		countTokens: vi
-			.fn()
-			.mockResolvedValue({
-				total: 100,
-				characters: 400,
-				estimated: false,
-				provider: config.provider,
-				model: config.model,
-			}),
-		countMessages: vi
-			.fn()
-			.mockResolvedValue({
-				total: 200,
-				characters: 800,
-				estimated: false,
-				provider: config.provider,
-				model: config.model,
-			}),
+		countTokens: vi.fn().mockResolvedValue({
+			total: 100,
+			characters: 400,
+			estimated: false,
+			provider: config.provider,
+			model: config.model,
+		}),
+		countMessages: vi.fn().mockResolvedValue({
+			total: 200,
+			characters: 800,
+			estimated: false,
+			provider: config.provider,
+			model: config.model,
+		}),
 		getMaxTokens: vi.fn().mockReturnValue(4096),
 		getContextWindow: vi.fn().mockReturnValue(4096),
 		estimateTokens: vi.fn().mockReturnValue(100),
@@ -39,24 +35,20 @@ vi.mock('../providers/anthropic.js', () => ({
 	AnthropicTokenizer: vi.fn().mockImplementation(config => ({
 		provider: config.provider,
 		model: config.model,
-		countTokens: vi
-			.fn()
-			.mockResolvedValue({
-				total: 120,
-				characters: 480,
-				estimated: false,
-				provider: config.provider,
-				model: config.model,
-			}),
-		countMessages: vi
-			.fn()
-			.mockResolvedValue({
-				total: 240,
-				characters: 960,
-				estimated: false,
-				provider: config.provider,
-				model: config.model,
-			}),
+		countTokens: vi.fn().mockResolvedValue({
+			total: 120,
+			characters: 480,
+			estimated: false,
+			provider: config.provider,
+			model: config.model,
+		}),
+		countMessages: vi.fn().mockResolvedValue({
+			total: 240,
+			characters: 960,
+			estimated: false,
+			provider: config.provider,
+			model: config.model,
+		}),
 		getMaxTokens: vi.fn().mockReturnValue(8192),
 		getContextWindow: vi.fn().mockReturnValue(8192),
 		estimateTokens: vi.fn().mockReturnValue(120),
@@ -70,24 +62,20 @@ vi.mock('../providers/google.js', () => ({
 	GoogleTokenizer: vi.fn().mockImplementation(config => ({
 		provider: config.provider,
 		model: config.model,
-		countTokens: vi
-			.fn()
-			.mockResolvedValue({
-				total: 90,
-				characters: 360,
-				estimated: false,
-				provider: config.provider,
-				model: config.model,
-			}),
-		countMessages: vi
-			.fn()
-			.mockResolvedValue({
-				total: 180,
-				characters: 720,
-				estimated: false,
-				provider: config.provider,
-				model: config.model,
-			}),
+		countTokens: vi.fn().mockResolvedValue({
+			total: 90,
+			characters: 360,
+			estimated: false,
+			provider: config.provider,
+			model: config.model,
+		}),
+		countMessages: vi.fn().mockResolvedValue({
+			total: 180,
+			characters: 720,
+			estimated: false,
+			provider: config.provider,
+			model: config.model,
+		}),
 		getMaxTokens: vi.fn().mockReturnValue(2048),
 		getContextWindow: vi.fn().mockReturnValue(2048),
 		estimateTokens: vi.fn().mockReturnValue(90),
@@ -101,24 +89,20 @@ vi.mock('../providers/default.js', () => ({
 	DefaultTokenizer: vi.fn().mockImplementation(config => ({
 		provider: config.provider,
 		model: config.model,
-		countTokens: vi
-			.fn()
-			.mockResolvedValue({
-				total: 80,
-				characters: 320,
-				estimated: true,
-				provider: config.provider,
-				model: config.model,
-			}),
-		countMessages: vi
-			.fn()
-			.mockResolvedValue({
-				total: 160,
-				characters: 640,
-				estimated: true,
-				provider: config.provider,
-				model: config.model,
-			}),
+		countTokens: vi.fn().mockResolvedValue({
+			total: 80,
+			characters: 320,
+			estimated: true,
+			provider: config.provider,
+			model: config.model,
+		}),
+		countMessages: vi.fn().mockResolvedValue({
+			total: 160,
+			characters: 640,
+			estimated: true,
+			provider: config.provider,
+			model: config.model,
+		}),
 		getMaxTokens: vi.fn().mockReturnValue(1024),
 		getContextWindow: vi.fn().mockReturnValue(1024),
 		estimateTokens: vi.fn().mockReturnValue(80),
@@ -424,15 +408,13 @@ describe('Factory Integration with Cache', () => {
 				return {
 					provider: config.provider,
 					model: config.model,
-					countTokens: vi
-						.fn()
-						.mockResolvedValue({
-							total: 100,
-							characters: 400,
-							estimated: false,
-							provider: config.provider,
-							model: config.model,
-						}),
+					countTokens: vi.fn().mockResolvedValue({
+						total: 100,
+						characters: 400,
+						estimated: false,
+						provider: config.provider,
+						model: config.model,
+					}),
 					getMaxTokens: vi.fn().mockReturnValue(4096),
 					_mockId: Math.random(),
 				};

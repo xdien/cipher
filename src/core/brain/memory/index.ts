@@ -8,7 +8,7 @@
 // Export lazy loading service wrappers
 export {
 	LazyEmbeddingManager,
-	LazyVectorStoreManager, 
+	LazyVectorStoreManager,
 	LazyLLMService,
 	getDefaultLazyConfig,
 	type LazyServiceConfig,
