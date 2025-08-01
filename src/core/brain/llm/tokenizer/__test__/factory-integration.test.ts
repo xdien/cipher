@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { performance } from 'node:perf_hooks';
 import { createTokenizer, getTokenizerConfigForModel } from '../factory.js';
 import { getTokenizerCache } from '../cache.js';
 import { TokenizerConfig } from '../types.js';

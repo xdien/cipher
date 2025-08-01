@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { createCompressionStrategy, createCompressionStrategySync, getCompressionConfigForProvider } from '../factory.js';
+import {
+	createCompressionStrategy,
+	createCompressionStrategySync,
+	getCompressionConfigForProvider,
+} from '../factory.js';
 import { MiddleRemovalStrategy } from '../strategies/middle-removal.js';
 import { OldestRemovalStrategy } from '../strategies/oldest-removal.js';
 import { HybridStrategy } from '../strategies/hybrid.js';
