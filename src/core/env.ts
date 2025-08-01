@@ -82,6 +82,16 @@ const envSchema = z.object({
 	// Event Persistence Configuration
 	EVENT_PERSISTENCE_ENABLED: z.boolean().default(false),
 	EVENT_PERSISTENCE_PATH: z.string().optional(),
+	// Lazy Loading Configuration
+	ENABLE_LAZY_LOADING: z.string().optional(),
+	LAZY_LOADING_ENABLED: z.string().optional(),
+	SKIP_HEAVY_SERVICES: z.string().optional(),
+	LAZY_EMBEDDING: z.string().optional(),
+	LAZY_VECTOR_STORE: z.string().optional(),
+	LAZY_MEMORY_OPERATIONS: z.string().optional(),
+	DISABLE_BACKGROUND_PRELOAD: z.string().optional(),
+	LAZY_INIT_TIMEOUT: z.string().optional(),
+	BACKGROUND_PRELOAD_DELAY: z.string().optional(),
 });
 
 type EnvSchema = z.infer<typeof envSchema>;
@@ -239,6 +249,25 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 				return process.env.EVENT_PERSISTENCE_ENABLED === 'true';
 			case 'EVENT_PERSISTENCE_PATH':
 				return process.env.EVENT_PERSISTENCE_PATH;
+			// Lazy Loading Configuration
+			case 'ENABLE_LAZY_LOADING':
+				return process.env.ENABLE_LAZY_LOADING;
+			case 'LAZY_LOADING_ENABLED':
+				return process.env.LAZY_LOADING_ENABLED;
+			case 'SKIP_HEAVY_SERVICES':
+				return process.env.SKIP_HEAVY_SERVICES;
+			case 'LAZY_EMBEDDING':
+				return process.env.LAZY_EMBEDDING;
+			case 'LAZY_VECTOR_STORE':
+				return process.env.LAZY_VECTOR_STORE;
+			case 'LAZY_MEMORY_OPERATIONS':
+				return process.env.LAZY_MEMORY_OPERATIONS;
+			case 'DISABLE_BACKGROUND_PRELOAD':
+				return process.env.DISABLE_BACKGROUND_PRELOAD;
+			case 'LAZY_INIT_TIMEOUT':
+				return process.env.LAZY_INIT_TIMEOUT;
+			case 'BACKGROUND_PRELOAD_DELAY':
+				return process.env.BACKGROUND_PRELOAD_DELAY;
 			default:
 				return process.env[prop];
 		}

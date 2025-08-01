@@ -54,6 +54,7 @@ export class SessionManager {
 		private services: {
 			stateManager: MemAgentStateManager;
 			promptManager: EnhancedPromptManager;
+			contextManager: any;
 			mcpManager: MCPManager;
 			unifiedToolManager: UnifiedToolManager;
 			eventManager: EventManager;
@@ -152,7 +153,13 @@ export class SessionManager {
 		}
 
 		// Create new conversation session
-		const session = new ConversationSession(this.services, sessionId);
+		const session = new ConversationSession(
+			{
+				...this.services,
+				contextManager: this.services.contextManager,
+			},
+			sessionId
+		);
 		await session.init();
 
 		// Store session with metadata

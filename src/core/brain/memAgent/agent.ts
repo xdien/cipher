@@ -1,6 +1,11 @@
 import { MCPManager } from '@core/mcp/manager.js';
 import { AgentServices } from '../../utils/service-initializer.js';
 import { createAgentServices } from '../../utils/service-initializer.js';
+import {
+	createEnhancedAgentServices,
+	shouldEnableLazyLoading,
+	LazyAgentServices,
+} from '../memory/enhanced-service-initializer.js';
 import { EnhancedPromptManager } from '../systemPrompt/enhanced-manager.js';
 import { MemAgentStateManager } from './state-manager.js';
 import { SessionManager } from '../../session/session-manager.js';
@@ -79,8 +84,24 @@ export class MemAgent {
 			if (this.appMode !== 'cli') {
 				logger.debug('Starting MemAgent...');
 			}
-			// 1. Initialize services
-			const services = await createAgentServices(this.config, this.appMode || undefined);
+
+			// 1. Initialize services with optional lazy loading
+			const useLazyLoading = shouldEnableLazyLoading({
+				appMode: this.appMode || undefined,
+			});
+			let services: AgentServices | LazyAgentServices;
+
+			if (useLazyLoading) {
+				logger.debug('MemAgent: Using enhanced services with lazy loading');
+				services = await createEnhancedAgentServices(this.config, {
+					enableLazyLoading: true,
+					...(this.appMode && { appMode: this.appMode }),
+				});
+			} else {
+				logger.debug('MemAgent: Using standard services');
+				services = await createAgentServices(this.config, this.appMode || undefined);
+			}
+
 			for (const service of requiredServices) {
 				if (!services[service]) {
 					throw new Error(`Required service ${service} is missing during agent start`);
