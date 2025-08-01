@@ -14,6 +14,7 @@ import { VectorStoreManager, DualCollectionVectorManager } from '../vector_stora
 import { createLLMService } from '../brain/llm/services/factory.js';
 import { createContextManager } from '../brain/llm/messages/factory.js';
 import { ILLMService } from '../brain/llm/index.js';
+import { getServiceCache, createServiceKey } from '../brain/memory/service-cache.js';
 import {
 	createVectorStoreFromEnv,
 	createDualCollectionVectorStoreFromEnv,
@@ -687,7 +688,21 @@ export async function createAgentServices(
 		}
 		const llmConfig = stateManager.getLLMConfig();
 		logger.debug('LLM Config retrieved', { llmConfig });
-		const contextManager = createContextManager(llmConfig, promptManager, undefined, undefined);
+		
+		// Use ServiceCache for ContextManager to prevent duplicate creation
+		const serviceCache = getServiceCache();
+		const contextManagerKey = createServiceKey('contextManager', { 
+			provider: llmConfig.provider, 
+			model: llmConfig.model 
+		});
+		
+		const contextManager = await serviceCache.getOrCreate(
+			contextManagerKey,
+			async () => {
+				logger.debug('Creating new ContextManager instance');
+				return createContextManager(llmConfig, promptManager, undefined, undefined);
+			}
+		);
 
 		llmService = createLLMService(llmConfig, mcpManager, contextManager);
 

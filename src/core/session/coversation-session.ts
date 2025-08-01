@@ -55,10 +55,11 @@ function extractReasoningContentBlocks(aiResponse: any): string {
 import { EnhancedPromptManager } from '../brain/systemPrompt/enhanced-manager.js';
 export class ConversationSession {
 	private contextManager!: ContextManager;
-	private llmService!: ILLMService;
+	private _llmService?: ILLMService; // Changed to lazy-loaded
 	private reasoningDetector?: ReasoningContentDetector;
 	private searchContextManager?: SearchContextManager;
-	private historyProvider: IConversationHistoryProvider | undefined;
+	private _historyProvider?: IConversationHistoryProvider | undefined; // Changed to lazy-loaded
+	private _storageManager?: StorageManager; // Added for lazy loading
 	private historyEnabled: boolean = true;
 	private historyBackend: 'database' | 'memory' = 'database';
 
@@ -72,6 +73,11 @@ export class ConversationSession {
 		meta: Record<string, any>,
 		context: Record<string, any>
 	) => void;
+
+	// Lazy initialization flags
+	private _servicesInitialized = false;
+	private _llmServiceInitialized = false;
+	private _storageInitialized = false;
 
 	/**
 	 * @param services - Required dependencies for the session, including unifiedToolManager
@@ -132,7 +138,9 @@ export class ConversationSession {
 	public async init(): Promise<void> {
 		logger.debug(`Session ${this.id}: Starting initialization...`);
 		await this.initializeServices();
-		logger.debug(`Session ${this.id}: Initialization complete`);
+		// Note: History restoration will happen lazily when history is first accessed
+		// This improves startup performance by not initializing storage until needed
+		logger.debug(`Session ${this.id}: Core initialization complete (lazy loading enabled)`)
 	}
 
 	/**
@@ -140,116 +148,174 @@ export class ConversationSession {
 	 */
 	private async initializeServices(): Promise<void> {
 		const llmConfig = this.services.stateManager.getLLMConfig(this.id);
-		let historyProvider: IConversationHistoryProvider | undefined = undefined;
-
-		// Multi-backend config example (can be extended to use env/config)
-		const multiBackendEnabled = !!process.env.CIPHER_MULTI_BACKEND;
-		const flushIntervalMs = process.env.CIPHER_WAL_FLUSH_INTERVAL
-			? parseInt(process.env.CIPHER_WAL_FLUSH_INTERVAL, 10)
-			: 5000;
-
-		if (this.historyEnabled) {
-			try {
-				if (multiBackendEnabled) {
-					// Example: primary = Postgres, backup = SQLite, WAL = in-memory
-					const primaryStorage = new StorageManager({
-						database: { type: 'postgres' as const, url: process.env.CIPHER_PG_URL },
-						cache: { type: 'in-memory' as const },
-					});
-					await primaryStorage.connect();
-					const backupStorage = new StorageManager({
-						database: { type: 'sqlite' as const, path: './cipher-backup.db' },
-						cache: { type: 'in-memory' as const },
-					});
-					await backupStorage.connect();
-					const primaryProvider = createDatabaseHistoryProvider(primaryStorage);
-					const backupProvider = createDatabaseHistoryProvider(backupStorage);
-					const wal = new WALHistoryProvider();
-					historyProvider = createMultiBackendHistoryProvider(
-						primaryProvider,
-						backupProvider,
-						wal,
-						flushIntervalMs
-					);
-					logger.debug(`Session ${this.id}: Multi-backend history provider initialized.`);
-				} else if (this.historyBackend === 'database') {
-					// Use the same storage configuration as the session manager
-					// This ensures both session data and conversation history use the same backend
-					const postgresUrl = process.env.CIPHER_PG_URL;
-					const postgresHost = process.env.STORAGE_DATABASE_HOST;
-					const postgresDatabase = process.env.STORAGE_DATABASE_NAME;
-
-					let storageConfig: any;
-
-					if (postgresUrl || (postgresHost && postgresDatabase)) {
-						// Use PostgreSQL if configured
-						if (postgresUrl) {
-							storageConfig = {
-								database: { type: 'postgres' as const, url: postgresUrl },
-								cache: { type: 'in-memory' as const },
-							};
-						} else {
-							storageConfig = {
-								database: {
-									type: 'postgres' as const,
-									host: postgresHost,
-									database: postgresDatabase,
-									port: process.env.STORAGE_DATABASE_PORT
-										? parseInt(process.env.STORAGE_DATABASE_PORT, 10)
-										: 5432,
-									user: process.env.STORAGE_DATABASE_USER,
-									password: process.env.STORAGE_DATABASE_PASSWORD,
-									ssl: process.env.STORAGE_DATABASE_SSL === 'true',
-								},
-								cache: { type: 'in-memory' as const },
-							};
-						}
-						logger.debug(`Session ${this.id}: Using PostgreSQL for history provider`);
-					} else {
-						// Fallback to SQLite
-						storageConfig = {
-							database: {
-								type: 'sqlite' as const,
-								path: env.STORAGE_DATABASE_PATH || './data',
-								database: env.STORAGE_DATABASE_NAME || 'cipher-sessions.db',
-							},
-							cache: { type: 'in-memory' as const },
-						};
-						logger.debug(`Session ${this.id}: Using SQLite for history provider`);
-					}
-
-					const storageManager = new StorageManager(storageConfig);
-					await storageManager.connect();
-					historyProvider = createDatabaseHistoryProvider(storageManager);
-					logger.debug(
-						`Session ${this.id}: Database history provider initialized with ${storageConfig.database.type} backend.`
-					);
-				} else {
-					// TODO: Implement or import an in-memory provider if needed
-					logger.debug(`Session ${this.id}: In-memory history provider selected.`);
-				}
-			} catch (err) {
-				logger.warn(
-					`Session ${this.id}: Failed to initialize history provider, falling back to in-memory. Error: ${err}`
-				);
-				historyProvider = undefined;
-			}
-		}
-		this.historyProvider = historyProvider;
-		// Pass provider and sessionId to context manager
+		
+		// Only create context manager eagerly - other services will be lazy-loaded
 		this.contextManager = createContextManager(
 			llmConfig,
 			this.services.promptManager,
-			historyProvider,
+			undefined, // History provider will be lazy-loaded
 			this.id
 		);
-		this.llmService = createLLMService(
-			llmConfig,
-			this.services.mcpManager,
-			this.contextManager,
-			this.services.unifiedToolManager
-		);
-		logger.debug(`ChatSession ${this.id}: Services initialized`);
+		
+		this._servicesInitialized = true;
+		logger.debug(`ChatSession ${this.id}: Core services initialized (lazy loading enabled)`);
+	}
+
+	/**
+	 * Lazy initialization of LLM service
+	 */
+	private async getLLMServiceLazy(): Promise<ILLMService> {
+		if (!this._servicesInitialized || !this.contextManager) {
+			throw new Error('ConversationSession is not initialized. Call init() before accessing services.');
+		}
+		
+		if (!this._llmServiceInitialized) {
+			try {
+				const llmConfig = this.services.stateManager.getLLMConfig(this.id);
+				this._llmService = createLLMService(
+					llmConfig,
+					this.services.mcpManager,
+					this.contextManager,
+					this.services.unifiedToolManager
+				);
+				this._llmServiceInitialized = true;
+				logger.debug(`Session ${this.id}: LLM service lazy-initialized`);
+			} catch (error) {
+				logger.error(`Session ${this.id}: Failed to lazy-initialize LLM service`, { error });
+				throw error;
+			}
+		}
+		return this._llmService!;
+	}
+
+	/**
+	 * Lazy initialization of storage manager and history provider with PostgreSQL/SQLite support
+	 */
+	private async getStorageManagerLazy(): Promise<StorageManager | undefined> {
+		if (!this._storageInitialized) {
+			try {
+				if (this.historyEnabled) {
+					// Multi-backend config example (can be extended to use env/config)
+					const multiBackendEnabled = !!process.env.CIPHER_MULTI_BACKEND;
+					const flushIntervalMs = process.env.CIPHER_WAL_FLUSH_INTERVAL
+						? parseInt(process.env.CIPHER_WAL_FLUSH_INTERVAL, 10)
+						: 5000;
+
+					if (multiBackendEnabled) {
+						// Example: primary = Postgres, backup = SQLite, WAL = in-memory
+						const primaryStorage = new StorageManager({
+							database: { type: 'postgres' as const, url: process.env.CIPHER_PG_URL },
+							cache: { type: 'in-memory' as const },
+						});
+						await primaryStorage.connect();
+						const backupStorage = new StorageManager({
+							database: { type: 'sqlite' as const, path: './cipher-backup.db' },
+							cache: { type: 'in-memory' as const },
+						});
+						await backupStorage.connect();
+						const primaryProvider = createDatabaseHistoryProvider(primaryStorage);
+						const backupProvider = createDatabaseHistoryProvider(backupStorage);
+						const wal = new WALHistoryProvider();
+						this._historyProvider = createMultiBackendHistoryProvider(
+							primaryProvider,
+							backupProvider,
+							wal,
+							flushIntervalMs
+						);
+						logger.debug(`Session ${this.id}: Multi-backend history provider lazy-initialized.`);
+					} else if (this.historyBackend === 'database') {
+						// Use the same storage configuration as the session manager
+						// This ensures both session data and conversation history use the same backend
+						const postgresUrl = process.env.CIPHER_PG_URL;
+						const postgresHost = process.env.STORAGE_DATABASE_HOST;
+						const postgresDatabase = process.env.STORAGE_DATABASE_NAME;
+
+						let storageConfig: any;
+
+						if (postgresUrl || (postgresHost && postgresDatabase)) {
+							// Use PostgreSQL if configured
+							if (postgresUrl) {
+								storageConfig = {
+									database: { type: 'postgres' as const, url: postgresUrl },
+									cache: { type: 'in-memory' as const },
+								};
+							} else {
+								storageConfig = {
+									database: {
+										type: 'postgres' as const,
+										host: postgresHost,
+										database: postgresDatabase,
+										port: process.env.STORAGE_DATABASE_PORT
+											? parseInt(process.env.STORAGE_DATABASE_PORT, 10)
+											: 5432,
+										user: process.env.STORAGE_DATABASE_USER,
+										password: process.env.STORAGE_DATABASE_PASSWORD,
+										ssl: process.env.STORAGE_DATABASE_SSL === 'true',
+									},
+									cache: { type: 'in-memory' as const },
+								};
+							}
+							logger.debug(`Session ${this.id}: Using PostgreSQL for history provider (lazy-loaded)`);
+						} else {
+							// Fallback to SQLite
+							storageConfig = {
+								database: {
+									type: 'sqlite' as const,
+									path: env.STORAGE_DATABASE_PATH || './data',
+									database: env.STORAGE_DATABASE_NAME || 'cipher-sessions.db',
+								},
+								cache: { type: 'in-memory' as const },
+							};
+							logger.debug(`Session ${this.id}: Using SQLite for history provider (lazy-loaded)`);
+						}
+
+						this._storageManager = new StorageManager(storageConfig);
+						await this._storageManager.connect();
+						this._historyProvider = createDatabaseHistoryProvider(this._storageManager);
+						logger.debug(
+							`Session ${this.id}: Database history provider lazy-initialized with ${storageConfig.database.type} backend.`
+						);
+					} else {
+						// TODO: Implement or import an in-memory provider if needed
+						logger.debug(`Session ${this.id}: In-memory history provider selected (lazy-loaded).`);
+					}
+				}
+				this._storageInitialized = true;
+			} catch (error) {
+				logger.warn(`Session ${this.id}: Failed to lazy-initialize storage manager`, { error });
+				this._storageInitialized = true; // Mark as initialized to prevent retry
+			}
+		}
+		return this._storageManager;
+	}
+
+	/**
+	 * Lazy initialization of history provider
+	 */
+	private async getHistoryProviderLazy(): Promise<IConversationHistoryProvider | undefined> {
+		if (!this._storageInitialized) {
+			await this.getStorageManagerLazy();
+		}
+		return this._historyProvider;
+	}
+
+	/**
+	 * Restore history when history provider is lazy-loaded
+	 */
+	private async restoreHistoryLazy(): Promise<void> {
+		if (this.historyEnabled) {
+			try {
+				const historyProvider = await this.getHistoryProviderLazy();
+				if (historyProvider && this.contextManager) {
+					// Update context manager with the lazy-loaded history provider
+					(this.contextManager as any).historyProvider = historyProvider;
+					await this.contextManager.restoreHistory?.();
+					logger.debug(`Session ${this.id}: Conversation history restored (lazy-loaded)`);
+				}
+			} catch (err) {
+				logger.warn(`Session ${this.id}: Failed to restore conversation history: ${err}`);
+			}
+		}
 	}
 
 	/**
@@ -317,7 +383,7 @@ export class ConversationSession {
 		}
 
 		// --- Session initialization check ---
-		if (!this.llmService || !this.contextManager) {
+		if (!this._servicesInitialized || !this.contextManager) {
 			logger.error('ConversationSession.run: Session not initialized. Call init() before run().');
 			throw new Error('ConversationSession is not initialized. Call init() before run().');
 		}
@@ -362,8 +428,14 @@ export class ConversationSession {
 		// Initialize reasoning detector and search context manager if not already done
 		await this.initializeReasoningServices();
 
+		// Restore history if enabled (lazy-loaded)
+		await this.restoreHistoryLazy();
+
+		// Lazy initialize LLM service when first needed
+		const llmService = await this.getLLMServiceLazy();
+
 		// Generate response
-		const response = await this.llmService.generate(input, imageDataInput, stream);
+		const response = await llmService.generate(input, imageDataInput, stream);
 
 		// PROGRAMMATIC ENFORCEMENT: Run memory extraction asynchronously in background AFTER response is returned
 		// This ensures users see the response immediately without waiting for memory operations
@@ -1063,9 +1135,9 @@ export class ConversationSession {
 	 * Disconnects the history provider if it exists (for session teardown).
 	 */
 	public async disconnect(): Promise<void> {
-		if (this.historyProvider && typeof (this.historyProvider as any).disconnect === 'function') {
+		if (this._historyProvider && typeof (this._historyProvider as any).disconnect === 'function') {
 			try {
-				await (this.historyProvider as any).disconnect();
+				await (this._historyProvider as any).disconnect();
 				logger.debug(`Session ${this.id}: History provider disconnected.`);
 			} catch (err) {
 				logger.warn(`Session ${this.id}: Failed to disconnect history provider: ${err}`);
@@ -1077,8 +1149,11 @@ export class ConversationSession {
 		return this.contextManager;
 	}
 
-	public getLLMService(): any {
-		return this.llmService;
+	/**
+	 * Get LLM service with lazy initialization
+	 */
+	public async getLLMService(): Promise<ILLMService> {
+		return await this.getLLMServiceLazy();
 	}
 
 	public getUnifiedToolManager(): UnifiedToolManager {
@@ -1086,20 +1161,17 @@ export class ConversationSession {
 	}
 
 	/**
-	 * Get the storageManager used by the historyProvider (if available)
+	 * Get the storageManager with lazy initialization
 	 */
-	public getStorageManager(): StorageManager | undefined {
-		if (
-			this.historyProvider &&
-			typeof (this.historyProvider as any).getStorageManager === 'function'
-		) {
-			return (this.historyProvider as any).getStorageManager();
-		}
-		// Try to access directly if exposed
-		if (this.historyProvider && (this.historyProvider as any).storageManager) {
-			return (this.historyProvider as any).storageManager;
-		}
-		return undefined;
+	public async getStorageManager(): Promise<StorageManager | undefined> {
+		return await this.getStorageManagerLazy();
+	}
+
+	/**
+	 * Get the history provider with lazy initialization
+	 */
+	public async getHistoryProvider(): Promise<IConversationHistoryProvider | undefined> {
+		return await this.getHistoryProviderLazy();
 	}
 
 	/**
