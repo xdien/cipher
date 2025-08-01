@@ -68,7 +68,8 @@ export class DatabaseHistoryProvider implements IConversationHistoryProvider {
 			const backends = this.storageManager.getBackends();
 			const messages: InternalMessage[] = (await backends?.database.get(key)) || [];
 			// Always return oldest to newest, up to limit
-			return messages.slice(-limit);
+			const result = messages.slice(-limit);
+			return result;
 		} catch (err) {
 			logger.error(
 				`DatabaseHistoryProvider.getHistory failed for session ${sessionId}: ${(err as Error).message}`
@@ -85,11 +86,11 @@ export class DatabaseHistoryProvider implements IConversationHistoryProvider {
 		try {
 			const backends = this.storageManager.getBackends();
 			const messages: InternalMessage[] = (await backends?.database.get(key)) || [];
+			const previousCount = messages.length;
 			messages.push(message); // Append (chronological)
 			// Enforce message limit (keep only the most recent MESSAGE_LIMIT)
 			const trimmed = messages.slice(-MESSAGE_LIMIT);
 			await backends?.database.set(key, trimmed);
-			logger.debug(`Saved message to session ${sessionId}: ${truncateContent(message.content)}`);
 		} catch (err) {
 			logger.error(
 				`DatabaseHistoryProvider.saveMessage failed for session ${sessionId}: ${(err as Error).message}`
@@ -105,7 +106,7 @@ export class DatabaseHistoryProvider implements IConversationHistoryProvider {
 		try {
 			const backends = this.storageManager.getBackends();
 			await backends?.database.delete(key);
-			logger.info(`Cleared conversation history for session ${sessionId}`);
+			logger.info(`DatabaseHistoryProvider: Cleared conversation history for session ${sessionId}`);
 		} catch (err) {
 			logger.error(
 				`DatabaseHistoryProvider.clearHistory failed for session ${sessionId}: ${(err as Error).message}`

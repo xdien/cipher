@@ -342,6 +342,99 @@ export class CommandParser {
 			},
 		});
 
+		// Load history command
+		this.registerCommand({
+			name: 'load-history',
+			description: 'Load conversation history for current session',
+			category: 'session',
+			handler: async (args: string[], agent: MemAgent) => {
+				try {
+					const currentSessionId = agent.getCurrentSessionId();
+					console.log(
+						chalk.cyan(`🔄 Loading conversation history for session: ${currentSessionId}`)
+					);
+
+					await agent.loadSessionHistory(currentSessionId);
+
+					// Show the loaded history
+					const history = await agent.getCurrentSessionHistory();
+					console.log(
+						chalk.green(
+							`✅ Successfully loaded ${history.length} messages from conversation history`
+						)
+					);
+
+					if (history.length > 0) {
+						console.log(chalk.gray('Recent messages:'));
+						history.slice(-3).forEach((msg, index) => {
+							const role = msg.role || 'unknown';
+							const content =
+								typeof msg.content === 'string'
+									? msg.content.substring(0, 80) + (msg.content.length > 80 ? '...' : '')
+									: JSON.stringify(msg.content).substring(0, 80) + '...';
+							console.log(chalk.gray(`  ${history.length - 3 + index + 1}. [${role}] ${content}`));
+						});
+					}
+
+					return true;
+				} catch (error) {
+					console.log(
+						chalk.red(
+							`❌ Failed to load conversation history: ${error instanceof Error ? error.message : String(error)}`
+						)
+					);
+					return false;
+				}
+			},
+		});
+
+		// Debug command
+		this.registerCommand({
+			name: 'debug',
+			description: 'Show debug information for current session',
+			category: 'system',
+			handler: async (args: string[], agent: MemAgent) => {
+				try {
+					const currentSessionId = agent.getCurrentSessionId();
+					console.log(chalk.cyan('🔍 Debug Information:'));
+					console.log(chalk.gray(`Current Session: ${currentSessionId}`));
+
+					// Get session metadata
+					const metadata = await agent.getSessionMetadata(currentSessionId);
+					if (metadata) {
+						console.log(chalk.gray(`Message Count: ${metadata.messageCount}`));
+					}
+
+					// Get conversation history
+					const history = await agent.getCurrentSessionHistory();
+					console.log(chalk.gray(`History Length: ${history.length}`));
+
+					if (history.length > 0) {
+						console.log(chalk.gray('Recent Messages:'));
+						history.slice(-5).forEach((msg, index) => {
+							const role = msg.role || 'unknown';
+							const content =
+								typeof msg.content === 'string'
+									? msg.content.substring(0, 100) + (msg.content.length > 100 ? '...' : '')
+									: JSON.stringify(msg.content).substring(0, 100) + '...';
+							console.log(chalk.gray(`  ${history.length - 5 + index + 1}. [${role}] ${content}`));
+						});
+					} else {
+						console.log(chalk.gray('  No conversation history found'));
+					}
+
+					return true;
+				} catch (error) {
+					console.log(
+						chalk.red(
+							`❌ Failed to get debug info: ${error instanceof Error ? error.message : String(error)}`
+						)
+					);
+					return false;
+				}
+			},
+		});
+
 		// Clear/Reset command
 		this.registerCommand({
 			name: 'clear',
@@ -707,6 +800,11 @@ export class CommandParser {
 					case 'del':
 					case 'remove':
 						return this.sessionDeleteHandler(subArgs, agent);
+					case 'save':
+						return this.sessionSaveHandler(subArgs, agent);
+					case 'load':
+					case 'restore':
+						return this.sessionLoadHandler(subArgs, agent);
 					case 'help':
 					case 'h':
 						return this.sessionHelpHandler(subArgs, agent);
@@ -1522,6 +1620,79 @@ export class CommandParser {
 	}
 
 	/**
+	 * Session save subcommand handler
+	 */
+	private async sessionSaveHandler(_args: string[], agent: MemAgent): Promise<boolean> {
+		try {
+			console.log(chalk.cyan('💾 Saving all sessions to persistent storage...'));
+
+			const result = await agent.saveAllSessions();
+
+			console.log('');
+			if (result.saved > 0) {
+				console.log(chalk.green(`✅ Successfully saved ${result.saved} session(s)`));
+			}
+
+			if (result.failed > 0) {
+				console.log(chalk.yellow(`⚠️  Failed to save ${result.failed} session(s)`));
+			}
+
+			if (result.total === 0) {
+				console.log(chalk.gray('📭 No active sessions to save'));
+			}
+
+			console.log(chalk.gray(`📊 Total: ${result.total} sessions processed`));
+			console.log('');
+
+			return true;
+		} catch (error) {
+			console.log(
+				chalk.red(
+					`❌ Failed to save sessions: ${error instanceof Error ? error.message : String(error)}`
+				)
+			);
+			return false;
+		}
+	}
+
+	/**
+	 * Session load subcommand handler
+	 */
+	private async sessionLoadHandler(_args: string[], agent: MemAgent): Promise<boolean> {
+		try {
+			console.log(chalk.cyan('📂 Loading sessions from persistent storage...'));
+
+			const result = await agent.loadAllSessions();
+
+			console.log('');
+			if (result.restored > 0) {
+				console.log(chalk.green(`✅ Successfully restored ${result.restored} session(s)`));
+			}
+
+			if (result.failed > 0) {
+				console.log(chalk.yellow(`⚠️  Failed to restore ${result.failed} session(s)`));
+			}
+
+			if (result.total === 0) {
+				console.log(chalk.gray('📭 No sessions found in storage'));
+			}
+
+			console.log(chalk.gray(`📊 Total: ${result.total} sessions found in storage`));
+			console.log('');
+			console.log(chalk.gray('💡 Use /session list to see all active sessions'));
+
+			return true;
+		} catch (error) {
+			console.log(
+				chalk.red(
+					`❌ Failed to load sessions: ${error instanceof Error ? error.message : String(error)}`
+				)
+			);
+			return false;
+		}
+	}
+
+	/**
 	 * Session help subcommand handler
 	 */
 	private async sessionHelpHandler(_args: string[], _agent: MemAgent): Promise<boolean> {
@@ -1535,6 +1706,8 @@ export class CommandParser {
 			'/session switch <id> - Switch to different session',
 			'/session current - Show current session info',
 			'/session delete <id> - Delete session (cannot delete active)',
+			'/session save - Manually save all sessions to persistent storage',
+			'/session load - Manually load sessions from persistent storage',
 			'/session help - Show this help message',
 		];
 

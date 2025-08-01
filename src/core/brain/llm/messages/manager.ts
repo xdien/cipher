@@ -82,7 +82,6 @@ export class ContextManager {
 		if (this.historyProvider && this.sessionId) {
 			try {
 				this.messages = await this.historyProvider.getHistory(this.sessionId);
-				logger.debug(`Restored ${this.messages.length} messages from persistent history.`);
 			} catch (err) {
 				logger.error(`Failed to restore history from provider: ${err}`);
 				this.fallbackToMemory = true;
@@ -359,7 +358,7 @@ export class ContextManager {
 				await this.historyProvider!.saveMessage(this.sessionId!, message);
 				this.messages.push(message);
 			} catch (err) {
-				logger.error(`History provider failed, falling back to in-memory: ${err}`);
+				logger.error(`ContextManager: History provider failed, falling back to in-memory: ${err}`);
 				this.fallbackToMemory = true;
 				this.messages.push(message);
 			}
@@ -369,7 +368,13 @@ export class ContextManager {
 	}
 
 	private shouldUsePersistentStorage(): boolean {
-		return !!(this.historyProvider && this.sessionId && !this.fallbackToMemory);
+		const hasHistoryProvider = !!this.historyProvider;
+		const hasSessionId = !!this.sessionId;
+		const notInFallback = !this.fallbackToMemory;
+
+		const shouldUse = hasHistoryProvider && hasSessionId && notInFallback;
+
+		return shouldUse;
 	}
 
 	private buildUserMessageContent(
