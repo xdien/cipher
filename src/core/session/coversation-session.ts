@@ -141,7 +141,7 @@ export class ConversationSession {
 		await this.initializeServices();
 		// Note: History restoration will happen lazily when history is first accessed
 		// This improves startup performance by not initializing storage until needed
-		logger.debug(`Session ${this.id}: Core initialization complete (lazy loading enabled)`)
+		logger.debug(`Session ${this.id}: Core initialization complete (lazy loading enabled)`);
 	}
 
 	/**
@@ -250,7 +250,9 @@ export class ConversationSession {
 									cache: { type: 'in-memory' as const },
 								};
 							}
-							logger.debug(`Session ${this.id}: Using PostgreSQL for history provider (lazy-loaded)`);
+							logger.debug(
+								`Session ${this.id}: Using PostgreSQL for history provider (lazy-loaded)`
+							);
 						} else {
 							// Fallback to SQLite
 							storageConfig = {
@@ -1320,11 +1322,13 @@ export class ConversationSession {
 				);
 			}
 
-			// Create new session instance  
+			// Create new session instance
 			// Ensure contextManager is included in services if available
 			const sessionServices = {
 				...services,
-				...((services as any).contextManager && { contextManager: (services as any).contextManager })
+				...((services as any).contextManager && {
+					contextManager: (services as any).contextManager,
+				}),
 			};
 			const session = new ConversationSession(sessionServices as any, data.id, options);
 
