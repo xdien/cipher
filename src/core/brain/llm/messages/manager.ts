@@ -6,7 +6,7 @@ import { EnhancedPromptManager } from '../../../brain/systemPrompt/enhanced-mana
 import { ITokenizer, createTokenizer, getTokenizerConfigForModel } from '../tokenizer/index.js';
 import {
 	ICompressionStrategy,
-	createCompressionStrategySync,
+	createCompressionStrategy,
 	getCompressionConfigForProvider,
 	EnhancedInternalMessage,
 	CompressionResult,
@@ -233,7 +233,11 @@ export class ContextManager {
 	): Promise<void> {
 		try {
 			this.tokenizer = this.createTokenizer(model, provider);
-			this.compressionStrategy = this.createCompressionStrategy(provider, model, contextWindow);
+			this.compressionStrategy = await this.createCompressionStrategy(
+				provider,
+				model,
+				contextWindow
+			);
 			this.enableCompression = true;
 
 			await this.updateTokenCount();
@@ -435,13 +439,13 @@ export class ContextManager {
 		return createTokenizer(tokenizerConfig);
 	}
 
-	private createCompressionStrategy(
+	private async createCompressionStrategy(
 		provider: string,
 		model?: string,
 		contextWindow?: number
-	): ICompressionStrategy {
+	): Promise<ICompressionStrategy> {
 		const compressionConfig = getCompressionConfigForProvider(provider, model, contextWindow);
-		return createCompressionStrategySync(compressionConfig);
+		return createCompressionStrategy(compressionConfig);
 	}
 
 	// Token management methods

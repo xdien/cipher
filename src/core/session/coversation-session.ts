@@ -88,6 +88,7 @@ export class ConversationSession {
 		private services: {
 			stateManager: MemAgentStateManager;
 			promptManager: EnhancedPromptManager;
+			contextManager: ContextManager;
 			mcpManager: MCPManager;
 			unifiedToolManager: UnifiedToolManager;
 			embeddingManager?: any; // Optional embedding manager for status checking
@@ -147,15 +148,7 @@ export class ConversationSession {
 	 * Initializes the services for the session, including the history provider.
 	 */
 	private async initializeServices(): Promise<void> {
-		const llmConfig = this.services.stateManager.getLLMConfig(this.id);
-
-		// Only create context manager eagerly - other services will be lazy-loaded
-		this.contextManager = createContextManager(
-			llmConfig,
-			this.services.promptManager,
-			undefined, // History provider will be lazy-loaded
-			this.id
-		);
+		this.contextManager = this.services.contextManager;
 
 		this._servicesInitialized = true;
 		logger.debug(`ChatSession ${this.id}: Core services initialized (lazy loading enabled)`);
