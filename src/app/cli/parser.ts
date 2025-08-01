@@ -1499,6 +1499,21 @@ export class CommandParser {
 
 			// Auto-switch to new session
 			await agent.loadSession(session.id);
+
+			// Wait for background initialization to complete based on log level
+			// This prevents the CLI prompt from appearing before services are ready
+			const currentLogLevel = process.env.CIPHER_LOG_LEVEL || 'info';
+			const isDebugLevel = ['debug', 'trace'].includes(currentLogLevel);
+
+			if (isDebugLevel) {
+				// At debug level, wait longer for background operations to complete
+				// This ensures all initialization logs are written before showing the prompt
+				await new Promise(resolve => setTimeout(resolve, 500));
+			} else {
+				// At info level or higher, wait a shorter time
+				await new Promise(resolve => setTimeout(resolve, 200));
+			}
+
 			console.log(chalk.blue('🔄 Switched to new session'));
 
 			return true;
@@ -1529,7 +1544,22 @@ export class CommandParser {
 				return false;
 			}
 
-			await agent.loadSession(sessionId);
+			// Load the session and wait for it to complete
+			const session = await agent.loadSession(sessionId);
+
+			// Wait for background initialization to complete based on log level
+			// This prevents the CLI prompt from appearing before services are ready
+			const currentLogLevel = process.env.CIPHER_LOG_LEVEL || 'info';
+			const isDebugLevel = ['debug', 'trace'].includes(currentLogLevel);
+
+			if (isDebugLevel) {
+				// At debug level, wait longer for background operations to complete
+				// This ensures all initialization logs are written before showing the prompt
+				await new Promise(resolve => setTimeout(resolve, 500));
+			} else {
+				// At info level or higher, wait a shorter time
+				await new Promise(resolve => setTimeout(resolve, 200));
+			}
 
 			const metadata = await agent.getSessionMetadata(sessionId);
 			console.log(chalk.green(`✅ Switched to session: ${sessionId}`));
