@@ -44,13 +44,13 @@ function extractApiKey(config: LLMConfig): string {
 function getOpenAICompatibleBaseURL(llmConfig: LLMConfig): string {
 	if (llmConfig.baseURL) {
 		let baseUrl = llmConfig.baseURL.replace(/\/$/, '');
-		
+
 		// For Ollama, ensure /v1 suffix for OpenAI-compatible endpoint
 		const provider = llmConfig.provider.toLowerCase();
 		if (provider === 'ollama' && !baseUrl.endsWith('/v1') && !baseUrl.endsWith('/api')) {
 			baseUrl = baseUrl + '/v1';
 		}
-		
+
 		return baseUrl;
 	}
 
@@ -64,12 +64,12 @@ function getOpenAICompatibleBaseURL(llmConfig: LLMConfig): string {
 	if (provider === 'ollama') {
 		// Use environment variable if set, otherwise default to localhost:11434/v1
 		let baseUrl = env.OLLAMA_BASE_URL || 'http://localhost:11434/v1';
-		
+
 		// Ensure /v1 suffix for OpenAI-compatible endpoint
 		if (!baseUrl.endsWith('/v1') && !baseUrl.endsWith('/api')) {
 			baseUrl = baseUrl.replace(/\/$/, '') + '/v1';
 		}
-		
+
 		return baseUrl;
 	}
 

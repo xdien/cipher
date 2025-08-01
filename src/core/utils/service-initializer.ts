@@ -63,15 +63,14 @@ async function createEmbeddingFromLLMProvider(
 			}
 
 			case 'ollama': {
-				let baseUrl =
-					llmConfig.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-				
+				let baseUrl = llmConfig.baseUrl || process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+
 				// For embedding service, remove /v1 suffix if present and use base URL
 				// Ollama embeddings use /api/embeddings endpoint, not /v1/embeddings
 				if (baseUrl.endsWith('/v1')) {
 					baseUrl = baseUrl.replace(/\/v1$/, '');
 				}
-				
+
 				// Ollama doesn't require API key, so proceed with embedding config
 				const embeddingConfig = {
 					type: 'ollama' as const,
