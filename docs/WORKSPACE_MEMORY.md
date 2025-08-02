@@ -15,44 +15,47 @@ Workspace memory is Cipher's specialized memory system for teams. While Cipher's
 
 ## Architecture Overview
 
+Workspace memory adds team collaboration intelligence to Cipher through two main components:
+
 ```mermaid
 graph TB
-    subgraph "Cipher Agent"
-        A[User Interaction] --> B{Workspace Memory Enabled?}
-        B -->|Yes| C[Extract Team Info]
-        B -->|No| D[Default Memory Only]
-        
-        C --> E[Background Store Tool]
-        E --> F[Workspace Vector Store]
-        
-        G[Search Query] --> H[Workspace Search Tool]
-        H --> F
-        F --> I[Team Context Results]
+    subgraph "Team Conversations"
+        A[Team Talk] --> B[Information Extraction]
+        B --> C[Structured Team Data]
     end
     
-    subgraph "Configuration"
-        J[cipher.yml] --> K[LLM/Embedding Config]
-        L[workspace-memory.yml] --> M[Workspace Behavior]
-        N[Environment Variables] --> O[Enable/Disable Controls]
+    subgraph "Workspace Memory Tools"
+        D[🔍 Search Tool] --> E[Find Team Info]
+        F[📝 Store Tool] --> G[Save Team Context]
     end
     
-    subgraph "Information Extraction"
-        P[Natural Language] --> Q[Team Member Detection]
-        P --> R[Progress Tracking]
-        P --> S[Bug Information]
-        P --> T[Work Context]
+    subgraph "Storage & Configuration"
+        H[Workspace Vector Store] 
+        I[cipher.yml - LLM/Embedding]
+        J[Environment Variables]
     end
     
-    K --> H
-    K --> E
-    M --> E
-    O --> B
+    A --> F
+    C --> H
+    D --> H
+    H --> E
+    I --> D
+    I --> F
+    J --> D
+    J --> F
     
-    Q --> E
-    R --> E
-    S --> E
-    T --> E
+    style A fill:#e1f5fe
+    style D fill:#f3e5f5
+    style F fill:#fff3e0
+    style H fill:#f1f8e9
 ```
+
+**How it works:**
+1. **Team conversations** are automatically analyzed for team information
+2. **Store tool** runs in background, extracting and saving team context
+3. **Search tool** helps you find team information when needed
+4. **Vector store** keeps team data separate from technical knowledge
+5. **Configuration** uses your existing Cipher setup
 
 ## Core Capabilities
 
