@@ -1,7 +1,7 @@
 import { config } from 'dotenv';
 import { z } from 'zod';
 
-// Load environment variables from .env file 
+// Load environment variables from .env file
 // Note: In MCP mode, the MCP host typically provides required environment variables
 // via the "env" field in MCP configuration, but .env files can still provide additional
 // configuration like workspace memory settings that may not be in MCP config
@@ -97,6 +97,7 @@ const envSchema = z.object({
 	BACKGROUND_PRELOAD_DELAY: z.string().optional(),
 	// Workspace Memory Configuration
 	USE_WORKSPACE_MEMORY: z.boolean().default(false),
+	WORKSPACE_SEARCH_THRESHOLD: z.number().default(0.4),
 	DISABLE_DEFAULT_MEMORY: z.boolean().default(false),
 	WORKSPACE_VECTOR_STORE_TYPE: z.enum(['qdrant', 'milvus', 'in-memory']).optional(),
 	WORKSPACE_VECTOR_STORE_HOST: z.string().optional(),
@@ -291,6 +292,10 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 			// Workspace Memory Configuration
 			case 'USE_WORKSPACE_MEMORY':
 				return process.env.USE_WORKSPACE_MEMORY === 'true';
+			case 'WORKSPACE_SEARCH_THRESHOLD':
+				return process.env.WORKSPACE_SEARCH_THRESHOLD
+					? parseFloat(process.env.WORKSPACE_SEARCH_THRESHOLD)
+					: 0.4;
 			case 'DISABLE_DEFAULT_MEMORY':
 				return process.env.DISABLE_DEFAULT_MEMORY === 'true';
 			case 'WORKSPACE_VECTOR_STORE_TYPE':
@@ -451,6 +456,9 @@ export const validateEnv = () => {
 		DISABLE_REFLECTION_MEMORY: process.env.DISABLE_REFLECTION_MEMORY === 'true',
 		// Workspace Memory Configuration
 		USE_WORKSPACE_MEMORY: process.env.USE_WORKSPACE_MEMORY === 'true',
+		WORKSPACE_SEARCH_THRESHOLD: process.env.WORKSPACE_SEARCH_THRESHOLD
+			? parseFloat(process.env.WORKSPACE_SEARCH_THRESHOLD)
+			: 0.4,
 		DISABLE_DEFAULT_MEMORY: process.env.DISABLE_DEFAULT_MEMORY === 'true',
 		WORKSPACE_VECTOR_STORE_TYPE: process.env.WORKSPACE_VECTOR_STORE_TYPE,
 		WORKSPACE_VECTOR_STORE_HOST: process.env.WORKSPACE_VECTOR_STORE_HOST,

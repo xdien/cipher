@@ -445,11 +445,15 @@ export function getWorkspaceVectorStoreConfigFromEnv(agentConfig?: any): VectorS
 	// Get workspace-specific configuration with fallbacks to default vector store config
 	const storeType = env.WORKSPACE_VECTOR_STORE_TYPE || env.VECTOR_STORE_TYPE;
 	const collectionName = env.WORKSPACE_VECTOR_STORE_COLLECTION || 'workspace_memory';
-	let dimension = Number.isNaN(env.WORKSPACE_VECTOR_STORE_DIMENSION) 
-		? (Number.isNaN(env.VECTOR_STORE_DIMENSION) ? 1536 : env.VECTOR_STORE_DIMENSION)
+	let dimension = Number.isNaN(env.WORKSPACE_VECTOR_STORE_DIMENSION)
+		? Number.isNaN(env.VECTOR_STORE_DIMENSION)
+			? 1536
+			: env.VECTOR_STORE_DIMENSION
 		: env.WORKSPACE_VECTOR_STORE_DIMENSION;
 	const maxVectors = Number.isNaN(env.WORKSPACE_VECTOR_STORE_MAX_VECTORS)
-		? (Number.isNaN(env.VECTOR_STORE_MAX_VECTORS) ? 10000 : env.VECTOR_STORE_MAX_VECTORS)
+		? Number.isNaN(env.VECTOR_STORE_MAX_VECTORS)
+			? 10000
+			: env.VECTOR_STORE_MAX_VECTORS
 		: env.WORKSPACE_VECTOR_STORE_MAX_VECTORS;
 
 	// Override dimension from agent config if embedding configuration is present
@@ -481,8 +485,10 @@ export function getWorkspaceVectorStoreConfigFromEnv(agentConfig?: any): VectorS
 	if (storeType === 'qdrant') {
 		const host = env.WORKSPACE_VECTOR_STORE_HOST || env.VECTOR_STORE_HOST;
 		const url = env.WORKSPACE_VECTOR_STORE_URL || env.VECTOR_STORE_URL;
-		const port = Number.isNaN(env.WORKSPACE_VECTOR_STORE_PORT) 
-			? (Number.isNaN(env.VECTOR_STORE_PORT) ? undefined : env.VECTOR_STORE_PORT)
+		const port = Number.isNaN(env.WORKSPACE_VECTOR_STORE_PORT)
+			? Number.isNaN(env.VECTOR_STORE_PORT)
+				? undefined
+				: env.VECTOR_STORE_PORT
 			: env.WORKSPACE_VECTOR_STORE_PORT;
 		const apiKey = env.WORKSPACE_VECTOR_STORE_API_KEY || env.VECTOR_STORE_API_KEY;
 		const distance = env.WORKSPACE_VECTOR_STORE_DISTANCE || env.VECTOR_STORE_DISTANCE;
@@ -514,8 +520,10 @@ export function getWorkspaceVectorStoreConfigFromEnv(agentConfig?: any): VectorS
 	} else if ((storeType as string) === 'milvus') {
 		const host = env.WORKSPACE_VECTOR_STORE_HOST || env.VECTOR_STORE_HOST;
 		const url = env.WORKSPACE_VECTOR_STORE_URL || env.VECTOR_STORE_URL;
-		const port = Number.isNaN(env.WORKSPACE_VECTOR_STORE_PORT) 
-			? (Number.isNaN(env.VECTOR_STORE_PORT) ? undefined : env.VECTOR_STORE_PORT)
+		const port = Number.isNaN(env.WORKSPACE_VECTOR_STORE_PORT)
+			? Number.isNaN(env.VECTOR_STORE_PORT)
+				? undefined
+				: env.VECTOR_STORE_PORT
 			: env.WORKSPACE_VECTOR_STORE_PORT;
 		const username = env.WORKSPACE_VECTOR_STORE_USERNAME || env.VECTOR_STORE_USERNAME;
 		const password = env.WORKSPACE_VECTOR_STORE_PASSWORD || env.VECTOR_STORE_PASSWORD;
@@ -581,7 +589,7 @@ export async function createMultiCollectionVectorStoreFromEnv(
 	agentConfig?: any
 ): Promise<MultiCollectionVectorFactory> {
 	const logger = createLogger({ level: env.CIPHER_LOG_LEVEL });
-	
+
 	// Import MultiCollectionVectorManager dynamically to avoid circular dependencies
 	const { MultiCollectionVectorManager } = await import('./multi-collection-manager.js');
 
@@ -612,12 +620,14 @@ async function createMultiCollectionVectorStoreInternal(
 ): Promise<MultiCollectionVectorFactory> {
 	// Import MultiCollectionVectorManager dynamically
 	const { MultiCollectionVectorManager } = await import('./multi-collection-manager.js');
-	
+
 	logger.info(`${LOG_PREFIXES.FACTORY} Creating multi collection vector storage from environment`, {
 		type: config.type,
 		knowledgeCollection: config.collectionName,
 		reflectionCollection: env.REFLECTION_VECTOR_STORE_COLLECTION || 'disabled',
-		workspaceCollection: env.USE_WORKSPACE_MEMORY ? (env.WORKSPACE_VECTOR_STORE_COLLECTION || 'workspace_memory') : 'disabled',
+		workspaceCollection: env.USE_WORKSPACE_MEMORY
+			? env.WORKSPACE_VECTOR_STORE_COLLECTION || 'workspace_memory'
+			: 'disabled',
 		workspaceEnabled: !!env.USE_WORKSPACE_MEMORY,
 	});
 
@@ -626,7 +636,7 @@ async function createMultiCollectionVectorStoreInternal(
 
 	try {
 		const connected = await manager.connect();
-		
+
 		if (!connected) {
 			throw new Error('Failed to connect multi collection vector manager');
 		}
@@ -657,9 +667,12 @@ async function createMultiCollectionVectorStoreInternal(
 			// Ignore disconnect errors during cleanup
 		});
 
-		logger.error(`${LOG_PREFIXES.FACTORY} Failed to create multi collection vector storage system`, {
-			error: error instanceof Error ? error.message : String(error),
-		});
+		logger.error(
+			`${LOG_PREFIXES.FACTORY} Failed to create multi collection vector storage system`,
+			{
+				error: error instanceof Error ? error.message : String(error),
+			}
+		);
 
 		throw error;
 	}
@@ -697,7 +710,9 @@ async function createMultiCollectionVectorStoreInternal(
  * const { manager, store } = await createWorkspaceVectorStoreFromEnv();
  * ```
  */
-export async function createWorkspaceVectorStoreFromEnv(agentConfig?: any): Promise<VectorStoreFactory> {
+export async function createWorkspaceVectorStoreFromEnv(
+	agentConfig?: any
+): Promise<VectorStoreFactory> {
 	const logger = createLogger({ level: env.CIPHER_LOG_LEVEL });
 
 	// Get workspace-specific configuration from environment variables

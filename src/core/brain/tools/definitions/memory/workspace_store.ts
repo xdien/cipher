@@ -526,9 +526,11 @@ export const workspaceStoreTool: InternalTool = {
 				logger.debug('WorkspaceStore: Using workspace collection', {
 					collectionName: workspaceCollectionName,
 					hasWorkspaceSpecificType: !!env.WORKSPACE_VECTOR_STORE_TYPE,
-					hasWorkspaceSpecificHost: !!(env.WORKSPACE_VECTOR_STORE_HOST || env.WORKSPACE_VECTOR_STORE_URL),
+					hasWorkspaceSpecificHost: !!(
+						env.WORKSPACE_VECTOR_STORE_HOST || env.WORKSPACE_VECTOR_STORE_URL
+					),
 				});
-				
+
 				// Try to get workspace-specific store through various methods
 				workspaceStore =
 					(vectorStoreManager as any).getStore('workspace') ||

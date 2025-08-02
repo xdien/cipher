@@ -94,10 +94,10 @@ export const workspaceSearchTool: InternalTool = {
 			},
 			similarity_threshold: {
 				type: 'number',
-				description: 'Minimum similarity score for results (0.0 to 1.0, default: 0.7)',
+				description: `Minimum similarity score for results (0.0 to 1.0, default: ${env.WORKSPACE_SEARCH_THRESHOLD})`,
 				minimum: 0.0,
 				maximum: 1.0,
-				default: 0.7,
+				default: env.WORKSPACE_SEARCH_THRESHOLD,
 			},
 			filters: {
 				type: 'object',
@@ -161,7 +161,7 @@ export const workspaceSearchTool: InternalTool = {
 			logger.debug('WorkspaceSearch: Processing workspace memory search request', {
 				query: args.query?.substring(0, 100) || 'undefined',
 				top_k: args.top_k || 10,
-				similarity_threshold: args.similarity_threshold || 0.7,
+				similarity_threshold: args.similarity_threshold || env.WORKSPACE_SEARCH_THRESHOLD,
 				filters: args.filters,
 			});
 
@@ -224,7 +224,10 @@ export const workspaceSearchTool: InternalTool = {
 			// Set defaults
 			const query = args.query.trim();
 			const topK = Math.max(1, Math.min(50, args.top_k || 10));
-			const similarityThreshold = Math.max(0.0, Math.min(1.0, args.similarity_threshold || 0.7));
+			const similarityThreshold = Math.max(
+				0.0,
+				Math.min(1.0, args.similarity_threshold || env.WORKSPACE_SEARCH_THRESHOLD)
+			);
 			const filters = args.filters || {};
 
 			// Get required services from context
@@ -325,12 +328,16 @@ export const workspaceSearchTool: InternalTool = {
 				}
 				// Method 2: Try dual collection manager (DualCollectionVectorManager)
 				else if (managerName === 'DualCollectionVectorManager' || managerName.includes('Dual')) {
-					logger.debug('WorkspaceSearch: Using DualCollectionVectorManager - trying workspace store');
+					logger.debug(
+						'WorkspaceSearch: Using DualCollectionVectorManager - trying workspace store'
+					);
 					try {
 						workspaceStore = (vectorStoreManager as any).getStore('workspace');
 					} catch {
 						// DualCollectionVectorManager doesn't have workspace, fall back
-						logger.debug('WorkspaceSearch: DualCollectionVectorManager has no workspace - using knowledge store');
+						logger.debug(
+							'WorkspaceSearch: DualCollectionVectorManager has no workspace - using knowledge store'
+						);
 						workspaceStore = (vectorStoreManager as any).getStore('knowledge');
 						usedFallback = true;
 					}

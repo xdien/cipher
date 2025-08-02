@@ -116,7 +116,7 @@ export function createServiceKey(type: string, config?: any): string {
 
 	// Normalize config to ensure consistent cache keys
 	const normalizedConfig = normalizeConfigForCache(config);
-	
+
 	// Create a simple hash of the normalized config
 	const configStr = JSON.stringify(normalizedConfig);
 	const hash = Array.from(configStr).reduce((hash, char) => {
@@ -124,7 +124,7 @@ export function createServiceKey(type: string, config?: any): string {
 	}, 0);
 
 	const cacheKey = `${type}:${Math.abs(hash)}`;
-	
+
 	return cacheKey;
 }
 
@@ -137,7 +137,7 @@ function normalizeConfigForCache(config: any): any {
 	}
 
 	const normalized: any = {};
-	
+
 	for (const [key, value] of Object.entries(config)) {
 		// Normalize undefined/null values to empty strings
 		if (value === undefined || value === null) {

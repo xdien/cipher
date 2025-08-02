@@ -36,6 +36,16 @@ import {
 import type { InternalTool } from '../../types.js';
 import { logger } from '../../../../logger/index.js';
 
+// Shared constants
+const EMBEDDING_DEPENDENT_TOOLS = [
+	'cipher_extract_and_operate_memory',
+	'cipher_memory_search',
+	'cipher_store_reasoning_memory',
+	'cipher_search_reasoning_patterns',
+	'cipher_workspace_search',
+	'cipher_workspace_store',
+] as const;
+
 // Export individual tools
 export {
 	extractAndOperateMemoryTool,
@@ -77,16 +87,7 @@ export async function getMemoryTools(
 	// If embeddings are disabled, exclude all embedding-dependent tools
 	if (!embeddingEnabled) {
 		logger.warn('Embeddings disabled - excluding all embedding-dependent memory tools', {
-			excludedTools: [
-				'cipher_extract_and_operate_memory',
-				'cipher_memory_search',
-				'cipher_store_reasoning_memory',
-				'cipher_extract_reasoning_steps',
-				'cipher_evaluate_reasoning',
-				'cipher_search_reasoning_patterns',
-				'cipher_workspace_search',
-				'cipher_workspace_store',
-			],
+			excludedTools: EMBEDDING_DEPENDENT_TOOLS,
 		});
 		return {};
 	}
@@ -107,11 +108,13 @@ export async function getMemoryTools(
 	const defaultTools: Record<string, InternalTool> = disableDefaultMemory
 		? {}
 		: {
-				...(env.SEARCH_MEMORY_TYPE !== 'reflection' && { // Knowledge or both
+				...(env.SEARCH_MEMORY_TYPE !== 'reflection' && {
+					// Knowledge or both
 					cipher_extract_and_operate_memory: extractAndOperateTool,
 					cipher_memory_search: searchMemoryTool,
 				}),
-				...(env.SEARCH_MEMORY_TYPE !== 'knowledge' && { // Reflection or both
+				...(env.SEARCH_MEMORY_TYPE !== 'knowledge' && {
+					// Reflection or both
 					cipher_store_reasoning_memory: storeReasoningMemoryTool,
 					cipher_extract_reasoning_steps: extractReasoningSteps,
 					cipher_evaluate_reasoning: evaluateReasoning,
@@ -147,6 +150,9 @@ export async function getAllMemoryToolDefinitions(
 
 	// If embeddings are disabled, return empty tools
 	if (!embeddingEnabled) {
+		logger.warn('Embeddings disabled - excluding all embedding-dependent memory tools', {
+			excludedTools: EMBEDDING_DEPENDENT_TOOLS,
+		});
 		return {};
 	}
 
@@ -180,11 +186,13 @@ export async function getAllMemoryToolDefinitions(
 	const defaultTools: Record<string, InternalTool> = disableDefaultMemory
 		? {}
 		: {
-				...(env.SEARCH_MEMORY_TYPE !== 'reflection' && { // Knowledge or both
+				...(env.SEARCH_MEMORY_TYPE !== 'reflection' && {
+					// Knowledge or both
 					cipher_extract_and_operate_memory: extractAndOperateTool,
 					cipher_memory_search: searchMemoryTool,
 				}),
-				...(env.SEARCH_MEMORY_TYPE !== 'knowledge' && { // Reflection or both
+				...(env.SEARCH_MEMORY_TYPE !== 'knowledge' && {
+					// Reflection or both
 					cipher_store_reasoning_memory: storeReasoningMemoryTool,
 					// All reasoning tools are always available for testing and functionality
 					cipher_extract_reasoning_steps: extractReasoningSteps,

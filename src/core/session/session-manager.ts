@@ -91,7 +91,7 @@ export class SessionManager {
 
 		// Load existing sessions from persistent storage
 		const restorationStats = await this.loadAllSessions();
-		
+
 		if (restorationStats.totalSessions > 0) {
 			logger.info(
 				`SessionManager: Initialization complete. Loaded ${restorationStats.restoredSessions}/${restorationStats.totalSessions} sessions from storage. Current in-memory sessions: ${this.sessions.size}`
@@ -160,7 +160,9 @@ export class SessionManager {
 		}
 
 		// Create new conversation session with shared storage manager
-		logger.debug(`SessionManager: Creating session ${sessionId} with storage manager: ${this.storageManager ? 'available' : 'undefined'}`);
+		logger.debug(
+			`SessionManager: Creating session ${sessionId} with storage manager: ${this.storageManager ? 'available' : 'undefined'}`
+		);
 		const session = new ConversationSession(
 			{
 				...this.services,
@@ -168,7 +170,7 @@ export class SessionManager {
 			},
 			sessionId,
 			{
-				sharedStorageManager: this.storageManager,
+				...(this.storageManager && { sharedStorageManager: this.storageManager }),
 			}
 		);
 		await session.init();

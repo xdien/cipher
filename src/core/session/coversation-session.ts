@@ -276,9 +276,11 @@ export class ConversationSession {
 								`Session ${this.id}: Database history provider lazy-initialized with ${storageConfig.database.type} backend.`
 							);
 						} else {
-							logger.debug(`Session ${this.id}: Using shared storage manager for history provider.`);
+							logger.debug(
+								`Session ${this.id}: Using shared storage manager for history provider.`
+							);
 						}
-						
+
 						this._historyProvider = createDatabaseHistoryProvider(this._storageManager);
 					} else {
 						// TODO: Implement or import an in-memory provider if needed
@@ -580,29 +582,29 @@ export class ConversationSession {
 				return;
 			}
 
-					// Check if workspace memory is enabled
-		const workspaceMemoryEnabled = env.USE_WORKSPACE_MEMORY;
-		const shouldDisableDefaultMemory = workspaceMemoryEnabled && env.DISABLE_DEFAULT_MEMORY;
-		
-		// Determine which memory tools to run based on configuration
-		const shouldRunWorkspace = workspaceMemoryEnabled;
-		const shouldRunDefault = !shouldDisableDefaultMemory;
-		
-		if (embeddingsDisabled) {
-			logger.debug('ConversationSession: Memory extraction skipped - embeddings disabled', {
-				embeddingsDisabled,
+			// Check if workspace memory is enabled
+			const workspaceMemoryEnabled = env.USE_WORKSPACE_MEMORY;
+			const shouldDisableDefaultMemory = workspaceMemoryEnabled && env.DISABLE_DEFAULT_MEMORY;
+
+			// Determine which memory tools to run based on configuration
+			const shouldRunWorkspace = workspaceMemoryEnabled;
+			const shouldRunDefault = !shouldDisableDefaultMemory;
+
+			if (embeddingsDisabled) {
+				logger.debug('ConversationSession: Memory extraction skipped - embeddings disabled', {
+					embeddingsDisabled,
+					workspaceMemoryEnabled,
+					shouldDisableDefaultMemory,
+				});
+				return;
+			}
+
+			logger.debug('ConversationSession: Memory tools to execute', {
 				workspaceMemoryEnabled,
 				shouldDisableDefaultMemory,
+				shouldRunWorkspace,
+				shouldRunDefault,
 			});
-			return;
-		}
-
-		logger.debug('ConversationSession: Memory tools to execute', {
-			workspaceMemoryEnabled,
-			shouldDisableDefaultMemory,
-			shouldRunWorkspace,
-			shouldRunDefault,
-		});
 
 			// Extract comprehensive interaction data including tool usage
 			const comprehensiveInteractionData = await this.extractComprehensiveInteractionData(
@@ -640,122 +642,122 @@ export class ConversationSession {
 				memoryMetadata = this.getSessionMetadata();
 			}
 
-					// Execute memory tools based on configuration
-		const memoryResults: any[] = [];
-		
-		// Execute workspace memory tool if enabled
-		if (shouldRunWorkspace) {
-			const workspaceArgs = {
-				interaction: comprehensiveInteractionData,
-				context: mergedContext,
-				options: {
-					similarityThreshold: 0.8,
-					confidenceThreshold: 0.6,
-					enableBatchProcessing: true,
-					autoExtractWorkspaceInfo: true,
-				},
-			};
+			// Execute memory tools based on configuration
+			const memoryResults: any[] = [];
 
-			try {
-				const workspaceResult = await this.services.unifiedToolManager.executeToolWithoutLoading(
-					'cipher_workspace_store',
-					workspaceArgs
-				);
-				memoryResults.push({ tool: 'cipher_workspace_store', result: workspaceResult });
-				logger.debug('ConversationSession: Workspace memory tool executed successfully');
-			} catch (error) {
-				logger.debug('ConversationSession: Workspace memory tool execution failed', {
-					error: error instanceof Error ? error.message : String(error),
-				});
-			}
-		}
-
-		// Execute default memory tool if not disabled
-		if (shouldRunDefault) {
-			const defaultArgs = {
-				interaction: comprehensiveInteractionData,
-				context: mergedContext,
-				memoryMetadata,
-				options: {
-					similarityThreshold: 0.7,
-					maxSimilarResults: 5,
-					useLLMDecisions: true,
-					confidenceThreshold: 0.4,
-					enableDeleteOperations: true,
-					historyTracking: options?.historyTracking ?? true,
-				},
-			};
-
-			try {
-				const defaultResult = await this.services.unifiedToolManager.executeToolWithoutLoading(
-					'cipher_extract_and_operate_memory',
-					defaultArgs
-				);
-				memoryResults.push({ tool: 'cipher_extract_and_operate_memory', result: defaultResult });
-				logger.debug('ConversationSession: Default memory tool executed successfully');
-			} catch (error) {
-				logger.debug('ConversationSession: Default memory tool execution failed', {
-					error: error instanceof Error ? error.message : String(error),
-				});
-			}
-		}
-
-		// If no tools were executed successfully, return early
-		if (memoryResults.length === 0) {
-			logger.debug('ConversationSession: No memory tools executed successfully');
-			return;
-		}
-
-					// Aggregate results from all executed tools
-		let totalExtractedFacts = 0;
-		let totalMemoryActions = 0;
-		const toolSummary: any = {};
-		const combinedActions: any[] = [];
-
-		for (const { tool, result } of memoryResults) {
-			if (result.success) {
-				totalExtractedFacts += result.extraction?.extracted || 0;
-				
-				// Get actions from the appropriate field based on tool type
-				const actions = tool === 'cipher_workspace_store' 
-					? result.workspace || [] 
-					: result.memory || [];
-				
-				totalMemoryActions += actions.length;
-				combinedActions.push(...actions);
-				
-				toolSummary[tool] = {
-					success: true,
-					extractedFacts: result.extraction?.extracted || 0,
-					memoryActions: actions.length,
+			// Execute workspace memory tool if enabled
+			if (shouldRunWorkspace) {
+				const workspaceArgs = {
+					interaction: comprehensiveInteractionData,
+					context: mergedContext,
+					options: {
+						similarityThreshold: 0.8,
+						confidenceThreshold: 0.6,
+						enableBatchProcessing: true,
+						autoExtractWorkspaceInfo: true,
+					},
 				};
-			} else {
-				toolSummary[tool] = { success: false };
+
+				try {
+					const workspaceResult = await this.services.unifiedToolManager.executeToolWithoutLoading(
+						'cipher_workspace_store',
+						workspaceArgs
+					);
+					memoryResults.push({ tool: 'cipher_workspace_store', result: workspaceResult });
+					logger.debug('ConversationSession: Workspace memory tool executed successfully');
+				} catch (error) {
+					logger.debug('ConversationSession: Workspace memory tool execution failed', {
+						error: error instanceof Error ? error.message : String(error),
+					});
+				}
 			}
-		}
 
-		logger.debug('ConversationSession: Memory extraction completed', {
-			toolsExecuted: memoryResults.map(r => r.tool),
-			shouldRunWorkspace,
-			shouldRunDefault,
-			totalExtractedFacts,
-			totalMemoryActions,
-			toolSummary,
-			actionBreakdown: combinedActions.length > 0
-				? {
-						ADD: combinedActions.filter((a: any) => a.event === 'ADD').length,
-						UPDATE: combinedActions.filter((a: any) => a.event === 'UPDATE').length,
-						DELETE: combinedActions.filter((a: any) => a.event === 'DELETE').length,
-						NONE: combinedActions.filter((a: any) => a.event === 'NONE').length,
-					}
-				: {},
-		});
+			// Execute default memory tool if not disabled
+			if (shouldRunDefault) {
+				const defaultArgs = {
+					interaction: comprehensiveInteractionData,
+					context: mergedContext,
+					memoryMetadata,
+					options: {
+						similarityThreshold: 0.7,
+						maxSimilarResults: 5,
+						useLLMDecisions: true,
+						confidenceThreshold: 0.4,
+						enableDeleteOperations: true,
+						historyTracking: options?.historyTracking ?? true,
+					},
+				};
 
-					// **NEW: Automatic Reflection Memory Processing**
-		// Process reasoning traces in the background, similar to knowledge memory
-		// Load tools for reflection processing (separate from background memory extraction)
-		const allTools = await this.services.unifiedToolManager.getAllTools();
-		await this.enforceReflectionMemoryProcessing(userInput, aiResponse, allTools);
+				try {
+					const defaultResult = await this.services.unifiedToolManager.executeToolWithoutLoading(
+						'cipher_extract_and_operate_memory',
+						defaultArgs
+					);
+					memoryResults.push({ tool: 'cipher_extract_and_operate_memory', result: defaultResult });
+					logger.debug('ConversationSession: Default memory tool executed successfully');
+				} catch (error) {
+					logger.debug('ConversationSession: Default memory tool execution failed', {
+						error: error instanceof Error ? error.message : String(error),
+					});
+				}
+			}
+
+			// If no tools were executed successfully, return early
+			if (memoryResults.length === 0) {
+				logger.debug('ConversationSession: No memory tools executed successfully');
+				return;
+			}
+
+			// Aggregate results from all executed tools
+			let totalExtractedFacts = 0;
+			let totalMemoryActions = 0;
+			const toolSummary: any = {};
+			const combinedActions: any[] = [];
+
+			for (const { tool, result } of memoryResults) {
+				if (result.success) {
+					totalExtractedFacts += result.extraction?.extracted || 0;
+
+					// Get actions from the appropriate field based on tool type
+					const actions =
+						tool === 'cipher_workspace_store' ? result.workspace || [] : result.memory || [];
+
+					totalMemoryActions += actions.length;
+					combinedActions.push(...actions);
+
+					toolSummary[tool] = {
+						success: true,
+						extractedFacts: result.extraction?.extracted || 0,
+						memoryActions: actions.length,
+					};
+				} else {
+					toolSummary[tool] = { success: false };
+				}
+			}
+
+			logger.debug('ConversationSession: Memory extraction completed', {
+				toolsExecuted: memoryResults.map(r => r.tool),
+				shouldRunWorkspace,
+				shouldRunDefault,
+				totalExtractedFacts,
+				totalMemoryActions,
+				toolSummary,
+				actionBreakdown:
+					combinedActions.length > 0
+						? {
+								ADD: combinedActions.filter((a: any) => a.event === 'ADD').length,
+								UPDATE: combinedActions.filter((a: any) => a.event === 'UPDATE').length,
+								DELETE: combinedActions.filter((a: any) => a.event === 'DELETE').length,
+								NONE: combinedActions.filter((a: any) => a.event === 'NONE').length,
+							}
+						: {},
+			});
+
+			// **NEW: Automatic Reflection Memory Processing**
+			// Process reasoning traces in the background, similar to knowledge memory
+			// Load tools for reflection processing (separate from background memory extraction)
+			const allTools = await this.services.unifiedToolManager.getAllTools();
+			await this.enforceReflectionMemoryProcessing(userInput, aiResponse, allTools);
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			logger.error('ConversationSession: Memory extraction failed', {

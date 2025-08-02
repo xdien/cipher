@@ -150,7 +150,9 @@ export class MultiCollectionVectorManager {
 			this.logger.info('MultiCollectionVectorManager: Initialized with multiple collections', {
 				backend: baseConfig.type,
 				knowledgeCollection: baseConfig.collectionName,
-				reflectionCollection: this.reflectionEnabled ? env.REFLECTION_VECTOR_STORE_COLLECTION : 'disabled',
+				reflectionCollection: this.reflectionEnabled
+					? env.REFLECTION_VECTOR_STORE_COLLECTION
+					: 'disabled',
 				workspaceCollection: env.WORKSPACE_VECTOR_STORE_COLLECTION,
 				dimension: baseConfig.dimension,
 			});
@@ -160,7 +162,9 @@ export class MultiCollectionVectorManager {
 			this.logger.info('MultiCollectionVectorManager: Initialized without workspace memory', {
 				backend: baseConfig.type,
 				knowledgeCollection: baseConfig.collectionName,
-				reflectionCollection: this.reflectionEnabled ? env.REFLECTION_VECTOR_STORE_COLLECTION : 'disabled',
+				reflectionCollection: this.reflectionEnabled
+					? env.REFLECTION_VECTOR_STORE_COLLECTION
+					: 'disabled',
 				workspaceCollection: 'disabled',
 				dimension: baseConfig.dimension,
 			});
@@ -186,7 +190,7 @@ export class MultiCollectionVectorManager {
 	 */
 	async connect(): Promise<boolean> {
 		const promises: Promise<VectorStore>[] = [];
-		
+
 		// Always connect knowledge manager
 		promises.push(this.knowledgeManager.connect());
 
@@ -202,10 +206,10 @@ export class MultiCollectionVectorManager {
 
 		try {
 			const results = await Promise.all(promises);
-			
+
 			// Check if at least the knowledge manager connected successfully
 			const knowledgeConnected = !!results[0];
-			
+
 			if (!knowledgeConnected) {
 				this.logger.error('MultiCollectionVectorManager: Failed to connect knowledge manager');
 				return false;
@@ -231,13 +235,13 @@ export class MultiCollectionVectorManager {
 	 */
 	async disconnect(): Promise<void> {
 		const promises: Promise<void>[] = [];
-		
+
 		promises.push(this.knowledgeManager.disconnect());
-		
+
 		if (this.reflectionManager) {
 			promises.push(this.reflectionManager.disconnect());
 		}
-		
+
 		if (this.workspaceManager) {
 			promises.push(this.workspaceManager.disconnect());
 		}
@@ -311,14 +315,19 @@ export class MultiCollectionVectorManager {
 	/**
 	 * Health check for all collections
 	 */
-	async healthCheck(): Promise<{ knowledge: boolean; reflection: boolean; workspace: boolean; overall: boolean }> {
+	async healthCheck(): Promise<{
+		knowledge: boolean;
+		reflection: boolean;
+		workspace: boolean;
+		overall: boolean;
+	}> {
 		const knowledgeHealthy = (await this.knowledgeManager.healthCheck()).overall;
-		
+
 		let reflectionHealthy = true;
 		if (this.reflectionEnabled && this.reflectionManager) {
 			reflectionHealthy = (await this.reflectionManager.healthCheck()).overall;
 		}
-		
+
 		let workspaceHealthy = true;
 		if (this.workspaceEnabled && this.workspaceManager) {
 			workspaceHealthy = (await this.workspaceManager.healthCheck()).overall;
@@ -370,7 +379,8 @@ export class MultiCollectionVectorManager {
 				manager: this.workspaceManager!,
 				enabled: this.workspaceEnabled,
 			},
-			overallConnected: this.knowledgeManager.isConnected() &&
+			overallConnected:
+				this.knowledgeManager.isConnected() &&
 				(!this.reflectionEnabled || this.reflectionManager?.isConnected() === true) &&
 				(!this.workspaceEnabled || this.workspaceManager?.isConnected() === true),
 		};
