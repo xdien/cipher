@@ -1,16 +1,19 @@
 import { config } from 'dotenv';
 import { z } from 'zod';
 
-// Load environment variables from .env file - skip entirely in MCP mode
+// Load environment variables from .env file 
+// Note: In MCP mode, the MCP host typically provides required environment variables
+// via the "env" field in MCP configuration, but .env files can still provide additional
+// configuration like workspace memory settings that may not be in MCP config
 const isMcpMode =
 	process.argv.includes('--mode') && process.argv[process.argv.indexOf('--mode') + 1] === 'mcp';
 
 if (isMcpMode) {
-	// In MCP mode, skip .env file loading entirely since all environment variables
-	// are provided via the "env" field in the MCP configuration
-	// No need to load .env files as MCP host provides all required environment variables
+	// In MCP mode, load .env file but with lower priority than MCP-provided env vars
+	// This allows .env to provide additional configuration while letting MCP config take precedence
+	config({ override: false });
 } else {
-	// Normal mode - load environment variables from .env file
+	// Normal mode - load environment variables from .env file with override
 	config();
 }
 

@@ -308,49 +308,50 @@ export const workspaceSearchTool: InternalTool = {
 			const workspaceCollectionName = env.WORKSPACE_VECTOR_STORE_COLLECTION || 'workspace_memory';
 			let workspaceStore = null;
 
-			// Check if we have a DualCollectionVectorManager or similar
-			const isDualManager =
-				vectorStoreManager.constructor.name === 'DualCollectionVectorManager' ||
-				(typeof vectorStoreManager.getStore === 'function' &&
-					vectorStoreManager.getStore.length === 1); // getStore(type) signature
+			// Detect vector store manager type and get workspace store
+			const managerName = vectorStoreManager.constructor.name;
+			logger.debug('WorkspaceSearch: Detecting vector manager type', {
+				managerName,
+				collectionName: workspaceCollectionName,
+				hasGetStore: typeof vectorStoreManager.getStore === 'function',
+			});
 
-			if (isDualManager) {
-				logger.debug('WorkspaceSearch: Using DualCollectionVectorManager for workspace search', {
-					collectionName: workspaceCollectionName,
-				});
-
-				try {
-					// Try to get workspace collection
+			// Try workspace collection access methods in order of preference
+			try {
+				// Method 1: Try workspace-specific getter (MultiCollectionVectorManager)
+				if (managerName === 'MultiCollectionVectorManager' || managerName.includes('Multi')) {
+					logger.debug('WorkspaceSearch: Using MultiCollectionVectorManager for workspace search');
 					workspaceStore = (vectorStoreManager as any).getStore('workspace');
-				} catch {
-					// Fallback to named collection or default store
+				}
+				// Method 2: Try dual collection manager (DualCollectionVectorManager)
+				else if (managerName === 'DualCollectionVectorManager' || managerName.includes('Dual')) {
+					logger.debug('WorkspaceSearch: Using DualCollectionVectorManager - trying workspace store');
 					try {
-						workspaceStore =
-							(vectorStoreManager as any).getNamedStore?.(workspaceCollectionName) ||
-							vectorStoreManager.getStore();
+						workspaceStore = (vectorStoreManager as any).getStore('workspace');
+					} catch {
+						// DualCollectionVectorManager doesn't have workspace, fall back
+						logger.debug('WorkspaceSearch: DualCollectionVectorManager has no workspace - using knowledge store');
+						workspaceStore = (vectorStoreManager as any).getStore('knowledge');
 						usedFallback = true;
-					} catch (fallbackError) {
-						throw new Error(
-							`Workspace collection failed and fallback also failed: ${
-								fallbackError instanceof Error ? fallbackError.message : String(fallbackError)
-							}`
-						);
 					}
 				}
-			} else {
-				// Single collection manager - try to get named store or default
-				logger.debug('WorkspaceSearch: Using single collection manager for workspace search', {
-					collectionName: workspaceCollectionName,
-				});
-
-				try {
+				// Method 3: Single collection manager or named store
+				else {
+					logger.debug('WorkspaceSearch: Using single collection manager');
 					workspaceStore =
 						(vectorStoreManager as any).getNamedStore?.(workspaceCollectionName) ||
 						vectorStoreManager.getStore();
-				} catch {
-					workspaceStore = vectorStoreManager.getStore();
-					usedFallback = true;
+					if (!(vectorStoreManager as any).getNamedStore) {
+						usedFallback = true;
+					}
 				}
+			} catch (error) {
+				// Final fallback to default store
+				logger.debug('WorkspaceSearch: All workspace access methods failed, using default store', {
+					error: error instanceof Error ? error.message : String(error),
+				});
+				workspaceStore = vectorStoreManager.getStore();
+				usedFallback = true;
 			}
 
 			if (!workspaceStore) {

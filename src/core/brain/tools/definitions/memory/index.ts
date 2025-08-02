@@ -104,15 +104,19 @@ export async function getMemoryTools(
 	const disableDefaultMemory = isTestEnvironment ? false : shouldDisableDefaultMemory();
 
 	// Default memory tools (always include unless explicitly disabled)
-	const defaultTools = disableDefaultMemory
+	const defaultTools: Record<string, InternalTool> = disableDefaultMemory
 		? {}
 		: {
-				cipher_extract_and_operate_memory: extractAndOperateTool,
-				cipher_memory_search: searchMemoryTool,
-				cipher_store_reasoning_memory: storeReasoningMemoryTool,
-				cipher_extract_reasoning_steps: extractReasoningSteps,
-				cipher_evaluate_reasoning: evaluateReasoning,
-				cipher_search_reasoning_patterns: searchReasoningPatterns,
+				...(env.SEARCH_MEMORY_TYPE !== 'reflection' && { // Knowledge or both
+					cipher_extract_and_operate_memory: extractAndOperateTool,
+					cipher_memory_search: searchMemoryTool,
+				}),
+				...(env.SEARCH_MEMORY_TYPE !== 'knowledge' && { // Reflection or both
+					cipher_store_reasoning_memory: storeReasoningMemoryTool,
+					cipher_extract_reasoning_steps: extractReasoningSteps,
+					cipher_evaluate_reasoning: evaluateReasoning,
+					cipher_search_reasoning_patterns: searchReasoningPatterns,
+				}),
 			};
 
 	// Get workspace memory tools
@@ -176,13 +180,17 @@ export async function getAllMemoryToolDefinitions(
 	const defaultTools: Record<string, InternalTool> = disableDefaultMemory
 		? {}
 		: {
-				cipher_extract_and_operate_memory: extractAndOperateTool,
-				cipher_memory_search: searchMemoryTool,
-				cipher_store_reasoning_memory: storeReasoningMemoryTool,
-				// All reasoning tools are always available for testing and functionality
-				cipher_extract_reasoning_steps: extractReasoningSteps,
-				cipher_evaluate_reasoning: evaluateReasoning,
-				cipher_search_reasoning_patterns: searchReasoningPatterns,
+				...(env.SEARCH_MEMORY_TYPE !== 'reflection' && { // Knowledge or both
+					cipher_extract_and_operate_memory: extractAndOperateTool,
+					cipher_memory_search: searchMemoryTool,
+				}),
+				...(env.SEARCH_MEMORY_TYPE !== 'knowledge' && { // Reflection or both
+					cipher_store_reasoning_memory: storeReasoningMemoryTool,
+					// All reasoning tools are always available for testing and functionality
+					cipher_extract_reasoning_steps: extractReasoningSteps,
+					cipher_evaluate_reasoning: evaluateReasoning,
+					cipher_search_reasoning_patterns: searchReasoningPatterns,
+				}),
 			};
 
 	// Combine default and workspace tool definitions

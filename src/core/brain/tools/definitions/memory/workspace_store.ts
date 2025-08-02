@@ -519,13 +519,17 @@ export const workspaceStoreTool: InternalTool = {
 
 			const embedder = embeddingManager.getEmbedder('default');
 
-			// Get workspace store
+			// Get workspace store - try to get workspace-specific store, fall back to default
 			const workspaceCollectionName = env.WORKSPACE_VECTOR_STORE_COLLECTION || 'workspace_memory';
 			let workspaceStore;
 			try {
 				logger.debug('WorkspaceStore: Using workspace collection', {
 					collectionName: workspaceCollectionName,
+					hasWorkspaceSpecificType: !!env.WORKSPACE_VECTOR_STORE_TYPE,
+					hasWorkspaceSpecificHost: !!(env.WORKSPACE_VECTOR_STORE_HOST || env.WORKSPACE_VECTOR_STORE_URL),
 				});
+				
+				// Try to get workspace-specific store through various methods
 				workspaceStore =
 					(vectorStoreManager as any).getStore('workspace') ||
 					(vectorStoreManager as any).getNamedStore?.(workspaceCollectionName) ||
