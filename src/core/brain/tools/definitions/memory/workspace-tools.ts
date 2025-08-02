@@ -50,7 +50,7 @@ export async function getWorkspaceTools(
 	const { embeddingEnabled = true } = options;
 
 	// Check if workspace memory is enabled
-	if (!env.USE_WORKSPACE_MEMORY) {
+	if (env.USE_WORKSPACE_MEMORY !== true) {
 		logger.debug('Workspace memory is disabled - excluding all workspace tools');
 		return {};
 	}
@@ -78,7 +78,7 @@ export async function getAllWorkspaceToolDefinitions(
 	const { embeddingEnabled = true } = options;
 
 	// Check if workspace memory is enabled
-	if (!env.USE_WORKSPACE_MEMORY) {
+	if (env.USE_WORKSPACE_MEMORY !== true) {
 		logger.debug('Workspace memory is disabled - no workspace tool definitions');
 		return {};
 	}
@@ -101,7 +101,8 @@ export async function getAllWorkspaceToolDefinitions(
  * Check if default memory should be disabled when workspace memory is active
  */
 export function shouldDisableDefaultMemory(): boolean {
-	return env.USE_WORKSPACE_MEMORY && env.DISABLE_DEFAULT_MEMORY;
+	// Only disable default memory if BOTH conditions are explicitly true
+	return env.USE_WORKSPACE_MEMORY === true && env.DISABLE_DEFAULT_MEMORY === true;
 }
 
 /**

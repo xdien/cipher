@@ -145,11 +145,11 @@ describe('Tool Definitions', () => {
 			// Check knowledge graph tools (conditionally loaded)
 			const { env } = await import('../../../env.js');
 			if (env.KNOWLEDGE_GRAPH_ENABLED) {
-				expect(Object.keys(tools)).toHaveLength(17); // 6 memory + 11 knowledge graph tools
+				expect(Object.keys(tools)).toHaveLength(19); // 6 default memory + 2 workspace + 11 knowledge graph tools
 				expect(tools['add_node']).toBeDefined();
 				expect(tools['search_graph']).toBeDefined();
 			} else {
-				expect(Object.keys(tools)).toHaveLength(6); // Only 6 memory tools
+				expect(Object.keys(tools)).toHaveLength(8); // 6 default memory tools + 2 workspace tools
 				expect(tools['add_node']).toBeUndefined();
 				expect(tools['search_graph']).toBeUndefined();
 			}
@@ -169,12 +169,12 @@ describe('Tool Definitions', () => {
 			// Check knowledge graph tools (conditionally registered)
 			const { env } = await import('../../../env.js');
 			if (env.KNOWLEDGE_GRAPH_ENABLED) {
-				expect(result.total).toBe(17);
-				expect(result.registered.length).toBe(17);
+				expect(result.total).toBe(19);
+				expect(result.registered.length).toBe(19);
 				expect(result.failed.length).toBe(0);
 			} else {
-				expect(result.total).toBe(6);
-				expect(result.registered.length).toBe(6);
+				expect(result.total).toBe(8);
+				expect(result.registered.length).toBe(8);
 				expect(result.failed.length).toBe(0);
 			}
 
@@ -220,7 +220,7 @@ describe('Tool Definitions', () => {
 
 			// Check based on environment setting
 			const { env } = await import('../../../env.js');
-			const expectedTotal = env.KNOWLEDGE_GRAPH_ENABLED ? 17 : 6;
+			const expectedTotal = env.KNOWLEDGE_GRAPH_ENABLED ? 19 : 8;
 
 			expect(result.total).toBe(expectedTotal);
 			expect(result.registered.length).toBe(0);

@@ -131,6 +131,7 @@ export function extractWorkspaceInfo(text: string): {
 	// Extract progress information
 	const progressPatterns = [
 		/(?:working on|implementing|developing|building)\s+([^.!?]+)/i,
+		/(?:blocked on|stuck on|waiting on)\s+([^.!?]+)/i,
 		/(?:feature|component|module):\s*([^.!?]+)/i,
 		/(?:task|ticket|issue):\s*([^.!?]+)/i,
 	];
@@ -228,7 +229,7 @@ export function extractWorkspaceInfo(text: string): {
 
 	// Repository patterns
 	const repoPatterns = [
-		/(?:repo|repository):\s*([a-zA-Z0-9_/-]+)/i,
+		/(?:repo|repository):\s*([a-zA-Z0-9_/.-]+)/i,
 		/(?:github\.com|gitlab\.com)\/([a-zA-Z0-9_/-]+)/i,
 		/git\s+clone\s+.*\/([a-zA-Z0-9_-]+)\.git/i,
 	];

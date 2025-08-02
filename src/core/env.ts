@@ -96,7 +96,19 @@ const envSchema = z.object({
 	USE_WORKSPACE_MEMORY: z.boolean().default(false),
 	DISABLE_DEFAULT_MEMORY: z.boolean().default(false),
 	WORKSPACE_VECTOR_STORE_TYPE: z.enum(['qdrant', 'milvus', 'in-memory']).optional(),
+	WORKSPACE_VECTOR_STORE_HOST: z.string().optional(),
+	WORKSPACE_VECTOR_STORE_PORT: z.number().optional(),
+	WORKSPACE_VECTOR_STORE_URL: z.string().optional(),
+	WORKSPACE_VECTOR_STORE_API_KEY: z.string().optional(),
+	WORKSPACE_VECTOR_STORE_USERNAME: z.string().optional(),
+	WORKSPACE_VECTOR_STORE_PASSWORD: z.string().optional(),
 	WORKSPACE_VECTOR_STORE_COLLECTION: z.string().default('workspace_memory'),
+	WORKSPACE_VECTOR_STORE_DIMENSION: z.number().default(1536),
+	WORKSPACE_VECTOR_STORE_DISTANCE: z
+		.enum(['Cosine', 'Euclidean', 'Dot', 'Manhattan'])
+		.default('Cosine'),
+	WORKSPACE_VECTOR_STORE_ON_DISK: z.boolean().default(false),
+	WORKSPACE_VECTOR_STORE_MAX_VECTORS: z.number().default(10000),
 });
 
 type EnvSchema = z.infer<typeof envSchema>;
@@ -280,8 +292,34 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 				return process.env.DISABLE_DEFAULT_MEMORY === 'true';
 			case 'WORKSPACE_VECTOR_STORE_TYPE':
 				return process.env.WORKSPACE_VECTOR_STORE_TYPE;
+			case 'WORKSPACE_VECTOR_STORE_HOST':
+				return process.env.WORKSPACE_VECTOR_STORE_HOST;
+			case 'WORKSPACE_VECTOR_STORE_PORT':
+				return process.env.WORKSPACE_VECTOR_STORE_PORT
+					? parseInt(process.env.WORKSPACE_VECTOR_STORE_PORT, 10)
+					: undefined;
+			case 'WORKSPACE_VECTOR_STORE_URL':
+				return process.env.WORKSPACE_VECTOR_STORE_URL;
+			case 'WORKSPACE_VECTOR_STORE_API_KEY':
+				return process.env.WORKSPACE_VECTOR_STORE_API_KEY;
+			case 'WORKSPACE_VECTOR_STORE_USERNAME':
+				return process.env.WORKSPACE_VECTOR_STORE_USERNAME;
+			case 'WORKSPACE_VECTOR_STORE_PASSWORD':
+				return process.env.WORKSPACE_VECTOR_STORE_PASSWORD;
 			case 'WORKSPACE_VECTOR_STORE_COLLECTION':
 				return process.env.WORKSPACE_VECTOR_STORE_COLLECTION || 'workspace_memory';
+			case 'WORKSPACE_VECTOR_STORE_DIMENSION':
+				return process.env.WORKSPACE_VECTOR_STORE_DIMENSION
+					? parseInt(process.env.WORKSPACE_VECTOR_STORE_DIMENSION, 10)
+					: 1536;
+			case 'WORKSPACE_VECTOR_STORE_DISTANCE':
+				return process.env.WORKSPACE_VECTOR_STORE_DISTANCE || 'Cosine';
+			case 'WORKSPACE_VECTOR_STORE_ON_DISK':
+				return process.env.WORKSPACE_VECTOR_STORE_ON_DISK === 'true';
+			case 'WORKSPACE_VECTOR_STORE_MAX_VECTORS':
+				return process.env.WORKSPACE_VECTOR_STORE_MAX_VECTORS
+					? parseInt(process.env.WORKSPACE_VECTOR_STORE_MAX_VECTORS, 10)
+					: 10000;
 			default:
 				return process.env[prop];
 		}
@@ -412,8 +450,24 @@ export const validateEnv = () => {
 		USE_WORKSPACE_MEMORY: process.env.USE_WORKSPACE_MEMORY === 'true',
 		DISABLE_DEFAULT_MEMORY: process.env.DISABLE_DEFAULT_MEMORY === 'true',
 		WORKSPACE_VECTOR_STORE_TYPE: process.env.WORKSPACE_VECTOR_STORE_TYPE,
+		WORKSPACE_VECTOR_STORE_HOST: process.env.WORKSPACE_VECTOR_STORE_HOST,
+		WORKSPACE_VECTOR_STORE_PORT: process.env.WORKSPACE_VECTOR_STORE_PORT
+			? parseInt(process.env.WORKSPACE_VECTOR_STORE_PORT, 10)
+			: undefined,
+		WORKSPACE_VECTOR_STORE_URL: process.env.WORKSPACE_VECTOR_STORE_URL,
+		WORKSPACE_VECTOR_STORE_API_KEY: process.env.WORKSPACE_VECTOR_STORE_API_KEY,
+		WORKSPACE_VECTOR_STORE_USERNAME: process.env.WORKSPACE_VECTOR_STORE_USERNAME,
+		WORKSPACE_VECTOR_STORE_PASSWORD: process.env.WORKSPACE_VECTOR_STORE_PASSWORD,
 		WORKSPACE_VECTOR_STORE_COLLECTION:
 			process.env.WORKSPACE_VECTOR_STORE_COLLECTION || 'workspace_memory',
+		WORKSPACE_VECTOR_STORE_DIMENSION: process.env.WORKSPACE_VECTOR_STORE_DIMENSION
+			? parseInt(process.env.WORKSPACE_VECTOR_STORE_DIMENSION, 10)
+			: 1536,
+		WORKSPACE_VECTOR_STORE_DISTANCE: process.env.WORKSPACE_VECTOR_STORE_DISTANCE || 'Cosine',
+		WORKSPACE_VECTOR_STORE_ON_DISK: process.env.WORKSPACE_VECTOR_STORE_ON_DISK === 'true',
+		WORKSPACE_VECTOR_STORE_MAX_VECTORS: process.env.WORKSPACE_VECTOR_STORE_MAX_VECTORS
+			? parseInt(process.env.WORKSPACE_VECTOR_STORE_MAX_VECTORS, 10)
+			: 10000,
 	};
 
 	const result = envSchema.safeParse(envToValidate);

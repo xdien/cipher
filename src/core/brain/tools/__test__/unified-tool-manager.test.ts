@@ -308,11 +308,11 @@ describe('UnifiedToolManager', () => {
 			// Internal tools stats should reflect current implementation
 			const { env } = await import('../../../env.js');
 			if (env.KNOWLEDGE_GRAPH_ENABLED) {
-				expect(stats.internalTools.totalTools).toBe(17);
+				expect(stats.internalTools.totalTools).toBe(19);
 			} else {
-				expect(stats.internalTools.totalTools).toBe(6);
+				expect(stats.internalTools.totalTools).toBe(8);
 			}
-			expect(stats.internalTools.toolsByCategory.memory).toBe(6);
+			expect(stats.internalTools.toolsByCategory.memory).toBe(8);
 		});
 
 		it('should handle disabled tool managers in stats', () => {
