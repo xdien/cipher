@@ -256,10 +256,13 @@ export const workspaceSearchTool: InternalTool = {
 			try {
 				queryEmbedding = await embedder?.embed(query);
 			} catch (embedError) {
-				logger.error('WorkspaceSearch: Failed to generate embedding, disabling embeddings globally', {
-					error: embedError instanceof Error ? embedError.message : String(embedError),
-					provider: embedder.getConfig().type,
-				});
+				logger.error(
+					'WorkspaceSearch: Failed to generate embedding, disabling embeddings globally',
+					{
+						error: embedError instanceof Error ? embedError.message : String(embedError),
+						provider: embedder.getConfig().type,
+					}
+				);
 
 				// Immediately disable embeddings globally on first failure
 				if (context?.services?.embeddingManager && embedError instanceof Error) {
@@ -322,7 +325,8 @@ export const workspaceSearchTool: InternalTool = {
 				} catch {
 					// Fallback to named collection or default store
 					try {
-						workspaceStore = (vectorStoreManager as any).getNamedStore?.(workspaceCollectionName) ||
+						workspaceStore =
+							(vectorStoreManager as any).getNamedStore?.(workspaceCollectionName) ||
 							vectorStoreManager.getStore();
 						usedFallback = true;
 					} catch (fallbackError) {
@@ -340,9 +344,10 @@ export const workspaceSearchTool: InternalTool = {
 				});
 
 				try {
-					workspaceStore = (vectorStoreManager as any).getNamedStore?.(workspaceCollectionName) ||
+					workspaceStore =
+						(vectorStoreManager as any).getNamedStore?.(workspaceCollectionName) ||
 						vectorStoreManager.getStore();
-				} catch (error) {
+				} catch {
 					workspaceStore = vectorStoreManager.getStore();
 					usedFallback = true;
 				}
@@ -384,62 +389,62 @@ export const workspaceSearchTool: InternalTool = {
 
 			// Apply additional filters
 			if (filters.domain) {
-				filteredResults = filteredResults.filter(result => 
-					result.payload?.domain === filters.domain
+				filteredResults = filteredResults.filter(
+					result => result.payload?.domain === filters.domain
 				);
 			}
 
 			if (filters.team_member) {
-				filteredResults = filteredResults.filter(result => 
+				filteredResults = filteredResults.filter(result =>
 					result.payload?.teamMember?.toLowerCase().includes(filters.team_member.toLowerCase())
 				);
 			}
 
 			if (filters.project) {
-				filteredResults = filteredResults.filter(result => 
-					result.payload?.workContext?.project?.toLowerCase().includes(filters.project.toLowerCase())
+				filteredResults = filteredResults.filter(result =>
+					result.payload?.workContext?.project
+						?.toLowerCase()
+						.includes(filters.project.toLowerCase())
 				);
 			}
 
 			if (filters.status) {
-				filteredResults = filteredResults.filter(result => 
-					result.payload?.currentProgress?.status === filters.status
+				filteredResults = filteredResults.filter(
+					result => result.payload?.currentProgress?.status === filters.status
 				);
 			}
 
 			// Take top K results overall and format
-			const finalResults = filteredResults
-				.slice(0, topK)
-				.map(result => {
-					const rawPayload = result.payload || {};
-					const payload = rawPayload as WorkspacePayload;
+			const finalResults = filteredResults.slice(0, topK).map(result => {
+				const rawPayload = result.payload || {};
+				const payload = rawPayload as WorkspacePayload;
 
-					// Return unified result format with workspace payload data
-					const baseResult = {
-						id: result.id || payload.id || 'unknown',
-						text: payload.text || 'No content available',
-						tags: payload.tags || [],
-						timestamp: payload.timestamp || new Date().toISOString(),
-						similarity: result.score || 0,
-						version: payload.version || 2,
-						source: 'workspace' as const,
-						memoryType: 'workspace' as const,
-					};
+				// Return unified result format with workspace payload data
+				const baseResult = {
+					id: result.id || payload.id || 'unknown',
+					text: payload.text || 'No content available',
+					tags: payload.tags || [],
+					timestamp: payload.timestamp || new Date().toISOString(),
+					similarity: result.score || 0,
+					version: payload.version || 2,
+					source: 'workspace' as const,
+					memoryType: 'workspace' as const,
+				};
 
-					// Add workspace-specific fields
-					return {
-						...baseResult,
-						...(payload.teamMember && { teamMember: payload.teamMember }),
-						...(payload.currentProgress && { currentProgress: payload.currentProgress }),
-						...(payload.bugsEncountered && { bugsEncountered: payload.bugsEncountered }),
-						...(payload.workContext && { workContext: payload.workContext }),
-						confidence: payload.confidence || 0,
-						event: payload.event,
-						...(payload.domain && { domain: payload.domain }),
-						qualitySource: payload.qualitySource,
-						...(payload.sourceSessionId && { sourceSessionId: payload.sourceSessionId }),
-					};
-				});
+				// Add workspace-specific fields
+				return {
+					...baseResult,
+					...(payload.teamMember && { teamMember: payload.teamMember }),
+					...(payload.currentProgress && { currentProgress: payload.currentProgress }),
+					...(payload.bugsEncountered && { bugsEncountered: payload.bugsEncountered }),
+					...(payload.workContext && { workContext: payload.workContext }),
+					confidence: payload.confidence || 0,
+					event: payload.event,
+					...(payload.domain && { domain: payload.domain }),
+					qualitySource: payload.qualitySource,
+					...(payload.sourceSessionId && { sourceSessionId: payload.sourceSessionId }),
+				};
+			});
 
 			// Calculate statistics
 			const totalResults = finalResults.length;

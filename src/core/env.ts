@@ -412,7 +412,8 @@ export const validateEnv = () => {
 		USE_WORKSPACE_MEMORY: process.env.USE_WORKSPACE_MEMORY === 'true',
 		DISABLE_DEFAULT_MEMORY: process.env.DISABLE_DEFAULT_MEMORY === 'true',
 		WORKSPACE_VECTOR_STORE_TYPE: process.env.WORKSPACE_VECTOR_STORE_TYPE,
-		WORKSPACE_VECTOR_STORE_COLLECTION: process.env.WORKSPACE_VECTOR_STORE_COLLECTION || 'workspace_memory',
+		WORKSPACE_VECTOR_STORE_COLLECTION:
+			process.env.WORKSPACE_VECTOR_STORE_COLLECTION || 'workspace_memory',
 	};
 
 	const result = envSchema.safeParse(envToValidate);

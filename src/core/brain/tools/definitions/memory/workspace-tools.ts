@@ -15,10 +15,10 @@ import { logger } from '../../../../logger/index.js';
 export { workspaceSearchTool, workspaceStoreTool };
 
 // Export workspace payload utilities
-export { 
-	createWorkspacePayload, 
+export {
+	createWorkspacePayload,
 	extractWorkspaceInfo,
-	type WorkspacePayload 
+	type WorkspacePayload,
 } from './workspace-payloads.js';
 
 // Export workspace configuration
@@ -58,10 +58,7 @@ export async function getWorkspaceTools(
 	// If embeddings are disabled, exclude all embedding-dependent tools
 	if (!embeddingEnabled) {
 		logger.warn('Embeddings disabled - excluding all embedding-dependent workspace tools', {
-			excludedTools: [
-				'cipher_workspace_search',
-				'cipher_workspace_store',
-			],
+			excludedTools: ['cipher_workspace_search', 'cipher_workspace_store'],
 		});
 		return {};
 	}
@@ -152,7 +149,9 @@ export function validateWorkspaceMemorySetup(): {
 
 	// Check if both workspace and default memory are enabled
 	if (env.USE_WORKSPACE_MEMORY && !env.DISABLE_DEFAULT_MEMORY) {
-		warnings.push('Both workspace and default memory are enabled - consider setting DISABLE_DEFAULT_MEMORY=true for workspace-only mode');
+		warnings.push(
+			'Both workspace and default memory are enabled - consider setting DISABLE_DEFAULT_MEMORY=true for workspace-only mode'
+		);
 	}
 
 	// Check collection name
@@ -160,12 +159,19 @@ export function validateWorkspaceMemorySetup(): {
 	if (!collectionName) {
 		warnings.push('WORKSPACE_VECTOR_STORE_COLLECTION not set, using default "workspace_memory"');
 	} else if (collectionName === env.VECTOR_STORE_COLLECTION) {
-		issues.push('Workspace and default memory collections have the same name - this will cause conflicts');
+		issues.push(
+			'Workspace and default memory collections have the same name - this will cause conflicts'
+		);
 	}
 
 	// Check workspace vector store type
-	if (env.WORKSPACE_VECTOR_STORE_TYPE && env.WORKSPACE_VECTOR_STORE_TYPE !== env.VECTOR_STORE_TYPE) {
-		warnings.push(`Workspace memory will use ${env.WORKSPACE_VECTOR_STORE_TYPE} while default memory uses ${env.VECTOR_STORE_TYPE}`);
+	if (
+		env.WORKSPACE_VECTOR_STORE_TYPE &&
+		env.WORKSPACE_VECTOR_STORE_TYPE !== env.VECTOR_STORE_TYPE
+	) {
+		warnings.push(
+			`Workspace memory will use ${env.WORKSPACE_VECTOR_STORE_TYPE} while default memory uses ${env.VECTOR_STORE_TYPE}`
+		);
 	}
 
 	return {
@@ -180,7 +186,7 @@ export function validateWorkspaceMemorySetup(): {
  */
 export function logWorkspaceMemoryStatus(): void {
 	const validation = validateWorkspaceMemorySetup();
-	
+
 	if (env.USE_WORKSPACE_MEMORY) {
 		logger.info('Workspace memory is enabled', {
 			collection: getWorkspaceCollectionName(),

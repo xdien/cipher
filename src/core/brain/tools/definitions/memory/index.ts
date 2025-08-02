@@ -116,14 +116,16 @@ export async function getMemoryTools(
 		: extractAndOperateMemoryTool;
 
 	// Default memory tools
-	const defaultTools = disableDefaultMemory ? {} : {
-		cipher_extract_and_operate_memory: extractAndOperateTool,
-		cipher_memory_search: searchMemoryTool,
-		cipher_store_reasoning_memory: storeReasoningMemoryTool,
-		cipher_extract_reasoning_steps: extractReasoningSteps,
-		cipher_evaluate_reasoning: evaluateReasoning,
-		cipher_search_reasoning_patterns: searchReasoningPatterns,
-	};
+	const defaultTools = disableDefaultMemory
+		? {}
+		: {
+				cipher_extract_and_operate_memory: extractAndOperateTool,
+				cipher_memory_search: searchMemoryTool,
+				cipher_store_reasoning_memory: storeReasoningMemoryTool,
+				cipher_extract_reasoning_steps: extractReasoningSteps,
+				cipher_evaluate_reasoning: evaluateReasoning,
+				cipher_search_reasoning_patterns: searchReasoningPatterns,
+			};
 
 	// Combine default and workspace tools
 	return {
@@ -170,15 +172,17 @@ export async function getAllMemoryToolDefinitions(
 		: extractAndOperateMemoryTool;
 
 	// Default memory tools
-	const defaultTools: Record<string, InternalTool> = disableDefaultMemory ? {} : {
-		extract_and_operate_memory: extractAndOperateTool,
-		memory_search: searchMemoryTool,
-		store_reasoning_memory: storeReasoningMemoryTool,
-		// All reasoning tools are always available for testing and functionality
-		extract_reasoning_steps: extractReasoningSteps,
-		evaluate_reasoning: evaluateReasoning,
-		search_reasoning_patterns: searchReasoningPatterns,
-	};
+	const defaultTools: Record<string, InternalTool> = disableDefaultMemory
+		? {}
+		: {
+				extract_and_operate_memory: extractAndOperateTool,
+				memory_search: searchMemoryTool,
+				store_reasoning_memory: storeReasoningMemoryTool,
+				// All reasoning tools are always available for testing and functionality
+				extract_reasoning_steps: extractReasoningSteps,
+				evaluate_reasoning: evaluateReasoning,
+				search_reasoning_patterns: searchReasoningPatterns,
+			};
 
 	// Combine default and workspace tool definitions
 	return {

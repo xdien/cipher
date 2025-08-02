@@ -88,8 +88,10 @@ function isWorkspaceSignificantContent(content: string): boolean {
 	}
 
 	// Check for date/time patterns with work context
-	if (/\b(today|yesterday|tomorrow|monday|tuesday|wednesday|thursday|friday|weekend)\b/i.test(text) &&
-		/\b(deadline|due|meeting|standup|demo|release|deploy)\b/i.test(text)) {
+	if (
+		/\b(today|yesterday|tomorrow|monday|tuesday|wednesday|thursday|friday|weekend)\b/i.test(text) &&
+		/\b(deadline|due|meeting|standup|demo|release|deploy)\b/i.test(text)
+	) {
 		return true;
 	}
 
@@ -100,10 +102,40 @@ function isWorkspaceSignificantContent(content: string): boolean {
 
 	// Check for work-related keywords density
 	const workKeywords = [
-		'work', 'task', 'project', 'team', 'feature', 'bug', 'fix', 'implement', 'develop',
-		'build', 'deploy', 'test', 'review', 'merge', 'commit', 'branch', 'issue', 'ticket',
-		'milestone', 'deadline', 'progress', 'status', 'complete', 'done', 'blocked', 'priority',
-		'assign', 'collaborate', 'pair', 'help', 'support', 'discuss', 'meeting', 'standup',
+		'work',
+		'task',
+		'project',
+		'team',
+		'feature',
+		'bug',
+		'fix',
+		'implement',
+		'develop',
+		'build',
+		'deploy',
+		'test',
+		'review',
+		'merge',
+		'commit',
+		'branch',
+		'issue',
+		'ticket',
+		'milestone',
+		'deadline',
+		'progress',
+		'status',
+		'complete',
+		'done',
+		'blocked',
+		'priority',
+		'assign',
+		'collaborate',
+		'pair',
+		'help',
+		'support',
+		'discuss',
+		'meeting',
+		'standup',
 	];
 
 	const words = text.split(/\s+/);
@@ -161,9 +193,18 @@ function extractWorkspaceTags(content: string): string[] {
 
 	// Domain tags
 	const domainPatterns = [
-		{ pattern: /\b(?:frontend|front-end|ui|ux|react|vue|angular|html|css|javascript|typescript)\b/i, tag: 'frontend' },
-		{ pattern: /\b(?:backend|back-end|server|api|database|sql|node|express|django|flask)\b/i, tag: 'backend' },
-		{ pattern: /\b(?:devops|deployment|docker|kubernetes|ci|cd|pipeline|infrastructure)\b/i, tag: 'devops' },
+		{
+			pattern: /\b(?:frontend|front-end|ui|ux|react|vue|angular|html|css|javascript|typescript)\b/i,
+			tag: 'frontend',
+		},
+		{
+			pattern: /\b(?:backend|back-end|server|api|database|sql|node|express|django|flask)\b/i,
+			tag: 'backend',
+		},
+		{
+			pattern: /\b(?:devops|deployment|docker|kubernetes|ci|cd|pipeline|infrastructure)\b/i,
+			tag: 'devops',
+		},
 		{ pattern: /\b(?:testing|qa|quality|unit test|integration test|e2e)\b/i, tag: 'testing' },
 		{ pattern: /\b(?:design|ux|ui|mockup|wireframe|prototype)\b/i, tag: 'design' },
 	];
@@ -231,15 +272,18 @@ export const workspaceStoreTool: InternalTool = {
 				oneOf: [
 					{
 						type: 'string',
-						description: 'A single user interaction or conversation text to extract workspace information from.',
+						description:
+							'A single user interaction or conversation text to extract workspace information from.',
 					},
 					{
 						type: 'array',
 						items: { type: 'string' },
-						description: 'Multiple user interactions or conversation texts to extract workspace information from.',
+						description:
+							'Multiple user interactions or conversation texts to extract workspace information from.',
 					},
 				],
-				description: 'Raw user interaction(s) or conversation text(s) to extract workspace information from.',
+				description:
+					'Raw user interaction(s) or conversation text(s) to extract workspace information from.',
 			},
 			context: {
 				type: 'object',
@@ -247,7 +291,10 @@ export const workspaceStoreTool: InternalTool = {
 				properties: {
 					sessionId: { type: 'string', description: 'Current session identifier' },
 					teamId: { type: 'string', description: 'Team identifier' },
-					projectId: { type: 'string', description: 'Project identifier for scoped workspace memory' },
+					projectId: {
+						type: 'string',
+						description: 'Project identifier for scoped workspace memory',
+					},
 					userId: { type: 'string', description: 'User identifier' },
 					conversationTopic: { type: 'string', description: 'Current conversation topic or theme' },
 					workEnvironment: { type: 'string', description: 'Work environment (dev, staging, prod)' },
@@ -326,9 +373,7 @@ export const workspaceStoreTool: InternalTool = {
 				context?.services?.embeddingManager &&
 				!context.services.embeddingManager.hasAvailableEmbeddings()
 			) {
-				logger.debug(
-					'WorkspaceStore: No available embeddings, skipping workspace operations'
-				);
+				logger.debug('WorkspaceStore: No available embeddings, skipping workspace operations');
 				return {
 					success: true,
 					mode: 'chat-only',
@@ -403,7 +448,8 @@ export const workspaceStoreTool: InternalTool = {
 					id: `workspace_content_${Math.floor(Date.now() / 1000)}_${i}`,
 					preview: content.substring(0, 100) + (content.length > 100 ? '...' : ''),
 					metadata: {
-						hasTeamMention: /@[a-zA-Z_]+/.test(content) || /\b(team|colleague|developer)\b/i.test(content),
+						hasTeamMention:
+							/@[a-zA-Z_]+/.test(content) || /\b(team|colleague|developer)\b/i.test(content),
 						hasProgress: /\b(progress|complete|done|finish|\d+%)\b/i.test(content),
 						hasBugInfo: /\b(bug|error|issue|fix|resolve)\b/i.test(content),
 						hasProjectInfo: /\b(project|milestone|deadline|feature)\b/i.test(content),
@@ -414,9 +460,7 @@ export const workspaceStoreTool: InternalTool = {
 
 			// Step 2: Enhanced error handling for service dependencies
 			if (!context?.services) {
-				logger.warn(
-					'WorkspaceStore: No services context available, using basic processing'
-				);
+				logger.warn('WorkspaceStore: No services context available, using basic processing');
 				// Return basic processing without vector operations
 				const basicWorkspaceActions = significantContent.map((content, i) => ({
 					id: generateSafeWorkspaceId(i),
@@ -542,13 +586,10 @@ export const workspaceStoreTool: InternalTool = {
 					continue;
 				}
 
-				logger.debug(
-					`WorkspaceStore: Processing content ${i + 1}/${significantContent.length}`,
-					{
-						contentPreview: content.substring(0, 80) + (content.length > 80 ? '...' : ''),
-						contentLength: content.length,
-					}
-				);
+				logger.debug(`WorkspaceStore: Processing content ${i + 1}/${significantContent.length}`, {
+					contentPreview: content.substring(0, 80) + (content.length > 80 ? '...' : ''),
+					contentLength: content.length,
+				});
 
 				try {
 					// Embed the content with error handling
@@ -627,7 +668,8 @@ export const workspaceStoreTool: InternalTool = {
 						} else if (content.length > (mostSimilar.payload?.text?.length ?? 0)) {
 							action = 'UPDATE';
 							targetId = mostSimilar.id;
-							reason = 'Content provides more complete workspace information; updating existing memory.';
+							reason =
+								'Content provides more complete workspace information; updating existing memory.';
 							confidence = similarity;
 						} else {
 							action = 'NONE';
@@ -700,8 +742,9 @@ export const workspaceStoreTool: InternalTool = {
 			// Step 3: Enhanced persistence with better error handling
 			logger.debug('WorkspaceStore: Starting workspace memory persistence operations', {
 				totalActions: workspaceActions.length,
-				persistableActions: workspaceActions.filter(a => ['ADD', 'UPDATE', 'DELETE'].includes(a.event))
-					.length,
+				persistableActions: workspaceActions.filter(a =>
+					['ADD', 'UPDATE', 'DELETE'].includes(a.event)
+				).length,
 				skippableActions: workspaceActions.filter(a => a.event === 'NONE').length,
 			});
 

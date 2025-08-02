@@ -14,13 +14,13 @@ export interface WorkspacePayload extends BasePayload {
 	tags: string[];
 	confidence: number;
 	event: 'ADD' | 'UPDATE' | 'DELETE' | 'NONE';
-	
+
 	// Workspace-specific fields
-	teamMember?: string;           // Name/ID of team member
+	teamMember?: string; // Name/ID of team member
 	currentProgress?: {
-		feature: string;             // Feature being worked on
+		feature: string; // Feature being worked on
 		status: 'in-progress' | 'completed' | 'blocked' | 'reviewing';
-		completion?: number;         // 0-100 percentage
+		completion?: number; // 0-100 percentage
 	};
 
 	bugsEncountered?: Array<{
@@ -30,13 +30,13 @@ export interface WorkspacePayload extends BasePayload {
 	}>;
 
 	workContext?: {
-		project?: string;            // Project identifier
-		repository?: string;         // Git repo if relevant
-		branch?: string;             // Current working branch
+		project?: string; // Project identifier
+		repository?: string; // Git repo if relevant
+		branch?: string; // Current working branch
 	};
 
-	domain?: string;               // e.g., 'frontend', 'backend', 'devops'
-	sourceSessionId?: string;      // Session that created this memory
+	domain?: string; // e.g., 'frontend', 'backend', 'devops'
+	sourceSessionId?: string; // Session that created this memory
 	qualitySource: 'similarity' | 'llm' | 'heuristic'; // How quality was determined
 }
 
@@ -146,7 +146,7 @@ export function extractWorkspaceInfo(text: string): {
 		const match = text.match(pattern);
 		if (match && match[1]) {
 			const feature = match[1].trim();
-			
+
 			// Determine status
 			let status: 'in-progress' | 'completed' | 'blocked' | 'reviewing' = 'in-progress';
 			for (const statusPattern of statusPatterns) {
@@ -159,7 +159,7 @@ export function extractWorkspaceInfo(text: string): {
 			// Extract completion percentage
 			let completion: number | undefined;
 			const completionMatch = text.match(/(\d+)%/);
-			if (completionMatch) {
+			if (completionMatch && completionMatch[1]) {
 				completion = parseInt(completionMatch[1], 10);
 			}
 
@@ -186,7 +186,7 @@ export function extractWorkspaceInfo(text: string): {
 		const match = text.match(pattern);
 		if (match && match[1]) {
 			const description = match[1].trim();
-			
+
 			// Determine severity
 			let severity: 'low' | 'medium' | 'high' | 'critical' = 'medium';
 			for (const severityPattern of severityPatterns) {
@@ -262,10 +262,22 @@ export function extractWorkspaceInfo(text: string): {
 
 	// Extract domain
 	const domainPatterns = [
-		{ pattern: /\b(?:frontend|front-end|ui|ux|react|vue|angular|html|css|javascript|typescript)\b/i, domain: 'frontend' },
-		{ pattern: /\b(?:backend|back-end|server|api|database|sql|node|express|django|flask)\b/i, domain: 'backend' },
-		{ pattern: /\b(?:devops|deployment|docker|kubernetes|ci|cd|pipeline|infrastructure)\b/i, domain: 'devops' },
-		{ pattern: /\b(?:testing|qa|quality|unit test|integration test|e2e)\b/i, domain: 'quality-assurance' },
+		{
+			pattern: /\b(?:frontend|front-end|ui|ux|react|vue|angular|html|css|javascript|typescript)\b/i,
+			domain: 'frontend',
+		},
+		{
+			pattern: /\b(?:backend|back-end|server|api|database|sql|node|express|django|flask)\b/i,
+			domain: 'backend',
+		},
+		{
+			pattern: /\b(?:devops|deployment|docker|kubernetes|ci|cd|pipeline|infrastructure)\b/i,
+			domain: 'devops',
+		},
+		{
+			pattern: /\b(?:testing|qa|quality|unit test|integration test|e2e)\b/i,
+			domain: 'quality-assurance',
+		},
 		{ pattern: /\b(?:design|ux|ui|mockup|wireframe|prototype)\b/i, domain: 'design' },
 	];
 
