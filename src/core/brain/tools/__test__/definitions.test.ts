@@ -144,12 +144,20 @@ describe('Tool Definitions', () => {
 
 			// Check knowledge graph tools (conditionally loaded)
 			const { env } = await import('../../../env.js');
+
+			// Calculate expected tool count based on enabled features
+			let expectedMemoryTools = 6; // Base memory tools
+			if (env.USE_WORKSPACE_MEMORY) {
+				expectedMemoryTools += 2; // workspace_search + workspace_store
+			}
+
 			if (env.KNOWLEDGE_GRAPH_ENABLED) {
-				expect(Object.keys(tools)).toHaveLength(19); // 6 default memory + 2 workspace + 11 knowledge graph tools
+				const expectedTotal = expectedMemoryTools + 11; // memory tools + knowledge graph tools
+				expect(Object.keys(tools)).toHaveLength(expectedTotal);
 				expect(tools['add_node']).toBeDefined();
 				expect(tools['search_graph']).toBeDefined();
 			} else {
-				expect(Object.keys(tools)).toHaveLength(8); // 6 default memory tools + 2 workspace tools
+				expect(Object.keys(tools)).toHaveLength(expectedMemoryTools);
 				expect(tools['add_node']).toBeUndefined();
 				expect(tools['search_graph']).toBeUndefined();
 			}
