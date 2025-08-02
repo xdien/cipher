@@ -219,7 +219,10 @@ program
 			if (agent.services && agent.services.embeddingManager) {
 				agent.services.embeddingManager.getEmbedder('default');
 			} else {
-				console.log('No embeddingManager found in agent.services');
+				// Only log this in non-MCP modes to avoid stdout contamination
+				if (opts.mode !== 'mcp') {
+					console.log('No embeddingManager found in agent.services');
+				}
 			}
 		} catch (err) {
 			const errorMessage = err instanceof Error ? err.message : String(err);

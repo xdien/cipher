@@ -662,10 +662,12 @@ export async function createAgentServices(
 		...advancedProviders.filter(p => !staticProvider || p.name !== staticProvider.name),
 	];
 
-	// DEBUG: Print merged provider list
-	console.log('Merged system prompt providers:');
-	for (const p of mergedProviders) {
-		console.log(`  - ${p.name} (${p.type}) enabled: ${p.enabled}`);
+	// DEBUG: Print merged provider list (skip in MCP mode to avoid stdout contamination)
+	if (appMode !== 'mcp') {
+		console.log('Merged system prompt providers:');
+		for (const p of mergedProviders) {
+			console.log(`  - ${p.name} (${p.type}) enabled: ${p.enabled}`);
+		}
 	}
 
 	// Merge settings: advancedSettings takes precedence, fallback to default
