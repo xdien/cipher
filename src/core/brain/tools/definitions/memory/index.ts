@@ -23,6 +23,15 @@ import {
 	searchReasoningPatterns,
 } from '../../def_reflective_memory_tools.js';
 
+// Import workspace memory tools
+import {
+	getWorkspaceTools,
+	getAllWorkspaceToolDefinitions,
+	shouldDisableDefaultMemory,
+	logWorkspaceMemoryStatus,
+	WORKSPACE_TOOL_INFO,
+} from './workspace-tools.js';
+
 // Import types
 import type { InternalTool } from '../../types.js';
 import { logger } from '../../../../logger/index.js';
@@ -36,6 +45,14 @@ export {
 	evaluateReasoning,
 	searchReasoningPatterns,
 };
+
+// Export workspace memory tools
+export {
+	getWorkspaceTools,
+	getAllWorkspaceToolDefinitions,
+	shouldDisableDefaultMemory,
+	logWorkspaceMemoryStatus,
+} from './workspace-tools.js';
 
 // Array of all memory tools (dynamic based on LLM context)
 export async function getMemoryToolsArray(
@@ -67,9 +84,28 @@ export async function getMemoryTools(
 				'cipher_extract_reasoning_steps',
 				'cipher_evaluate_reasoning',
 				'cipher_search_reasoning_patterns',
+				'cipher_workspace_search',
+				'cipher_workspace_store',
 			],
 		});
 		return {};
+	}
+
+	// Check if default memory should be disabled when workspace memory is active
+	const disableDefaultMemory = shouldDisableDefaultMemory();
+	if (disableDefaultMemory) {
+		logger.info('Default memory disabled due to workspace memory settings');
+	}
+
+	// Get workspace memory tools
+	const workspaceTools = await getWorkspaceTools(options);
+
+	// If workspace memory is enabled and default memory is disabled, return only workspace tools
+	if (disableDefaultMemory && Object.keys(workspaceTools).length > 0) {
+		logger.info('Using workspace-only memory mode', {
+			workspaceTools: Object.keys(workspaceTools),
+		});
+		return workspaceTools;
 	}
 
 	// Use lazy version of extract_and_operate_memory if lazy loading is enabled
@@ -79,13 +115,20 @@ export async function getMemoryTools(
 		? lazyExtractAndOperateMemoryTool
 		: extractAndOperateMemoryTool;
 
-	return {
+	// Default memory tools
+	const defaultTools = disableDefaultMemory ? {} : {
 		cipher_extract_and_operate_memory: extractAndOperateTool,
 		cipher_memory_search: searchMemoryTool,
 		cipher_store_reasoning_memory: storeReasoningMemoryTool,
 		cipher_extract_reasoning_steps: extractReasoningSteps,
 		cipher_evaluate_reasoning: evaluateReasoning,
 		cipher_search_reasoning_patterns: searchReasoningPatterns,
+	};
+
+	// Combine default and workspace tools
+	return {
+		...defaultTools,
+		...workspaceTools,
 	};
 }
 
@@ -102,6 +145,23 @@ export async function getAllMemoryToolDefinitions(
 		return {};
 	}
 
+	// Log workspace memory status
+	logWorkspaceMemoryStatus();
+
+	// Check if default memory should be disabled when workspace memory is active
+	const disableDefaultMemory = shouldDisableDefaultMemory();
+
+	// Get workspace memory tool definitions
+	const workspaceToolDefinitions = await getAllWorkspaceToolDefinitions(options);
+
+	// If workspace memory is enabled and default memory is disabled, return only workspace tools
+	if (disableDefaultMemory && Object.keys(workspaceToolDefinitions).length > 0) {
+		logger.info('Using workspace-only memory tool definitions', {
+			workspaceTools: Object.keys(workspaceToolDefinitions),
+		});
+		return workspaceToolDefinitions;
+	}
+
 	// Use lazy version of extract_and_operate_memory if lazy loading is enabled
 	const useLazyMemoryTool = env.ENABLE_LAZY_LOADING === 'true';
 
@@ -109,8 +169,8 @@ export async function getAllMemoryToolDefinitions(
 		? lazyExtractAndOperateMemoryTool
 		: extractAndOperateMemoryTool;
 
-	// Base tools always available when embeddings are enabled
-	const tools: Record<string, InternalTool> = {
+	// Default memory tools
+	const defaultTools: Record<string, InternalTool> = disableDefaultMemory ? {} : {
 		extract_and_operate_memory: extractAndOperateTool,
 		memory_search: searchMemoryTool,
 		store_reasoning_memory: storeReasoningMemoryTool,
@@ -120,7 +180,11 @@ export async function getAllMemoryToolDefinitions(
 		search_reasoning_patterns: searchReasoningPatterns,
 	};
 
-	return tools;
+	// Combine default and workspace tool definitions
+	return {
+		...defaultTools,
+		...workspaceToolDefinitions,
+	};
 }
 
 /**
@@ -148,6 +212,8 @@ export const MEMORY_TOOL_INFO = {
 		useCase:
 			'Use in background after reasoning is complete to capture successful reasoning patterns for future reference. Only high-quality reasoning is stored.',
 	},
+	// Workspace memory tools
+	...WORKSPACE_TOOL_INFO,
 	// extract_knowledge: { ... },
 	// memory_operation: { ... },
 } as const;

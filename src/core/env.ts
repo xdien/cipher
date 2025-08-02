@@ -92,6 +92,11 @@ const envSchema = z.object({
 	DISABLE_BACKGROUND_PRELOAD: z.string().optional(),
 	LAZY_INIT_TIMEOUT: z.string().optional(),
 	BACKGROUND_PRELOAD_DELAY: z.string().optional(),
+	// Workspace Memory Configuration
+	USE_WORKSPACE_MEMORY: z.boolean().default(false),
+	DISABLE_DEFAULT_MEMORY: z.boolean().default(false),
+	WORKSPACE_VECTOR_STORE_TYPE: z.enum(['qdrant', 'milvus', 'in-memory']).optional(),
+	WORKSPACE_VECTOR_STORE_COLLECTION: z.string().default('workspace_memory'),
 });
 
 type EnvSchema = z.infer<typeof envSchema>;
@@ -268,6 +273,15 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 				return process.env.LAZY_INIT_TIMEOUT;
 			case 'BACKGROUND_PRELOAD_DELAY':
 				return process.env.BACKGROUND_PRELOAD_DELAY;
+			// Workspace Memory Configuration
+			case 'USE_WORKSPACE_MEMORY':
+				return process.env.USE_WORKSPACE_MEMORY === 'true';
+			case 'DISABLE_DEFAULT_MEMORY':
+				return process.env.DISABLE_DEFAULT_MEMORY === 'true';
+			case 'WORKSPACE_VECTOR_STORE_TYPE':
+				return process.env.WORKSPACE_VECTOR_STORE_TYPE;
+			case 'WORKSPACE_VECTOR_STORE_COLLECTION':
+				return process.env.WORKSPACE_VECTOR_STORE_COLLECTION || 'workspace_memory';
 			default:
 				return process.env[prop];
 		}
@@ -394,6 +408,11 @@ export const validateEnv = () => {
 		REFLECTION_VECTOR_STORE_COLLECTION:
 			process.env.REFLECTION_VECTOR_STORE_COLLECTION || 'reflection_memory',
 		DISABLE_REFLECTION_MEMORY: process.env.DISABLE_REFLECTION_MEMORY === 'true',
+		// Workspace Memory Configuration
+		USE_WORKSPACE_MEMORY: process.env.USE_WORKSPACE_MEMORY === 'true',
+		DISABLE_DEFAULT_MEMORY: process.env.DISABLE_DEFAULT_MEMORY === 'true',
+		WORKSPACE_VECTOR_STORE_TYPE: process.env.WORKSPACE_VECTOR_STORE_TYPE,
+		WORKSPACE_VECTOR_STORE_COLLECTION: process.env.WORKSPACE_VECTOR_STORE_COLLECTION || 'workspace_memory',
 	};
 
 	const result = envSchema.safeParse(envToValidate);
