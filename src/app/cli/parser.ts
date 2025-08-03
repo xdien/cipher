@@ -706,6 +706,9 @@ export class CommandParser {
 					case 'delete':
 					case 'del':
 					case 'remove':
+						if (subArgs.length > 0 && subArgs[0] === 'all') {
+							return this.sessionDeleteAllHandler(subArgs.slice(1), agent);
+						}
 						return this.sessionDeleteHandler(subArgs, agent);
 					case 'help':
 					case 'h':
@@ -1522,6 +1525,73 @@ export class CommandParser {
 	}
 
 	/**
+	 * Session delete all subcommand handler
+	 */
+	private async sessionDeleteAllHandler(args: string[], agent: MemAgent): Promise<boolean> {
+		try {
+			const currentSessionId = agent.getCurrentSessionId();
+			const allSessionIds = await agent.listSessions();
+
+			if (allSessionIds.length === 0) {
+				console.log(chalk.yellow('⚠️  No sessions to delete'));
+				return true;
+			}
+
+			// Filter out the current active session
+			const sessionsToDelete = allSessionIds.filter(sessionId => sessionId !== currentSessionId);
+
+			if (sessionsToDelete.length === 0) {
+				console.log(chalk.yellow('⚠️  Only the active session exists, nothing to delete'));
+				console.log(chalk.gray('   The active session cannot be deleted'));
+				return true;
+			}
+
+			console.log(chalk.yellow(`🗑️  About to delete ${sessionsToDelete.length} sessions (excluding active session)`));
+			console.log(chalk.gray(`   Active session "${currentSessionId}" will be preserved`));
+			console.log('');
+
+			let deletedCount = 0;
+			let failedCount = 0;
+			const failedSessions: string[] = [];
+
+			for (const sessionId of sessionsToDelete) {
+				try {
+					await agent.removeSession(sessionId);
+					deletedCount++;
+					console.log(chalk.green(`✅ Deleted session: ${sessionId}`));
+				} catch (error) {
+					failedCount++;
+					failedSessions.push(sessionId);
+					console.log(chalk.red(`❌ Failed to delete session ${sessionId}: ${error instanceof Error ? error.message : String(error)}`));
+				}
+			}
+
+			console.log('');
+			console.log(chalk.cyan('📊 Summary:'));
+			console.log(`  ${chalk.green('Deleted:')} ${deletedCount} sessions`);
+			console.log(`  ${chalk.red('Failed:')} ${failedCount} sessions`);
+			console.log(`  ${chalk.blue('Remaining:')} 1 active session`);
+
+			if (failedSessions.length > 0) {
+				console.log('');
+				console.log(chalk.yellow('⚠️  Failed to delete sessions:'));
+				failedSessions.forEach(sessionId => {
+					console.log(`  - ${sessionId}`);
+				});
+			}
+
+			return true;
+		} catch (error) {
+			console.log(
+				chalk.red(
+					`❌ Failed to delete sessions: ${error instanceof Error ? error.message : String(error)}`
+				)
+			);
+			return false;
+		}
+	}
+
+	/**
 	 * Session help subcommand handler
 	 */
 	private async sessionHelpHandler(_args: string[], _agent: MemAgent): Promise<boolean> {
@@ -1535,6 +1605,7 @@ export class CommandParser {
 			'/session switch <id> - Switch to different session',
 			'/session current - Show current session info',
 			'/session delete <id> - Delete session (cannot delete active)',
+			'/session delete all - Delete all sessions except the active one',
 			'/session help - Show this help message',
 		];
 

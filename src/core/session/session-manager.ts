@@ -279,6 +279,22 @@ export class SessionManager {
 
 		const sessionMetadata = this.sessions.get(sessionId);
 		const removed = this.sessions.delete(sessionId);
+		
+		// Also remove from persistent storage if available
+		if (this.storageManager?.isConnected()) {
+			try {
+				const key = this.getSessionStorageKey(sessionId);
+				const backends = this.storageManager.getBackends();
+				if (backends) {
+					await backends.database.delete(key);
+					logger.debug(`SessionManager: Deleted session ${sessionId} from persistent storage`);
+				}
+			} catch (error) {
+				logger.warn(`SessionManager: Failed to delete session ${sessionId} from persistent storage:`, error);
+				// Continue even if persistent deletion fails
+			}
+		}
+
 		if (removed && sessionMetadata) {
 			// Emit session deleted event
 			this.services.eventManager.emitSessionEvent(sessionId, SessionEvents.SESSION_DELETED, {
@@ -287,7 +303,7 @@ export class SessionManager {
 			});
 
 			logger.info(
-				`SessionManager: Removed session ${sessionId}. Remaining active sessions: ${this.sessions.size}`
+				`SessionManager: Removed session ${sessionId} from memory and storage. Remaining active sessions: ${this.sessions.size}`
 			);
 		}
 		return removed;
