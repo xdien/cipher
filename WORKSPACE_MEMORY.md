@@ -20,20 +20,46 @@ Workspace memory is Cipher's specialized memory system for teams. While Cipher's
 
 Add to your `.env` file:
 
+### Required Settings
+
 ```bash
 # Enable workspace memory
 USE_WORKSPACE_MEMORY=true
 
-# Required: At least one API key for embeddings
+# At least one API key for embeddings
 OPENAI_API_KEY=your-openai-api-key-here
 # OR
 GEMINI_API_KEY=your-gemini-api-key-here
+```
 
-# Optional: Workspace-only mode (disables default memory)
-DISABLE_DEFAULT_MEMORY=true
+### Optional Settings
 
-# Optional: Custom collection name
-WORKSPACE_VECTOR_STORE_COLLECTION=my_team_workspace
+```bash
+# Memory mode
+DISABLE_DEFAULT_MEMORY=true              # Workspace-only mode
+
+# Collection settings
+WORKSPACE_VECTOR_STORE_COLLECTION=workspace_memory
+WORKSPACE_SEARCH_THRESHOLD=0.4
+
+# Vector store configuration (if different from main)
+WORKSPACE_VECTOR_STORE_TYPE=qdrant       # qdrant, milvus, or in-memory
+WORKSPACE_VECTOR_STORE_DIMENSION=1536
+WORKSPACE_VECTOR_STORE_MAX_VECTORS=10000
+
+# Qdrant configuration (only if WORKSPACE_VECTOR_STORE_TYPE=qdrant)
+WORKSPACE_VECTOR_STORE_HOST=localhost
+WORKSPACE_VECTOR_STORE_PORT=6333
+WORKSPACE_VECTOR_STORE_URL=http://localhost:6333
+WORKSPACE_VECTOR_STORE_API_KEY=your-qdrant-api-key
+
+# Milvus configuration (only if WORKSPACE_VECTOR_STORE_TYPE=milvus)
+WORKSPACE_VECTOR_STORE_HOST=localhost
+WORKSPACE_VECTOR_STORE_PORT=19530
+WORKSPACE_VECTOR_STORE_URL=your-milvus-endpoint
+WORKSPACE_VECTOR_STORE_API_KEY=your-milvus-api-key
+WORKSPACE_VECTOR_STORE_USERNAME=your-milvus-zilliz-cloud-username
+WORKSPACE_VECTOR_STORE_PASSWORD=your-milvus-zilliz-cloud-password
 ```
 
 ### 2. Start Using
@@ -124,6 +150,34 @@ interface WorkspacePayload {
 }
 ```
 
+## Memory Architecture
+
+```mermaid
+graph TB
+    subgraph "Cipher Memory System"
+        subgraph "Default Memory (Technical)"
+            DM1[Code patterns<br/>API knowledge<br/>Bug solutions<br/>Architecture<br/>Best practices]
+            DM1 --> KC[Knowledge Memory<br/>Collection]
+            DM1 --> RC[Reflection Memory<br/>Collection]
+        end
+
+        subgraph "Workspace Memory (Team/Project)"
+            WM1[Team member activities<br/>Project progress tracking<br/>Bug reports & fixes]
+            WM1 --> WC[Workspace Memory<br/>Collection]
+        end
+
+        KC --> VDB[(Vector Database<br/>Qdrant/Milvus/In-Memory)]
+        RC --> VDB
+        WC --> VDB
+    end
+
+    subgraph "Configuration Modes"
+        MODE1[Hybrid: Both memories active default]
+        MODE2[Workspace-only: DISABLE_DEFAULT_MEMORY=true]
+        MODE3[Technical-only: USE_WORKSPACE_MEMORY=false]
+    end
+```
+
 ## Usage Examples
 
 ### Progress Updates
@@ -168,91 +222,6 @@ interface WorkspacePayload {
 🔍 "Status of the payment feature"
 → Returns: Progress updates, who's working on it, any blockers
 ```
-
-## Environment Variables
-
-### Required Settings
-
-```bash
-# Enable workspace memory
-USE_WORKSPACE_MEMORY=true
-
-# At least one API key for embeddings
-OPENAI_API_KEY=your-openai-api-key-here
-# OR
-GEMINI_API_KEY=your-gemini-api-key-here
-```
-
-### Optional Settings
-
-```bash
-# Memory mode
-DISABLE_DEFAULT_MEMORY=true              # Workspace-only mode
-
-# Collection settings
-WORKSPACE_VECTOR_STORE_COLLECTION=workspace_memory
-WORKSPACE_SEARCH_THRESHOLD=0.4
-
-# Vector store configuration (if different from main)
-WORKSPACE_VECTOR_STORE_TYPE=qdrant       # qdrant, milvus, or in-memory
-WORKSPACE_VECTOR_STORE_HOST=localhost
-WORKSPACE_VECTOR_STORE_PORT=6333
-WORKSPACE_VECTOR_STORE_DIMENSION=1536
-WORKSPACE_VECTOR_STORE_MAX_VECTORS=10000
-```
-
-## Troubleshooting
-
-### Common Issues
-
-#### "Workspace tools not appearing"
-
-```bash
-# Check these settings:
-USE_WORKSPACE_MEMORY=true
-OPENAI_API_KEY=your-key  # or other embedding provider
-# Ensure DISABLE_EMBEDDINGS is not set to true
-```
-
-#### "No team information being stored"
-
-Use clearer team language with names, @mentions, and specific progress:
-
-```
-✅ "@john completed the authentication feature 100%"
-✅ "Sarah is working on payment integration - currently 60% done"
-❌ "Someone did something" (too vague)
-❌ "Made some progress" (no specifics)
-```
-
-#### "Embedding failures"
-
-Check your API keys and network connectivity:
-
-```bash
-# Verify API keys are valid
-echo $OPENAI_API_KEY
-# Check logs for specific error messages
-CIPHER_LOG_LEVEL=debug
-```
-
-## Current Status
-
-**✅ Implemented:**
-
-- Background workspace_store tool with intelligent extraction
-- Agent-accessible workspace_search tool
-- Environment-based configuration
-- Automatic tool registration
-- Runtime error handling
-
-**⚠️ Limitations:**
-
-- Tool behavior is hardcoded (not configurable)
-- Basic error recovery only
-- No external integrations yet
-
----
 
 ## Summary
 
