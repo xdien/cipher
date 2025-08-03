@@ -31,6 +31,7 @@ Built by [Byterover team](https://byterover.dev/)
 - ⁠Easily share coding memories across your dev team in real time.
 - ⁠Dual Memory Layer that captures System 1 (Programming Concepts & Business Logic & Past Interaction) and System 2 (reasoning steps of the model when generating code).
 - ⁠Install on your IDE with zero configuration needed.
+- ⁠**NEW: Workspace Memory** - Team-aware memory system that automatically tracks project progress, team activities, and collaborative context. See [WORKSPACE_MEMORY.md](./WORKSPACE_MEMORY.md) for details.
 
 ## Quick Start
 
