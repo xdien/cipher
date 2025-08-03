@@ -240,7 +240,7 @@ export class WebSocketEventSubscriber {
 		// Add streaming chunk event listener
 		sessionBus.on(
 			'llm:responseChunk',
-			data => {
+			(data: any) => {
 				this.handleEvent(
 					'chunk',
 					{
@@ -257,7 +257,7 @@ export class WebSocketEventSubscriber {
 
 		sessionBus.on(
 			'llm:responseCompleted',
-			data => {
+			(data: any) => {
 				this.handleEvent(
 					'response',
 					{
@@ -331,7 +331,7 @@ export class WebSocketEventSubscriber {
 
 		sessionBus.on(
 			'tool:executionCompleted',
-			data => {
+			(data: any) => {
 				// Send specific completion event
 				this.handleEvent(
 					'toolExecutionCompleted',
@@ -363,7 +363,7 @@ export class WebSocketEventSubscriber {
 
 		sessionBus.on(
 			'tool:executionFailed',
-			data => {
+			(data: any) => {
 				// Send specific failure event
 				this.handleEvent(
 					'toolExecutionFailed',
@@ -396,7 +396,7 @@ export class WebSocketEventSubscriber {
 		// Memory Events
 		sessionBus.on(
 			'memory:stored',
-			data => {
+			(data: any) => {
 				this.handleEvent(
 					'memoryOperation',
 					{
@@ -416,7 +416,7 @@ export class WebSocketEventSubscriber {
 
 		sessionBus.on(
 			'memory:retrieved',
-			data => {
+			(data: any) => {
 				this.handleEvent(
 					'memoryOperation',
 					{
@@ -436,7 +436,7 @@ export class WebSocketEventSubscriber {
 
 		sessionBus.on(
 			'memory:searched',
-			data => {
+			(data: any) => {
 				this.handleEvent(
 					'memoryOperation',
 					{

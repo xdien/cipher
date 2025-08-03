@@ -89,8 +89,8 @@ export function createMcpRoutes(agent: MemAgent): Router {
 			// Use the new comprehensive method that includes all server data
 			const allServers = agent.getAllMcpServers();
 
-			const connectedCount = allServers.filter(s => s.status === 'connected').length;
-			const failedCount = allServers.filter(s => s.status === 'error').length;
+			const connectedCount = allServers.filter((s: { status: string }) => s.status === 'connected').length;
+			const failedCount = allServers.filter((s: { status: string }) => s.status === 'error').length;
 
 			successResponse(
 				res,
