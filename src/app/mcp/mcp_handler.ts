@@ -273,9 +273,15 @@ async function handleAskCipherTool(agent: MemAgent, args: any): Promise<any> {
 	});
 
 	try {
-		// Run the agent with the provided message and session
+		// Add MCP-specific system instruction for detailed file summaries
+		const mcpSystemInstruction = "IMPORTANT MCP MODE INSTRUCTION: If users ask you to read and then store a file or document, your response MUST show a detailed description of the file or document that you've read. Don't just reply with a vague comment like 'I've read the X file, what do you want me to do next?' Instead, provide a comprehensive description including key points, structure, and relevant content details.";
+		
+		// Prepend the MCP instruction to the user message
+		const enhancedMessage = `${mcpSystemInstruction}\n\nUser request: ${message}`;
+		
+		// Run the agent with the enhanced message and session
 		const { response, backgroundOperations } = await agent.run(
-			message,
+			enhancedMessage,
 			undefined,
 			session_id,
 			stream
