@@ -136,8 +136,8 @@ llm:
 #   maxRetries: 3
 
 # Disable embeddings entirely:
-# embedding:
-#   disabled: true
+embedding:
+  disabled: true
 
 
 
