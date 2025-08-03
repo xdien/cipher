@@ -19,6 +19,10 @@ import { setImmediate } from 'timers';
 import { IConversationHistoryProvider } from '../brain/llm/messages/history/types.js';
 import type { SerializedSession } from './persistence-types.js';
 import { SESSION_PERSISTENCE_CONSTANTS, SessionPersistenceError } from './persistence-types.js';
+import { IMessageFormatter } from '../brain/llm/messages/formatters/types.js';
+import { OpenAIMessageFormatter } from '../brain/llm/messages/formatters/openai.js';
+import { AzureMessageFormatter } from '../brain/llm/messages/formatters/azure.js';
+import { AnthropicMessageFormatter } from '../brain/llm/messages/formatters/anthropic.js';
 
 // This function is currently unused but kept for potential future use
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -92,6 +96,7 @@ export class ConversationSession {
 			mcpManager: MCPManager;
 			unifiedToolManager: UnifiedToolManager;
 			embeddingManager?: any; // Optional embedding manager for status checking
+			eventManager?: any; // Add event manager to services
 		},
 		public readonly id: string,
 		options?: {
@@ -151,9 +156,42 @@ export class ConversationSession {
 	 * Initializes the services for the session, including the history provider.
 	 */
 	private async initializeServices(): Promise<void> {
-		this.contextManager = this.services.contextManager;
-
+		// Create a session-specific context manager instead of using the shared one
+		const llmConfig = this.services.stateManager.getLLMConfig(this.id);
+		const formatter = this.getFormatterForProvider(llmConfig.provider);
+		this.contextManager = new ContextManager(
+			formatter,
+			this.services.promptManager,
+			undefined, // historyProvider will be lazy-loaded
+			this.id // sessionId
+		);
+		
 		this._servicesInitialized = true;
+	}
+
+	/**
+	 * Get the appropriate formatter for the provider
+	 */
+	private getFormatterForProvider(provider: string): IMessageFormatter {
+		const normalizedProvider = provider.toLowerCase();
+		switch (normalizedProvider) {
+			case 'openai':
+			case 'openrouter':
+			case 'ollama':
+			case 'lmstudio':
+			case 'qwen':
+			case 'gemini':
+				return new OpenAIMessageFormatter();
+			case 'azure':
+				return new AzureMessageFormatter();
+			case 'anthropic':
+			case 'aws':
+				return new AnthropicMessageFormatter();
+			default:
+				throw new Error(
+					`Unsupported provider: ${provider}. Supported providers: openai, anthropic, openrouter, ollama, lmstudio, qwen, aws, azure, gemini`
+				);
+		}
 	}
 
 	/**
@@ -173,7 +211,8 @@ export class ConversationSession {
 					llmConfig,
 					this.services.mcpManager,
 					this.contextManager,
-					this.services.unifiedToolManager
+					this.services.unifiedToolManager,
+					this.services.eventManager
 				);
 				this._llmServiceInitialized = true;
 				logger.debug(`Session ${this.id}: LLM service lazy-initialized`);

@@ -245,7 +245,6 @@ export class WebSocketConnectionManager {
 	broadcastToSession(sessionId: string, message: WebSocketResponse): void {
 		const connectionIds = this.sessionConnections.get(sessionId);
 		if (!connectionIds || connectionIds.size === 0) {
-			logger.debug('No connections found for session', { sessionId });
 			return;
 		}
 
@@ -255,13 +254,6 @@ export class WebSocketConnectionManager {
 				sentCount++;
 			}
 		}
-
-		logger.debug('Message broadcast to session', {
-			sessionId,
-			totalConnections: connectionIds.size,
-			sentCount,
-			event: message.event,
-		});
 	}
 
 	/**
@@ -314,24 +306,17 @@ export class WebSocketConnectionManager {
 		if (!connection || connection.ws.readyState !== WebSocket.OPEN) {
 			return false;
 		}
-
 		try {
-			// Add timestamp if not present
-			if (!message.timestamp) {
-				message.timestamp = Date.now();
-			}
-
-			connection.ws.send(JSON.stringify(message));
+			const messageStr = JSON.stringify(message);
+			connection.ws.send(messageStr);
 			connection.lastActivity = Date.now();
 			this.stats.totalMessagesSent++;
 			return true;
 		} catch (error: any) {
-			logger.warn('Failed to send WebSocket message', {
+			logger.error('Failed to send WebSocket message', {
 				connectionId,
-				error: error instanceof Error ? error.message : String(error),
+				error: error.message,
 			});
-			// Remove failed connection
-			this.removeConnection(connectionId);
 			return false;
 		}
 	}

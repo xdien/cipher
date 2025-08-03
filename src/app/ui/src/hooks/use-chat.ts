@@ -195,7 +195,9 @@ export function useChat(wsUrl: string, options: UseChatOptions = {}) {
 		(payload: IncomingMessage['data']) => {
 			if (!isMountedRef.current) return;
 
-			const text = typeof payload.text === 'string' ? payload.text : '';
+			// Handle both 'content' and 'text' fields for backward compatibility
+			const text = typeof payload.text === 'string' ? payload.text : 
+						typeof payload.content === 'string' ? payload.content : '';
 			const tokenCount = typeof payload.tokenCount === 'number' ? payload.tokenCount : undefined;
 			const model = typeof payload.model === 'string' ? payload.model : undefined;
 			const sessionId = typeof payload.sessionId === 'string' ? payload.sessionId : undefined;

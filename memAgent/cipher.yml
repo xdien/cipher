@@ -14,9 +14,6 @@ mcpServers:
 
 # Choose ONLY ONE of the following LLM providers
 llm:
-  # provider: openrouter
-  # model: qwen/qwen3-coder:free
-  # apiKey: $OPENROUTER_API_KEY
   provider: openai
   model: gpt-4.1-mini
   apiKey: $OPENAI_API_KEY
@@ -85,17 +82,17 @@ llm:
 #   apiKey: $OPENAI_API_KEY
 
 # Gemini:
-# embedding:
-#   type: gemini
-#   model: gemini-embedding-001
-#   apiKey: $GEMINI_API_KEY
+embedding:
+  type: gemini
+  model: gemini-embedding-001
+  apiKey: $GEMINI_API_KEY
 
 # Ollama:
-embedding:
-  type: ollama
-  model: mxbai-embed-large
-  baseUrl: $OLLAMA_BASE_URL
-  dimensions: 1024
+# embedding:
+#   type: ollama
+#   model: mxbai-embed-large
+#   baseUrl: $OLLAMA_BASE_URL
+#   dimensions: 1024
 
 # LM Studio:
 # embedding:

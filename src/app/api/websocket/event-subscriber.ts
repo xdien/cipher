@@ -257,11 +257,43 @@ export class WebSocketEventSubscriber {
 
 		sessionBus.on(
 			'llm:responseCompleted',
-			(data: any) => {
+			async (data: any) => {
+				// Use the actual response content from the event data
+				const content = data.response || data.content || 'Response completed';
+				
+				const sessionId = data.sessionId;
+				const messageId = data.messageId;
+				
+				// Break down the response into chunks and emit them
+				if (content && typeof content === 'string') {
+					const chunkSize = 50; // Emit chunks of 50 characters
+					for (let i = 0; i < content.length; i += chunkSize) {
+						const chunk = content.slice(i, i + chunkSize);
+						const isComplete = i + chunkSize >= content.length;
+						
+						this.handleEvent(
+							'chunk',
+							{
+								text: chunk,
+								isComplete,
+								sessionId,
+								messageId,
+							},
+							signal
+						);
+						
+						// Add a small delay between chunks to simulate real streaming
+						if (!isComplete) {
+							await new Promise(resolve => setTimeout(resolve, 50));
+						}
+					}
+				}
+
+				// Emit the final response event
 				this.handleEvent(
 					'response',
 					{
-						content: data.response || data.content || 'Response completed',
+						content: content,
 						sessionId: data.sessionId,
 						messageId: data.messageId,
 						metadata: {
@@ -517,60 +549,24 @@ export class WebSocketEventSubscriber {
 			return;
 		}
 
-		try {
-			// Update statistics
-			this.subscriptionStats.totalEventsReceived++;
-			this.subscriptionStats.lastEventTime = Date.now();
+		const response: WebSocketResponse = {
+			event: eventType,
+			data: data,
+			timestamp: Date.now(),
+		};
 
-			const currentCount = this.subscriptionStats.eventTypeStats.get(eventType) || 0;
-			this.subscriptionStats.eventTypeStats.set(eventType, currentCount + 1);
-
-			// Create WebSocket response
-			const response: WebSocketResponse = {
-				event: eventType,
-				data: data as Record<string, any>,
-				timestamp: Date.now(),
-			};
-
-			// Add sessionId to response if present in data
-			if (data && typeof data === 'object' && 'sessionId' in data && data.sessionId) {
-				response.sessionId = data.sessionId as string;
-			}
-
-			// Determine broadcast strategy
-			if (response.sessionId) {
-				// Session-specific event - broadcast to session connections
-				this.connectionManager.broadcastToSession(response.sessionId, response);
-				if (eventType.includes('tool')) {
-					logger.info('Tool event broadcast to session', {
-						eventType,
-						sessionId: response.sessionId,
-						data: response.data,
-					});
-				} else {
-					logger.debug('Event broadcast to session', {
-						eventType,
-						sessionId: response.sessionId,
-						hasData: !!data,
-					});
-				}
-			} else {
-				// Global event - broadcast to all subscribers
-				this.connectionManager.broadcastToSubscribers(eventType, response);
-				logger.debug('Event broadcast to all subscribers', {
-					eventType,
-					hasData: !!data,
-				});
-			}
-
-			this.subscriptionStats.totalEventsBroadcast++;
-		} catch (error) {
-			logger.error('Error handling WebSocket event', {
-				eventType,
-				error: error instanceof Error ? error.message : String(error),
-				stack: error instanceof Error ? error.stack : undefined,
-			});
+		// Broadcast to all sessions if no specific sessionId
+		const sessionId = (data as any)?.sessionId;
+		if (!sessionId) {
+			this.broadcastMessage(response);
+		} else {
+			this.broadcastToSession(sessionId, response);
 		}
+
+		// Update stats
+		this.subscriptionStats.totalEventsBroadcast++;
+		this.subscriptionStats.lastEventTime = Date.now();
+		this.subscriptionStats.eventTypeStats.set(eventType, (this.subscriptionStats.eventTypeStats.get(eventType) || 0) + 1);
 	}
 
 	/**

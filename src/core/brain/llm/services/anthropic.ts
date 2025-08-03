@@ -25,15 +25,15 @@ export class AnthropicService implements ILLMService {
 		model: string,
 		mcpManager: MCPManager,
 		contextManager: ContextManager,
-		maxIterations: number = 10,
+		maxIterations: number = 5,
 		unifiedToolManager?: UnifiedToolManager
 	) {
 		this.anthropic = anthropic;
 		this.model = model;
 		this.mcpManager = mcpManager;
-		this.unifiedToolManager = unifiedToolManager;
 		this.contextManager = contextManager;
 		this.maxIterations = maxIterations;
+		this.unifiedToolManager = unifiedToolManager;
 	}
 
 	/**
@@ -106,6 +106,7 @@ export class AnthropicService implements ILLMService {
 							model: this.model,
 							duration: Date.now() - startTime,
 							timestamp: Date.now(),
+							response: textContent,
 						});
 					}
 

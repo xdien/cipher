@@ -160,6 +160,7 @@ export interface IncomingMessage {
 		| 'error';
 	data: {
 		text?: string;
+		content?: string; // Added for backward compatibility with backend
 		tokenCount?: number;
 		model?: string;
 		sessionId?: string;

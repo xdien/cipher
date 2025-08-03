@@ -114,6 +114,7 @@ export interface SessionEventMap {
 		tokenCount?: number;
 		duration: number;
 		timestamp: number;
+		response?: string; // Add response content
 	};
 	'llm:responseError': {
 		sessionId: string;
