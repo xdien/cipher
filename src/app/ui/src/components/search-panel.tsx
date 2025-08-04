@@ -262,9 +262,9 @@ export function SearchPanel({
     searchQuery && (
       <div className="mb-4 text-sm text-muted-foreground">
         {total > 0 ? (
-          <>Found {total} {searchMode === 'messages' ? 'messages' : 'sessions'} matching "{searchQuery}"</>
+          <>Found {total} {searchMode === 'messages' ? 'messages' : 'sessions'} matching &quot;{searchQuery}&quot;</>
         ) : (
-          <>No {searchMode === 'messages' ? 'messages' : 'sessions'} found matching "{searchQuery}"</>
+          <>No {searchMode === 'messages' ? 'messages' : 'sessions'} found matching &quot;{searchQuery}&quot;</>
         )}
       </div>
     )

@@ -28,6 +28,8 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Session } from "@/types/server-registry"
+import { useCreateSession, useSessions, useDeleteSession } from "@/hooks/use-sessions"
+import { useSessionStore } from "@/stores/session-store"
 
 interface SessionPanelProps {
   isOpen: boolean
@@ -48,13 +50,18 @@ export function SessionPanel({
   variant = 'modal',
   className 
 }: SessionPanelProps) {
-  // State management
-  const [sessions, setSessions] = React.useState<Session[]>([])
-  const [loading, setLoading] = React.useState(false)
+  // Use React Query hooks as single source of truth for immediate UI updates
+  const { sessions, isLoading: loading, error: fetchError, refetch: refetchSessions } = useSessions()
+  const createSessionMutation = useCreateSession()
+  const deleteSessionMutation = useDeleteSession()
+  
+  // Get deleting session state from store
+  const { deletingSessionId } = useSessionStore()
+  
+  // Local state management
   const [error, setError] = React.useState<string | null>(null)
   const [isNewSessionOpen, setNewSessionOpen] = React.useState(false)
   const [newSessionId, setNewSessionId] = React.useState('')
-  const [deletingSessionId, setDeletingSessionId] = React.useState<string | null>(null)
 
   // Conversation management states
   const [isDeleteConversationDialogOpen, setDeleteConversationDialogOpen] = React.useState(false)
@@ -86,222 +93,62 @@ export function SessionPanel({
     return `${days}d ago`
   }, [])
 
-  // PERFORMANCE OPTIMIZED: Session fetching with intelligent caching and batching
-  const sessionCache = React.useRef<Map<string, { data: Session; timestamp: number }>>(new Map());
-  const CACHE_DURATION = 30000; // 30 seconds
-  const REQUEST_TIMEOUT = 15000; // 15 seconds
-  const abortControllerRef = React.useRef<AbortController | null>(null);
-
-  const fetchSessions = React.useCallback(async (forceRefresh = false) => {
-    // Cancel any ongoing request
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
+  // Handle fetch errors
+  React.useEffect(() => {
+    if (fetchError) {
+      setError(fetchError)
+    } else {
+      setError(null)
     }
+  }, [fetchError])
 
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-    setLoading(true)
-    setError(null)
-    try {
-      const response = await fetch('/api/sessions')
-      if (!response.ok) {
-        // CRITICAL FIX: Properly extract error message from API response
-        try {
-          const errorData = await response.json()
-          const errorMessage = errorData.error?.message || errorData.message || 'Failed to fetch sessions'
-          throw new Error(errorMessage)
-        } catch (parseError) {
-          throw new Error('Failed to fetch sessions')
-        }
-      }
-      const data = await response.json()
-      // Handle the API response structure
-      const sessions = data.data?.sessions || data.sessions || []
-      
-      // Load message counts for each session immediately
-      const sessionsWithCounts = await Promise.all(
-        sessions.map(async (session: Session) => {
-          try {
-            // Always try to get the most accurate message count from session history
-            // This ensures we show correct counts even for sessions that were persisted
-            try {
-              const historyResponse = await fetch(`/api/sessions/${session.id}/history`);
-              if (historyResponse.ok) {
-                const historyData = await historyResponse.json();
-                const history = historyData.data?.history || historyData.history || [];
-                return {
-                  ...session,
-                  messageCount: history.length
-                };
-              } else {
-                console.warn(`Failed to fetch history for session ${session.id}: ${historyResponse.status}`);
-              }
-            } catch (historyError) {
-              console.warn(`Failed to load history for session ${session.id}:`, historyError);
-            }
-            
-            // Fallback to metadata message count if history fetch failed
-            return {
-              ...session,
-              messageCount: session.messageCount || 0
-            };
-          } catch (error) {
-            console.warn(`Failed to process session ${session.id}:`, error);
-            return {
-              ...session,
-              messageCount: session.messageCount || 0
-            };
-          }
-        })
-      )
-      
-      setSessions(sessionsWithCounts)
-    } catch (error) {
-      console.error('Error fetching sessions:', error)
-      // CRITICAL FIX: Ensure error is always a string
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      setError(errorMessage)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  // CRITICAL FIX: Debounced session fetching with cleanup
-  const debounceTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
-  
-  // Auto-refresh sessions when panel opens (debounced)
+  // Optional refresh when panel opens (but React Query handles most cases automatically)
   React.useEffect(() => {
     if (isOpen) {
-      // Clear any existing timeout
-      if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
-      }
-      
-      // Debounce session fetching to prevent rapid API calls
-      debounceTimeoutRef.current = setTimeout(() => {
-        fetchSessions();
-      }, 100); // 100ms debounce
+      // Only refetch if data is stale, React Query will decide
+      refetchSessions()
     }
-    
-    return () => {
-      if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
-      }
-    };
-  }, [isOpen, fetchSessions]);
+  }, [isOpen, refetchSessions])
 
-  // CRITICAL FIX: Throttled real-time session updates to prevent API overload
-  const updateTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
-  
-  React.useEffect(() => {
-    const throttledUpdate = () => {
-      // Clear existing timeout
-      if (updateTimeoutRef.current) {
-        clearTimeout(updateTimeoutRef.current);
-      }
-      
-      // Throttle updates to max once every 2 seconds
-      updateTimeoutRef.current = setTimeout(() => {
-        if (isOpen && !loading) {
-          fetchSessions();
-        }
-      }, 2000);
-    };
-
-    const handleMessage = () => {
-      if (isOpen) {
-        throttledUpdate();
-      }
-    };
-
-    const handleResponse = () => {
-      if (isOpen) {
-        throttledUpdate();
-      }
-    };
-
-    if (typeof window !== 'undefined') {
-      window.addEventListener('cipher:message', handleMessage);
-      window.addEventListener('cipher:response', handleResponse);
-      window.addEventListener('cipher:newMessage', handleMessage);
-      window.addEventListener('cipher:sessionChanged', handleMessage);
-
-      return () => {
-        // Cleanup event listeners
-        window.removeEventListener('cipher:message', handleMessage);
-        window.removeEventListener('cipher:response', handleMessage);
-        window.removeEventListener('cipher:newMessage', handleMessage);
-        window.removeEventListener('cipher:sessionChanged', handleMessage);
-        
-        // Cleanup timeout
-        if (updateTimeoutRef.current) {
-          clearTimeout(updateTimeoutRef.current);
-        }
-      };
-    }
-  }, [isOpen, fetchSessions, loading]);
-
-  // Session creation logic
+  // Session creation with optimistic updates (no manual refresh needed)
   const handleCreateSession = async () => {
-    // Allow empty session ID for auto-generation
     try {
-      const response = await fetch('/api/sessions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: newSessionId.trim() || undefined }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to create session')
-      }
-
-      const data = await response.json()
-      // Handle the API response structure
-      const session = data.data?.session || data.session
-      if (!session || !session.id) {
-        throw new Error('Invalid session response format')
-      }
-      setSessions(prev => [...prev, session])
+      const sessionId = newSessionId.trim() || undefined
+      const session = await createSessionMutation.mutateAsync(sessionId)
+      
       setNewSessionId('')
       setNewSessionOpen(false)
+      
+      // React Query optimistic updates handle UI changes automatically
+      // Switch to the new session
       onSessionChange(session.id)
+      
     } catch (err) {
       console.error('Error creating session:', err)
       setError(err instanceof Error ? err.message : 'Failed to create session')
     }
   }
 
-  // Session deletion logic
+  // Session deletion with optimistic updates (no manual refresh needed)
   const handleDeleteSession = async (sessionId: string) => {
-    setDeletingSessionId(sessionId)
     try {
       // If we're deleting the current session, switch away from it first
       if (currentSessionId === sessionId) {
         returnToWelcome()
-        // Wait a bit for the backend to process the session switch
+        // Brief delay to ensure backend processes the session switch
         await new Promise(resolve => setTimeout(resolve, 100))
       }
 
-      const response = await fetch(`/api/sessions/${sessionId}`, {
-        method: 'DELETE',
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || 'Failed to delete session')
-      }
-
-      setSessions(prev => prev.filter(s => s.id !== sessionId))
+      // React Query optimistic updates handle UI changes automatically
+      await deleteSessionMutation.mutateAsync(sessionId)
+      
     } catch (err) {
       console.error('Error deleting session:', err)
       setError(err instanceof Error ? err.message : 'Failed to delete session')
-    } finally {
-      setDeletingSessionId(null)
     }
   }
 
-  // Conversation deletion with confirmation
+  // Conversation deletion with optimistic updates
   const handleDeleteConversation = async () => {
     if (!selectedSessionForAction) return
 
@@ -310,24 +157,12 @@ export function SessionPanel({
       // If we're deleting the current session, switch away from it first
       if (currentSessionId === selectedSessionForAction) {
         returnToWelcome()
-        // Wait a bit for the backend to process the session switch
+        // Brief delay to ensure backend processes the session switch
         await new Promise(resolve => setTimeout(resolve, 100))
       }
 
-      const response = await fetch(`/api/sessions/${selectedSessionForAction}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || 'Failed to delete conversation')
-      }
-
-      // Remove session from local state
-      setSessions(prev => prev.filter(s => s.id !== selectedSessionForAction))
+      // React Query optimistic updates handle UI changes automatically
+      await deleteSessionMutation.mutateAsync(selectedSessionForAction)
 
       setDeleteConversationDialogOpen(false)
       setSelectedSessionForAction(null)
@@ -512,7 +347,7 @@ export function SessionPanel({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => fetchSessions()}
+            onClick={() => refetchSessions()}
             disabled={loading}
             title="Refresh sessions"
           >
@@ -603,8 +438,11 @@ export function SessionPanel({
             <Button variant="outline" onClick={handleDialogClose}>
               Cancel
             </Button>
-            <Button onClick={handleCreateSession}>
-              Create Session
+            <Button 
+              onClick={handleCreateSession}
+              disabled={createSessionMutation.isPending}
+            >
+              {createSessionMutation.isPending ? 'Creating...' : 'Create Session'}
             </Button>
           </DialogFooter>
         </DialogContent>

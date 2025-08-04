@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { ChatProvider } from '@/contexts/chat-context'
+import { QueryProvider } from '@/components/providers/query-provider'
 
 export const metadata: Metadata = {
 	title: 'Cipher UI',
@@ -20,9 +21,11 @@ export default function RootLayout({
 	return (
 		<html lang="en" className="dark">
 			<body className="antialiased bg-background text-foreground">
-        <ChatProvider>
-          <div className="flex h-screen w-screen flex-col">{children}</div>
-        </ChatProvider>
+        <QueryProvider>
+          <ChatProvider>
+            <div className="flex h-screen w-screen flex-col">{children}</div>
+          </ChatProvider>
+        </QueryProvider>
       </body>
 		</html>
 	)
