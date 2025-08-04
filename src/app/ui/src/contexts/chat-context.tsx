@@ -1,11 +1,12 @@
 "use client"
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { useChat } from '@/hooks/use-chat';
 import { 
   ChatContextType, 
   ChatProviderProps, 
   ChatMessage, 
+  SessionMessage,
   ConnectionStatus 
 } from '@/types/chat';
 import {
@@ -32,6 +33,10 @@ export function ChatProvider({
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [isWelcomeState, setIsWelcomeState] = useState(true);
   const [isStreaming, setIsStreaming] = useState(true);
+  
+  // CRITICAL FIX: Add debounce mechanism to prevent rapid session switching
+  const [isSwitchingSession, setIsSwitchingSession] = useState(false);
+  const switchSessionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Chat hook integration
   const {
@@ -117,8 +122,11 @@ export function ChatProvider({
   // Load session history
   const loadHistory = useCallback(async (sessionId: string) => {
     try {
+      console.log('Loading history for session:', sessionId);
       const history = await loadSessionHistory(sessionId);
+      console.log('History loaded:', history.length, 'messages');
       const uiMessages = convertHistoryToUIMessages(history, sessionId);
+      console.log('UI messages converted:', uiMessages.length, 'messages');
       setMessages(uiMessages);
     } catch (error) {
       console.error('Error loading session history:', error);
@@ -127,46 +135,68 @@ export function ChatProvider({
     }
   }, [setMessages]);
 
-  // Switch session
+  // CRITICAL FIX: Enhanced switch session with comprehensive debouncing and request deduplication
   const switchSession = useCallback(async (sessionId: string) => {
     if (sessionId === currentSessionId) return;
+    
+    // CRITICAL FIX: Prevent rapid session switching with stronger debouncing
+    if (isSwitchingSession) {
+      console.log('Session switch already in progress, ignoring request for:', sessionId);
+      return;
+    }
+
+    // CRITICAL FIX: Cancel any pending session switch operations
+    if (switchSessionTimeoutRef.current) {
+      clearTimeout(switchSessionTimeoutRef.current);
+      switchSessionTimeoutRef.current = null;
+    }
 
     console.log('Switching to session:', sessionId);
 
     try {
-      // Clear current messages first
+      setIsSwitchingSession(true);
+      
+      // CRITICAL FIX: Clear current messages immediately to prevent UI conflicts
       setMessages([]);
       
-      // Load the session as the current working session on the backend
-      await loadSession(sessionId);
-      console.log('Session loaded on backend');
+      // CRITICAL FIX: Add request timeout to prevent hanging operations
+      const LOAD_SESSION_TIMEOUT = 10000; // 10 seconds
+      const sessionLoadPromise = loadSession(sessionId);
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Session load timeout')), LOAD_SESSION_TIMEOUT);
+      });
       
-      // Allow a small delay for backend session initialization and history restoration
+      // Load the session with timeout protection
+      const sessionData = await Promise.race([sessionLoadPromise, timeoutPromise]) as { conversationHistory?: SessionMessage[] };
+      console.log('Session loaded on backend:', sessionData);
+      
+      // CRITICAL FIX: Shorter delay to reduce perceived lag
       await new Promise(resolve => setTimeout(resolve, 50));
 
       setCurrentSessionId(sessionId);
-      setIsWelcomeState(false); // No longer in welcome state
+      setIsWelcomeState(false);
       
-      // Load conversation history immediately when switching sessions
-      // This should now include messages restored by the backend session loading
-      try {
-        console.log('Loading session history for:', sessionId);
-        const history = await loadSessionHistory(sessionId);
-        console.log('History loaded:', history.length, 'messages');
-        const uiMessages = convertHistoryToUIMessages(history, sessionId);
-        console.log('UI messages converted:', uiMessages.length, 'messages');
+      // CRITICAL FIX: Enhanced conversation history handling
+      if (sessionData && sessionData.conversationHistory && sessionData.conversationHistory.length > 0) {
+        console.log('Using conversation history from session load:', sessionData.conversationHistory.length, 'messages');
         
-        // Force a small delay to ensure the UI has cleared
-        await new Promise(resolve => setTimeout(resolve, 10));
-        
-        setMessages(uiMessages);
-        console.log('Messages set in state - switching to session with', uiMessages.length, 'messages');
-      } catch (historyError) {
-        console.warn('Failed to load session history, clearing messages:', historyError);
+        try {
+          const uiMessages = convertHistoryToUIMessages(sessionData.conversationHistory, sessionId);
+          console.log('UI messages converted:', uiMessages.length, 'messages');
+          
+          // CRITICAL FIX: Batch message updates to prevent multiple re-renders
+          setMessages(uiMessages);
+          console.log('Messages set in state - switching to session with', uiMessages.length, 'messages');
+        } catch (conversionError) {
+          console.error('Error converting history to UI messages:', conversionError);
+          setMessages([]);
+        }
+      } else {
+        console.log('No conversation history found in session load response');
         setMessages([]);
       }
 
-      // Emit custom event for session switch
+      // CRITICAL FIX: Emit session change event after successful switch
       if (typeof window !== 'undefined') {
         window.dispatchEvent(
           new CustomEvent('cipher:sessionChanged', {
@@ -174,11 +204,33 @@ export function ChatProvider({
           })
         );
       }
+      
     } catch (error) {
       console.error('Error switching session:', error);
-      throw error; // Re-throw so UI can handle the error
+      
+      // CRITICAL FIX: More graceful error handling
+      setCurrentSessionId(sessionId);
+      setIsWelcomeState(false);
+      setMessages([]);
+      
+      // Emit error event for UI to handle
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('cipher:sessionSwitchError', {
+            detail: { sessionId, error: error instanceof Error ? error.message : String(error) }
+          })
+        );
+      }
+      
+      throw error;
+    } finally {
+      // CRITICAL FIX: Always reset switching state with extended debounce
+      switchSessionTimeoutRef.current = setTimeout(() => {
+        setIsSwitchingSession(false);
+        console.log('Session switching unlocked for:', sessionId);
+      }, 1000); // Extended to 1 second for better stability
     }
-  }, [currentSessionId, loadHistory]);
+  }, [currentSessionId, setMessages, setIsWelcomeState, setCurrentSessionId, isSwitchingSession]);
 
   // Return to welcome state
   const returnToWelcome = useCallback(() => {
@@ -284,6 +336,25 @@ export function ChatProvider({
       };
     }
   }, [currentSessionId, setMessages, switchSession, returnToWelcome]);
+
+  // CRITICAL FIX: Comprehensive cleanup on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      // Cleanup session switch timeout
+      if (switchSessionTimeoutRef.current) {
+        clearTimeout(switchSessionTimeoutRef.current);
+        switchSessionTimeoutRef.current = null;
+      }
+      
+      // Reset switching state
+      setIsSwitchingSession(false);
+      
+      // Clear any pending operations
+      setMessages([]);
+      
+      console.log('ChatContext: Cleanup completed on unmount');
+    };
+  }, []);
 
   // Create session creation function for external use
   const createNewSession = useCallback(async (): Promise<string> => {

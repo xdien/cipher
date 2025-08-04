@@ -275,8 +275,8 @@ export function createLLMService(
 	const service = _createLLMService(config, mcpManager, contextManager, unifiedToolManager);
 	
 	// Set event manager if provided
-	if (eventManager && typeof service.setEventManager === 'function') {
-		service.setEventManager(eventManager);
+	if (eventManager && typeof (service as any).setEventManager === 'function') {
+		(service as any).setEventManager(eventManager);
 	}
 	
 	// Configure token-aware compression for the context manager

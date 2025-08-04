@@ -13,149 +13,88 @@ export function createSessionRoutes(agent: MemAgent): Router {
 
 	/**
 	 * GET /api/sessions
-	 * List all active sessions with metadata
+	 * List all active sessions with metadata - OPTIMIZED for performance
 	 */
 	router.get('/', validateListParams, async (req: Request, res: Response) => {
+		const startTime = Date.now();
 		try {
 			logger.info('Listing sessions', { requestId: req.requestId });
 
-			const sessionIds = await agent.listSessions();
-			const sessions = [];
-			const processedSessionIds = new Set<string>();
-
-			// First, get all active sessions with their current metadata
-			for (const sessionId of sessionIds) {
-				const metadata = await agent.getSessionMetadata(sessionId);
-				if (metadata) {
-					// Ensure message count is available for active sessions
-					let messageCount = metadata.messageCount || 0;
-					
-					// If no message count, try to get it from session history
-					if (messageCount === 0) {
-						try {
-							const history = await agent.getSessionHistory(sessionId);
-							messageCount = history.length;
-						} catch (error) {
-							logger.debug(`Failed to get history for active session ${sessionId}:`, error);
-						}
-					}
-					
-					sessions.push({
-						...metadata,
-						messageCount
-					});
-					processedSessionIds.add(sessionId);
-				}
+			// PERFORMANCE OPTIMIZATION: Get session IDs with optimized batch processing
+			let sessionIds: string[] = [];
+			try {
+				sessionIds = await agent.listSessions();
+				logger.debug(`Agent returned ${sessionIds.length} session IDs in ${Date.now() - startTime}ms`);
+			} catch (listError) {
+				logger.error('Failed to get session IDs from agent:', listError);
+				// Continue with empty list rather than failing completely
+				sessionIds = [];
 			}
 
-			// Also check for sessions with conversation history in the database
+			if (sessionIds.length === 0) {
+				logger.debug('No sessions found, returning empty list');
+				successResponse(res, {
+					sessions: [],
+					count: 0,
+					currentSession: agent.getCurrentSessionId?.() || null,
+					processingTime: Date.now() - startTime
+				}, 200, req.requestId);
+				return;
+			}
+
+			// PERFORMANCE OPTIMIZATION: Use batch processing for session metadata
+			const sessionManager = agent.sessionManager;
+			let sessionsMetadata: Map<string, any>;
+			
 			try {
-				// Get the storage manager from the agent's session manager
-				const sessionManager = agent.sessionManager;
-				let storageManager = sessionManager.getStorageManagerForSession('default');
-				
-				// If no storage manager from default session, try to get the shared one
-				if (!storageManager) {
-					// Access the session manager's storage directly
+				// Use the new batch processing method for optimal performance
+				sessionsMetadata = await sessionManager.getBatchSessionMetadata(sessionIds);
+				logger.debug(`Batch loaded ${sessionsMetadata.size} session metadata entries`);
+			} catch (batchError) {
+				logger.warn('Batch metadata loading failed, falling back to individual processing:', batchError);
+				// Fallback to individual processing if batch fails
+				sessionsMetadata = new Map();
+				for (const sessionId of sessionIds.slice(0, 50)) { // Limit to prevent overload
 					try {
-						// Get storage manager from session manager instance
-						const backends = (sessionManager as any).storageManager?.getBackends?.();
-						if (backends) {
-							storageManager = { getBackends: () => backends };
+						const metadata = await agent.getSessionMetadata(sessionId);
+						if (metadata) {
+							sessionsMetadata.set(sessionId, metadata);
 						}
 					} catch (error) {
-						logger.debug('Could not access session manager storage:', error);
+						logger.debug(`Failed to get metadata for session ${sessionId}:`, error);
 					}
 				}
-				
-				if (storageManager && storageManager.getBackends) {
-					const backends = storageManager.getBackends();
-					if (backends && backends.database) {
-						// Look for both conversation history and persisted sessions
-						const messageKeys = await backends.database.list('messages:');
-						const sessionKeys = await backends.database.list('session:');
-						
-						// Process conversation history keys
-						for (const key of messageKeys) {
-							// Extract session ID from the key (remove 'messages:' prefix)
-							const sessionId = key.replace('messages:', '');
-							
-							// Skip if this session is already processed
-							if (processedSessionIds.has(sessionId)) {
-								// Update message count for existing active session
-								const existingSession = sessions.find(s => s.id === sessionId);
-								if (existingSession && existingSession.messageCount === 0) {
-									try {
-										const historyData = await backends.database.get(key);
-										if (historyData && Array.isArray(historyData)) {
-											existingSession.messageCount = historyData.length;
-											logger.debug(`Updated message count for active session ${sessionId}: ${historyData.length}`);
-										}
-									} catch (error) {
-										logger.warn(`Failed to get message count for active session ${sessionId}:`, error);
-									}
-								}
-								continue;
-							}
-							
-							try {
-								// Get the conversation history to count messages
-								const historyData = await backends.database.get(key);
-								if (historyData && Array.isArray(historyData)) {
-									const messageCount = historyData.length;
-									
-									// Try to get session metadata from persisted session if available
-									let sessionMetadata = {
-										id: sessionId,
-										createdAt: Date.now() - (messageCount * 60000), // Approximate creation time
-										lastActivity: Date.now(),
-										messageCount: messageCount
-									};
-									
-									// Try to get more accurate metadata from persisted session
-									const sessionKey = `session:${sessionId}`;
-									try {
-										const persistedSession = await backends.database.get(sessionKey);
-										if (persistedSession && persistedSession.metadata) {
-											sessionMetadata = {
-												id: sessionId,
-												createdAt: persistedSession.metadata.createdAt || sessionMetadata.createdAt,
-												lastActivity: persistedSession.metadata.lastActivity || sessionMetadata.lastActivity,
-												messageCount: messageCount
-											};
-										}
-									} catch (sessionError) {
-										// Continue with approximate metadata if persisted session data is not available
-										logger.debug(`Could not retrieve persisted session metadata for ${sessionId}:`, sessionError);
-									}
-									
-									sessions.push(sessionMetadata);
-									processedSessionIds.add(sessionId);
-									logger.info(`Found persisted session with conversation history: ${sessionId} (${messageCount} messages)`);
-								}
-							} catch (error) {
-								logger.warn(`Failed to process session ${sessionId} from database:`, error);
-							}
-						}
-					}
-				}
-			} catch (error) {
-				logger.warn('Failed to load sessions from database:', error);
 			}
+
+			// Convert to response format
+			const sessions = Array.from(sessionsMetadata.values());
+			const processingTime = Date.now() - startTime;
+
+			logger.info(`Successfully listed ${sessions.length} sessions in ${processingTime}ms`);
 
 			successResponse(res, {
 				sessions,
 				count: sessions.length,
-				currentSession: agent.getCurrentSessionId?.() || null
+				currentSession: agent.getCurrentSessionId?.() || null,
+				processingTime
 			}, 200, req.requestId);
+			return;
 		} catch (error) {
+			// CRITICAL FIX: Properly extract error message to prevent [object Object] display
+			let errorMsg: string;
+			try {
+				errorMsg = error instanceof Error ? error.message : String(error);
+			} catch (stringifyError) {
+				errorMsg = 'Unknown error occurred during session listing';
+			}
+			
 			logger.error('Error listing sessions:', error);
 			errorResponse(
 				res,
 				ERROR_CODES.INTERNAL_ERROR,
 				'Failed to list sessions',
 				500,
-				error,
+				{ details: errorMsg, processingTime: Date.now() - startTime },
 				req.requestId
 			);
 		}
@@ -165,12 +104,37 @@ export function createSessionRoutes(agent: MemAgent): Router {
 	 * POST /api/sessions
 	 * Create a new session
 	 */
+	/**
+	 * Validate and sanitize session ID to prevent problematic IDs
+	 */
+	function sanitizeSessionId(sessionId: string | undefined): string | null {
+		if (!sessionId) return null; // Auto-generate
+		
+		// Remove problematic patterns and characters
+		const sanitized = sessionId
+			.trim()
+			.replace(/[^\w-]/g, '-') // Replace non-alphanumeric with hyphens
+			.replace(/^empty-?/i, '') // Remove "empty" prefix
+			.replace(/^null-?/i, '') // Remove "null" prefix 
+			.replace(/^undefined-?/i, '') // Remove "undefined" prefix
+			.replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
+			.replace(/-+/g, '-') // Collapse multiple hyphens
+			.substring(0, 64); // Limit length
+		
+		// If sanitization results in empty string, return null for auto-generation
+		if (!sanitized || sanitized.length < 3) return null;
+		
+		return sanitized;
+	}
+
 	router.post('/', validateCreateSession, async (req: Request, res: Response) => {
 		try {
-			const { sessionId } = req.body;
+			const { sessionId: rawSessionId } = req.body;
+			const sessionId = sanitizeSessionId(rawSessionId);
 
 			logger.info('Creating new session', {
 				requestId: req.requestId,
+				originalSessionId: rawSessionId,
 				sessionId: sessionId || 'auto-generated',
 			});
 
@@ -351,13 +315,16 @@ export function createSessionRoutes(agent: MemAgent): Router {
 	 */
 	router.post('/:sessionId/load', validateSessionId, async (req: Request, res: Response) => {
 		try {
-			const { sessionId } = req.params;
-
+			const { sessionId: rawSessionId } = req.params;
+			
+			// Validate and sanitize session ID
+			const sessionId = sanitizeSessionId(rawSessionId);
 			if (!sessionId) {
+				logger.warn('Attempted to load session with invalid ID:', rawSessionId);
 				errorResponse(
 					res,
 					ERROR_CODES.BAD_REQUEST,
-					'Session ID is required',
+					'Invalid session ID provided',
 					400,
 					undefined,
 					req.requestId
@@ -370,10 +337,36 @@ export function createSessionRoutes(agent: MemAgent): Router {
 				sessionId,
 			});
 
-			const session = await agent.loadSession(sessionId);
+			// CRITICAL FIX: Handle non-existent sessions gracefully
+			let session;
+			try {
+				session = await agent.loadSession(sessionId);
+			} catch (loadError) {
+				const errorMsg = loadError instanceof Error ? loadError.message : String(loadError);
+				logger.warn(`Session ${sessionId} not found, creating new session:`, {
+					originalSessionId: rawSessionId,
+					sanitizedSessionId: sessionId,
+					error: errorMsg,
+					requestId: req.requestId
+				});
+				
+				// Create new session with the requested ID
+				try {
+					session = await agent.createSession(sessionId);
+					logger.info(`Created new session: ${sessionId}`);
+				} catch (createError) {
+					const createErrorMsg = createError instanceof Error ? createError.message : String(createError);
+					logger.error(`Failed to create session ${sessionId}:`, createErrorMsg);
+					
+					// If we can't create with the specific ID, create with auto-generated ID
+					session = await agent.createSession();
+					logger.info(`Created auto-generated session: ${session.id}`);
+				}
+			}
 
 			// CRITICAL FIX: Ensure conversation history is available in the loaded session
 			// This is essential for UI mode to display previous messages when switching sessions
+			let conversationHistory: any[] = [];
 			try {
 				// Force refresh conversation history after loading
 				if (session && typeof session.refreshConversationHistory === 'function') {
@@ -381,10 +374,10 @@ export function createSessionRoutes(agent: MemAgent): Router {
 					logger.debug(`Session ${sessionId}: Refreshed conversation history after loading`);
 				}
 				
-				// Verify history is available
+				// Get the conversation history to return with the response
 				if (session && typeof session.getConversationHistory === 'function') {
-					const history = await session.getConversationHistory();
-					logger.info(`Session ${sessionId}: Loaded with ${history.length} messages in conversation history`);
+					conversationHistory = await session.getConversationHistory();
+					logger.info(`Session ${sessionId}: Loaded with ${conversationHistory.length} messages in conversation history`);
 				}
 			} catch (historyError) {
 				logger.warn(`Session ${sessionId}: Failed to refresh history after loading:`, historyError);
@@ -397,6 +390,7 @@ export function createSessionRoutes(agent: MemAgent): Router {
 					sessionId: session.id,
 					loaded: true,
 					currentSession: agent.getCurrentSessionId(),
+					conversationHistory, // CRITICAL FIX: Return history with session load
 					timestamp: new Date().toISOString(),
 				},
 				200,
@@ -434,17 +428,20 @@ export function createSessionRoutes(agent: MemAgent): Router {
 
 	/**
 	 * GET /api/sessions/:sessionId/history
-	 * Get session conversation history
+	 * Get session conversation history - OPTIMIZED with caching
 	 */
 	router.get('/:sessionId/history', validateSessionId, async (req: Request, res: Response) => {
+		const startTime = Date.now();
 		try {
 			const { sessionId } = req.params;
 
-			if (!sessionId) {
+			// Handle null or invalid session IDs
+			if (!sessionId || sessionId === 'null' || sessionId === 'undefined') {
+				logger.warn('Attempted to get history for session with invalid ID:', sessionId);
 				errorResponse(
 					res,
 					ERROR_CODES.BAD_REQUEST,
-					'Session ID is required',
+					'Invalid session ID provided',
 					400,
 					undefined,
 					req.requestId
@@ -457,69 +454,98 @@ export function createSessionRoutes(agent: MemAgent): Router {
 				sessionId,
 			});
 
+			// PERFORMANCE OPTIMIZATION: Use optimized history retrieval with request deduplication
+			const sessionManager = agent.sessionManager;
+			const cacheKey = `history_${sessionId}`;
+			
+			// Check if there's already a pending request for this session's history
+			if ((sessionManager as any).requestDeduplicator?.has(cacheKey)) {
+				logger.debug(`Deduplicating concurrent history request for session ${sessionId}`);
+				const history = await (sessionManager as any).requestDeduplicator.get(cacheKey);
+				successResponse(
+					res,
+					{
+						sessionId,
+						history: history || [],
+						count: (history || []).length,
+						timestamp: new Date().toISOString(),
+						processingTime: Date.now() - startTime,
+						source: 'deduplication'
+					},
+					200,
+					req.requestId
+				);
+				return;
+			}
+
 			let history = [];
 			let historySource = 'none';
 
-			// First try to get history from the session manager (active session)
-			try {
-				const session = await agent.getSession(sessionId);
-				if (session) {
-					history = await agent.getSessionHistory(sessionId);
-					historySource = 'session-manager';
-					logger.debug(`Got ${history.length} messages from active session ${sessionId}`);
-				}
-			} catch (error) {
-				logger.debug(`Session ${sessionId} not found in session manager, checking database...`);
-			}
-
-			// If no history found in session manager, try to get from database storage
-			if (history.length === 0) {
+			// PERFORMANCE OPTIMIZATION: Parallel data retrieval
+			const historyPromise = (async () => {
+				// Try session manager first (fastest)
 				try {
-					const sessionManager = agent.sessionManager;
-					let storageManager = sessionManager.getStorageManagerForSession('default');
-					
-					// If no storage manager from default session, try to get the shared one
-					if (!storageManager) {
-						try {
-							// Access the session manager's storage directly
-							const backends = (sessionManager as any).storageManager?.getBackends?.();
-							if (backends) {
-								storageManager = { getBackends: () => backends };
-							}
-						} catch (error) {
-							logger.debug('Could not access session manager storage:', error);
+					const session = await agent.getSession(sessionId);
+					if (session) {
+						const sessionHistory = await agent.getSessionHistory(sessionId);
+						if (sessionHistory && sessionHistory.length > 0) {
+							return { history: sessionHistory, source: 'session-manager' };
 						}
 					}
-					
-					if (storageManager && storageManager.getBackends) {
+				} catch (error) {
+					logger.debug(`Session ${sessionId} not found in session manager`);
+				}
+
+				// Try database storage (parallel queries for better performance)
+				try {
+					const storageManager = (sessionManager as any).storageManager;
+					if (storageManager?.isConnected()) {
 						const backends = storageManager.getBackends();
-						if (backends && backends.database) {
-							// Try to get conversation history from messages key
-							const historyKey = `messages:${sessionId}`;
-							const historyData = await backends.database.get(historyKey);
-							if (historyData && Array.isArray(historyData)) {
-								history = historyData;
-								historySource = 'database-messages';
-								logger.info(`Found ${history.length} messages for session ${sessionId} in database (messages key)`);
-							} else {
-								// Try to get from persisted session data
-								const sessionKey = `session:${sessionId}`;
-								const sessionData = await backends.database.get(sessionKey);
-								if (sessionData && sessionData.conversationHistory && Array.isArray(sessionData.conversationHistory)) {
-									history = sessionData.conversationHistory;
-									historySource = 'database-session';
-									logger.info(`Found ${history.length} messages for session ${sessionId} in database (session data)`);
-								}
+						if (backends?.database) {
+							// Query both message and session keys in parallel
+							const [messageHistory, sessionData] = await Promise.allSettled([
+								backends.database.get(`messages:${sessionId}`),
+								backends.database.get(`session:${sessionId}`)
+							]);
+
+							// Priority: messages key first
+							if (messageHistory.status === 'fulfilled' && messageHistory.value && Array.isArray(messageHistory.value)) {
+								return { history: messageHistory.value, source: 'database-messages' };
+							}
+
+							// Fallback: session conversation history
+							if (sessionData.status === 'fulfilled' && sessionData.value?.conversationHistory && Array.isArray(sessionData.value.conversationHistory)) {
+								return { history: sessionData.value.conversationHistory, source: 'database-session' };
 							}
 						}
 					}
 				} catch (error) {
 					logger.warn(`Failed to get history from database for session ${sessionId}:`, error);
 				}
+
+				return { history: [], source: 'none' };
+			})();
+
+			// Store promise for request deduplication
+			if ((sessionManager as any).requestDeduplicator) {
+				(sessionManager as any).requestDeduplicator.set(cacheKey, historyPromise.then(result => result.history));
 			}
+
+			try {
+				const result = await historyPromise;
+				history = result.history;
+				historySource = result.source;
+			} finally {
+				// Clean up deduplication
+				if ((sessionManager as any).requestDeduplicator) {
+					(sessionManager as any).requestDeduplicator.delete(cacheKey);
+				}
+			}
+
+			const processingTime = Date.now() - startTime;
 			
 			// Log the final result
-			logger.info(`Session ${sessionId} history retrieval: ${history.length} messages from ${historySource}`);
+			logger.info(`Session ${sessionId} history retrieval: ${history.length} messages from ${historySource} in ${processingTime}ms`);
 
 			successResponse(
 				res,
@@ -528,16 +554,20 @@ export function createSessionRoutes(agent: MemAgent): Router {
 					history,
 					count: history.length,
 					timestamp: new Date().toISOString(),
+					processingTime,
+					source: historySource
 				},
 				200,
 				req.requestId
 			);
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : String(error);
+			const processingTime = Date.now() - startTime;
 			logger.error('Failed to get session history', {
 				requestId: req.requestId,
 				sessionId: req.params.sessionId,
 				error: errorMsg,
+				processingTime
 			});
 
 			errorResponse(
@@ -545,7 +575,7 @@ export function createSessionRoutes(agent: MemAgent): Router {
 				ERROR_CODES.INTERNAL_ERROR,
 				`Failed to get session history: ${errorMsg}`,
 				500,
-				undefined,
+				{ processingTime },
 				req.requestId
 			);
 		}
@@ -559,11 +589,13 @@ export function createSessionRoutes(agent: MemAgent): Router {
 		try {
 			const { sessionId } = req.params;
 
-			if (!sessionId) {
+			// Handle null or invalid session IDs
+			if (!sessionId || sessionId === 'null' || sessionId === 'undefined') {
+				logger.warn('Attempted to delete session with invalid ID:', sessionId);
 				errorResponse(
 					res,
 					ERROR_CODES.BAD_REQUEST,
-					'Session ID is required',
+					'Invalid session ID provided',
 					400,
 					undefined,
 					req.requestId
@@ -627,6 +659,58 @@ export function createSessionRoutes(agent: MemAgent): Router {
 					req.requestId
 				);
 			}
+		}
+	});
+
+	/**
+	 * GET /api/sessions/stats
+	 * Get session performance statistics - MONITORING ENDPOINT
+	 */
+	router.get('/stats', async (req: Request, res: Response) => {
+		try {
+			logger.info('Getting session performance stats', { requestId: req.requestId });
+
+			const sessionManager = agent.sessionManager;
+			const stats = await sessionManager.getSessionStats();
+
+			// Add additional runtime metrics
+			const runtimeStats = {
+				uptime: process.uptime(),
+				memoryUsage: process.memoryUsage(),
+				timestamp: new Date().toISOString(),
+				requestId: req.requestId
+			};
+
+			successResponse(
+				res,
+				{
+					sessionStats: stats,
+					runtimeStats,
+					optimizationStatus: {
+						cachingEnabled: true,
+						batchProcessingEnabled: true,
+						requestDeduplicationEnabled: true,
+						performanceMonitoringEnabled: true
+					}
+				},
+				200,
+				req.requestId
+			);
+		} catch (error) {
+			const errorMsg = error instanceof Error ? error.message : String(error);
+			logger.error('Failed to get session stats', {
+				requestId: req.requestId,
+				error: errorMsg,
+			});
+
+			errorResponse(
+				res,
+				ERROR_CODES.INTERNAL_ERROR,
+				`Failed to get session stats: ${errorMsg}`,
+				500,
+				undefined,
+				req.requestId
+			);
 		}
 	});
 

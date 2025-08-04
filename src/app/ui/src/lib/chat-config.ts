@@ -54,7 +54,7 @@ export async function createAutoSession(): Promise<string> {
 }
 
 // Load session on backend
-export async function loadSession(sessionId: string): Promise<void> {
+export async function loadSession(sessionId: string): Promise<{ conversationHistory?: SessionMessage[] }> {
 	const response = await fetch(`/api/sessions/${sessionId}/load`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
@@ -63,6 +63,11 @@ export async function loadSession(sessionId: string): Promise<void> {
 	if (!response.ok) {
 		throw new Error('Failed to load session on backend');
 	}
+
+	const data = await response.json();
+	return {
+		conversationHistory: data.data?.conversationHistory || []
+	};
 }
 
 // Load session history
@@ -156,10 +161,24 @@ export function convertHistoryToUIMessages(
 // Reset backend session
 export async function resetBackendSession(): Promise<void> {
 	try {
-		await fetch('/api/sessions/null/load', {
+		// Instead of trying to load a null session, we'll create a new default session
+		// or just clear the current session state
+		const response = await fetch('/api/sessions', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({}), // Create a new default session
 		});
+
+		if (response.ok) {
+			const data = await response.json();
+			if (data.success && data.data?.session?.id) {
+				// Load the new default session
+				await fetch(`/api/sessions/${data.data.session.id}/load`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+				});
+			}
+		}
 	} catch (error) {
 		console.warn('Error resetting backend session:', error);
 	}

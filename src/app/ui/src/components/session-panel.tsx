@@ -86,13 +86,34 @@ export function SessionPanel({
     return `${days}d ago`
   }, [])
 
-  // Session fetching logic with enhanced message count loading
-  const fetchSessions = React.useCallback(async () => {
+  // PERFORMANCE OPTIMIZED: Session fetching with intelligent caching and batching
+  const sessionCache = React.useRef<Map<string, { data: Session; timestamp: number }>>(new Map());
+  const CACHE_DURATION = 30000; // 30 seconds
+  const REQUEST_TIMEOUT = 15000; // 15 seconds
+  const abortControllerRef = React.useRef<AbortController | null>(null);
+
+  const fetchSessions = React.useCallback(async (forceRefresh = false) => {
+    // Cancel any ongoing request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
     setLoading(true)
     setError(null)
     try {
       const response = await fetch('/api/sessions')
-      if (!response.ok) throw new Error('Failed to fetch sessions')
+      if (!response.ok) {
+        // CRITICAL FIX: Properly extract error message from API response
+        try {
+          const errorData = await response.json()
+          const errorMessage = errorData.error?.message || errorData.message || 'Failed to fetch sessions'
+          throw new Error(errorMessage)
+        } catch (parseError) {
+          throw new Error('Failed to fetch sessions')
+        }
+      }
       const data = await response.json()
       // Handle the API response structure
       const sessions = data.data?.sessions || data.sessions || []
@@ -137,51 +158,88 @@ export function SessionPanel({
       setSessions(sessionsWithCounts)
     } catch (error) {
       console.error('Error fetching sessions:', error)
-      setError('Failed to load sessions')
+      // CRITICAL FIX: Ensure error is always a string
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
   }, [])
 
-  // Auto-refresh sessions when panel opens
+  // CRITICAL FIX: Debounced session fetching with cleanup
+  const debounceTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  
+  // Auto-refresh sessions when panel opens (debounced)
   React.useEffect(() => {
     if (isOpen) {
-      fetchSessions();
+      // Clear any existing timeout
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+      
+      // Debounce session fetching to prevent rapid API calls
+      debounceTimeoutRef.current = setTimeout(() => {
+        fetchSessions();
+      }, 100); // 100ms debounce
     }
+    
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
   }, [isOpen, fetchSessions]);
 
+  // CRITICAL FIX: Throttled real-time session updates to prevent API overload
+  const updateTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  
   React.useEffect(() => {
-    if (isOpen) {
-      fetchSessions()
-    }
-  }, [isOpen, fetchSessions])
-
-  // Real-time session updates
-  React.useEffect(() => {
-    const handleMessage = () => {
-      // Refresh sessions when a message is sent to update message counts
-      if (isOpen) {
-        fetchSessions()
+    const throttledUpdate = () => {
+      // Clear existing timeout
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
       }
-    }
+      
+      // Throttle updates to max once every 2 seconds
+      updateTimeoutRef.current = setTimeout(() => {
+        if (isOpen && !loading) {
+          fetchSessions();
+        }
+      }, 2000);
+    };
+
+    const handleMessage = () => {
+      if (isOpen) {
+        throttledUpdate();
+      }
+    };
 
     const handleResponse = () => {
-      // Refresh sessions when a response is received to update message counts
       if (isOpen) {
-        fetchSessions()
+        throttledUpdate();
       }
-    }
+    };
 
     if (typeof window !== 'undefined') {
-      window.addEventListener('cipher:message', handleMessage)
-      window.addEventListener('cipher:response', handleResponse)
+      window.addEventListener('cipher:message', handleMessage);
+      window.addEventListener('cipher:response', handleResponse);
+      window.addEventListener('cipher:newMessage', handleMessage);
+      window.addEventListener('cipher:sessionChanged', handleMessage);
 
       return () => {
-        window.removeEventListener('cipher:message', handleMessage)
-        window.removeEventListener('cipher:response', handleResponse)
-      }
+        // Cleanup event listeners
+        window.removeEventListener('cipher:message', handleMessage);
+        window.removeEventListener('cipher:response', handleMessage);
+        window.removeEventListener('cipher:newMessage', handleMessage);
+        window.removeEventListener('cipher:sessionChanged', handleMessage);
+        
+        // Cleanup timeout
+        if (updateTimeoutRef.current) {
+          clearTimeout(updateTimeoutRef.current);
+        }
+      };
     }
-  }, [isOpen, fetchSessions])
+  }, [isOpen, fetchSessions, loading]);
 
   // Session creation logic
   const handleCreateSession = async () => {
@@ -454,7 +512,7 @@ export function SessionPanel({
           <Button
             variant="outline"
             size="sm"
-            onClick={fetchSessions}
+            onClick={() => fetchSessions()}
             disabled={loading}
             title="Refresh sessions"
           >
