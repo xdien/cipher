@@ -21,11 +21,30 @@ export function createSessionRoutes(agent: MemAgent): Router {
 
 			const sessionIds = await agent.listSessions();
 			const sessions = [];
+			const processedSessionIds = new Set<string>();
 
+			// First, get all active sessions with their current metadata
 			for (const sessionId of sessionIds) {
 				const metadata = await agent.getSessionMetadata(sessionId);
 				if (metadata) {
-					sessions.push(metadata);
+					// Ensure message count is available for active sessions
+					let messageCount = metadata.messageCount || 0;
+					
+					// If no message count, try to get it from session history
+					if (messageCount === 0) {
+						try {
+							const history = await agent.getSessionHistory(sessionId);
+							messageCount = history.length;
+						} catch (error) {
+							logger.debug(`Failed to get history for active session ${sessionId}:`, error);
+						}
+					}
+					
+					sessions.push({
+						...metadata,
+						messageCount
+					});
+					processedSessionIds.add(sessionId);
 				}
 			}
 
@@ -33,20 +52,49 @@ export function createSessionRoutes(agent: MemAgent): Router {
 			try {
 				// Get the storage manager from the agent's session manager
 				const sessionManager = agent.sessionManager;
-				const storageManager = sessionManager.getStorageManagerForSession('default');
+				let storageManager = sessionManager.getStorageManagerForSession('default');
+				
+				// If no storage manager from default session, try to get the shared one
+				if (!storageManager) {
+					// Access the session manager's storage directly
+					try {
+						// Get storage manager from session manager instance
+						const backends = (sessionManager as any).storageManager?.getBackends?.();
+						if (backends) {
+							storageManager = { getBackends: () => backends };
+						}
+					} catch (error) {
+						logger.debug('Could not access session manager storage:', error);
+					}
+				}
 				
 				if (storageManager && storageManager.getBackends) {
 					const backends = storageManager.getBackends();
 					if (backends && backends.database) {
-						// Look for sessions with conversation history using the 'messages:' prefix
+						// Look for both conversation history and persisted sessions
 						const messageKeys = await backends.database.list('messages:');
+						const sessionKeys = await backends.database.list('session:');
 						
+						// Process conversation history keys
 						for (const key of messageKeys) {
 							// Extract session ID from the key (remove 'messages:' prefix)
 							const sessionId = key.replace('messages:', '');
 							
-							// Skip if this session is already in the list
-							if (sessions.some(s => s.id === sessionId)) {
+							// Skip if this session is already processed
+							if (processedSessionIds.has(sessionId)) {
+								// Update message count for existing active session
+								const existingSession = sessions.find(s => s.id === sessionId);
+								if (existingSession && existingSession.messageCount === 0) {
+									try {
+										const historyData = await backends.database.get(key);
+										if (historyData && Array.isArray(historyData)) {
+											existingSession.messageCount = historyData.length;
+											logger.debug(`Updated message count for active session ${sessionId}: ${historyData.length}`);
+										}
+									} catch (error) {
+										logger.warn(`Failed to get message count for active session ${sessionId}:`, error);
+									}
+								}
 								continue;
 							}
 							
@@ -56,16 +104,34 @@ export function createSessionRoutes(agent: MemAgent): Router {
 								if (historyData && Array.isArray(historyData)) {
 									const messageCount = historyData.length;
 									
-									// Create a session metadata object
-									const sessionMetadata = {
+									// Try to get session metadata from persisted session if available
+									let sessionMetadata = {
 										id: sessionId,
 										createdAt: Date.now() - (messageCount * 60000), // Approximate creation time
 										lastActivity: Date.now(),
 										messageCount: messageCount
 									};
 									
+									// Try to get more accurate metadata from persisted session
+									const sessionKey = `session:${sessionId}`;
+									try {
+										const persistedSession = await backends.database.get(sessionKey);
+										if (persistedSession && persistedSession.metadata) {
+											sessionMetadata = {
+												id: sessionId,
+												createdAt: persistedSession.metadata.createdAt || sessionMetadata.createdAt,
+												lastActivity: persistedSession.metadata.lastActivity || sessionMetadata.lastActivity,
+												messageCount: messageCount
+											};
+										}
+									} catch (sessionError) {
+										// Continue with approximate metadata if persisted session data is not available
+										logger.debug(`Could not retrieve persisted session metadata for ${sessionId}:`, sessionError);
+									}
+									
 									sessions.push(sessionMetadata);
-									logger.info(`Found session with conversation history: ${sessionId} (${messageCount} messages)`);
+									processedSessionIds.add(sessionId);
+									logger.info(`Found persisted session with conversation history: ${sessionId} (${messageCount} messages)`);
 								}
 							} catch (error) {
 								logger.warn(`Failed to process session ${sessionId} from database:`, error);
@@ -306,6 +372,25 @@ export function createSessionRoutes(agent: MemAgent): Router {
 
 			const session = await agent.loadSession(sessionId);
 
+			// CRITICAL FIX: Ensure conversation history is available in the loaded session
+			// This is essential for UI mode to display previous messages when switching sessions
+			try {
+				// Force refresh conversation history after loading
+				if (session && typeof session.refreshConversationHistory === 'function') {
+					await session.refreshConversationHistory();
+					logger.debug(`Session ${sessionId}: Refreshed conversation history after loading`);
+				}
+				
+				// Verify history is available
+				if (session && typeof session.getConversationHistory === 'function') {
+					const history = await session.getConversationHistory();
+					logger.info(`Session ${sessionId}: Loaded with ${history.length} messages in conversation history`);
+				}
+			} catch (historyError) {
+				logger.warn(`Session ${sessionId}: Failed to refresh history after loading:`, historyError);
+				// Continue even if history refresh fails
+			}
+
 			successResponse(
 				res,
 				{
@@ -373,31 +458,58 @@ export function createSessionRoutes(agent: MemAgent): Router {
 			});
 
 			let history = [];
+			let historySource = 'none';
 
-			// First try to get history from the session manager
+			// First try to get history from the session manager (active session)
 			try {
 				const session = await agent.getSession(sessionId);
 				if (session) {
 					history = await agent.getSessionHistory(sessionId);
+					historySource = 'session-manager';
+					logger.debug(`Got ${history.length} messages from active session ${sessionId}`);
 				}
 			} catch (error) {
-				logger.warn(`Session ${sessionId} not found in session manager, checking database...`);
+				logger.debug(`Session ${sessionId} not found in session manager, checking database...`);
 			}
 
-			// If no history found in session manager, try to get from database
+			// If no history found in session manager, try to get from database storage
 			if (history.length === 0) {
 				try {
 					const sessionManager = agent.sessionManager;
-					const storageManager = sessionManager.getStorageManagerForSession('default');
+					let storageManager = sessionManager.getStorageManagerForSession('default');
+					
+					// If no storage manager from default session, try to get the shared one
+					if (!storageManager) {
+						try {
+							// Access the session manager's storage directly
+							const backends = (sessionManager as any).storageManager?.getBackends?.();
+							if (backends) {
+								storageManager = { getBackends: () => backends };
+							}
+						} catch (error) {
+							logger.debug('Could not access session manager storage:', error);
+						}
+					}
 					
 					if (storageManager && storageManager.getBackends) {
 						const backends = storageManager.getBackends();
 						if (backends && backends.database) {
+							// Try to get conversation history from messages key
 							const historyKey = `messages:${sessionId}`;
 							const historyData = await backends.database.get(historyKey);
 							if (historyData && Array.isArray(historyData)) {
 								history = historyData;
-								logger.info(`Found ${history.length} messages for session ${sessionId} in database`);
+								historySource = 'database-messages';
+								logger.info(`Found ${history.length} messages for session ${sessionId} in database (messages key)`);
+							} else {
+								// Try to get from persisted session data
+								const sessionKey = `session:${sessionId}`;
+								const sessionData = await backends.database.get(sessionKey);
+								if (sessionData && sessionData.conversationHistory && Array.isArray(sessionData.conversationHistory)) {
+									history = sessionData.conversationHistory;
+									historySource = 'database-session';
+									logger.info(`Found ${history.length} messages for session ${sessionId} in database (session data)`);
+								}
 							}
 						}
 					}
@@ -405,6 +517,9 @@ export function createSessionRoutes(agent: MemAgent): Router {
 					logger.warn(`Failed to get history from database for session ${sessionId}:`, error);
 				}
 			}
+			
+			// Log the final result
+			logger.info(`Session ${sessionId} history retrieval: ${history.length} messages from ${historySource}`);
 
 			successResponse(
 				res,

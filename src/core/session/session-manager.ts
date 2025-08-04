@@ -819,6 +819,16 @@ export class SessionManager {
 			createdAt: serialized.metadata.createdAt,
 		});
 
+		// CRITICAL FIX: Force refresh conversation history after session is loaded
+		// This ensures the context manager has the conversation history when switching sessions
+		try {
+			await session.refreshConversationHistory();
+			logger.debug(`SessionManager: Refreshed conversation history for session ${sessionId}`);
+		} catch (error) {
+			logger.warn(`SessionManager: Failed to refresh conversation history for session ${sessionId}:`, error);
+			// Continue even if history refresh fails
+		}
+
 		logger.debug(
 			`SessionManager: Loaded session ${sessionId} from persistent storage with ${serialized.conversationHistory.length} messages`
 		);

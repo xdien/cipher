@@ -1312,12 +1312,39 @@ export class ConversationSession {
 	 * Force refresh conversation history from the database
 	 */
 	public async refreshConversationHistory(): Promise<void> {
-		if (this._historyProvider && this.historyEnabled && this.contextManager) {
+		if (this.historyEnabled && this.contextManager) {
 			try {
-				await this.contextManager.restoreHistory?.();
+				// Ensure history provider is initialized
+				const historyProvider = await this.getHistoryProviderLazy();
+				if (historyProvider) {
+					// Update context manager with the history provider if not already set
+					if (!(this.contextManager as any).historyProvider) {
+						(this.contextManager as any).historyProvider = historyProvider;
+						logger.debug(`Session ${this.id}: Set history provider in context manager`);
+					}
+					
+					// Force restore history from the provider
+					if (this.contextManager.restoreHistory) {
+						await this.contextManager.restoreHistory();
+						logger.debug(`Session ${this.id}: Successfully refreshed conversation history from context manager`);
+					} else {
+						// Fallback: manually restore history if restoreHistory method is not available
+						const history = await historyProvider.getHistory(this.id);
+						logger.debug(`Session ${this.id}: Manually restored ${history.length} messages from history provider`);
+						
+						// If context manager has a method to set messages, use it
+						if (typeof (this.contextManager as any).setMessages === 'function') {
+							(this.contextManager as any).setMessages(history);
+						}
+					}
+				} else {
+					logger.debug(`Session ${this.id}: No history provider available for refresh`);
+				}
 			} catch (error) {
 				logger.warn(`Session ${this.id}: Failed to refresh conversation history:`, error);
 			}
+		} else {
+			logger.debug(`Session ${this.id}: History not enabled or context manager not available`);
 		}
 	}
 
@@ -1471,21 +1498,31 @@ export class ConversationSession {
 			// Initialize the session
 			await session.init();
 
-			// Restore conversation history if we have a history provider and serialized history
-			if (session._historyProvider && data.conversationHistory.length > 0) {
+			// Restore conversation history if we have serialized history
+			if (data.conversationHistory.length > 0) {
 				try {
-					// Clear any existing history first
-					await session._historyProvider.clearHistory(data.id);
+					// Ensure history provider is initialized
+					const historyProvider = await session.getHistoryProvider();
+					
+					if (historyProvider) {
+						// Clear any existing history first
+						await historyProvider.clearHistory(data.id);
 
-					// Restore messages one by one to maintain order and validation
-					for (const message of data.conversationHistory) {
-						await session._historyProvider.saveMessage(data.id, message);
+						// Restore messages one by one to maintain order and validation
+						for (const message of data.conversationHistory) {
+							await historyProvider.saveMessage(data.id, message);
+						}
+						
+						logger.debug(`Session ${data.id}: Restored ${data.conversationHistory.length} messages to history provider`);
+					} else {
+						logger.warn(`Session ${data.id}: No history provider available for restoration`);
 					}
 
-					// Restore conversation history to context manager so AI can see previous messages
+					// Always try to refresh conversation history to context manager
+					// This is critical for UI mode to see previous messages
 					await session.refreshConversationHistory();
 					logger.info(
-						`Session ${data.id}: Restored ${data.conversationHistory.length} messages to context manager`
+						`Session ${data.id}: Restored ${data.conversationHistory.length} messages and refreshed context manager`
 					);
 				} catch (error) {
 					logger.warn(
@@ -1494,6 +1531,8 @@ export class ConversationSession {
 					);
 					// Continue without history rather than failing
 				}
+			} else {
+				logger.debug(`Session ${data.id}: No conversation history to restore`);
 			}
 
 			return session;

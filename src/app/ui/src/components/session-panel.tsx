@@ -101,12 +101,8 @@ export function SessionPanel({
       const sessionsWithCounts = await Promise.all(
         sessions.map(async (session: Session) => {
           try {
-            // First try to get message count from session metadata
-            if (session.messageCount !== undefined && session.messageCount > 0) {
-              return session;
-            }
-            
-            // If no message count, try to fetch it from the session history
+            // Always try to get the most accurate message count from session history
+            // This ensures we show correct counts even for sessions that were persisted
             try {
               const historyResponse = await fetch(`/api/sessions/${session.id}/history`);
               if (historyResponse.ok) {
@@ -116,15 +112,24 @@ export function SessionPanel({
                   ...session,
                   messageCount: history.length
                 };
+              } else {
+                console.warn(`Failed to fetch history for session ${session.id}: ${historyResponse.status}`);
               }
             } catch (historyError) {
               console.warn(`Failed to load history for session ${session.id}:`, historyError);
             }
             
-            return session;
+            // Fallback to metadata message count if history fetch failed
+            return {
+              ...session,
+              messageCount: session.messageCount || 0
+            };
           } catch (error) {
             console.warn(`Failed to process session ${session.id}:`, error);
-            return session;
+            return {
+              ...session,
+              messageCount: session.messageCount || 0
+            };
           }
         })
       )
