@@ -23,7 +23,8 @@ import {
   Hash,
   Loader2,
   AlertCircle,
-  X
+  X,
+  RefreshCw
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Session } from "@/types/server-registry"
@@ -85,7 +86,7 @@ export function SessionPanel({
     return `${days}d ago`
   }, [])
 
-  // Session fetching logic
+  // Session fetching logic with enhanced message count loading
   const fetchSessions = React.useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -95,14 +96,54 @@ export function SessionPanel({
       const data = await response.json()
       // Handle the API response structure
       const sessions = data.data?.sessions || data.sessions || []
-      setSessions(sessions)
-    } catch (err) {
-      console.error('Error fetching sessions:', err)
-      setError(err instanceof Error ? err.message : 'Failed to fetch sessions')
+      
+      // Load message counts for each session immediately
+      const sessionsWithCounts = await Promise.all(
+        sessions.map(async (session: Session) => {
+          try {
+            // First try to get message count from session metadata
+            if (session.messageCount !== undefined && session.messageCount > 0) {
+              return session;
+            }
+            
+            // If no message count, try to fetch it from the session history
+            try {
+              const historyResponse = await fetch(`/api/sessions/${session.id}/history`);
+              if (historyResponse.ok) {
+                const historyData = await historyResponse.json();
+                const history = historyData.data?.history || historyData.history || [];
+                return {
+                  ...session,
+                  messageCount: history.length
+                };
+              }
+            } catch (historyError) {
+              console.warn(`Failed to load history for session ${session.id}:`, historyError);
+            }
+            
+            return session;
+          } catch (error) {
+            console.warn(`Failed to process session ${session.id}:`, error);
+            return session;
+          }
+        })
+      )
+      
+      setSessions(sessionsWithCounts)
+    } catch (error) {
+      console.error('Error fetching sessions:', error)
+      setError('Failed to load sessions')
     } finally {
       setLoading(false)
     }
   }, [])
+
+  // Auto-refresh sessions when panel opens
+  React.useEffect(() => {
+    if (isOpen) {
+      fetchSessions();
+    }
+  }, [isOpen, fetchSessions]);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -402,8 +443,18 @@ export function SessionPanel({
         <div className="flex items-center gap-2">
           <MessageSquare className="w-5 h-5" />
           <h2 className="font-semibold">Sessions ({sessions.length})</h2>
+          {loading && <Loader2 className="w-4 h-4 animate-spin" />}
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchSessions}
+            disabled={loading}
+            title="Refresh sessions"
+          >
+            <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -412,11 +463,9 @@ export function SessionPanel({
             <Plus className="w-4 h-4 mr-1" />
             New Session
           </Button>
-          {variant === 'modal' && (
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              <X className="w-4 h-4" />
-            </Button>
-          )}
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X className="w-4 h-4" />
+          </Button>
         </div>
       </div>
 

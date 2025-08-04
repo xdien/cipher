@@ -72,7 +72,8 @@ function MainChatInterface() {
   const handleSessionChange = async (sessionId: string) => {
     try {
       await switchSession(sessionId);
-      setIsSessionsPanelOpen(false);
+      // Don't auto-close the sessions panel - let user decide when to close it
+      // setIsSessionsPanelOpen(false);
     } catch (error) {
       console.error('Error switching session:', error);
       setErrorMessage('Failed to switch session. Please try again.');

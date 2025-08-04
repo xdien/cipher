@@ -200,7 +200,8 @@ export function Chat({
     
     try {
       await switchSession(sessionId);
-      setModalStates(prev => ({ ...prev, isSessionsPanelOpen: false }));
+      // Don't auto-close the sessions panel - let user decide when to close it
+      // setModalStates(prev => ({ ...prev, isSessionsPanelOpen: false }));
     } catch (error) {
       console.error('Error switching session:', error);
       setErrorMessage('Failed to switch session. Please try again.');

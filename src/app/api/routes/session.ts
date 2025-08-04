@@ -29,29 +29,67 @@ export function createSessionRoutes(agent: MemAgent): Router {
 				}
 			}
 
-			successResponse(
-				res,
-				{
-					sessions,
-					count: sessions.length,
-					currentSession: agent.getCurrentSessionId(),
-				},
-				200,
-				req.requestId
-			);
-		} catch (error) {
-			const errorMsg = error instanceof Error ? error.message : String(error);
-			logger.error('Failed to list sessions', {
-				requestId: req.requestId,
-				error: errorMsg,
-			});
+			// Also check for sessions with conversation history in the database
+			try {
+				// Get the storage manager from the agent's session manager
+				const sessionManager = agent.sessionManager;
+				const storageManager = sessionManager.getStorageManagerForSession('default');
+				
+				if (storageManager && storageManager.getBackends) {
+					const backends = storageManager.getBackends();
+					if (backends && backends.database) {
+						// Look for sessions with conversation history using the 'messages:' prefix
+						const messageKeys = await backends.database.list('messages:');
+						
+						for (const key of messageKeys) {
+							// Extract session ID from the key (remove 'messages:' prefix)
+							const sessionId = key.replace('messages:', '');
+							
+							// Skip if this session is already in the list
+							if (sessions.some(s => s.id === sessionId)) {
+								continue;
+							}
+							
+							try {
+								// Get the conversation history to count messages
+								const historyData = await backends.database.get(key);
+								if (historyData && Array.isArray(historyData)) {
+									const messageCount = historyData.length;
+									
+									// Create a session metadata object
+									const sessionMetadata = {
+										id: sessionId,
+										createdAt: Date.now() - (messageCount * 60000), // Approximate creation time
+										lastActivity: Date.now(),
+										messageCount: messageCount
+									};
+									
+									sessions.push(sessionMetadata);
+									logger.info(`Found session with conversation history: ${sessionId} (${messageCount} messages)`);
+								}
+							} catch (error) {
+								logger.warn(`Failed to process session ${sessionId} from database:`, error);
+							}
+						}
+					}
+				}
+			} catch (error) {
+				logger.warn('Failed to load sessions from database:', error);
+			}
 
+			successResponse(res, {
+				sessions,
+				count: sessions.length,
+				currentSession: agent.getCurrentSessionId?.() || null
+			}, 200, req.requestId);
+		} catch (error) {
+			logger.error('Error listing sessions:', error);
 			errorResponse(
 				res,
 				ERROR_CODES.INTERNAL_ERROR,
-				`Failed to list sessions: ${errorMsg}`,
+				'Failed to list sessions',
 				500,
-				undefined,
+				error,
 				req.requestId
 			);
 		}
@@ -334,20 +372,39 @@ export function createSessionRoutes(agent: MemAgent): Router {
 				sessionId,
 			});
 
-			const session = await agent.getSession(sessionId);
-			if (!session) {
-				errorResponse(
-					res,
-					ERROR_CODES.SESSION_NOT_FOUND,
-					`Session ${sessionId} not found`,
-					404,
-					undefined,
-					req.requestId
-				);
-				return;
+			let history = [];
+
+			// First try to get history from the session manager
+			try {
+				const session = await agent.getSession(sessionId);
+				if (session) {
+					history = await agent.getSessionHistory(sessionId);
+				}
+			} catch (error) {
+				logger.warn(`Session ${sessionId} not found in session manager, checking database...`);
 			}
 
-			const history = await agent.getSessionHistory(sessionId);
+			// If no history found in session manager, try to get from database
+			if (history.length === 0) {
+				try {
+					const sessionManager = agent.sessionManager;
+					const storageManager = sessionManager.getStorageManagerForSession('default');
+					
+					if (storageManager && storageManager.getBackends) {
+						const backends = storageManager.getBackends();
+						if (backends && backends.database) {
+							const historyKey = `messages:${sessionId}`;
+							const historyData = await backends.database.get(historyKey);
+							if (historyData && Array.isArray(historyData)) {
+								history = historyData;
+								logger.info(`Found ${history.length} messages for session ${sessionId} in database`);
+							}
+						}
+					}
+				} catch (error) {
+					logger.warn(`Failed to get history from database for session ${sessionId}:`, error);
+				}
+			}
 
 			successResponse(
 				res,

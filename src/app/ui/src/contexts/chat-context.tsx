@@ -131,13 +131,37 @@ export function ChatProvider({
   const switchSession = useCallback(async (sessionId: string) => {
     if (sessionId === currentSessionId) return;
 
+    console.log('Switching to session:', sessionId);
+
     try {
+      // Clear current messages first
+      setMessages([]);
+      
       // Load the session as the current working session on the backend
       await loadSession(sessionId);
+      console.log('Session loaded on backend');
 
       setCurrentSessionId(sessionId);
       setIsWelcomeState(false); // No longer in welcome state
-      await loadHistory(sessionId);
+      
+      // Load conversation history immediately when switching sessions
+      // First, try to get history from the backend session
+      try {
+        console.log('Loading session history for:', sessionId);
+        const history = await loadSessionHistory(sessionId);
+        console.log('History loaded:', history.length, 'messages');
+        const uiMessages = convertHistoryToUIMessages(history, sessionId);
+        console.log('UI messages converted:', uiMessages.length, 'messages');
+        
+        // Force a small delay to ensure the UI has cleared
+        await new Promise(resolve => setTimeout(resolve, 10));
+        
+        setMessages(uiMessages);
+        console.log('Messages set in state');
+      } catch (historyError) {
+        console.warn('Failed to load session history, clearing messages:', historyError);
+        setMessages([]);
+      }
 
       // Emit custom event for session switch
       if (typeof window !== 'undefined') {
