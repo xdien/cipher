@@ -528,17 +528,53 @@ export function useSessionCache() {
   }
 }
 
+// Hook for refreshing session cache
+export function useSessionCacheRefresh() {
+  const { 
+    getCachedSession,
+    setCachedSession,
+    enableOptimizations,
+  } = useSessionStore()
+
+  const refreshSessionCache = useCallback(async (sessionId: string) => {
+    if (!enableOptimizations || !sessionId) return
+
+    try {
+      console.log('🔄 Refreshing cache for session:', sessionId)
+      
+      // Fetch fresh session data
+      const { session, messages } = await loadSessionData(sessionId)
+      
+      // Update cache with fresh data
+      setCachedSession(sessionId, {
+        session,
+        messages,
+        lastAccessed: Date.now(),
+        isLoaded: true,
+      })
+      
+      console.log('✅ Cache refreshed for session:', sessionId, 'with', messages.length, 'messages')
+    } catch (error) {
+      console.error('❌ Failed to refresh session cache:', sessionId, error)
+    }
+  }, [getCachedSession, setCachedSession, enableOptimizations])
+
+  return { refreshSessionCache }
+}
+
 // Hook for session operations with real-time updates
 export function useSessionOperations() {
   const createMutation = useCreateSession()
   const deleteMutation = useDeleteSession()
   const { switchToSession } = useSessionSwitch()
+  const { refreshSessionCache } = useSessionCacheRefresh()
   const queryClient = useQueryClient()
 
   // Listen for WebSocket events to update cache when needed
   useEffect(() => {
-    const handleNewMessage = (event: CustomEvent) => {
-      const { sessionId } = event.detail || {}
+    const handleNewMessage = (event: Event) => {
+      const customEvent = event as CustomEvent
+      const { sessionId } = customEvent.detail || {}
       if (sessionId) {
         // Update message count and last activity
         queryClient.setQueryData(sessionQueryKeys.lists(), (oldSessions: Session[] = []) => {
@@ -556,21 +592,37 @@ export function useSessionOperations() {
       }
     }
 
+    // Handle response complete event to refresh cache
+    const handleResponseComplete = (event: Event) => {
+      const customEvent = event as CustomEvent
+      const { sessionId } = customEvent.detail || {}
+      if (sessionId) {
+        console.log('🎯 Response complete for session:', sessionId, '- refreshing cache')
+        // Add a small delay to ensure the backend has processed the message
+        setTimeout(() => {
+          refreshSessionCache(sessionId)
+        }, 500)
+      }
+    }
+
     if (typeof window !== 'undefined') {
       window.addEventListener('cipher:newMessage', handleNewMessage as EventListener)
       window.addEventListener('cipher:response', handleNewMessage as EventListener)
+      window.addEventListener('cipher:responseComplete', handleResponseComplete as EventListener)
 
       return () => {
         window.removeEventListener('cipher:newMessage', handleNewMessage as EventListener)
         window.removeEventListener('cipher:response', handleNewMessage as EventListener)
+        window.removeEventListener('cipher:responseComplete', handleResponseComplete as EventListener)
       }
     }
-  }, [queryClient])
+  }, [queryClient, refreshSessionCache])
 
   return {
     createSession: createMutation.mutate,
     deleteSession: deleteMutation.mutate,
     switchToSession,
+    refreshSessionCache,
     isCreating: createMutation.isPending,
     isDeleting: deleteMutation.isPending,
     createError: createMutation.error?.message || null,

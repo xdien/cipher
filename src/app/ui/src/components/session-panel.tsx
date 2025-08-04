@@ -62,6 +62,10 @@ export function SessionPanel({
   const [error, setError] = React.useState<string | null>(null)
   const [isNewSessionOpen, setNewSessionOpen] = React.useState(false)
   const [newSessionId, setNewSessionId] = React.useState('')
+  
+  // Scroll position preservation
+  const scrollAreaRef = React.useRef<HTMLDivElement>(null)
+  const savedScrollPosition = React.useRef<number>(0)
 
   // Conversation management states
   const [isDeleteConversationDialogOpen, setDeleteConversationDialogOpen] = React.useState(false)
@@ -216,20 +220,41 @@ export function SessionPanel({
     </div>
   )
 
+  // Enhanced session change handler with scroll preservation
+  const handleSessionSelect = React.useCallback((sessionId: string) => {
+    // Save current scroll position
+    if (scrollAreaRef.current) {
+      savedScrollPosition.current = scrollAreaRef.current.scrollTop
+    }
+    
+    // Call the original session change handler
+    onSessionChange(sessionId)
+    
+    // Restore scroll position after state updates
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (scrollAreaRef.current && savedScrollPosition.current > 0) {
+          scrollAreaRef.current.scrollTop = savedScrollPosition.current
+        }
+      })
+    })
+  }, [onSessionChange])
+
   // Session card component
   const SessionCard = ({ session, isActive, onSelect, onDelete }: {
     session: Session
     isActive: boolean
     onSelect: () => void
     onDelete: () => void
-  }) => (
-    <div
-      className={cn(
-        "group p-3 rounded-lg border border-border/50 bg-card hover:bg-muted/50 transition-all cursor-pointer",
-        isActive && "ring-2 ring-primary bg-primary/5"
-      )}
-      onClick={onSelect}
-    >
+  }) => {
+    return (
+      <div
+        className={cn(
+          "group p-3 rounded-lg border border-border/50 bg-card hover:bg-muted/50 transition-all cursor-pointer",
+          isActive && "ring-2 ring-primary bg-primary/5"
+        )}
+        onClick={onSelect}
+      >
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
           <div className="flex items-center space-x-2 mb-2">
@@ -271,7 +296,8 @@ export function SessionPanel({
         />
       </div>
     </div>
-  )
+    )
+  }
 
   // Handle dialog close
   const handleDialogClose = React.useCallback(() => {
@@ -335,9 +361,9 @@ export function SessionPanel({
 
   // Main content
   const SessionContent = () => (
-    <div className="space-y-4">
+    <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-4 flex-shrink-0">
         <div className="flex items-center gap-2">
           <MessageSquare className="w-5 h-5" />
           <h2 className="font-semibold">Sessions ({sessions.length})</h2>
@@ -369,7 +395,7 @@ export function SessionPanel({
 
       {/* Error display */}
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg mb-4 flex-shrink-0">
           <div className="flex items-center gap-2 text-red-700">
             <AlertCircle className="w-4 h-4" />
             <span className="text-sm font-medium">Error</span>
@@ -378,36 +404,38 @@ export function SessionPanel({
         </div>
       )}
 
-      {/* Sessions list */}
-      {loading ? (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-          <span className="ml-2 text-sm text-muted-foreground">Loading sessions...</span>
-        </div>
-      ) : sessions.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground">
-          <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-50" />
-          <p className="text-sm font-medium mb-1">No sessions found</p>
-          <p className="text-xs">Create a new session to get started</p>
-        </div>
-      ) : (
-        <ScrollArea className="h-96">
-          <div className="space-y-2">
-            {sessions.map((session) => (
-              <SessionCard
-                key={session.id}
-                session={session}
-                isActive={currentSessionId === session.id}
-                onSelect={() => onSessionChange(session.id)}
-                onDelete={() => {
-                  setSelectedSessionForAction(session.id)
-                  setDeleteConversationDialogOpen(true)
-                }}
-              />
-            ))}
+      {/* Sessions list - flex-1 to take remaining space */}
+      <div className="flex-1 min-h-0">
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            <span className="ml-2 text-sm text-muted-foreground">Loading sessions...</span>
           </div>
-        </ScrollArea>
-      )}
+        ) : sessions.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-50" />
+            <p className="text-sm font-medium mb-1">No sessions found</p>
+            <p className="text-xs">Create a new session to get started</p>
+          </div>
+        ) : (
+          <ScrollArea className="h-full" ref={scrollAreaRef}>
+            <div className="space-y-2 pr-4">
+              {sessions.map((session) => (
+                <SessionCard
+                  key={session.id}
+                  session={session}
+                  isActive={currentSessionId === session.id}
+                  onSelect={() => handleSessionSelect(session.id)}
+                  onDelete={() => {
+                    setSelectedSessionForAction(session.id)
+                    setDeleteConversationDialogOpen(true)
+                  }}
+                />
+              ))}
+            </div>
+          </ScrollArea>
+        )}
+      </div>
 
       {/* Dialogs */}
       <Dialog open={isNewSessionOpen} onOpenChange={(open) => !open && handleDialogClose()}>
@@ -472,7 +500,7 @@ export function SessionPanel({
   }
 
   return (
-    <div className={cn("p-4 border rounded-lg bg-background", className)}>
+    <div className={cn("h-full", className)}>
       <SessionContent />
     </div>
   )

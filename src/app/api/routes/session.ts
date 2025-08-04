@@ -138,7 +138,7 @@ export function createSessionRoutes(agent: MemAgent): Router {
 				sessionId: sessionId || 'auto-generated',
 			});
 
-			const session = await agent.createSession(sessionId);
+			const session = await agent.createSession(sessionId || undefined);
 
 			successResponse(
 				res,

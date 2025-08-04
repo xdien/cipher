@@ -18,7 +18,7 @@ import {
   resetBackendSession
 } from '@/lib/chat-config';
 import { useSessionStore, sessionStoreActions } from '@/stores/session-store';
-import { useSessionSwitch, useCreateSession } from '@/hooks/use-sessions';
+import { useSessionSwitch, useCreateSession, useSessionOperations } from '@/hooks/use-sessions';
 
 // Create the context
 const ChatContext = createContext<ChatContextType | null>(null);
@@ -45,6 +45,9 @@ export function ChatProvider({
   // Session operations hooks
   const { switchToSession, isSwitching } = useSessionSwitch();
   const createSessionMutation = useCreateSession();
+  
+  // Initialize session operations to handle cache refresh events
+  useSessionOperations();
 
   // Chat hook integration
   const {

@@ -12,11 +12,15 @@ export function SlidingPanel({
 }: SlidingPanelProps) {
   return (
     <div className={cn(
-      "shrink-0 transition-all duration-300 ease-in-out border-border/50 bg-card",
+      "shrink-0 transition-all duration-300 ease-in-out border-border/50 bg-card h-full",
       side === "right" ? "border-l" : "border-r",
       isOpen ? width : "w-0 overflow-hidden"
     )}>
-      {isOpen && children}
+      {isOpen && (
+        <div className="h-full p-4">
+          {children}
+        </div>
+      )}
     </div>
   );
 }

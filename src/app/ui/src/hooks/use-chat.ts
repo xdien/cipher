@@ -265,6 +265,14 @@ export function useChat(wsUrl: string, options: UseChatOptions = {}) {
 			// Reset streaming state when response is complete
 			currentStreamingMessage.current = null;
 
+			// Emit event to trigger cache update for session history
+			if (sessionId) {
+				dispatchChatEvent('cipher:responseComplete', {
+					sessionId,
+					timestamp: Date.now(),
+				});
+			}
+
 			// Call onMessage callback if provided
 			if (onMessage) {
 				const message: ChatMessage = {
@@ -552,6 +560,12 @@ export function useChat(wsUrl: string, options: UseChatOptions = {}) {
 					// Emit DOM event for other components
 					dispatchChatEvent('cipher:message', {
 						content,
+						sessionId,
+						timestamp: Date.now(),
+					});
+
+					// Also emit newMessage event for cache updates
+					dispatchChatEvent('cipher:newMessage', {
 						sessionId,
 						timestamp: Date.now(),
 					});
