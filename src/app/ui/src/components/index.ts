@@ -10,6 +10,7 @@ export { SessionPanel } from './session-panel';
 export { ServersPanel } from './servers-panel';
 export { MessageList } from './message-list';
 export { InputArea } from './input-area';
+export { ThinkingIndicator } from './thinking-indicator';
 export { ChatExample } from './chat-example';
 export { ChatContextExample } from './chat-context-example';
 export { Navigation } from './navigation';

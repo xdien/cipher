@@ -522,6 +522,23 @@ export class ConversationSession {
 		// Lazy initialize LLM service when first needed
 		const llmService = await this.getLLMServiceLazy();
 
+		// Emit thinking event before starting generation
+		if (this.services.eventManager) {
+			try {
+				const sessionBus = this.services.eventManager.getSessionEventBus(this.id);
+				sessionBus.emit('llm:thinking', {
+					sessionId: this.id,
+					timestamp: Date.now()
+				});
+				logger.debug('Emitted llm:thinking event', { sessionId: this.id });
+			} catch (error) {
+				logger.warn('Failed to emit thinking event', {
+					sessionId: this.id,
+					error: error instanceof Error ? error.message : String(error)
+				});
+			}
+		}
+
 		// Generate response
 		const response = await llmService.generate(input, imageDataInput, stream);
 

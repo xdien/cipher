@@ -18,6 +18,7 @@ import {
 import Image from "next/image"
 import { cn, formatTimestamp } from "@/lib/utils"
 import { Message, ContentPart } from "@/types/server-registry"
+import { ThinkingIndicator } from "./thinking-indicator"
 
 interface MessageListProps {
   messages: Message[]
@@ -438,11 +439,21 @@ export function MessageList({ messages, className, maxHeight = "h-full" }: Messa
     return <div>{String(msg.content)}</div>
   }
 
+  // Check if there's a thinking message
+  const hasThinkingMessage = messages.some(
+    msg => msg.role === 'system' && msg.content === 'Cipher is thinking...'
+  );
+
   return (
     <ScrollArea className={cn(maxHeight, className, "flex-1 scrollbar-thin")} ref={scrollAreaRef}>
       <div className="space-y-1 p-4">
         {messages
           .filter(msg => {
+            // Filter out thinking messages as they'll be handled by ThinkingIndicator
+            if (msg.role === 'system' && msg.content === 'Cipher is thinking...') {
+              return false;
+            }
+            
             // Filter out empty messages, but allow tool messages with null content
             if (msg.role === 'tool') {
               // Tool messages should be displayed even with null content
@@ -576,6 +587,11 @@ export function MessageList({ messages, className, maxHeight = "h-full" }: Messa
             </div>
           )
         })}
+        
+        {/* Thinking indicator */}
+        {hasThinkingMessage && (
+          <ThinkingIndicator className="mb-4" />
+        )}
         
         {/* Auto-scroll anchor */}
         <div ref={endRef} />
