@@ -383,7 +383,6 @@ export function useChat(wsUrl: string, options: UseChatOptions = {}) {
 	const handleToolExecutionCompleted = useCallback((payload: IncomingMessage['data']) => {
 		if (!isMountedRef.current) return;
 
-		const name = payload.toolName;
 		const result = payload.result || 'Tool execution completed';
 		const callId = payload.callId || payload.executionId;
 

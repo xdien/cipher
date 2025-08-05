@@ -358,7 +358,6 @@ export class WebSocketEventSubscriber {
 					{
 						toolName: data.toolName,
 						success: data.success,
-						result: data.result,
 						sessionId: data.sessionId,
 						callId: data.executionId,
 						executionId: data.executionId,

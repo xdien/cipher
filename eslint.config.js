@@ -52,9 +52,6 @@ export default [
 				fetch: 'readonly',
 				RequestInit: 'readonly',
 				Response: 'readonly',
-				// Browser globals for UI files
-				Event: 'readonly',
-				EventListener: 'readonly',
 				// Test globals
 				describe: 'readonly',
 				test: 'readonly',
