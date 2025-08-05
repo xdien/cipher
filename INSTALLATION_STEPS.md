@@ -16,13 +16,14 @@ If npm install times out or fails, try:
 npm install zustand @tanstack/react-query @tanstack/react-query-devtools --force
 # OR
 yarn add zustand @tanstack/react-query @tanstack/react-query-devtools
-# OR  
+# OR
 pnpm add zustand @tanstack/react-query @tanstack/react-query-devtools
 ```
 
 ## Files Created/Modified Summary
 
 ### ✅ New Files Created:
+
 1. `src/app/ui/src/stores/session-store.ts` - Zustand store for session management
 2. `src/app/ui/src/stores/index.ts` - Store exports
 3. `src/app/ui/src/hooks/use-sessions.ts` - React Query hooks for session operations
@@ -32,12 +33,14 @@ pnpm add zustand @tanstack/react-query @tanstack/react-query-devtools
 7. `src/app/ui/src/lib/session-cache.ts` - Session caching utilities
 
 ### ✅ Modified Files:
+
 1. `src/app/ui/src/contexts/chat-context.tsx` - Integrated with optimized session management
 2. `src/app/ui/src/components/session-panel.tsx` - Updated to use cached session operations
 3. `src/app/ui/src/app/layout.tsx` - Added React Query provider
 4. `src/app/ui/src/hooks/index.ts` - Added session hooks exports
 
 ### 📋 Documentation:
+
 1. `OPTIMIZATION_IMPLEMENTATION.md` - Comprehensive implementation guide
 2. `INSTALLATION_STEPS.md` - This installation guide
 
@@ -50,47 +53,53 @@ pnpm add zustand @tanstack/react-query @tanstack/react-query-devtools
 ✅ **Optimistic Updates** - Immediate UI updates with rollback  
 ✅ **WebSocket Integration** - Real-time cache invalidation  
 ✅ **Error Handling** - Graceful fallbacks and error boundaries  
-✅ **Feature Toggles** - Runtime enable/disable of optimizations  
+✅ **Feature Toggles** - Runtime enable/disable of optimizations
 
 ## Post-Installation Testing
 
 After installing dependencies, test the implementation:
 
 ### 1. Basic Functionality Test
+
 ```bash
 # Start the development server
 npm run dev
 ```
 
 ### 2. Enable Optimizations
+
 - Open the session panel
-- Click the settings (⚙️) icon  
+- Click the settings (⚙️) icon
 - Enable "Fast" optimizations
 - Verify the ⚡ badge appears
 
 ### 3. Performance Testing
+
 - Create multiple sessions
 - Switch between sessions rapidly
 - Check network tab - should see reduced HTTP requests
 - Monitor cache statistics in settings panel
 
 ### 4. Error Handling Test
+
 - Disable network connection
-- Try to create/delete sessions  
+- Try to create/delete sessions
 - Verify graceful fallback behavior
 - Check error boundaries work properly
 
 ## Expected Performance Improvements
 
 ### Before Optimization:
+
 - HTTP request per session switch (~200-500ms)
 - Individual API calls for message counts
 - No caching - repeated requests
 - Poor UX with loading states
 
 ### After Optimization:
+
 - **Zero HTTP requests** for cached sessions (<50ms switch)
-- **Batch loading** of session metadata  
+- **Batch loading** of session metadata
 - **Memory cache** for frequent sessions
 - **Optimistic updates** for immediate feedback
 - **70-80% reduction** in server requests
@@ -136,12 +145,13 @@ persistMetadata: boolean (default: true)
 ### Debug Mode:
 
 Enable debug logging in browser console:
+
 ```javascript
 // Enable debug logging
-localStorage.setItem('cipher-debug', 'true')
+localStorage.setItem('cipher-debug', 'true');
 
 // View cache statistics
-console.log(useSessionStore.getState().getCacheStats())
+console.log(useSessionStore.getState().getCacheStats());
 ```
 
 ## Rollback Plan

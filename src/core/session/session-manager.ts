@@ -47,8 +47,14 @@ export class SessionManager {
 	private readonly pendingCreations = new Map<string, Promise<ConversationSession>>();
 
 	// Performance optimizations
-	private readonly sessionMetadataCache = new Map<string, { metadata: SessionMetadata; cachedAt: number; expiresAt: number }>();
-	private readonly messageCountCache = new Map<string, { count: number; cachedAt: number; expiresAt: number }>();
+	private readonly sessionMetadataCache = new Map<
+		string,
+		{ metadata: SessionMetadata; cachedAt: number; expiresAt: number }
+	>();
+	private readonly messageCountCache = new Map<
+		string,
+		{ count: number; cachedAt: number; expiresAt: number }
+	>();
 	private readonly requestDeduplicator = new Map<string, Promise<any>>();
 	private readonly CACHE_TTL = 30000; // 30 seconds
 	private readonly BATCH_SIZE = 10; // Parallel processing batch size
@@ -57,7 +63,7 @@ export class SessionManager {
 		cacheMisses: 0,
 		parallelLoads: 0,
 		sequentialLoads: 0,
-		averageLoadTime: 0
+		averageLoadTime: 0,
 	};
 
 	// Persistence-related fields
@@ -210,16 +216,21 @@ export class SessionManager {
 			if (historyProvider) {
 				logger.debug(`SessionManager: History provider initialized for new session ${sessionId}`);
 			}
-			
+
 			await session.refreshConversationHistory();
 			logger.debug(`SessionManager: Initialized conversation history for new session ${sessionId}`);
-			
+
 			// Verify that the session has proper initialization
 			const contextHistory = session.getContextHistory();
 			const history = await session.getConversationHistory();
-			logger.debug(`SessionManager: New session ${sessionId} - Context: ${contextHistory.length} messages, History: ${history.length} messages`);
+			logger.debug(
+				`SessionManager: New session ${sessionId} - Context: ${contextHistory.length} messages, History: ${history.length} messages`
+			);
 		} catch (error) {
-			logger.warn(`SessionManager: Failed to initialize conversation history for new session ${sessionId}:`, error);
+			logger.warn(
+				`SessionManager: Failed to initialize conversation history for new session ${sessionId}:`,
+				error
+			);
 			// Continue even if history initialization fails
 		}
 
@@ -334,7 +345,9 @@ export class SessionManager {
 		// CRITICAL FIX: Check if session exists before deletion
 		const sessionMetadata = this.sessions.get(sessionId);
 		if (!sessionMetadata && !this.storageManager?.isConnected()) {
-			logger.debug(`SessionManager: Session ${sessionId} not found in memory and storage unavailable`);
+			logger.debug(
+				`SessionManager: Session ${sessionId} not found in memory and storage unavailable`
+			);
 			return false;
 		}
 
@@ -356,7 +369,7 @@ export class SessionManager {
 						// Delete both session data and conversation history
 						const sessionKey = this.getSessionStorageKey(sessionId);
 						const historyKey = `messages:${sessionId}`;
-						
+
 						// Delete session data
 						try {
 							await backends.database.delete(sessionKey);
@@ -364,7 +377,7 @@ export class SessionManager {
 						} catch (sessionDeleteError) {
 							deletionErrors.push(`Session data: ${sessionDeleteError}`);
 						}
-						
+
 						// Delete conversation history
 						try {
 							await backends.database.delete(historyKey);
@@ -372,7 +385,7 @@ export class SessionManager {
 						} catch (historyDeleteError) {
 							deletionErrors.push(`History data: ${historyDeleteError}`);
 						}
-						
+
 						storageDeleted = true;
 					}
 				} catch (storageError) {
@@ -386,7 +399,7 @@ export class SessionManager {
 
 			// Step 3: Clear all caches for this session
 			this.clearSessionFromAllCaches(sessionId);
-			
+
 			// Step 4: Emit events and log results
 			if (memoryDeleted || storageDeleted) {
 				// Emit session deleted event
@@ -407,11 +420,15 @@ export class SessionManager {
 				return true;
 			}
 
-			logger.warn(`SessionManager: Failed to delete session ${sessionId} - not found in memory or storage`);
+			logger.warn(
+				`SessionManager: Failed to delete session ${sessionId} - not found in memory or storage`
+			);
 			return false;
-
 		} catch (error) {
-			logger.error(`SessionManager: Critical error during session deletion for ${sessionId}:`, error);
+			logger.error(
+				`SessionManager: Critical error during session deletion for ${sessionId}:`,
+				error
+			);
 			// If we deleted from memory but failed storage, still return true as session is functionally deleted
 			return memoryDeleted;
 		}
@@ -430,10 +447,10 @@ export class SessionManager {
 
 		const startTime = Date.now();
 		const cacheKey = 'active_session_ids';
-		
+
 		// CRITICAL FIX: Don't use cache for session IDs to prevent phantom sessions
 		// Always fetch fresh data to ensure UI shows accurate session list
-		
+
 		// Prevent duplicate requests
 		if (this.requestDeduplicator.has(cacheKey)) {
 			logger.debug('SessionManager: Deduplicating concurrent request for active session IDs');
@@ -442,25 +459,29 @@ export class SessionManager {
 
 		try {
 			this.performanceMetrics.cacheMisses++;
-			
+
 			const fetchPromise = this.fetchActiveSessionIds();
 			this.requestDeduplicator.set(cacheKey, fetchPromise);
-			
+
 			const result = await fetchPromise;
-			
+
 			// CRITICAL FIX: Filter out sessions with 0 messages to prevent phantom sessions
 			const validSessions = await this.filterValidSessions(result);
-			
+
 			const loadTime = Date.now() - startTime;
 			this.updateAverageLoadTime(loadTime);
-			
-			logger.debug(`SessionManager: Fetched ${validSessions.length}/${result.length} valid session IDs in ${loadTime}ms`);
+
+			logger.debug(
+				`SessionManager: Fetched ${validSessions.length}/${result.length} valid session IDs in ${loadTime}ms`
+			);
 			return validSessions;
 		} catch (error) {
 			logger.error('SessionManager: Failed to get active session IDs:', error);
 			// Return in-memory sessions as fallback
 			const inMemorySessionIds = Array.from(this.sessions.keys());
-			logger.debug(`SessionManager: Returning ${inMemorySessionIds.length} in-memory sessions as fallback`);
+			logger.debug(
+				`SessionManager: Returning ${inMemorySessionIds.length} in-memory sessions as fallback`
+			);
 			return inMemorySessionIds;
 		} finally {
 			this.requestDeduplicator.delete(cacheKey);
@@ -483,17 +504,19 @@ export class SessionManager {
 		try {
 			const [sessionKeys, messageKeys] = await Promise.allSettled([
 				this.getAllSessionKeys(),
-				this.getAllMessageKeys()
+				this.getAllMessageKeys(),
 			]);
 
 			// Extract session IDs from both sources
-			const sessionIdsFromKeys = sessionKeys.status === 'fulfilled' 
-				? sessionKeys.value.map(key => this.extractSessionIdFromKey(key))
-				: [];
+			const sessionIdsFromKeys =
+				sessionKeys.status === 'fulfilled'
+					? sessionKeys.value.map(key => this.extractSessionIdFromKey(key))
+					: [];
 
-			const sessionIdsFromMessages = messageKeys.status === 'fulfilled'
-				? messageKeys.value.map(key => key.replace('messages:', ''))
-				: [];
+			const sessionIdsFromMessages =
+				messageKeys.status === 'fulfilled'
+					? messageKeys.value.map(key => key.replace('messages:', ''))
+					: [];
 
 			persistedSessionIds = [...new Set([...sessionIdsFromKeys, ...sessionIdsFromMessages])];
 			logger.debug(`SessionManager: Found ${persistedSessionIds.length} persisted sessions`);
@@ -534,9 +557,12 @@ export class SessionManager {
 		const storageType = backends?.database?.getBackendType?.() || 'none';
 
 		const totalRequests = this.performanceMetrics.cacheHits + this.performanceMetrics.cacheMisses;
-		const cacheHitRate = totalRequests > 0 ? (this.performanceMetrics.cacheHits / totalRequests) * 100 : 0;
-		const totalLoads = this.performanceMetrics.parallelLoads + this.performanceMetrics.sequentialLoads;
-		const parallelLoadRatio = totalLoads > 0 ? (this.performanceMetrics.parallelLoads / totalLoads) * 100 : 0;
+		const cacheHitRate =
+			totalRequests > 0 ? (this.performanceMetrics.cacheHits / totalRequests) * 100 : 0;
+		const totalLoads =
+			this.performanceMetrics.parallelLoads + this.performanceMetrics.sequentialLoads;
+		const parallelLoadRatio =
+			totalLoads > 0 ? (this.performanceMetrics.parallelLoads / totalLoads) * 100 : 0;
 
 		return {
 			activeSessions: this.sessions.size,
@@ -547,8 +573,8 @@ export class SessionManager {
 				cacheHitRate: Math.round(cacheHitRate * 100) / 100,
 				parallelLoadRatio: Math.round(parallelLoadRatio * 100) / 100,
 				averageLoadTime: Math.round(this.performanceMetrics.averageLoadTime * 100) / 100,
-				cacheSize: this.sessionMetadataCache.size + this.messageCountCache.size
-			}
+				cacheSize: this.sessionMetadataCache.size + this.messageCountCache.size,
+			},
 		};
 	}
 
@@ -961,13 +987,13 @@ export class SessionManager {
 		}
 
 		const serialized = await session.serialize();
-		
+
 		// CRITICAL FIX: Don't save sessions with 0 messages to prevent phantom sessions
 		if (serialized.conversationHistory.length === 0) {
 			logger.debug(`SessionManager: Skipping save of session ${sessionId} with 0 messages`);
 			return;
 		}
-		
+
 		const key = this.getSessionStorageKey(sessionId);
 
 		const backends = this.storageManager.getBackends();
@@ -1031,16 +1057,23 @@ export class SessionManager {
 		try {
 			await session.refreshConversationHistory();
 			logger.debug(`SessionManager: Refreshed conversation history for session ${sessionId}`);
-			
+
 			// Verify that the context manager has the messages
 			const contextHistory = session.getContextHistory();
-			logger.debug(`SessionManager: Context manager for session ${sessionId} has ${contextHistory.length} messages`);
-			
+			logger.debug(
+				`SessionManager: Context manager for session ${sessionId} has ${contextHistory.length} messages`
+			);
+
 			// Also verify history provider has messages
 			const history = await session.getConversationHistory();
-			logger.debug(`SessionManager: History provider for session ${sessionId} has ${history.length} messages`);
+			logger.debug(
+				`SessionManager: History provider for session ${sessionId} has ${history.length} messages`
+			);
 		} catch (error) {
-			logger.warn(`SessionManager: Failed to refresh conversation history for session ${sessionId}:`, error);
+			logger.warn(
+				`SessionManager: Failed to refresh conversation history for session ${sessionId}:`,
+				error
+			);
 			// Continue even if history refresh fails
 		}
 
@@ -1069,7 +1102,7 @@ export class SessionManager {
 			// Use the database backend's list method to get all keys with our prefix
 			const prefix = this.persistenceConfig.storageKeyPrefix!;
 			logger.debug(`SessionManager: Searching for session keys with prefix '${prefix}'`);
-			
+
 			const sessionKeys = await backends.database.list(prefix);
 
 			logger.debug(
@@ -1205,53 +1238,53 @@ export class SessionManager {
 	 */
 	private getCachedResult<T>(key: string): T | null {
 		const now = Date.now();
-		
+
 		// Check session metadata cache
 		const metadataEntry = this.sessionMetadataCache.get(key);
 		if (metadataEntry && now < metadataEntry.expiresAt) {
 			return metadataEntry.metadata as unknown as T;
 		}
-		
+
 		// Check message count cache
 		const countEntry = this.messageCountCache.get(key);
 		if (countEntry && now < countEntry.expiresAt) {
 			return countEntry.count as unknown as T;
 		}
-		
+
 		return null;
 	}
 
 	private setCacheResult<T>(key: string, value: T): void {
 		const now = Date.now();
 		const expiresAt = now + this.CACHE_TTL;
-		
+
 		if (Array.isArray(value)) {
 			// For arrays (like session IDs), create a special cache entry
 			this.sessionMetadataCache.set(key, {
 				metadata: value as unknown as SessionMetadata,
 				cachedAt: now,
-				expiresAt
+				expiresAt,
 			});
 		} else if (typeof value === 'number') {
 			// For numbers (like message counts)
 			this.messageCountCache.set(key, {
 				count: value,
 				cachedAt: now,
-				expiresAt
+				expiresAt,
 			});
 		}
 	}
 
 	private cleanupExpiredCache(): void {
 		const now = Date.now();
-		
+
 		// Clean up expired session metadata cache entries
 		for (const [key, entry] of this.sessionMetadataCache.entries()) {
 			if (now >= entry.expiresAt) {
 				this.sessionMetadataCache.delete(key);
 			}
 		}
-		
+
 		// Clean up expired message count cache entries
 		for (const [key, entry] of this.messageCountCache.entries()) {
 			if (now >= entry.expiresAt) {
@@ -1262,10 +1295,10 @@ export class SessionManager {
 
 	private updateAverageLoadTime(loadTime: number): void {
 		const alpha = 0.1; // Exponential moving average factor
-		this.performanceMetrics.averageLoadTime = 
-			this.performanceMetrics.averageLoadTime === 0 
-				? loadTime 
-				: (alpha * loadTime) + ((1 - alpha) * this.performanceMetrics.averageLoadTime);
+		this.performanceMetrics.averageLoadTime =
+			this.performanceMetrics.averageLoadTime === 0
+				? loadTime
+				: alpha * loadTime + (1 - alpha) * this.performanceMetrics.averageLoadTime;
 	}
 
 	/**
@@ -1274,13 +1307,13 @@ export class SessionManager {
 	private clearSessionFromAllCaches(sessionId: string): void {
 		// Clear from metadata cache
 		this.sessionMetadataCache.delete(`metadata_${sessionId}`);
-		
+
 		// Clear from message count cache
 		this.messageCountCache.delete(`count_${sessionId}`);
-		
+
 		// Clear from active session IDs cache (invalidate the list)
 		this.sessionMetadataCache.delete('active_session_ids');
-		
+
 		logger.debug(`SessionManager: Cleared all caches for session ${sessionId}`);
 	}
 
@@ -1289,13 +1322,13 @@ export class SessionManager {
 	 */
 	private async filterValidSessions(sessionIds: string[]): Promise<string[]> {
 		const validSessions: string[] = [];
-		
+
 		for (const sessionId of sessionIds) {
 			try {
 				// Check if session has messages or is in active memory
 				const isInMemory = this.sessions.has(sessionId);
 				const messageCount = await this.getSessionMessageCount(sessionId);
-				
+
 				// Keep sessions that are either in memory OR have messages
 				if (isInMemory || messageCount > 0) {
 					validSessions.push(sessionId);
@@ -1310,7 +1343,7 @@ export class SessionManager {
 				validSessions.push(sessionId);
 			}
 		}
-		
+
 		return validSessions;
 	}
 
@@ -1325,12 +1358,12 @@ export class SessionManager {
 					// Delete phantom session data
 					const sessionKey = this.getSessionStorageKey(sessionId);
 					const historyKey = `messages:${sessionId}`;
-					
+
 					await Promise.allSettled([
 						backends.database.delete(sessionKey),
-						backends.database.delete(historyKey)
+						backends.database.delete(historyKey),
 					]);
-					
+
 					logger.debug(`SessionManager: Cleaned up phantom session ${sessionId}`);
 				}
 			}
@@ -1342,33 +1375,50 @@ export class SessionManager {
 	/**
 	 * Get batch session metadata with parallel processing and caching
 	 */
-	public async getBatchSessionMetadata(sessionIds: string[]): Promise<Map<string, { id: string; messageCount: number; createdAt: number; lastActivity: number }>> {
+	public async getBatchSessionMetadata(
+		sessionIds: string[]
+	): Promise<
+		Map<string, { id: string; messageCount: number; createdAt: number; lastActivity: number }>
+	> {
 		const startTime = Date.now();
-		const result = new Map<string, { id: string; messageCount: number; createdAt: number; lastActivity: number }>();
-		
+		const result = new Map<
+			string,
+			{ id: string; messageCount: number; createdAt: number; lastActivity: number }
+		>();
+
 		// Process sessions in parallel batches
 		const batches = [];
 		for (let i = 0; i < sessionIds.length; i += this.BATCH_SIZE) {
 			batches.push(sessionIds.slice(i, i + this.BATCH_SIZE));
 		}
-		
+
 		for (const batch of batches) {
-			const batchPromises = batch.map(async (sessionId) => {
+			const batchPromises = batch.map(async sessionId => {
 				try {
 					// Check cache first
 					const cacheKey = `metadata_${sessionId}`;
-					const cached = this.getCachedResult<{ id: string; messageCount: number; createdAt: number; lastActivity: number }>(cacheKey);
-					
+					const cached = this.getCachedResult<{
+						id: string;
+						messageCount: number;
+						createdAt: number;
+						lastActivity: number;
+					}>(cacheKey);
+
 					if (cached) {
 						this.performanceMetrics.cacheHits++;
 						return { sessionId, metadata: cached };
 					}
-					
+
 					this.performanceMetrics.cacheMisses++;
-					
+
 					// Get metadata from session or storage
-					let metadata: { id: string; messageCount: number; createdAt: number; lastActivity: number } | null = null;
-					
+					let metadata: {
+						id: string;
+						messageCount: number;
+						createdAt: number;
+						lastActivity: number;
+					} | null = null;
+
 					// Try in-memory session first
 					const sessionMetadata = this.sessions.get(sessionId);
 					if (sessionMetadata) {
@@ -1376,30 +1426,30 @@ export class SessionManager {
 							id: sessionId,
 							messageCount: await this.getSessionMessageCount(sessionId),
 							createdAt: sessionMetadata.createdAt,
-							lastActivity: sessionMetadata.lastActivity
+							lastActivity: sessionMetadata.lastActivity,
 						};
 					} else {
 						// Load from storage
 						metadata = await this.getSessionMetadataFromStorage(sessionId);
 					}
-					
+
 					if (metadata) {
 						// Cache the result
 						this.setCacheResult(cacheKey, metadata);
 						return { sessionId, metadata };
 					}
-					
+
 					return { sessionId, metadata: null };
 				} catch (error) {
 					logger.warn(`Failed to get metadata for session ${sessionId}:`, error);
 					return { sessionId, metadata: null };
 				}
 			});
-			
+
 			// Process batch in parallel
 			const batchResults = await Promise.allSettled(batchPromises);
 			this.performanceMetrics.parallelLoads += batchResults.length;
-			
+
 			// Collect results
 			for (const promiseResult of batchResults) {
 				if (promiseResult.status === 'fulfilled' && promiseResult.value.metadata) {
@@ -1407,11 +1457,13 @@ export class SessionManager {
 				}
 			}
 		}
-		
+
 		const loadTime = Date.now() - startTime;
 		this.updateAverageLoadTime(loadTime);
-		
-		logger.debug(`SessionManager: Batch loaded ${result.size}/${sessionIds.length} session metadata in ${loadTime}ms`);
+
+		logger.debug(
+			`SessionManager: Batch loaded ${result.size}/${sessionIds.length} session metadata in ${loadTime}ms`
+		);
 		return result;
 	}
 
@@ -1421,14 +1473,14 @@ export class SessionManager {
 	private async getSessionMessageCount(sessionId: string): Promise<number> {
 		const cacheKey = `count_${sessionId}`;
 		const cached = this.getCachedResult<number>(cacheKey);
-		
+
 		if (cached !== null) {
 			this.performanceMetrics.cacheHits++;
 			return cached;
 		}
-		
+
 		this.performanceMetrics.cacheMisses++;
-		
+
 		try {
 			// Try to get from active session
 			const sessionMetadata = this.sessions.get(sessionId);
@@ -1438,7 +1490,7 @@ export class SessionManager {
 				this.setCacheResult(cacheKey, count);
 				return count;
 			}
-			
+
 			// Try to get from storage
 			if (this.storageManager?.isConnected()) {
 				const backends = this.storageManager.getBackends();
@@ -1451,7 +1503,7 @@ export class SessionManager {
 						this.setCacheResult(cacheKey, count);
 						return count;
 					}
-					
+
 					// Try session data
 					const sessionKey = this.getSessionStorageKey(sessionId);
 					const sessionData = await backends.database.get(sessionKey);
@@ -1462,7 +1514,7 @@ export class SessionManager {
 					}
 				}
 			}
-			
+
 			// Default to 0 if not found
 			this.setCacheResult(cacheKey, 0);
 			return 0;
@@ -1476,33 +1528,35 @@ export class SessionManager {
 	/**
 	 * Get session metadata from storage
 	 */
-	private async getSessionMetadataFromStorage(sessionId: string): Promise<{ id: string; messageCount: number; createdAt: number; lastActivity: number } | null> {
+	private async getSessionMetadataFromStorage(
+		sessionId: string
+	): Promise<{ id: string; messageCount: number; createdAt: number; lastActivity: number } | null> {
 		if (!this.storageManager?.isConnected()) {
 			return null;
 		}
-		
+
 		const backends = this.storageManager.getBackends();
 		if (!backends?.database) {
 			return null;
 		}
-		
+
 		try {
 			// Get message count and session data in parallel
 			const [messageCount, sessionData] = await Promise.allSettled([
 				this.getSessionMessageCount(sessionId),
-				backends.database.get(this.getSessionStorageKey(sessionId))
+				backends.database.get(this.getSessionStorageKey(sessionId)),
 			]);
-			
+
 			const count = messageCount.status === 'fulfilled' ? messageCount.value : 0;
 			const data = sessionData.status === 'fulfilled' ? sessionData.value : null;
-			
+
 			// Create metadata with best available information
 			const now = Date.now();
 			return {
 				id: sessionId,
 				messageCount: count,
-				createdAt: (data as any)?.metadata?.createdAt || (now - (count * 60000)), // Estimate based on message count
-				lastActivity: (data as any)?.metadata?.lastActivity || now
+				createdAt: (data as any)?.metadata?.createdAt || now - count * 60000, // Estimate based on message count
+				lastActivity: (data as any)?.metadata?.lastActivity || now,
 			};
 		} catch (error) {
 			logger.warn(`Failed to get session metadata from storage for ${sessionId}:`, error);

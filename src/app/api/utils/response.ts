@@ -46,16 +46,17 @@ export function errorResponse(
 	// CRITICAL FIX: Sanitize error message and details to ensure they're serializable
 	let sanitizedMessage = message;
 	let sanitizedDetails = details;
-	
+
 	// Ensure message is always a string
 	if (typeof message !== 'string') {
 		try {
-			sanitizedMessage = (message as any) instanceof Error ? (message as Error).message : String(message);
+			sanitizedMessage =
+				(message as any) instanceof Error ? (message as Error).message : String(message);
 		} catch {
 			sanitizedMessage = 'Unknown error occurred';
 		}
 	}
-	
+
 	// Sanitize details to prevent circular references and [object Object] display
 	if (details !== undefined && details !== null) {
 		try {
@@ -63,17 +64,19 @@ export function errorResponse(
 				sanitizedDetails = {
 					message: details.message,
 					name: details.name,
-					...(details.stack && { stack: details.stack.split('\n').slice(0, 3).join('\n') })
+					...(details.stack && { stack: details.stack.split('\n').slice(0, 3).join('\n') }),
 				};
 			} else if (typeof details === 'object') {
 				// Safely stringify object, handling circular references
-				sanitizedDetails = JSON.parse(JSON.stringify(details, (key, value) => {
-					// Handle circular references and functions
-					if (typeof value === 'function') return '[Function]';
-					if (typeof value === 'symbol') return '[Symbol]';
-					if (value instanceof Error) return { message: value.message, name: value.name };
-					return value;
-				}));
+				sanitizedDetails = JSON.parse(
+					JSON.stringify(details, (key, value) => {
+						// Handle circular references and functions
+						if (typeof value === 'function') return '[Function]';
+						if (typeof value === 'symbol') return '[Symbol]';
+						if (value instanceof Error) return { message: value.message, name: value.name };
+						return value;
+					})
+				);
 			} else {
 				sanitizedDetails = String(details);
 			}

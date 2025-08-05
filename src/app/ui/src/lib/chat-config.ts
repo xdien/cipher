@@ -54,7 +54,9 @@ export async function createAutoSession(): Promise<string> {
 }
 
 // Load session on backend
-export async function loadSession(sessionId: string): Promise<{ conversationHistory?: SessionMessage[] }> {
+export async function loadSession(
+	sessionId: string
+): Promise<{ conversationHistory?: SessionMessage[] }> {
 	const response = await fetch(`/api/sessions/${sessionId}/load`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
@@ -66,7 +68,7 @@ export async function loadSession(sessionId: string): Promise<{ conversationHist
 
 	const data = await response.json();
 	return {
-		conversationHistory: data.data?.conversationHistory || []
+		conversationHistory: data.data?.conversationHistory || [],
 	};
 }
 

@@ -165,21 +165,26 @@ export class ConversationSession {
 			undefined, // historyProvider will be lazy-loaded
 			this.id // sessionId
 		);
-		
+
 		// CRITICAL FIX: Initialize history provider early if shared storage manager is available
 		// This ensures conversation history is available immediately for new sessions
 		if (this._storageManager && this.historyEnabled) {
 			try {
 				this._historyProvider = createDatabaseHistoryProvider(this._storageManager);
-				logger.debug(`Session ${this.id}: History provider initialized during service initialization.`);
-				
+				logger.debug(
+					`Session ${this.id}: History provider initialized during service initialization.`
+				);
+
 				// Set the history provider in the context manager
 				(this.contextManager as any).historyProvider = this._historyProvider;
 			} catch (error) {
-				logger.warn(`Session ${this.id}: Failed to initialize history provider during service initialization:`, error);
+				logger.warn(
+					`Session ${this.id}: Failed to initialize history provider during service initialization:`,
+					error
+				);
 			}
 		}
-		
+
 		this._servicesInitialized = true;
 	}
 
@@ -364,7 +369,7 @@ export class ConversationSession {
 		if (!this._storageInitialized) {
 			await this.getStorageManagerLazy();
 		}
-		
+
 		// CRITICAL FIX: If history provider is still not available after storage initialization,
 		// try to create it again
 		if (!this._historyProvider && this.historyEnabled && this._storageManager) {
@@ -372,10 +377,13 @@ export class ConversationSession {
 				this._historyProvider = createDatabaseHistoryProvider(this._storageManager);
 				logger.debug(`Session ${this.id}: History provider created in lazy initialization.`);
 			} catch (error) {
-				logger.warn(`Session ${this.id}: Failed to create history provider in lazy initialization:`, error);
+				logger.warn(
+					`Session ${this.id}: Failed to create history provider in lazy initialization:`,
+					error
+				);
 			}
 		}
-		
+
 		return this._historyProvider;
 	}
 
@@ -1360,36 +1368,42 @@ export class ConversationSession {
 					// CRITICAL FIX: Always set history provider in context manager
 					(this.contextManager as any).historyProvider = historyProvider;
 					logger.debug(`Session ${this.id}: Set/updated history provider in context manager`);
-					
+
 					// Get fresh history from provider
 					const history = await historyProvider.getHistory(this.id);
-					logger.debug(`Session ${this.id}: Retrieved ${history.length} messages from history provider`);
-					
+					logger.debug(
+						`Session ${this.id}: Retrieved ${history.length} messages from history provider`
+					);
+
 					// CRITICAL FIX: Use multiple methods to restore history for maximum compatibility
 					let historyRestored = false;
-					
+
 					// Method 1: Try context manager's restoreHistory if available
 					if (this.contextManager.restoreHistory && !historyRestored) {
 						try {
 							await this.contextManager.restoreHistory();
 							historyRestored = true;
-							logger.debug(`Session ${this.id}: Successfully restored history via context manager restoreHistory`);
+							logger.debug(
+								`Session ${this.id}: Successfully restored history via context manager restoreHistory`
+							);
 						} catch (restoreError) {
 							logger.debug(`Session ${this.id}: restoreHistory failed:`, restoreError);
 						}
 					}
-					
+
 					// Method 2: Try setMessages if available
 					if (!historyRestored && typeof (this.contextManager as any).setMessages === 'function') {
 						try {
 							(this.contextManager as any).setMessages(history);
 							historyRestored = true;
-							logger.debug(`Session ${this.id}: Successfully restored ${history.length} messages via setMessages`);
+							logger.debug(
+								`Session ${this.id}: Successfully restored ${history.length} messages via setMessages`
+							);
 						} catch (setError) {
 							logger.debug(`Session ${this.id}: setMessages failed:`, setError);
 						}
 					}
-					
+
 					// Method 3: Manual message addition as final fallback
 					if (!historyRestored && history.length > 0) {
 						try {
@@ -1399,28 +1413,39 @@ export class ConversationSession {
 									await this.contextManager.addMessage(message);
 									addedCount++;
 								} catch (addError) {
-									logger.warn(`Session ${this.id}: Failed to add message ${addedCount + 1}:`, addError);
+									logger.warn(
+										`Session ${this.id}: Failed to add message ${addedCount + 1}:`,
+										addError
+									);
 								}
 							}
 							historyRestored = addedCount > 0;
-							logger.debug(`Session ${this.id}: Manually added ${addedCount}/${history.length} messages to context manager`);
+							logger.debug(
+								`Session ${this.id}: Manually added ${addedCount}/${history.length} messages to context manager`
+							);
 						} catch (manualError) {
 							logger.warn(`Session ${this.id}: Manual message addition failed:`, manualError);
 						}
 					}
-					
+
 					// CRITICAL FIX: Verify history restoration success
 					const contextMessages = this.contextManager.getRawMessages();
-					logger.info(`Session ${this.id}: History refresh complete - Provider: ${history.length} messages, Context: ${contextMessages.length} messages, Restored: ${historyRestored}`);
-					
+					logger.info(
+						`Session ${this.id}: History refresh complete - Provider: ${history.length} messages, Context: ${contextMessages.length} messages, Restored: ${historyRestored}`
+					);
 				} else {
 					logger.debug(`Session ${this.id}: No history provider available for refresh`);
 					// Try to get existing history from context manager
 					try {
 						const messages = this.contextManager.getRawMessages();
-						logger.debug(`Session ${this.id}: Context manager has ${messages.length} existing messages`);
+						logger.debug(
+							`Session ${this.id}: Context manager has ${messages.length} existing messages`
+						);
 					} catch (fallbackError) {
-						logger.debug(`Session ${this.id}: Failed to get history from context manager:`, fallbackError);
+						logger.debug(
+							`Session ${this.id}: Failed to get history from context manager:`,
+							fallbackError
+						);
 					}
 				}
 			} catch (error) {
@@ -1452,13 +1477,18 @@ export class ConversationSession {
 			try {
 				if (this.contextManager) {
 					const messages = this.contextManager.getRawMessages();
-					logger.debug(`Session ${this.id}: Got ${messages.length} messages from context manager as fallback`);
+					logger.debug(
+						`Session ${this.id}: Got ${messages.length} messages from context manager as fallback`
+					);
 					return messages;
 				}
 			} catch (fallbackError) {
-				logger.debug(`Session ${this.id}: Failed to get history from context manager:`, fallbackError);
+				logger.debug(
+					`Session ${this.id}: Failed to get history from context manager:`,
+					fallbackError
+				);
 			}
-			
+
 			logger.debug(`Session ${this.id}: No history provider available`);
 			return [];
 		}
@@ -1503,10 +1533,15 @@ export class ConversationSession {
 					const contextHistory = this.contextManager.getRawMessages();
 					if (contextHistory.length > 0) {
 						conversationHistory = contextHistory;
-						logger.debug(`Session ${this.id}: Using context manager history as fallback (${contextHistory.length} messages)`);
+						logger.debug(
+							`Session ${this.id}: Using context manager history as fallback (${contextHistory.length} messages)`
+						);
 					}
 				} catch (fallbackError) {
-					logger.debug(`Session ${this.id}: Failed to get history from context manager during serialization:`, fallbackError);
+					logger.debug(
+						`Session ${this.id}: Failed to get history from context manager during serialization:`,
+						fallbackError
+					);
 				}
 			}
 
@@ -1611,7 +1646,7 @@ export class ConversationSession {
 				try {
 					// Ensure history provider is initialized
 					const historyProvider = await session.getHistoryProvider();
-					
+
 					if (historyProvider) {
 						// Clear any existing history first
 						await historyProvider.clearHistory(data.id);
@@ -1620,8 +1655,10 @@ export class ConversationSession {
 						for (const message of data.conversationHistory) {
 							await historyProvider.saveMessage(data.id, message);
 						}
-						
-						logger.debug(`Session ${data.id}: Restored ${data.conversationHistory.length} messages to history provider`);
+
+						logger.debug(
+							`Session ${data.id}: Restored ${data.conversationHistory.length} messages to history provider`
+						);
 					} else {
 						logger.warn(`Session ${data.id}: No history provider available for restoration`);
 					}

@@ -70,7 +70,9 @@ describe('Critical Session Management Fixes', () => {
 				getClients: vi.fn().mockReturnValue(new Map()),
 			},
 			unifiedToolManager: {
-				executeTool: vi.fn().mockResolvedValue({ success: true, extraction: { extracted: 1 }, memory: [] }),
+				executeTool: vi
+					.fn()
+					.mockResolvedValue({ success: true, extraction: { extracted: 1 }, memory: [] }),
 				getAllTools: vi.fn().mockResolvedValue({}),
 			},
 			embeddingManager: {
@@ -122,7 +124,7 @@ describe('Critical Session Management Fixes', () => {
 
 			// Create and save session
 			await mockSessionManager.createSession(sessionId);
-			
+
 			// Verify session exists
 			const sessionExists = await mockSessionManager.hasSession(sessionId);
 			expect(sessionExists).toBe(true);
@@ -138,12 +140,12 @@ describe('Critical Session Management Fixes', () => {
 
 		it('should handle deletion of non-existent session gracefully', async () => {
 			const nonExistentSessionId = 'non-existent-session';
-			
+
 			// Mock session manager that handles non-existent sessions
 			const mockSessionManager = {
 				deleteSession: vi.fn().mockResolvedValue(false),
 			};
-			
+
 			// Try to delete non-existent session - should not throw
 			const deleteResult = await mockSessionManager.deleteSession(nonExistentSessionId);
 			expect(deleteResult).toBe(false); // Should return false for non-existent sessions
@@ -231,7 +233,7 @@ describe('Critical Session Management Fixes', () => {
 	describe('Issue #3: Session Message Count Display', () => {
 		it('should correctly calculate message count for session', async () => {
 			const sessionId = 'test-session-count';
-			
+
 			// Mock context manager with messages
 			const mockMessages = [
 				{ role: 'user', content: [{ type: 'text', text: 'Hello' }] },
@@ -250,7 +252,7 @@ describe('Critical Session Management Fixes', () => {
 			// Create session with our mock
 			const session = new ConversationSession(mockServices, sessionId);
 			await session.init();
-			
+
 			// Replace the context manager with our mock
 			(session as any).contextManager = mockContextManager;
 
@@ -261,7 +263,7 @@ describe('Critical Session Management Fixes', () => {
 
 		it('should handle empty message history', async () => {
 			const sessionId = 'test-session-empty';
-			
+
 			const mockContextManager = {
 				getRawMessages: vi.fn().mockReturnValue([]),
 				addMessage: vi.fn(),
@@ -280,18 +282,18 @@ describe('Critical Session Management Fixes', () => {
 
 		it('should provide accurate message count for session listing', async () => {
 			const sessionId = 'test-session-listing';
-			
+
 			const mockContextManager = {
-				getRawMessages: vi.fn().mockReturnValue([
-					{ role: 'user', content: [{ type: 'text', text: 'Test' }] }
-				]),
+				getRawMessages: vi
+					.fn()
+					.mockReturnValue([{ role: 'user', content: [{ type: 'text', text: 'Test' }] }]),
 			};
-			
+
 			const mockSession = {
 				id: sessionId,
 				getContextManager: () => mockContextManager,
 			};
-			
+
 			// Mock session manager
 			const mockSessionManager = {
 				createSession: vi.fn().mockResolvedValue(mockSession),
@@ -368,7 +370,7 @@ describe('Critical Session Management Fixes', () => {
 			await session.init();
 
 			const originalSessionId = session.id;
-			
+
 			// Perform history operations
 			await session.refreshConversationHistory();
 			const history = await session.getConversationHistory();
@@ -382,23 +384,21 @@ describe('Critical Session Management Fixes', () => {
 	describe('Issue #5: API Performance and Rate Limiting', () => {
 		it('should handle multiple concurrent session operations', async () => {
 			const sessionIds = ['session-1', 'session-2', 'session-3'];
-			
+
 			// Mock session manager with concurrent support
 			const mockSessionManager = {
-				createSession: vi.fn().mockImplementation(async (id) => ({
+				createSession: vi.fn().mockImplementation(async id => ({
 					id,
-					created: true
-				}))
+					created: true,
+				})),
 			};
-			
+
 			// Create multiple sessions concurrently
-			const creationPromises = sessionIds.map(id => 
-				mockSessionManager.createSession(id)
-			);
+			const creationPromises = sessionIds.map(id => mockSessionManager.createSession(id));
 
 			// Should handle concurrent creation without errors
 			const results = await Promise.allSettled(creationPromises);
-			
+
 			// All operations should succeed
 			const successful = results.filter(r => r.status === 'fulfilled').length;
 			expect(successful).toBe(3); // All 3 should succeed
@@ -406,27 +406,25 @@ describe('Critical Session Management Fixes', () => {
 
 		it('should not overload the API with duplicate requests', async () => {
 			const sessionId = 'test-session-dedup';
-			
+
 			const mockSession = {
 				id: sessionId,
-				getConversationHistory: vi.fn().mockResolvedValue([])
+				getConversationHistory: vi.fn().mockResolvedValue([]),
 			};
-			
+
 			// Mock session manager
 			const mockSessionManager = {
 				createSession: vi.fn().mockResolvedValue(mockSession),
 				getSession: vi.fn().mockResolvedValue(mockSession),
 			};
-			
+
 			// Create session
 			await mockSessionManager.createSession(sessionId);
 			const session = await mockSessionManager.getSession(sessionId);
-			
+
 			if (session) {
 				// Multiple rapid calls to the same operation
-				const promises = Array.from({ length: 5 }, () => 
-					session.getConversationHistory()
-				);
+				const promises = Array.from({ length: 5 }, () => session.getConversationHistory());
 
 				// Should handle multiple requests efficiently
 				const results = await Promise.allSettled(promises);
@@ -442,9 +440,7 @@ describe('Critical Session Management Fixes', () => {
 
 			// Simulate rapid successive calls
 			const startTime = Date.now();
-			const promises = Array.from({ length: 10 }, () => 
-				session.getConversationHistory()
-			);
+			const promises = Array.from({ length: 10 }, () => session.getConversationHistory());
 
 			await Promise.all(promises);
 			const endTime = Date.now();
@@ -475,7 +471,7 @@ describe('Critical Session Management Fixes', () => {
 
 			// Disconnect should clean up listeners
 			await session.disconnect();
-			
+
 			// In a real implementation, this would be called internally
 			mockEventManager.removeAllListeners();
 			expect(mockEventManager.removeAllListeners).toHaveBeenCalled();
@@ -487,9 +483,7 @@ describe('Critical Session Management Fixes', () => {
 			await session.init();
 
 			// Simulate multiple operations that might create AbortSignals
-			const operations = Array.from({ length: 5 }, () => 
-				session.getConversationHistory()
-			);
+			const operations = Array.from({ length: 5 }, () => session.getConversationHistory());
 
 			await Promise.all(operations);
 
@@ -505,7 +499,7 @@ describe('Critical Session Management Fixes', () => {
 
 			// Get storage manager (creates connection)
 			const storageManager = await session.getStorageManager();
-			
+
 			if (storageManager) {
 				// Verify connection exists
 				expect(storageManager.isConnected()).toBe(true);
@@ -526,7 +520,7 @@ describe('Critical Session Management Fixes', () => {
 			// Verify session state is consistent
 			expect(session.id).toBe(sessionId);
 			expect(session.getContextManager()).toBeDefined();
-			
+
 			const llmService = await session.getLLMService();
 			expect(llmService).toBeDefined();
 		});
@@ -534,13 +528,13 @@ describe('Critical Session Management Fixes', () => {
 		it('should provide consistent session metadata', async () => {
 			const sessionId = 'test-session-metadata';
 			const session = new ConversationSession(mockServices, sessionId, {
-				sessionMemoryMetadata: { userId: 'test-user', type: 'test' }
+				sessionMemoryMetadata: { userId: 'test-user', type: 'test' },
 			});
 			await session.init();
 
 			// Metadata should be accessible and consistent
 			expect(session.id).toBe(sessionId);
-			
+
 			// Session should maintain metadata
 			session.updateSessionMetadata({ lastAccessed: Date.now() });
 			expect(true).toBe(true); // Metadata updated without error
@@ -548,7 +542,7 @@ describe('Critical Session Management Fixes', () => {
 
 		it('should handle storage connection failures gracefully', async () => {
 			const sessionId = 'test-session-storage-fail';
-			
+
 			// Mock failing storage
 			const failingServices = {
 				...mockServices,
@@ -561,7 +555,7 @@ describe('Critical Session Management Fixes', () => {
 			};
 
 			const session = new ConversationSession(failingServices, sessionId);
-			
+
 			// Should handle storage failures gracefully
 			await expect(session.init()).rejects.toThrow('Storage connection failed');
 		});
@@ -579,9 +573,7 @@ describe('Critical Session Management Fixes', () => {
 
 			// Run operations on all sessions simultaneously
 			const startTime = Date.now();
-			const operations = sessions.map(session => 
-				session.getConversationHistory()
-			);
+			const operations = sessions.map(session => session.getConversationHistory());
 
 			await Promise.all(operations);
 			const duration = Date.now() - startTime;

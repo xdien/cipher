@@ -260,17 +260,17 @@ export class WebSocketEventSubscriber {
 			async (data: any) => {
 				// Use the actual response content from the event data
 				const content = data.response || data.content || 'Response completed';
-				
+
 				const sessionId = data.sessionId;
 				const messageId = data.messageId;
-				
+
 				// Break down the response into chunks and emit them
 				if (content && typeof content === 'string') {
 					const chunkSize = 50; // Emit chunks of 50 characters
 					for (let i = 0; i < content.length; i += chunkSize) {
 						const chunk = content.slice(i, i + chunkSize);
 						const isComplete = i + chunkSize >= content.length;
-						
+
 						this.handleEvent(
 							'chunk',
 							{
@@ -281,7 +281,7 @@ export class WebSocketEventSubscriber {
 							},
 							signal
 						);
-						
+
 						// Add a small delay between chunks to simulate real streaming
 						if (!isComplete) {
 							await new Promise(resolve => setTimeout(resolve, 50));
@@ -566,7 +566,10 @@ export class WebSocketEventSubscriber {
 		// Update stats
 		this.subscriptionStats.totalEventsBroadcast++;
 		this.subscriptionStats.lastEventTime = Date.now();
-		this.subscriptionStats.eventTypeStats.set(eventType, (this.subscriptionStats.eventTypeStats.get(eventType) || 0) + 1);
+		this.subscriptionStats.eventTypeStats.set(
+			eventType,
+			(this.subscriptionStats.eventTypeStats.get(eventType) || 0) + 1
+		);
 	}
 
 	/**

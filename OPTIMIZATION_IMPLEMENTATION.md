@@ -7,6 +7,7 @@ This implementation optimizes the Web UI session management to eliminate unneces
 ## Key Features Implemented
 
 ### 1. Global State Management with Zustand
+
 - **File**: `/src/app/ui/src/stores/session-store.ts`
 - Centralized session state management with Zustand
 - LRU cache implementation for session data (max 15-20 sessions)
@@ -14,6 +15,7 @@ This implementation optimizes the Web UI session management to eliminate unneces
 - Feature flags for enabling/disabling optimizations
 
 ### 2. React Query Integration
+
 - **File**: `/src/app/ui/src/hooks/use-sessions.ts`
 - Server state management with intelligent caching
 - Optimistic updates for create/delete operations
@@ -21,28 +23,33 @@ This implementation optimizes the Web UI session management to eliminate unneces
 - Automatic retry logic with exponential backoff
 
 ### 3. Progressive Loading Strategy
+
 - Load session list + current session immediately
 - Fetch other sessions on-demand when accessed
 - Cache frequently accessed sessions in memory
 - Automatic cleanup of expired cache entries
 
 ### 4. Memory Management
+
 - LRU (Least Recently Used) eviction policy
 - Configurable cache size (default: 15 sessions)
 - Memory usage tracking and optimization
 - Automatic cleanup of expired entries every 5 minutes
 
 ### 5. Optimistic Updates
+
 - Immediate UI updates for create/delete operations
 - Rollback mechanism on operation failure
 - Reduced perceived latency for user interactions
 
 ### 6. WebSocket Integration
+
 - Real-time session updates via existing WebSocket events
 - Automatic cache invalidation on external changes
 - Session count updates when new messages arrive
 
 ### 7. Error Handling & Fallbacks
+
 - **File**: `/src/app/ui/src/components/session-error-boundary.tsx`
 - Graceful 404 handling for deleted sessions
 - Error boundaries for session-related components
@@ -50,6 +57,7 @@ This implementation optimizes the Web UI session management to eliminate unneces
 - Automatic cache clearing on corruption detection
 
 ### 8. Feature Toggle System
+
 - Runtime enable/disable of optimizations
 - Settings panel in session manager
 - Debugging tools and cache statistics
@@ -58,6 +66,7 @@ This implementation optimizes the Web UI session management to eliminate unneces
 ## Files Modified/Created
 
 ### New Files Created:
+
 1. **`/src/app/ui/src/stores/session-store.ts`** - Zustand store for session state
 2. **`/src/app/ui/src/hooks/use-sessions.ts`** - React Query hooks for session operations
 3. **`/src/app/ui/src/components/providers/query-provider.tsx`** - React Query provider
@@ -66,6 +75,7 @@ This implementation optimizes the Web UI session management to eliminate unneces
 6. **`/src/app/ui/src/stores/index.ts`** - Store exports
 
 ### Modified Files:
+
 1. **`/src/app/ui/src/contexts/chat-context.tsx`** - Integrated with new session management
 2. **`/src/app/ui/src/components/session-panel.tsx`** - Updated to use optimized hooks
 3. **`/src/app/ui/src/app/layout.tsx`** - Added React Query provider
@@ -77,25 +87,25 @@ This implementation optimizes the Web UI session management to eliminate unneces
 
 ```typescript
 interface SessionState {
-  // Session list data
-  sessions: Session[]
-  sessionsLoading: boolean
-  sessionsError: string | null
-  
-  // Current session
-  currentSessionId: string | null
-  isWelcomeState: boolean
-  
-  // Session cache (LRU)
-  sessionCache: LRUCache<string, CachedSessionData>
-  
-  // Feature flags
-  enableOptimizations: boolean
-  maxCacheSize: number
-  
-  // Actions for CRUD operations
-  // Cache management functions
-  // Settings management
+	// Session list data
+	sessions: Session[];
+	sessionsLoading: boolean;
+	sessionsError: string | null;
+
+	// Current session
+	currentSessionId: string | null;
+	isWelcomeState: boolean;
+
+	// Session cache (LRU)
+	sessionCache: LRUCache<string, CachedSessionData>;
+
+	// Feature flags
+	enableOptimizations: boolean;
+	maxCacheSize: number;
+
+	// Actions for CRUD operations
+	// Cache management functions
+	// Settings management
 }
 ```
 
@@ -103,7 +113,7 @@ interface SessionState {
 
 - **Max Size**: 15-20 sessions (configurable)
 - **Expiry Time**: 10 minutes per session
-- **Storage Strategy**: 
+- **Storage Strategy**:
   - Session metadata → localStorage (persistent)
   - Message history → Memory cache (volatile)
 - **Eviction Policy**: Least Recently Used (LRU)
@@ -113,7 +123,7 @@ interface SessionState {
 ```typescript
 {
   staleTime: 60000, // 1 minute
-  gcTime: 5 * 60 * 1000, // 5 minutes  
+  gcTime: 5 * 60 * 1000, // 5 minutes
   retry: 3, // Max 3 retries
   retryDelay: exponentialBackoff,
   refetchOnWindowFocus: false, // Disabled for performance
@@ -142,12 +152,14 @@ interface SessionState {
 ## Performance Benefits
 
 ### Before Optimization:
+
 - HTTP request on every session switch
 - Individual message count API calls for each session
 - No caching - repeated requests for same data
 - Slow session panel loading (500ms+ per session)
 
 ### After Optimization:
+
 - **Zero HTTP requests** for cached session switches
 - **Batch loading** of session list with message counts
 - **Memory cache** for frequently accessed sessions
@@ -178,40 +190,35 @@ persistMetadata: boolean (default: true)
 
 ```typescript
 // Using the optimized hooks
-const { sessions, isLoading } = useSessions()
-const { switchToSession } = useSessionSwitch()
-const { createSession, deleteSession } = useSessionOperations()
+const { sessions, isLoading } = useSessions();
+const { switchToSession } = useSessionSwitch();
+const { createSession, deleteSession } = useSessionOperations();
 
 // Switch to a session (uses cache if available)
-await switchToSession('session-123')
+await switchToSession('session-123');
 
 // Create new session with optimistic update
-createSession('my-new-session')
+createSession('my-new-session');
 
-// Delete session with optimistic update  
-deleteSession('session-to-delete')
+// Delete session with optimistic update
+deleteSession('session-to-delete');
 ```
 
 ### Cache Management
 
 ```typescript
-const { 
-  stats, 
-  clearCache, 
-  enableOptimizations, 
-  setEnableOptimizations 
-} = useSessionCache()
+const { stats, clearCache, enableOptimizations, setEnableOptimizations } = useSessionCache();
 
 // View cache statistics
-console.log(`Cached sessions: ${stats.size}`)
-console.log(`Cache hits: ${stats.cacheHits}`)
-console.log(`Memory usage: ${stats.memoryUsage} bytes`)
+console.log(`Cached sessions: ${stats.size}`);
+console.log(`Cache hits: ${stats.cacheHits}`);
+console.log(`Memory usage: ${stats.memoryUsage} bytes`);
 
 // Clear cache manually
-clearCache()
+clearCache();
 
 // Disable optimizations
-setEnableOptimizations(false)
+setEnableOptimizations(false);
 ```
 
 ## Installation Requirements
@@ -260,12 +267,14 @@ The implementation is designed to be backward-compatible:
 ## Latest Updates - Session UI Reactivity Fix
 
 ### Additional Problems Solved (January 2025)
+
 - **Fixed session UI not updating immediately** after creation/deletion
 - **Eliminated manual refresh requirements** for session operations
 - **Resolved race conditions** between React Query and Zustand state
 - **Improved optimistic updates** for instant UI feedback
 
 ### Root Cause of UI Update Issues
+
 1. **Over-reliance on manual `fetchSessions()` calls** after mutations
 2. **Conflicting state sources** between React Query cache and manual fetches
 3. **Improper query invalidation timing** preventing immediate updates
@@ -274,17 +283,19 @@ The implementation is designed to be backward-compatible:
 ### Additional Fixes Applied
 
 #### 1. Removed Manual Refresh Calls
+
 ```typescript
 // Before (problematic):
-const session = await createSessionMutation.mutateAsync(sessionId)
-await fetchSessions() // Manual refresh - causes race conditions
+const session = await createSessionMutation.mutateAsync(sessionId);
+await fetchSessions(); // Manual refresh - causes race conditions
 
 // After (optimized):
-const session = await createSessionMutation.mutateAsync(sessionId)
+const session = await createSessionMutation.mutateAsync(sessionId);
 // React Query optimistic updates handle UI automatically
 ```
 
 #### 2. Optimized React Query Configuration
+
 ```typescript
 // Enhanced query client for immediate UI updates
 staleTime: 30 * 1000, // 30 seconds for real-time feel
@@ -293,11 +304,13 @@ networkMode: 'offlineFirst', // Better offline handling
 ```
 
 #### 3. Improved Optimistic Updates
+
 - **Create Session**: Instant UI addition with temp ID, replace on success
 - **Delete Session**: Instant UI removal with rollback on error
 - **No loading states** between operations for smooth UX
 
 #### 4. Single Source of Truth
+
 - React Query cache is now the primary data source
 - Zustand store syncs for compatibility only
 - Eliminated conflicting state updates
@@ -313,6 +326,7 @@ networkMode: 'offlineFirst', // Better offline handling
 ✅ **Performance improved** - no redundant network calls
 
 ### Files Updated in This Fix
+
 1. **`/src/hooks/use-sessions.ts`** - Removed manual refresh calls, improved optimistic updates
 2. **`/src/components/session-panel.tsx`** - Cleaned up mutation handlers
 3. **`/src/components/providers/query-provider.tsx`** - Optimized query configuration

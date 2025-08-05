@@ -1546,7 +1546,11 @@ export class CommandParser {
 				return true;
 			}
 
-			console.log(chalk.yellow(`🗑️  About to delete ${sessionsToDelete.length} sessions (excluding active session)`));
+			console.log(
+				chalk.yellow(
+					`🗑️  About to delete ${sessionsToDelete.length} sessions (excluding active session)`
+				)
+			);
 			console.log(chalk.gray(`   Active session "${currentSessionId}" will be preserved`));
 			console.log('');
 
@@ -1562,7 +1566,11 @@ export class CommandParser {
 				} catch (error) {
 					failedCount++;
 					failedSessions.push(sessionId);
-					console.log(chalk.red(`❌ Failed to delete session ${sessionId}: ${error instanceof Error ? error.message : String(error)}`));
+					console.log(
+						chalk.red(
+							`❌ Failed to delete session ${sessionId}: ${error instanceof Error ? error.message : String(error)}`
+						)
+					);
 				}
 			}
 

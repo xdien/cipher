@@ -274,15 +274,18 @@ export class StorageManager {
 				this.logger.error('Failed to connect to database backend', {
 					error: err instanceof Error ? err.message : String(err),
 					type: this.config.database.type,
-					stack: err instanceof Error ? err.stack : undefined
+					stack: err instanceof Error ? err.stack : undefined,
 				});
 
 				// CRITICAL FIX: Enhanced fallback logic with retry mechanism
 				if (this.config.database.type !== BACKEND_TYPES.IN_MEMORY) {
-					this.logger.warn(`${LOG_PREFIXES.DATABASE} Primary backend failed, attempting fallback to in-memory`, {
-						error: err instanceof Error ? err.message : String(err),
-						originalType: this.config.database.type,
-					});
+					this.logger.warn(
+						`${LOG_PREFIXES.DATABASE} Primary backend failed, attempting fallback to in-memory`,
+						{
+							error: err instanceof Error ? err.message : String(err),
+							originalType: this.config.database.type,
+						}
+					);
 
 					try {
 						const { InMemoryBackend } = await import('./backend/in-memory.js');
@@ -292,21 +295,28 @@ export class StorageManager {
 						this.databaseMetadata.isFallback = true;
 						this.databaseMetadata.connectionTime = Date.now() - dbStartTime;
 
-						this.logger.info(`${LOG_PREFIXES.DATABASE} Successfully connected to fallback backend`, {
-							type: this.databaseMetadata.type,
-							originalType: this.config.database.type,
-							connectionTime: `${this.databaseMetadata.connectionTime}ms`
-						});
+						this.logger.info(
+							`${LOG_PREFIXES.DATABASE} Successfully connected to fallback backend`,
+							{
+								type: this.databaseMetadata.type,
+								originalType: this.config.database.type,
+								connectionTime: `${this.databaseMetadata.connectionTime}ms`,
+							}
+						);
 					} catch (fallbackError) {
 						this.logger.error(`${LOG_PREFIXES.DATABASE} Fallback to in-memory also failed`, {
 							error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
-							originalError: err instanceof Error ? err.message : String(err)
+							originalError: err instanceof Error ? err.message : String(err),
 						});
-						throw new Error(`Database connection failed: Primary (${this.config.database.type}) and fallback (in-memory) both failed`);
+						throw new Error(
+							`Database connection failed: Primary (${this.config.database.type}) and fallback (in-memory) both failed`
+						);
 					}
 				} else {
 					// Already using in-memory, can't fallback further
-					this.logger.error(`${LOG_PREFIXES.DATABASE} In-memory backend failed, no fallback available`);
+					this.logger.error(
+						`${LOG_PREFIXES.DATABASE} In-memory backend failed, no fallback available`
+					);
 					throw err;
 				}
 			}

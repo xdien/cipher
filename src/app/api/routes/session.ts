@@ -24,7 +24,9 @@ export function createSessionRoutes(agent: MemAgent): Router {
 			let sessionIds: string[] = [];
 			try {
 				sessionIds = await agent.listSessions();
-				logger.debug(`Agent returned ${sessionIds.length} session IDs in ${Date.now() - startTime}ms`);
+				logger.debug(
+					`Agent returned ${sessionIds.length} session IDs in ${Date.now() - startTime}ms`
+				);
 			} catch (listError) {
 				logger.error('Failed to get session IDs from agent:', listError);
 				// Continue with empty list rather than failing completely
@@ -33,28 +35,37 @@ export function createSessionRoutes(agent: MemAgent): Router {
 
 			if (sessionIds.length === 0) {
 				logger.debug('No sessions found, returning empty list');
-				successResponse(res, {
-					sessions: [],
-					count: 0,
-					currentSession: agent.getCurrentSessionId?.() || null,
-					processingTime: Date.now() - startTime
-				}, 200, req.requestId);
+				successResponse(
+					res,
+					{
+						sessions: [],
+						count: 0,
+						currentSession: agent.getCurrentSessionId?.() || null,
+						processingTime: Date.now() - startTime,
+					},
+					200,
+					req.requestId
+				);
 				return;
 			}
 
 			// PERFORMANCE OPTIMIZATION: Use batch processing for session metadata
 			const sessionManager = agent.sessionManager;
 			let sessionsMetadata: Map<string, any>;
-			
+
 			try {
 				// Use the new batch processing method for optimal performance
 				sessionsMetadata = await sessionManager.getBatchSessionMetadata(sessionIds);
 				logger.debug(`Batch loaded ${sessionsMetadata.size} session metadata entries`);
 			} catch (batchError) {
-				logger.warn('Batch metadata loading failed, falling back to individual processing:', batchError);
+				logger.warn(
+					'Batch metadata loading failed, falling back to individual processing:',
+					batchError
+				);
 				// Fallback to individual processing if batch fails
 				sessionsMetadata = new Map();
-				for (const sessionId of sessionIds.slice(0, 50)) { // Limit to prevent overload
+				for (const sessionId of sessionIds.slice(0, 50)) {
+					// Limit to prevent overload
 					try {
 						const metadata = await agent.getSessionMetadata(sessionId);
 						if (metadata) {
@@ -70,17 +81,24 @@ export function createSessionRoutes(agent: MemAgent): Router {
 			const validSessions = Array.from(sessionsMetadata.values()).filter(session => {
 				return session.messageCount > 0;
 			});
-			
+
 			const processingTime = Date.now() - startTime;
 
-			logger.info(`Successfully listed ${validSessions.length}/${Array.from(sessionsMetadata.values()).length} valid sessions in ${processingTime}ms`);
+			logger.info(
+				`Successfully listed ${validSessions.length}/${Array.from(sessionsMetadata.values()).length} valid sessions in ${processingTime}ms`
+			);
 
-			successResponse(res, {
-				sessions: validSessions,
-				count: validSessions.length,
-				currentSession: agent.getCurrentSessionId?.() || null,
-				processingTime
-			}, 200, req.requestId);
+			successResponse(
+				res,
+				{
+					sessions: validSessions,
+					count: validSessions.length,
+					currentSession: agent.getCurrentSessionId?.() || null,
+					processingTime,
+				},
+				200,
+				req.requestId
+			);
 			return;
 		} catch (error) {
 			// CRITICAL FIX: Properly extract error message to prevent [object Object] display
@@ -90,7 +108,7 @@ export function createSessionRoutes(agent: MemAgent): Router {
 			} catch (stringifyError) {
 				errorMsg = 'Unknown error occurred during session listing';
 			}
-			
+
 			logger.error('Error listing sessions:', error);
 			errorResponse(
 				res,
@@ -112,21 +130,21 @@ export function createSessionRoutes(agent: MemAgent): Router {
 	 */
 	function sanitizeSessionId(sessionId: string | undefined): string | null {
 		if (!sessionId) return null; // Auto-generate
-		
+
 		// Remove problematic patterns and characters
 		const sanitized = sessionId
 			.trim()
 			.replace(/[^\w-]/g, '-') // Replace non-alphanumeric with hyphens
 			.replace(/^empty-?/i, '') // Remove "empty" prefix
-			.replace(/^null-?/i, '') // Remove "null" prefix 
+			.replace(/^null-?/i, '') // Remove "null" prefix
 			.replace(/^undefined-?/i, '') // Remove "undefined" prefix
 			.replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
 			.replace(/-+/g, '-') // Collapse multiple hyphens
 			.substring(0, 64); // Limit length
-		
+
 		// If sanitization results in empty string, return null for auto-generation
 		if (!sanitized || sanitized.length < 3) return null;
-		
+
 		return sanitized;
 	}
 
@@ -319,7 +337,7 @@ export function createSessionRoutes(agent: MemAgent): Router {
 	router.post('/:sessionId/load', validateSessionId, async (req: Request, res: Response) => {
 		try {
 			const { sessionId: rawSessionId } = req.params;
-			
+
 			// Validate and sanitize session ID
 			const sessionId = sanitizeSessionId(rawSessionId);
 			if (!sessionId) {
@@ -350,17 +368,18 @@ export function createSessionRoutes(agent: MemAgent): Router {
 					originalSessionId: rawSessionId,
 					sanitizedSessionId: sessionId,
 					error: errorMsg,
-					requestId: req.requestId
+					requestId: req.requestId,
 				});
-				
+
 				// Create new session with the requested ID
 				try {
 					session = await agent.createSession(sessionId);
 					logger.info(`Created new session: ${sessionId}`);
 				} catch (createError) {
-					const createErrorMsg = createError instanceof Error ? createError.message : String(createError);
+					const createErrorMsg =
+						createError instanceof Error ? createError.message : String(createError);
 					logger.error(`Failed to create session ${sessionId}:`, createErrorMsg);
-					
+
 					// If we can't create with the specific ID, create with auto-generated ID
 					session = await agent.createSession();
 					logger.info(`Created auto-generated session: ${session.id}`);
@@ -376,11 +395,13 @@ export function createSessionRoutes(agent: MemAgent): Router {
 					await session.refreshConversationHistory();
 					logger.debug(`Session ${sessionId}: Refreshed conversation history after loading`);
 				}
-				
+
 				// Get the conversation history to return with the response
 				if (session && typeof session.getConversationHistory === 'function') {
 					conversationHistory = await session.getConversationHistory();
-					logger.info(`Session ${sessionId}: Loaded with ${conversationHistory.length} messages in conversation history`);
+					logger.info(
+						`Session ${sessionId}: Loaded with ${conversationHistory.length} messages in conversation history`
+					);
 				}
 			} catch (historyError) {
 				logger.warn(`Session ${sessionId}: Failed to refresh history after loading:`, historyError);
@@ -460,7 +481,7 @@ export function createSessionRoutes(agent: MemAgent): Router {
 			// PERFORMANCE OPTIMIZATION: Use optimized history retrieval with request deduplication
 			const sessionManager = agent.sessionManager;
 			const cacheKey = `history_${sessionId}`;
-			
+
 			// Check if there's already a pending request for this session's history
 			if ((sessionManager as any).requestDeduplicator?.has(cacheKey)) {
 				logger.debug(`Deduplicating concurrent history request for session ${sessionId}`);
@@ -473,7 +494,7 @@ export function createSessionRoutes(agent: MemAgent): Router {
 						count: (history || []).length,
 						timestamp: new Date().toISOString(),
 						processingTime: Date.now() - startTime,
-						source: 'deduplication'
+						source: 'deduplication',
 					},
 					200,
 					req.requestId
@@ -508,17 +529,28 @@ export function createSessionRoutes(agent: MemAgent): Router {
 							// Query both message and session keys in parallel
 							const [messageHistory, sessionData] = await Promise.allSettled([
 								backends.database.get(`messages:${sessionId}`),
-								backends.database.get(`session:${sessionId}`)
+								backends.database.get(`session:${sessionId}`),
 							]);
 
 							// Priority: messages key first
-							if (messageHistory.status === 'fulfilled' && messageHistory.value && Array.isArray(messageHistory.value)) {
+							if (
+								messageHistory.status === 'fulfilled' &&
+								messageHistory.value &&
+								Array.isArray(messageHistory.value)
+							) {
 								return { history: messageHistory.value, source: 'database-messages' };
 							}
 
 							// Fallback: session conversation history
-							if (sessionData.status === 'fulfilled' && sessionData.value?.conversationHistory && Array.isArray(sessionData.value.conversationHistory)) {
-								return { history: sessionData.value.conversationHistory, source: 'database-session' };
+							if (
+								sessionData.status === 'fulfilled' &&
+								sessionData.value?.conversationHistory &&
+								Array.isArray(sessionData.value.conversationHistory)
+							) {
+								return {
+									history: sessionData.value.conversationHistory,
+									source: 'database-session',
+								};
 							}
 						}
 					}
@@ -531,7 +563,10 @@ export function createSessionRoutes(agent: MemAgent): Router {
 
 			// Store promise for request deduplication
 			if ((sessionManager as any).requestDeduplicator) {
-				(sessionManager as any).requestDeduplicator.set(cacheKey, historyPromise.then(result => result.history));
+				(sessionManager as any).requestDeduplicator.set(
+					cacheKey,
+					historyPromise.then(result => result.history)
+				);
 			}
 
 			try {
@@ -546,9 +581,11 @@ export function createSessionRoutes(agent: MemAgent): Router {
 			}
 
 			const processingTime = Date.now() - startTime;
-			
+
 			// Log the final result
-			logger.info(`Session ${sessionId} history retrieval: ${history.length} messages from ${historySource} in ${processingTime}ms`);
+			logger.info(
+				`Session ${sessionId} history retrieval: ${history.length} messages from ${historySource} in ${processingTime}ms`
+			);
 
 			successResponse(
 				res,
@@ -558,7 +595,7 @@ export function createSessionRoutes(agent: MemAgent): Router {
 					count: history.length,
 					timestamp: new Date().toISOString(),
 					processingTime,
-					source: historySource
+					source: historySource,
 				},
 				200,
 				req.requestId
@@ -570,7 +607,7 @@ export function createSessionRoutes(agent: MemAgent): Router {
 				requestId: req.requestId,
 				sessionId: req.params.sessionId,
 				error: errorMsg,
-				processingTime
+				processingTime,
 			});
 
 			errorResponse(
@@ -614,7 +651,7 @@ export function createSessionRoutes(agent: MemAgent): Router {
 			// CRITICAL FIX: Always return success for deletion to prevent frontend inconsistencies
 			// The session manager will handle cleanup of non-existent sessions gracefully
 			const success = await agent.removeSession(sessionId);
-			
+
 			// Always return success for deletions to prevent UI inconsistencies
 			// Even if session wasn't found, it's effectively "deleted" from the user's perspective
 
@@ -677,7 +714,7 @@ export function createSessionRoutes(agent: MemAgent): Router {
 				uptime: process.uptime(),
 				memoryUsage: process.memoryUsage(),
 				timestamp: new Date().toISOString(),
-				requestId: req.requestId
+				requestId: req.requestId,
 			};
 
 			successResponse(
@@ -689,8 +726,8 @@ export function createSessionRoutes(agent: MemAgent): Router {
 						cachingEnabled: true,
 						batchProcessingEnabled: true,
 						requestDeduplicationEnabled: true,
-						performanceMonitoringEnabled: true
-					}
+						performanceMonitoringEnabled: true,
+					},
 				},
 				200,
 				req.requestId

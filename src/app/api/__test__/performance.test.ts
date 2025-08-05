@@ -28,7 +28,7 @@ describe('Session Management Performance Tests', () => {
 	describe('Memory Leak Prevention', () => {
 		it('should not accumulate listeners during session operations', async () => {
 			const initialListenerCount = process.listenerCount('warning');
-			
+
 			// Simulate multiple session operations
 			const operations = Array.from({ length: 50 }, async (_, i) => {
 				// Mock session operation
@@ -38,7 +38,7 @@ describe('Session Management Performance Tests', () => {
 						controller.abort();
 						resolve(`operation-${i}`);
 					}, 10);
-					
+
 					// Clean up properly
 					controller.signal.addEventListener('abort', () => {
 						clearTimeout(timeout);
@@ -51,19 +51,19 @@ describe('Session Management Performance Tests', () => {
 			// Should not accumulate warning listeners
 			const finalListenerCount = process.listenerCount('warning');
 			const listenerIncrease = finalListenerCount - initialListenerCount;
-			
+
 			// Allow some reasonable increase but not excessive
 			expect(listenerIncrease).toBeLessThan(10);
 		});
 
 		it('should properly cleanup AbortController listeners', async () => {
 			const controllers: AbortController[] = [];
-			
+
 			// Create multiple AbortControllers
 			for (let i = 0; i < 20; i++) {
 				const controller = new AbortController();
 				controllers.push(controller);
-				
+
 				// Add listener
 				controller.signal.addEventListener('abort', () => {
 					// Mock cleanup operation
@@ -75,7 +75,7 @@ describe('Session Management Performance Tests', () => {
 
 			// Should not trigger memory leak warnings
 			expect(controllers.length).toBe(20);
-			
+
 			// Verify controllers are properly disposed
 			controllers.forEach(controller => {
 				expect(controller.signal.aborted).toBe(true);
@@ -84,7 +84,7 @@ describe('Session Management Performance Tests', () => {
 
 		it('should handle rapid session creation/deletion without memory leaks', async () => {
 			const initialMemory = process.memoryUsage().heapUsed;
-			
+
 			// Simulate rapid session lifecycle
 			const operations = [];
 			for (let i = 0; i < 100; i++) {
@@ -94,7 +94,7 @@ describe('Session Management Performance Tests', () => {
 						created: Date.now(),
 						cleanup: () => {
 							// Mock cleanup
-						}
+						},
 					}).then(session => {
 						// Immediately cleanup
 						session.cleanup();
@@ -112,7 +112,7 @@ describe('Session Management Performance Tests', () => {
 
 			const finalMemory = process.memoryUsage().heapUsed;
 			const memoryIncrease = finalMemory - initialMemory;
-			
+
 			// Memory increase should be reasonable (less than 10MB)
 			expect(memoryIncrease).toBeLessThan(10 * 1024 * 1024);
 		});
@@ -130,7 +130,7 @@ describe('Session Management Performance Tests', () => {
 				return {
 					sessionId,
 					messageCount: Math.floor(Math.random() * 100),
-					processed: true
+					processed: true,
 				};
 			};
 
@@ -151,7 +151,7 @@ describe('Session Management Performance Tests', () => {
 
 			// Should complete within reasonable time (2 seconds for 50 requests)
 			expect(duration).toBeLessThan(2000);
-			
+
 			// Calculate throughput
 			const requestsPerSecond = (concurrentRequests / duration) * 1000;
 			expect(requestsPerSecond).toBeGreaterThan(25); // At least 25 requests/second
@@ -179,7 +179,7 @@ describe('Session Management Performance Tests', () => {
 			// Should process large list quickly
 			expect(duration).toBeLessThan(100); // Less than 100ms
 			expect(activeSessions.length).toBeLessThanOrEqual(100);
-			
+
 			// Verify sorting
 			for (let i = 1; i < activeSessions.length; i++) {
 				expect(activeSessions[i].lastActivity).toBeLessThanOrEqual(
@@ -196,7 +196,7 @@ describe('Session Management Performance Tests', () => {
 			// Mock session history operations
 			const historyOperations = Array.from({ length: sessionCount }, async (_, i) => {
 				const sessionId = `session-${i}`;
-				
+
 				// Simulate history retrieval
 				const history = Array.from({ length: messagesPerSession }, (_, j) => ({
 					id: `msg-${j}`,
@@ -208,7 +208,7 @@ describe('Session Management Performance Tests', () => {
 				return {
 					sessionId,
 					history,
-					messageCount: history.length
+					messageCount: history.length,
 				};
 			});
 
@@ -224,7 +224,7 @@ describe('Session Management Performance Tests', () => {
 
 			// Should complete efficiently
 			expect(duration).toBeLessThan(1000); // Less than 1 second
-			
+
 			const totalMessages = sessionCount * messagesPerSession;
 			const messagesPerSecond = (totalMessages / duration) * 1000;
 			expect(messagesPerSecond).toBeGreaterThan(1000); // Process >1000 messages/second
@@ -237,14 +237,14 @@ describe('Session Management Performance Tests', () => {
 			// Mock batch deletion
 			const deletionOperations = Array.from({ length: sessionCount }, async (_, i) => {
 				const sessionId = `delete-session-${i}`;
-				
+
 				// Simulate deletion with cleanup
 				await new Promise(resolve => setTimeout(resolve, Math.random() * 5));
-				
+
 				return {
 					sessionId,
 					deleted: true,
-					cleanedUp: true
+					cleanedUp: true,
 				};
 			});
 
@@ -277,32 +277,34 @@ describe('Session Management Performance Tests', () => {
 				}),
 				release: vi.fn().mockImplementation(() => {
 					connectionPool.active = Math.max(0, connectionPool.active - 1);
-				})
+				}),
 			};
 
 			// Simulate multiple operations requiring connections
 			const operations = Array.from({ length: 20 }, async (_, i) => {
 				const conn = await connectionPool.acquire();
-				
+
 				// Simulate database operation
 				await new Promise(resolve => setTimeout(resolve, Math.random() * 50));
-				
+
 				connectionPool.release();
 				return { operationId: i, connectionId: conn.id };
 			});
 
 			// Should handle operations even with limited connection pool
 			const results = await Promise.allSettled(operations);
-			
+
 			const successful = results.filter(r => r.status === 'fulfilled').length;
 			const failed = results.filter(r => r.status === 'rejected').length;
-			
+
 			// Most operations should succeed (with limited connection pool, some may fail)
 			expect(successful).toBeGreaterThan(5); // At least 5 operations should succeed
-			
+
 			// If some failed, it should be due to connection limits, not other errors
 			if (failed > 0) {
-				const rejectedResults = results.filter(r => r.status === 'rejected') as PromiseRejectedResult[];
+				const rejectedResults = results.filter(
+					r => r.status === 'rejected'
+				) as PromiseRejectedResult[];
 				rejectedResults.forEach(result => {
 					expect(result.reason.message).toContain('Connection pool exhausted');
 				});
@@ -314,10 +316,10 @@ describe('Session Management Performance Tests', () => {
 
 		it('should handle memory pressure gracefully', async () => {
 			const initialMemory = process.memoryUsage();
-			
+
 			// Create memory pressure simulation
 			const largeObjects: any[] = [];
-			
+
 			try {
 				// Simulate handling large session data
 				for (let i = 0; i < 100; i++) {
@@ -326,17 +328,17 @@ describe('Session Management Performance Tests', () => {
 						history: Array.from({ length: 1000 }, (_, j) => ({
 							id: j,
 							content: 'x'.repeat(1000), // 1KB per message
-							timestamp: Date.now()
+							timestamp: Date.now(),
 						})),
 						metadata: {
 							created: Date.now(),
 							lastActivity: Date.now(),
-							tags: Array.from({ length: 10 }, (_, k) => `tag-${k}`)
-						}
+							tags: Array.from({ length: 10 }, (_, k) => `tag-${k}`),
+						},
 					};
-					
+
 					largeObjects.push(sessionData);
-					
+
 					// Simulate processing
 					if (i % 10 === 0) {
 						// Periodic cleanup simulation
@@ -346,14 +348,13 @@ describe('Session Management Performance Tests', () => {
 
 				const currentMemory = process.memoryUsage();
 				const memoryIncrease = currentMemory.heapUsed - initialMemory.heapUsed;
-				
+
 				// Should handle large data without excessive memory growth
 				expect(memoryIncrease).toBeLessThan(100 * 1024 * 1024); // Less than 100MB
-				
 			} finally {
 				// Cleanup
 				largeObjects.length = 0;
-				
+
 				// Force GC if available
 				if (global.gc) {
 					global.gc();
@@ -365,7 +366,7 @@ describe('Session Management Performance Tests', () => {
 			const resources = {
 				files: new Set<string>(),
 				connections: new Set<string>(),
-				timers: new Set<NodeJS.Timeout>()
+				timers: new Set<NodeJS.Timeout>(),
 			};
 
 			const mockResourceOperation = async (shouldFail: boolean) => {
@@ -395,7 +396,7 @@ describe('Session Management Performance Tests', () => {
 			// Mix of successful and failing operations
 			const operations = [
 				...Array.from({ length: 10 }, () => mockResourceOperation(false)),
-				...Array.from({ length: 5 }, () => mockResourceOperation(true))
+				...Array.from({ length: 5 }, () => mockResourceOperation(true)),
 			];
 
 			const results = await Promise.allSettled(operations);
@@ -408,7 +409,7 @@ describe('Session Management Performance Tests', () => {
 			// Verify we had both successes and failures
 			const successful = results.filter(r => r.status === 'fulfilled').length;
 			const failed = results.filter(r => r.status === 'rejected').length;
-			
+
 			expect(successful).toBe(10);
 			expect(failed).toBe(5);
 		});
@@ -440,7 +441,7 @@ describe('Session Management Performance Tests', () => {
 			for (let i = 1; i < performanceResults.length; i++) {
 				const prev = performanceResults[i - 1];
 				const current = performanceResults[i];
-				
+
 				// Throughput should not decrease significantly - adjusted threshold for more realistic expectations
 				const throughputRatio = current.throughput / prev.throughput;
 				expect(throughputRatio).toBeGreaterThan(0.25); // Allow up to 75% degradation due to overhead
@@ -462,10 +463,10 @@ describe('Session Management Performance Tests', () => {
 				const burstOperations = Array.from({ length: burstSize }, async (_, i) => {
 					// Mock request processing
 					await new Promise(resolve => setTimeout(resolve, Math.random() * 10));
-					return { 
+					return {
 						burst,
 						requestId: i,
-						processed: Date.now()
+						processed: Date.now(),
 					};
 				});
 

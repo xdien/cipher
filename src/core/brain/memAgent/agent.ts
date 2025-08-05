@@ -389,7 +389,7 @@ export class MemAgent {
 			if (!session.getContextManager) {
 				await session.init();
 			}
-			
+
 			const history = await session.getConversationHistory();
 			messageCount = history.length;
 		} catch (error) {
@@ -402,7 +402,10 @@ export class MemAgent {
 					messageCount = rawMessages.length;
 				}
 			} catch (fallbackError) {
-				logger.warn(`Failed to get message count via fallback for session ${sessionId}:`, fallbackError);
+				logger.warn(
+					`Failed to get message count via fallback for session ${sessionId}:`,
+					fallbackError
+				);
 			}
 		}
 
@@ -526,9 +529,9 @@ export class MemAgent {
 		this.ensureStarted();
 		const clients = this.mcpManager.getClients();
 		const failedConnections = this.mcpManager.getFailedConnections();
-		
+
 		const servers: Array<{ name: string; status: string; error?: string }> = [];
-		
+
 		// Add connected servers
 		for (const [name, client] of clients.entries()) {
 			try {
@@ -545,7 +548,7 @@ export class MemAgent {
 				});
 			}
 		}
-		
+
 		// Add failed connections
 		for (const [name, error] of Object.entries(failedConnections)) {
 			servers.push({
@@ -554,7 +557,7 @@ export class MemAgent {
 				error,
 			});
 		}
-		
+
 		return servers;
 	}
 

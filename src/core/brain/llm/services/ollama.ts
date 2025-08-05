@@ -82,7 +82,7 @@ export class OllamaService implements ILLMService {
 				// If there are no tool calls, we're done
 				if (!message.tool_calls || message.tool_calls.length === 0) {
 					const responseText = message.content || '';
-					
+
 					// Add assistant message to history
 					await this.contextManager.addAssistantMessage(responseText);
 

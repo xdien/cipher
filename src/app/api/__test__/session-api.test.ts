@@ -44,7 +44,7 @@ describe('Session API Endpoints', () => {
 		app.get('/api/sessions', async (req, res) => {
 			try {
 				const sessions = await mockSessionManager.listSessions();
-				
+
 				// Transform sessions to include message count
 				const sessionsWithMetadata = sessions.map((session: any) => ({
 					id: session.id,
@@ -54,11 +54,11 @@ describe('Session API Endpoints', () => {
 
 				res.json({ sessions: sessionsWithMetadata });
 			} catch (error) {
-				res.status(500).json({ 
+				res.status(500).json({
 					error: {
 						message: error instanceof Error ? error.message : 'Failed to load sessions',
-						code: 'SESSION_LIST_ERROR'
-					}
+						code: 'SESSION_LIST_ERROR',
+					},
 				});
 			}
 		});
@@ -66,28 +66,28 @@ describe('Session API Endpoints', () => {
 		app.post('/api/sessions', async (req, res) => {
 			try {
 				const { sessionId } = req.body;
-				
+
 				if (!sessionId || typeof sessionId !== 'string') {
 					return res.status(400).json({
 						error: {
 							message: 'Session ID is required and must be a string',
-							code: 'INVALID_SESSION_ID'
-						}
+							code: 'INVALID_SESSION_ID',
+						},
 					});
 				}
 
 				const session = await mockSessionManager.createSession(sessionId);
-				res.status(201).json({ 
+				res.status(201).json({
 					sessionId: session.id,
 					created: true,
-					messageCount: 0
+					messageCount: 0,
 				});
 			} catch (error) {
 				res.status(500).json({
 					error: {
 						message: error instanceof Error ? error.message : 'Failed to create session',
-						code: 'SESSION_CREATE_ERROR'
-					}
+						code: 'SESSION_CREATE_ERROR',
+					},
 				});
 			}
 		});
@@ -95,24 +95,24 @@ describe('Session API Endpoints', () => {
 		app.delete('/api/sessions/:sessionId', async (req, res) => {
 			try {
 				const { sessionId } = req.params;
-				
+
 				if (!sessionId) {
 					return res.status(400).json({
 						error: {
 							message: 'Session ID is required',
-							code: 'MISSING_SESSION_ID'
-						}
+							code: 'MISSING_SESSION_ID',
+						},
 					});
 				}
 
 				const deleted = await mockSessionManager.deleteSession(sessionId);
-				
+
 				if (!deleted) {
 					return res.status(404).json({
 						error: {
 							message: 'Session not found',
-							code: 'SESSION_NOT_FOUND'
-						}
+							code: 'SESSION_NOT_FOUND',
+						},
 					});
 				}
 
@@ -121,8 +121,8 @@ describe('Session API Endpoints', () => {
 				res.status(500).json({
 					error: {
 						message: error instanceof Error ? error.message : 'Failed to delete session',
-						code: 'SESSION_DELETE_ERROR'
-					}
+						code: 'SESSION_DELETE_ERROR',
+					},
 				});
 			}
 		});
@@ -131,28 +131,28 @@ describe('Session API Endpoints', () => {
 			try {
 				const { sessionId } = req.params;
 				const session = await mockSessionManager.getSession(sessionId);
-				
+
 				if (!session) {
 					return res.status(404).json({
 						error: {
 							message: 'Session not found',
-							code: 'SESSION_NOT_FOUND'
-						}
+							code: 'SESSION_NOT_FOUND',
+						},
 					});
 				}
 
 				const history = await session.getConversationHistory();
-				res.json({ 
+				res.json({
 					history,
 					messageCount: history.length,
-					sessionId 
+					sessionId,
 				});
 			} catch (error) {
 				res.status(500).json({
 					error: {
 						message: error instanceof Error ? error.message : 'Failed to get session history',
-						code: 'SESSION_HISTORY_ERROR'
-					}
+						code: 'SESSION_HISTORY_ERROR',
+					},
 				});
 			}
 		});
@@ -170,25 +170,23 @@ describe('Session API Endpoints', () => {
 					getContextManager: () => ({
 						getRawMessages: () => [
 							{ role: 'user', content: [{ type: 'text', text: 'Hello' }] },
-							{ role: 'assistant', content: [{ type: 'text', text: 'Hi' }] }
-						]
+							{ role: 'assistant', content: [{ type: 'text', text: 'Hi' }] },
+						],
 					}),
-					lastActivity: Date.now()
+					lastActivity: Date.now(),
 				},
 				{
 					id: 'session-2',
 					getContextManager: () => ({
-						getRawMessages: () => []
+						getRawMessages: () => [],
 					}),
-					lastActivity: Date.now()
-				}
+					lastActivity: Date.now(),
+				},
 			];
 
 			mockSessionManager.listSessions.mockResolvedValue(mockSessions);
 
-			const response = await request(app)
-				.get('/api/sessions')
-				.expect(200);
+			const response = await request(app).get('/api/sessions').expect(200);
 
 			expect(response.body.sessions).toHaveLength(2);
 			expect(response.body.sessions[0].messageCount).toBe(2);
@@ -200,9 +198,7 @@ describe('Session API Endpoints', () => {
 			const testError = new Error('Database connection failed');
 			mockSessionManager.listSessions.mockRejectedValue(testError);
 
-			const response = await request(app)
-				.get('/api/sessions')
-				.expect(500);
+			const response = await request(app).get('/api/sessions').expect(500);
 
 			// Error should be properly serialized, not "[object Object]"
 			expect(response.body.error).toBeDefined();
@@ -214,9 +210,7 @@ describe('Session API Endpoints', () => {
 		it('should handle empty session list', async () => {
 			mockSessionManager.listSessions.mockResolvedValue([]);
 
-			const response = await request(app)
-				.get('/api/sessions')
-				.expect(200);
+			const response = await request(app).get('/api/sessions').expect(200);
 
 			expect(response.body.sessions).toEqual([]);
 		});
@@ -228,16 +222,13 @@ describe('Session API Endpoints', () => {
 			const mockSession = {
 				id: sessionId,
 				getContextManager: () => ({
-					getRawMessages: () => []
-				})
+					getRawMessages: () => [],
+				}),
 			};
 
 			mockSessionManager.createSession.mockResolvedValue(mockSession);
 
-			const response = await request(app)
-				.post('/api/sessions')
-				.send({ sessionId })
-				.expect(201);
+			const response = await request(app).post('/api/sessions').send({ sessionId }).expect(201);
 
 			expect(response.body.sessionId).toBe(sessionId);
 			expect(response.body.created).toBe(true);
@@ -247,13 +238,10 @@ describe('Session API Endpoints', () => {
 		it('should handle session creation errors properly', async () => {
 			const sessionId = 'failing-session';
 			const testError = new Error('Storage unavailable');
-			
+
 			mockSessionManager.createSession.mockRejectedValue(testError);
 
-			const response = await request(app)
-				.post('/api/sessions')
-				.send({ sessionId })
-				.expect(500);
+			const response = await request(app).post('/api/sessions').send({ sessionId }).expect(500);
 
 			expect(response.body.error.message).toBe('Storage unavailable');
 			expect(response.body.error.code).toBe('SESSION_CREATE_ERROR');
@@ -274,12 +262,10 @@ describe('Session API Endpoints', () => {
 	describe('Session Deletion API', () => {
 		it('should delete session successfully', async () => {
 			const sessionId = 'session-to-delete';
-			
+
 			mockSessionManager.deleteSession.mockResolvedValue(true);
 
-			const response = await request(app)
-				.delete(`/api/sessions/${sessionId}`)
-				.expect(200);
+			const response = await request(app).delete(`/api/sessions/${sessionId}`).expect(200);
 
 			expect(response.body.deleted).toBe(true);
 			expect(response.body.sessionId).toBe(sessionId);
@@ -288,12 +274,10 @@ describe('Session API Endpoints', () => {
 
 		it('should handle non-existent session deletion gracefully', async () => {
 			const sessionId = 'non-existent-session';
-			
+
 			mockSessionManager.deleteSession.mockResolvedValue(false);
 
-			const response = await request(app)
-				.delete(`/api/sessions/${sessionId}`)
-				.expect(404);
+			const response = await request(app).delete(`/api/sessions/${sessionId}`).expect(404);
 
 			expect(response.body.error.message).toBe('Session not found');
 			expect(response.body.error.code).toBe('SESSION_NOT_FOUND');
@@ -302,12 +286,10 @@ describe('Session API Endpoints', () => {
 		it('should handle session deletion errors with proper serialization', async () => {
 			const sessionId = 'error-session';
 			const testError = new Error('Failed to delete session from storage');
-			
+
 			mockSessionManager.deleteSession.mockRejectedValue(testError);
 
-			const response = await request(app)
-				.delete(`/api/sessions/${sessionId}`)
-				.expect(500);
+			const response = await request(app).delete(`/api/sessions/${sessionId}`).expect(500);
 
 			expect(response.body.error.message).toBe('Failed to delete session from storage');
 			expect(response.body.error.code).toBe('SESSION_DELETE_ERROR');
@@ -315,9 +297,7 @@ describe('Session API Endpoints', () => {
 		});
 
 		it('should validate session ID parameter', async () => {
-			const response = await request(app)
-				.delete('/api/sessions/')
-				.expect(404); // Express will return 404 for missing route param
+			const response = await request(app).delete('/api/sessions/').expect(404); // Express will return 404 for missing route param
 		});
 	});
 
@@ -332,14 +312,12 @@ describe('Session API Endpoints', () => {
 
 			const mockSession = {
 				id: sessionId,
-				getConversationHistory: vi.fn().mockResolvedValue(mockHistory)
+				getConversationHistory: vi.fn().mockResolvedValue(mockHistory),
 			};
 
 			mockSessionManager.getSession.mockResolvedValue(mockSession);
 
-			const response = await request(app)
-				.get(`/api/sessions/${sessionId}/history`)
-				.expect(200);
+			const response = await request(app).get(`/api/sessions/${sessionId}/history`).expect(200);
 
 			expect(response.body.history).toEqual(mockHistory);
 			expect(response.body.messageCount).toBe(3);
@@ -350,12 +328,10 @@ describe('Session API Endpoints', () => {
 		it('should handle session history errors properly', async () => {
 			const sessionId = 'error-session';
 			const testError = new Error('History provider unavailable');
-			
+
 			mockSessionManager.getSession.mockRejectedValue(testError);
 
-			const response = await request(app)
-				.get(`/api/sessions/${sessionId}/history`)
-				.expect(500);
+			const response = await request(app).get(`/api/sessions/${sessionId}/history`).expect(500);
 
 			expect(response.body.error.message).toBe('History provider unavailable');
 			expect(response.body.error.code).toBe('SESSION_HISTORY_ERROR');
@@ -364,12 +340,10 @@ describe('Session API Endpoints', () => {
 
 		it('should handle non-existent session history request', async () => {
 			const sessionId = 'non-existent-session';
-			
+
 			mockSessionManager.getSession.mockResolvedValue(null);
 
-			const response = await request(app)
-				.get(`/api/sessions/${sessionId}/history`)
-				.expect(404);
+			const response = await request(app).get(`/api/sessions/${sessionId}/history`).expect(404);
 
 			expect(response.body.error.message).toBe('Session not found');
 			expect(response.body.error.code).toBe('SESSION_NOT_FOUND');
@@ -379,20 +353,18 @@ describe('Session API Endpoints', () => {
 	describe('API Performance and Rate Limiting', () => {
 		it('should handle concurrent session operations', async () => {
 			const sessionIds = ['concurrent-1', 'concurrent-2', 'concurrent-3'];
-			
+
 			// Mock successful operations
-			mockSessionManager.createSession.mockImplementation(async (id) => ({
+			mockSessionManager.createSession.mockImplementation(async id => ({
 				id,
 				getContextManager: () => ({
-					getRawMessages: () => []
-				})
+					getRawMessages: () => [],
+				}),
 			}));
 
 			// Make concurrent requests
 			const requests = sessionIds.map(sessionId =>
-				request(app)
-					.post('/api/sessions')
-					.send({ sessionId })
+				request(app).post('/api/sessions').send({ sessionId })
 			);
 
 			const responses = await Promise.all(requests);
@@ -408,7 +380,7 @@ describe('Session API Endpoints', () => {
 			const sessionId = 'rapid-test-session';
 			const mockSession = {
 				id: sessionId,
-				getConversationHistory: vi.fn().mockResolvedValue([])
+				getConversationHistory: vi.fn().mockResolvedValue([]),
 			};
 
 			mockSessionManager.getSession.mockResolvedValue(mockSession);
@@ -439,9 +411,7 @@ describe('Session API Endpoints', () => {
 			});
 
 			const startTime = Date.now();
-			const response = await request(app)
-				.get('/api/sessions')
-				.expect(500);
+			const response = await request(app).get('/api/sessions').expect(500);
 
 			const duration = Date.now() - startTime;
 
@@ -468,17 +438,13 @@ describe('Session API Endpoints', () => {
 
 			for (const endpoint of endpoints) {
 				let response;
-				
+
 				if (endpoint.method === 'post') {
-					response = await request(app)
-						.post(endpoint.path)
-						.send({ sessionId: 'test' });
+					response = await request(app).post(endpoint.path).send({ sessionId: 'test' });
 				} else if (endpoint.method === 'delete') {
-					response = await request(app)
-						.delete(endpoint.path);
+					response = await request(app).delete(endpoint.path);
 				} else {
-					response = await request(app)
-						.get(endpoint.path);
+					response = await request(app).get(endpoint.path);
 				}
 
 				// All error responses should have consistent format
