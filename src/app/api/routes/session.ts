@@ -66,15 +66,18 @@ export function createSessionRoutes(agent: MemAgent): Router {
 				}
 			}
 
-			// Convert to response format
-			const sessions = Array.from(sessionsMetadata.values());
+			// CRITICAL FIX: Filter out sessions with 0 messages to prevent phantom sessions
+			const validSessions = Array.from(sessionsMetadata.values()).filter(session => {
+				return session.messageCount > 0;
+			});
+			
 			const processingTime = Date.now() - startTime;
 
-			logger.info(`Successfully listed ${sessions.length} sessions in ${processingTime}ms`);
+			logger.info(`Successfully listed ${validSessions.length}/${Array.from(sessionsMetadata.values()).length} valid sessions in ${processingTime}ms`);
 
 			successResponse(res, {
-				sessions,
-				count: sessions.length,
+				sessions: validSessions,
+				count: validSessions.length,
 				currentSession: agent.getCurrentSessionId?.() || null,
 				processingTime
 			}, 200, req.requestId);
@@ -608,25 +611,21 @@ export function createSessionRoutes(agent: MemAgent): Router {
 				sessionId,
 			});
 
+			// CRITICAL FIX: Always return success for deletion to prevent frontend inconsistencies
+			// The session manager will handle cleanup of non-existent sessions gracefully
 			const success = await agent.removeSession(sessionId);
+			
+			// Always return success for deletions to prevent UI inconsistencies
+			// Even if session wasn't found, it's effectively "deleted" from the user's perspective
 
-			if (!success) {
-				errorResponse(
-					res,
-					ERROR_CODES.SESSION_NOT_FOUND,
-					`Session ${sessionId} not found`,
-					404,
-					undefined,
-					req.requestId
-				);
-				return;
-			}
-
+			// CRITICAL FIX: Always return success to prevent UI inconsistencies
+			// The frontend should show the session as deleted immediately
 			successResponse(
 				res,
 				{
 					sessionId,
 					deleted: true,
+					successful: success,
 					timestamp: new Date().toISOString(),
 				},
 				200,

@@ -384,7 +384,10 @@ export class SessionManager {
 				storageDeleted = true; // Consider successful if no storage to delete from
 			}
 
-			// Step 3: Emit events and log results
+			// Step 3: Clear all caches for this session
+			this.clearSessionFromAllCaches(sessionId);
+			
+			// Step 4: Emit events and log results
 			if (memoryDeleted || storageDeleted) {
 				// Emit session deleted event
 				this.services.eventManager.emitSessionEvent(sessionId, SessionEvents.SESSION_DELETED, {
@@ -428,14 +431,9 @@ export class SessionManager {
 		const startTime = Date.now();
 		const cacheKey = 'active_session_ids';
 		
-		// Check cache first
-		const cached = this.getCachedResult(cacheKey);
-		if (cached) {
-			this.performanceMetrics.cacheHits++;
-			logger.debug(`SessionManager: Cache hit for active session IDs (${(cached as string[]).length} sessions)`);
-			return cached as string[];
-		}
-
+		// CRITICAL FIX: Don't use cache for session IDs to prevent phantom sessions
+		// Always fetch fresh data to ensure UI shows accurate session list
+		
 		// Prevent duplicate requests
 		if (this.requestDeduplicator.has(cacheKey)) {
 			logger.debug('SessionManager: Deduplicating concurrent request for active session IDs');
@@ -450,14 +448,14 @@ export class SessionManager {
 			
 			const result = await fetchPromise;
 			
-			// Cache the result
-			this.setCacheResult(cacheKey, result);
+			// CRITICAL FIX: Filter out sessions with 0 messages to prevent phantom sessions
+			const validSessions = await this.filterValidSessions(result);
 			
 			const loadTime = Date.now() - startTime;
 			this.updateAverageLoadTime(loadTime);
 			
-			logger.debug(`SessionManager: Fetched ${result.length} active session IDs in ${loadTime}ms`);
-			return result;
+			logger.debug(`SessionManager: Fetched ${validSessions.length}/${result.length} valid session IDs in ${loadTime}ms`);
+			return validSessions;
 		} catch (error) {
 			logger.error('SessionManager: Failed to get active session IDs:', error);
 			// Return in-memory sessions as fallback
@@ -963,6 +961,13 @@ export class SessionManager {
 		}
 
 		const serialized = await session.serialize();
+		
+		// CRITICAL FIX: Don't save sessions with 0 messages to prevent phantom sessions
+		if (serialized.conversationHistory.length === 0) {
+			logger.debug(`SessionManager: Skipping save of session ${sessionId} with 0 messages`);
+			return;
+		}
+		
 		const key = this.getSessionStorageKey(sessionId);
 
 		const backends = this.storageManager.getBackends();
@@ -1261,6 +1266,77 @@ export class SessionManager {
 			this.performanceMetrics.averageLoadTime === 0 
 				? loadTime 
 				: (alpha * loadTime) + ((1 - alpha) * this.performanceMetrics.averageLoadTime);
+	}
+
+	/**
+	 * Clear session from all caches to prevent phantom sessions
+	 */
+	private clearSessionFromAllCaches(sessionId: string): void {
+		// Clear from metadata cache
+		this.sessionMetadataCache.delete(`metadata_${sessionId}`);
+		
+		// Clear from message count cache
+		this.messageCountCache.delete(`count_${sessionId}`);
+		
+		// Clear from active session IDs cache (invalidate the list)
+		this.sessionMetadataCache.delete('active_session_ids');
+		
+		logger.debug(`SessionManager: Cleared all caches for session ${sessionId}`);
+	}
+
+	/**
+	 * Filter out invalid sessions (empty sessions with 0 messages)
+	 */
+	private async filterValidSessions(sessionIds: string[]): Promise<string[]> {
+		const validSessions: string[] = [];
+		
+		for (const sessionId of sessionIds) {
+			try {
+				// Check if session has messages or is in active memory
+				const isInMemory = this.sessions.has(sessionId);
+				const messageCount = await this.getSessionMessageCount(sessionId);
+				
+				// Keep sessions that are either in memory OR have messages
+				if (isInMemory || messageCount > 0) {
+					validSessions.push(sessionId);
+				} else {
+					// Clean up phantom sessions with 0 messages
+					logger.debug(`SessionManager: Cleaning up phantom session ${sessionId} with 0 messages`);
+					await this.cleanupPhantomSession(sessionId);
+				}
+			} catch (error) {
+				logger.warn(`SessionManager: Error validating session ${sessionId}:`, error);
+				// Include session in case of validation error to be safe
+				validSessions.push(sessionId);
+			}
+		}
+		
+		return validSessions;
+	}
+
+	/**
+	 * Clean up phantom sessions that have no messages
+	 */
+	private async cleanupPhantomSession(sessionId: string): Promise<void> {
+		try {
+			if (this.storageManager?.isConnected()) {
+				const backends = this.storageManager.getBackends();
+				if (backends?.database) {
+					// Delete phantom session data
+					const sessionKey = this.getSessionStorageKey(sessionId);
+					const historyKey = `messages:${sessionId}`;
+					
+					await Promise.allSettled([
+						backends.database.delete(sessionKey),
+						backends.database.delete(historyKey)
+					]);
+					
+					logger.debug(`SessionManager: Cleaned up phantom session ${sessionId}`);
+				}
+			}
+		} catch (error) {
+			logger.warn(`SessionManager: Failed to cleanup phantom session ${sessionId}:`, error);
+		}
 	}
 
 	/**

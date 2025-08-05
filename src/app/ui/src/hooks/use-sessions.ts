@@ -39,7 +39,7 @@ async function fetchSessions(): Promise<Session[]> {
   const data = await response.json()
   const sessions = data.data?.sessions || data.sessions || []
   
-  // Enhance sessions with message counts
+  // CRITICAL FIX: Filter out sessions with 0 messages and enhance with message counts
   const sessionsWithCounts = await Promise.all(
     sessions.map(async (session: Session) => {
       try {
@@ -56,7 +56,12 @@ async function fetchSessions(): Promise<Session[]> {
     })
   )
   
-  return sessionsWithCounts
+  // Filter out phantom sessions with 0 messages to prevent UI inconsistencies
+  const validSessions = sessionsWithCounts.filter(session => session.messageCount > 0)
+  
+  console.log(`📊 Sessions filtered: ${sessions.length} → ${validSessions.length} (removed ${sessions.length - validSessions.length} phantom sessions)`)
+  
+  return validSessions
 }
 
 async function fetchSessionHistory(sessionId: string): Promise<SessionMessage[]> {
@@ -150,7 +155,7 @@ export function useSessions() {
   const query = useQuery({
     queryKey: sessionQueryKeys.lists(),
     queryFn: fetchSessions,
-    staleTime: 5 * 1000, // 5 seconds - shorter to ensure fresh data after operations
+    staleTime: 1 * 1000, // 1 second - very short to prevent phantom sessions
     gcTime: 5 * 60 * 1000, // 5 minutes garbage collection
     refetchOnWindowFocus: true, // Refetch when window gains focus to sync state
     refetchOnMount: 'always', // Always fetch fresh data on mount
@@ -358,8 +363,14 @@ export function useDeleteSession() {
       queryClient.removeQueries({ queryKey: sessionQueryKeys.detail(sessionId) })
       queryClient.removeQueries({ queryKey: sessionQueryKeys.history(sessionId) })
       
-      // IMPORTANT: Invalidate and refetch sessions list to ensure backend sync
-      console.log('🔄 Invalidating sessions list to sync with backend...')
+      // CRITICAL FIX: Force refetch with no cache to prevent phantom sessions
+      console.log('🔄 Force refetching sessions list to ensure no phantom sessions...')
+      queryClient.refetchQueries({ 
+        queryKey: sessionQueryKeys.lists(),
+        type: 'active'
+      })
+      
+      // Also invalidate to ensure any cached data is cleared
       queryClient.invalidateQueries({ queryKey: sessionQueryKeys.lists() })
       
       // Update store for compatibility
