@@ -82,10 +82,10 @@ llm:
 #   apiKey: $OPENAI_API_KEY
 
 # Gemini:
-embedding:
-  type: gemini
-  model: gemini-embedding-001
-  apiKey: $GEMINI_API_KEY
+# embedding:
+#   type: gemini
+#   model: gemini-embedding-001
+#   apiKey: $GEMINI_API_KEY
 
 # Ollama:
 # embedding:
