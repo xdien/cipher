@@ -314,11 +314,15 @@ describe('UnifiedToolManager', () => {
 				expectedMemoryTools += 2; // workspace_search + workspace_store
 			}
 
+			// Add system tools to the expected count
+			const expectedSystemTools = 1; // bash tool
+			const expectedTotal = expectedMemoryTools + expectedSystemTools;
+
 			if (env.KNOWLEDGE_GRAPH_ENABLED) {
-				const expectedTotal = expectedMemoryTools + 11; // memory tools + knowledge graph tools
-				expect(stats.internalTools.totalTools).toBe(expectedTotal);
+				const expectedTotalWithKG = expectedTotal + 11; // memory tools + system tools + knowledge graph tools
+				expect(stats.internalTools.totalTools).toBe(expectedTotalWithKG);
 			} else {
-				expect(stats.internalTools.totalTools).toBe(expectedMemoryTools);
+				expect(stats.internalTools.totalTools).toBe(expectedTotal);
 			}
 			expect(stats.internalTools.toolsByCategory.memory).toBe(expectedMemoryTools);
 		});
