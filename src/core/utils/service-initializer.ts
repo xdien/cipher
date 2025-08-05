@@ -814,13 +814,13 @@ export async function createAgentServices(
 			mode: 'cli', // Special CLI mode
 		};
 	} else if (appMode === 'mcp') {
-		// MCP Mode: Respect MCP_SERVER_MODE for external tool exposure
-		const mcpServerMode = (process.env.MCP_SERVER_MODE as 'default' | 'aggregator') || 'default';
+		// MCP Mode: Always use 'cli' mode internally for agent access to all tools
+		// External MCP exposure is controlled separately in mcp_handler.ts
 		unifiedToolManagerConfig = {
 			enableInternalTools: true,
 			enableMcpTools: true,
 			conflictResolution: 'prefix-internal',
-			mode: mcpServerMode,
+			mode: 'cli', // Internal agent needs access to all tools regardless of MCP_SERVER_MODE
 		};
 	} else {
 		// API Mode: Similar to CLI for now

@@ -92,6 +92,7 @@ llm:
 #   type: ollama
 #   model: mxbai-embed-large
 #   baseUrl: $OLLAMA_BASE_URL
+#   dimensions: 1024
 
 # LM Studio:
 # embedding:
@@ -136,8 +137,8 @@ llm:
 #   maxRetries: 3
 
 # Disable embeddings entirely:
-embedding:
-  disabled: true
+# embedding:
+#   disabled: true
 
 
 
