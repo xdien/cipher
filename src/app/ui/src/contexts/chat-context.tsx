@@ -94,48 +94,6 @@ export function ChatProvider({
     }
   });
 
-  // Enhanced send message with auto-session creation
-  const sendMessage = useCallback(async (
-    content: string,
-    imageData?: { base64: string; mimeType: string }
-  ) => {
-    let sessionId = currentSessionId;
-
-    // Auto-create session on first message
-    if (!sessionId && isWelcomeState) {
-      try {
-        // Use the mutation for optimistic updates
-        const newSession = await new Promise<{ id: string }>((resolve, reject) => {
-          createSessionMutation.mutate(undefined, {
-            onSuccess: resolve,
-            onError: reject,
-          });
-        });
-        
-        sessionId = newSession.id;
-        
-        // Load the new session as the current working session
-        await loadSession(sessionId);
-      } catch (error) {
-        console.error('Error creating auto session:', error);
-        throw error;
-      }
-    }
-
-    if (sessionId) {
-      originalSendMessage(content, imageData, sessionId, isStreaming);
-    } else {
-      console.error('No session available for sending message');
-      throw new Error('No session available for sending message');
-    }
-  }, [
-    originalSendMessage, 
-    currentSessionId, 
-    isWelcomeState, 
-    isStreaming,
-    createSessionMutation
-  ]);
-
   // Load session history with caching support
   const loadHistory = useCallback(async (sessionId: string) => {
     try {
@@ -199,6 +157,79 @@ export function ChatProvider({
       throw error;
     }
   }, [currentSessionId, isSwitching, switchToSession, setMessages, loadHistory]);
+
+  // Helper function to ensure "default" session exists
+  const ensureDefaultSession = useCallback(async (): Promise<string> => {
+    const { sessions } = useSessionStore.getState();
+    
+    // Check if "default" session already exists
+    const defaultSession = sessions.find(s => s.id === 'default');
+    
+    if (defaultSession) {
+      console.log('📋 Using existing default session');
+      // Switch to default session if not already current
+      if (currentSessionId !== 'default') {
+        await switchSession('default');
+      }
+      return 'default';
+    }
+    
+    // Create "default" session if it doesn't exist
+    console.log('🆕 Creating new default session');
+    try {
+      const newSession = await new Promise<{ id: string }>((resolve, reject) => {
+        createSessionMutation.mutate('default', {
+          onSuccess: resolve,
+          onError: reject,
+        });
+      });
+      
+      // Load the new session as the current working session
+      await loadSession(newSession.id);
+      return newSession.id;
+    } catch (error) {
+      console.error('Error creating default session:', error);
+      throw error;
+    }
+  }, [currentSessionId, switchSession, createSessionMutation]);
+
+  // Enhanced send message with default session management
+  const sendMessage = useCallback(async (
+    content: string,
+    imageData?: { base64: string; mimeType: string }
+  ) => {
+    let sessionId = currentSessionId;
+
+    // Auto-create or switch to "default" session if needed
+    if (!sessionId && isWelcomeState) {
+      sessionId = await ensureDefaultSession();
+    }
+
+    if (sessionId) {
+      originalSendMessage(content, imageData, sessionId, isStreaming);
+    } else {
+      console.error('No session available for sending message');
+      throw new Error('No session available for sending message');
+    }
+  }, [
+    originalSendMessage, 
+    currentSessionId, 
+    isWelcomeState, 
+    isStreaming,
+    ensureDefaultSession
+  ]);
+
+  // Quick action send message - always uses "default" session
+  const sendQuickActionMessage = useCallback(async (content: string) => {
+    try {
+      // Always ensure we're using the "default" session for quick actions
+      const sessionId = await ensureDefaultSession();
+      originalSendMessage(content, undefined, sessionId, isStreaming);
+    } catch (error) {
+      console.error('Error sending quick action message:', error);
+      throw error;
+    }
+  }, [originalSendMessage, ensureDefaultSession, isStreaming]);
 
   // Return to welcome state
   const returnToWelcome = useCallback(() => {
@@ -330,6 +361,7 @@ export function ChatProvider({
   const contextValue: ChatContextType = {
     messages,
     sendMessage,
+    sendQuickActionMessage,
     status,
     reset,
     currentSessionId,

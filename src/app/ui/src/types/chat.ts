@@ -230,6 +230,7 @@ export interface ChatContextType {
 		imageData?: { base64: string; mimeType: string },
 		fileData?: { base64: string; mimeType: string; filename?: string }
 	) => Promise<void>;
+	sendQuickActionMessage: (content: string) => Promise<void>;
 	status: ConnectionStatus;
 	reset: () => void;
 	currentSessionId: string | null;

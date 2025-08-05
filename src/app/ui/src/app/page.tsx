@@ -17,6 +17,7 @@ function MainChatInterface() {
   const {
     messages,
     sendMessage,
+    sendQuickActionMessage,
     status,
     currentSessionId,
     switchSession,
@@ -29,18 +30,18 @@ function MainChatInterface() {
   const [isServersPanelOpen, setIsServersPanelOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Quick actions configuration
+  // Quick actions configuration - now uses default session
   const quickActions: QuickAction[] = [
     {
       title: "What can you do?",
       description: "See current capabilities",
-      action: () => sendMessage("What tools and capabilities do you have available right now?"),
+      action: () => sendQuickActionMessage("What tools and capabilities do you have available right now?"),
       icon: "🤔"
     },
     {
       title: "Remember",
       description: "Save a coding pattern or concept",
-      action: () => sendMessage("Help me store an important programming concept, design pattern, or coding technique that I can reference later. Please ask me what concept I'd like to store and then save it with proper examples and explanations."),
+      action: () => sendQuickActionMessage("Help me store an important programming concept, design pattern, or coding technique that I can reference later. Please ask me what concept I'd like to store and then save it with proper examples and explanations."),
       icon: "💡"
     },
     {
@@ -52,7 +53,7 @@ function MainChatInterface() {
     {
       title: "Test existing tools",
       description: "Try out connected capabilities",
-      action: () => sendMessage("Show me how to use one of your available tools. Pick an interesting one and demonstrate it."),
+      action: () => sendQuickActionMessage("Show me how to use one of your available tools. Pick an interesting one and demonstrate it."),
       icon: "⚡"
     }
   ];
