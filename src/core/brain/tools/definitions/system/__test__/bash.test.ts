@@ -1,6 +1,6 @@
 /**
  * Tests for Bash Command Tool
- * 
+ *
  * Tests both one-off command execution and persistent session functionality.
  */
 
@@ -10,7 +10,7 @@ import type { InternalToolContext } from '../../../types.js';
 
 describe('Bash Tool', () => {
 	let sessionManager: BashSessionManager;
-	
+
 	beforeEach(() => {
 		sessionManager = BashSessionManager.getInstance();
 	});
@@ -46,10 +46,7 @@ describe('Bash Tool', () => {
 				metadata: {},
 			};
 
-			const result = await bashTool.handler(
-				{ command: 'echo "Hello World"' },
-				context
-			);
+			const result = await bashTool.handler({ command: 'echo "Hello World"' }, context);
 
 			expect(result.isError).toBe(false);
 			expect(result.content).toContain('Hello World');
@@ -65,10 +62,7 @@ describe('Bash Tool', () => {
 				metadata: {},
 			};
 
-			const result = await bashTool.handler(
-				{ command: 'exit 1' },
-				context
-			);
+			const result = await bashTool.handler({ command: 'exit 1' }, context);
 
 			expect(result.isError).toBe(true);
 			expect(result.content).toContain('Exit Code: 1');
@@ -84,10 +78,7 @@ describe('Bash Tool', () => {
 			};
 
 			// This should timeout quickly
-			const result = await bashTool.handler(
-				{ command: 'sleep 5', timeout: 1000 },
-				context
-			);
+			const result = await bashTool.handler({ command: 'sleep 5', timeout: 1000 }, context);
 
 			expect(result.isError).toBe(true);
 			expect(result.content).toContain('timeout');
@@ -102,10 +93,7 @@ describe('Bash Tool', () => {
 				metadata: {},
 			};
 
-			const result = await bashTool.handler(
-				{ command: 'pwd', workingDir: '/tmp' },
-				context
-			);
+			const result = await bashTool.handler({ command: 'pwd', workingDir: '/tmp' }, context);
 
 			expect(result.isError).toBe(false);
 			expect(result.content).toContain('/tmp');

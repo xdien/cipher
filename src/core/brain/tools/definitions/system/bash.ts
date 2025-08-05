@@ -1,13 +1,17 @@
 /**
  * Bash Command Tool for Cipher
- * 
+ *
  * Provides bash command execution capabilities within the Cipher agent framework.
  * Adapted from OpenHands implementation with Cipher-specific integrations.
  */
 
 import { spawn, ChildProcess } from 'child_process';
 import { EventEmitter } from 'events';
-import { createInternalToolName, type InternalTool, type InternalToolHandler } from '../../types.js';
+import {
+	createInternalToolName,
+	type InternalTool,
+	type InternalToolHandler,
+} from '../../types.js';
 import { logger } from '../../../../logger/index.js';
 
 /**
@@ -44,7 +48,7 @@ class BashSession extends EventEmitter {
 	private isRunning = false;
 	private currentWorkingDir: string;
 	private sessionId: string;
-	
+
 	constructor(sessionId: string, workingDir: string = process.cwd()) {
 		super();
 		this.sessionId = sessionId;
@@ -81,11 +85,13 @@ class BashSession extends EventEmitter {
 
 			this.process.on('exit', (code, signal) => {
 				this.isRunning = false;
-				logger.debug(`BashSession ${this.sessionId}: Process exited with code ${code}, signal ${signal}`);
+				logger.debug(
+					`BashSession ${this.sessionId}: Process exited with code ${code}, signal ${signal}`
+				);
 				this.emit('exit', { code, signal });
 			});
 
-			this.process.on('error', (error) => {
+			this.process.on('error', error => {
 				this.isRunning = false;
 				logger.error(`BashSession ${this.sessionId}: Process error`, error);
 				this.emit('error', error);
@@ -110,7 +116,7 @@ class BashSession extends EventEmitter {
 		}
 
 		const startTime = Date.now();
-		
+
 		// Clear buffers for this command
 		this.outputBuffer = '';
 		this.errorBuffer = '';
@@ -129,11 +135,11 @@ class BashSession extends EventEmitter {
 			const checkCompletion = () => {
 				if (this.outputBuffer.includes(marker)) {
 					clearTimeout(timeoutId);
-					
+
 					// Extract output before the marker
 					const parts = this.outputBuffer.split(marker);
 					const output = parts[0]?.trim() || '';
-					
+
 					// Try to extract exit code
 					const exitCodeMatch = this.outputBuffer.match(/EXIT_CODE:(\d+)/);
 					const exitCode = exitCodeMatch?.[1] ? parseInt(exitCodeMatch[1], 10) : 0;
@@ -199,13 +205,13 @@ class BashSessionManager {
 	 */
 	async getSession(sessionId: string, workingDir?: string): Promise<BashSession> {
 		let session = this.sessions.get(sessionId);
-		
+
 		if (!session || !session.isActive()) {
 			session = new BashSession(sessionId, workingDir);
 			await session.initialize();
 			this.sessions.set(sessionId, session);
 		}
-		
+
 		return session;
 	}
 
@@ -235,7 +241,7 @@ class BashSessionManager {
  */
 async function executeBashCommand(options: CommandOptions): Promise<CommandResult> {
 	const { command, timeout = 30000, workingDir, environment, shell = '/bin/bash' } = options;
-	
+
 	logger.debug('Executing bash command', { command, timeout, workingDir });
 
 	const startTime = Date.now();
@@ -264,7 +270,7 @@ async function executeBashCommand(options: CommandOptions): Promise<CommandResul
 
 		childProcess.on('close', (code: number | null) => {
 			clearTimeout(timeoutId);
-			
+
 			const result: CommandResult = {
 				output: output.trim(),
 				error: error.trim(),
@@ -275,10 +281,10 @@ async function executeBashCommand(options: CommandOptions): Promise<CommandResul
 				workingDir: workingDir || process.cwd() || undefined,
 			};
 
-			logger.debug('Bash command completed', { 
-				command, 
-				exitCode: result.exitCode, 
-				duration: result.duration 
+			logger.debug('Bash command completed', {
+				command,
+				exitCode: result.exitCode,
+				duration: result.duration,
 			});
 
 			resolve(result);
@@ -296,12 +302,12 @@ async function executeBashCommand(options: CommandOptions): Promise<CommandResul
  * Bash tool handler implementation
  */
 const bashHandler: InternalToolHandler = async (args, context) => {
-	const { 
-		command, 
-		timeout = 30000, 
-		workingDir, 
+	const {
+		command,
+		timeout = 30000,
+		workingDir,
 		persistent = false,
-		sessionId: customSessionId 
+		sessionId: customSessionId,
 	} = args;
 
 	if (!command || typeof command !== 'string') {
@@ -313,7 +319,7 @@ const bashHandler: InternalToolHandler = async (args, context) => {
 
 	try {
 		let result: CommandResult;
-		
+
 		if (persistent) {
 			// Use persistent session
 			const sessionManager = BashSessionManager.getInstance();
@@ -340,7 +346,9 @@ const bashHandler: InternalToolHandler = async (args, context) => {
 			result.output || '(no output)',
 			result.error ? '\nError:' : '',
 			result.error || '',
-		].filter(Boolean).join('\n');
+		]
+			.filter(Boolean)
+			.join('\n');
 
 		// Store command result in memory if context has services
 		if (context?.services?.vectorStoreManager && result.output) {
@@ -359,7 +367,7 @@ const bashHandler: InternalToolHandler = async (args, context) => {
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		logger.error('Bash tool execution failed', { command, error: errorMessage });
-		
+
 		return {
 			content: `Error executing command: ${errorMessage}`,
 			isError: true,
@@ -375,13 +383,15 @@ export const bashTool: InternalTool = {
 	category: 'system',
 	internal: true,
 	agentAccessible: true,
-	description: 'Execute bash commands in the system shell. Supports both one-off commands and persistent session execution.',
+	description:
+		'Execute bash commands in the system shell. Supports both one-off commands and persistent session execution.',
 	parameters: {
 		type: 'object',
 		properties: {
 			command: {
 				type: 'string',
-				description: 'The bash command to execute. Can be a single command or a chain of commands using && or ;',
+				description:
+					'The bash command to execute. Can be a single command or a chain of commands using && or ;',
 			},
 			timeout: {
 				type: 'number',

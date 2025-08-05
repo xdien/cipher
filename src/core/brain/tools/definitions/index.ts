@@ -155,9 +155,7 @@ export const TOOL_CATEGORIES = {
 	},
 	system: {
 		description: 'Tools for system operations, command execution, and environment interaction',
-		tools: [
-			'bash',
-		] as string[],
+		tools: ['bash'] as string[],
 		useCase:
 			'Use these tools to execute system commands, interact with the filesystem, and perform system-level operations',
 	},

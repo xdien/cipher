@@ -1,6 +1,6 @@
 /**
  * Integration test for Bash Tool with Cipher system
- * 
+ *
  * Tests the bash tool integration with the full cipher tool management system.
  */
 
@@ -34,7 +34,7 @@ describe('Bash Tool Integration', () => {
 	it('should register successfully with tool manager', async () => {
 		const tools = await getAllToolDefinitions();
 		const bashTool = tools['cipher_bash'];
-		
+
 		const result = toolManager.registerTool(bashTool);
 		expect(result.success).toBe(true);
 		expect(result.message).not.toContain('error');
@@ -43,10 +43,10 @@ describe('Bash Tool Integration', () => {
 	it('should execute through tool manager', async () => {
 		const tools = await getAllToolDefinitions();
 		const bashTool = tools['cipher_bash'];
-		
+
 		// Register the tool
 		toolManager.registerTool(bashTool);
-		
+
 		// Execute through manager
 		const result = await toolManager.executeTool(
 			'cipher_bash',
@@ -62,10 +62,10 @@ describe('Bash Tool Integration', () => {
 	it('should handle persistent sessions through tool manager', async () => {
 		const tools = await getAllToolDefinitions();
 		const bashTool = tools['cipher_bash'];
-		
+
 		// Register the tool
 		toolManager.registerTool(bashTool);
-		
+
 		// Set environment variable
 		const result1 = await toolManager.executeTool(
 			'cipher_bash',
@@ -87,14 +87,14 @@ describe('Bash Tool Integration', () => {
 	it('should track execution statistics', async () => {
 		const tools = await getAllToolDefinitions();
 		const bashTool = tools['cipher_bash'];
-		
+
 		// Register the tool
 		toolManager.registerTool(bashTool);
-		
+
 		// Execute a few commands
 		await toolManager.executeTool('cipher_bash', { command: 'echo "test1"' });
 		await toolManager.executeTool('cipher_bash', { command: 'echo "test2"' });
-		
+
 		// Check statistics
 		const stats = toolManager.getToolStats('cipher_bash');
 		expect(stats).toBeDefined();
@@ -106,9 +106,9 @@ describe('Bash Tool Integration', () => {
 	it('should be discoverable by category', async () => {
 		const tools = await getAllToolDefinitions();
 		const bashTool = tools['cipher_bash'];
-		
+
 		toolManager.registerTool(bashTool);
-		
+
 		const systemTools = toolManager.getToolsByCategory('system');
 		expect(systemTools['cipher_bash']).toBeDefined();
 	});
@@ -116,14 +116,17 @@ describe('Bash Tool Integration', () => {
 	it('should integrate with cipher service architecture', async () => {
 		const tools = await getAllToolDefinitions();
 		const bashTool = tools['cipher_bash'];
-		
+
 		toolManager.registerTool(bashTool);
 
 		// Mock services (similar to what would be available in cipher)
 		const mockServices = {
 			embeddingManager: {
 				getEmbedder: () => ({
-					embed: async (_text: string) => Array(128).fill(0).map(() => Math.random()),
+					embed: async (_text: string) =>
+						Array(128)
+							.fill(0)
+							.map(() => Math.random()),
 				}),
 			},
 			vectorStoreManager: {
@@ -138,10 +141,10 @@ describe('Bash Tool Integration', () => {
 		const result = await toolManager.executeTool(
 			'cipher_bash',
 			{ command: 'echo "Service integration test"' },
-			{ 
+			{
 				sessionId: 'service-test',
 				userId: 'test-user',
-				services: mockServices
+				services: mockServices,
 			}
 		);
 

@@ -1,6 +1,6 @@
 /**
  * System Tools Module
- * 
+ *
  * Provides system-level operations including bash command execution,
  * file operations, and system information gathering.
  */
