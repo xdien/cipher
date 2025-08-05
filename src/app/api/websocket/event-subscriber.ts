@@ -39,7 +39,7 @@ export class WebSocketEventSubscriber {
 			) {
 				this.abortController.setMaxListeners(100);
 			}
-		} catch (error) {
+		} catch {
 			// Ignore if setMaxListeners is not available
 		}
 

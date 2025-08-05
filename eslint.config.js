@@ -43,6 +43,8 @@ export default [
 				AbortSignal: 'readonly',
 				structuredClone: 'readonly',
 				NodeJS: 'readonly',
+				Event: 'readonly',
+				EventListener: 'readonly',
 				CustomEvent: 'readonly',
 				localStorage: 'readonly',
 				FileReader: 'readonly',

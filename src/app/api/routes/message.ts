@@ -18,7 +18,7 @@ async function processMessageAsync(
 		if (options.sessionId) {
 			try {
 				await agent.loadSession(options.sessionId);
-			} catch (_error) {
+			} catch {
 				// Create new session with the provided ID
 				await agent.createSession(options.sessionId);
 			}

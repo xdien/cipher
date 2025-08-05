@@ -401,8 +401,8 @@ export function useChat(wsUrl: string, options: UseChatOptions = {}) {
 	const handleToolExecutionCompleted = useCallback((payload: IncomingMessage['data']) => {
 		if (!isMountedRef.current) return;
 
-		const name = payload.toolName;
-		const success = payload.success !== false;
+		// const _name = payload.toolName; // Not used in this implementation
+		// const _success = payload.success !== false; // Not used in this implementation
 		const callId = payload.callId || payload.executionId;
 
 		setMessages(ms => {

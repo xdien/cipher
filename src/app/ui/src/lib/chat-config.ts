@@ -15,7 +15,7 @@ export function getWebSocketUrl(customUrl?: string): string {
 				urlObj.hostname = window.location.hostname;
 				wsUrl = urlObj.toString();
 			}
-		} catch (e) {
+		} catch {
 			console.warn('Invalid WS URL:', wsUrl);
 		}
 	}

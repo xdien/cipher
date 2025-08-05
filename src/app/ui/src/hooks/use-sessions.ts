@@ -7,6 +7,15 @@ import { ChatMessage, SessionMessage } from '@/types/chat';
 import { useSessionStore, sessionStoreActions } from '@/stores/session-store';
 import { convertHistoryToUIMessages, loadSession, loadSessionHistory } from '@/lib/chat-config';
 
+// Browser event types
+declare global {
+	interface WindowEventMap {
+		'cipher:newMessage': CustomEvent;
+		'cipher:response': CustomEvent;
+		'cipher:responseComplete': CustomEvent;
+	}
+}
+
 // Simplified session sync (React Query handles most synchronization automatically)
 export function useSessionsSync() {
 	const queryClient = useQueryClient();
@@ -135,7 +144,7 @@ async function loadSessionData(
 			} else {
 				throw new Error('Session not found');
 			}
-		} catch (error) {
+		} catch {
 			// Fallback session object
 			session = {
 				id: sessionId,

@@ -535,7 +535,7 @@ export class MemAgent {
 		// Add connected servers
 		for (const [name, client] of clients.entries()) {
 			try {
-				const serverInfo = client.getServerInfo();
+				client.getServerInfo(); // Get server info but don't use it
 				servers.push({
 					name,
 					status: 'connected',

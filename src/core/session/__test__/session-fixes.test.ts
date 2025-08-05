@@ -5,7 +5,6 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ConversationSession } from '../coversation-session.js';
-import { SessionManager } from '../session-manager.js';
 import type { LLMConfig } from '../../brain/llm/config.js';
 
 // Mock dependencies
@@ -43,7 +42,6 @@ vi.mock('../../storage/manager.js', () => ({
 describe('Critical Session Management Fixes', () => {
 	let mockServices: any;
 	let mockLLMConfig: LLMConfig;
-	let sessionManager: SessionManager;
 
 	beforeEach(async () => {
 		vi.clearAllMocks();
@@ -98,11 +96,11 @@ describe('Critical Session Management Fixes', () => {
 			getConfig: vi.fn().mockReturnValue(mockLLMConfig),
 		} as any);
 
-		// Create SessionManager for deletion tests
-		sessionManager = new SessionManager(mockServices, {
-			database: { type: 'in-memory' },
-			cache: { type: 'in-memory' },
-		});
+		// Create SessionManager for deletion tests (not used in this test)
+		// const sessionManager = new SessionManager(mockServices, {
+		// 	database: { type: 'in-memory' },
+		// 	cache: { type: 'in-memory' },
+		// });
 	});
 
 	afterEach(() => {

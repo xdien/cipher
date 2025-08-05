@@ -105,7 +105,7 @@ export function createSessionRoutes(agent: MemAgent): Router {
 			let errorMsg: string;
 			try {
 				errorMsg = error instanceof Error ? error.message : String(error);
-			} catch (stringifyError) {
+			} catch {
 				errorMsg = 'Unknown error occurred during session listing';
 			}
 
@@ -180,7 +180,7 @@ export function createSessionRoutes(agent: MemAgent): Router {
 			let errorMsg: string;
 			try {
 				errorMsg = error instanceof Error ? error.message : String(error);
-			} catch (stringifyError) {
+			} catch {
 				errorMsg = 'Unknown error occurred during session creation';
 			}
 
@@ -516,7 +516,7 @@ export function createSessionRoutes(agent: MemAgent): Router {
 							return { history: sessionHistory, source: 'session-manager' };
 						}
 					}
-				} catch (error) {
+				} catch {
 					logger.debug(`Session ${sessionId} not found in session manager`);
 				}
 
