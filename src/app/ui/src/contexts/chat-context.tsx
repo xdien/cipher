@@ -315,6 +315,18 @@ export function ChatProvider({
       returnToWelcome();
     };
 
+    const handleSessionChanged = (event: CustomEvent) => {
+      const { sessionId, cached } = event.detail || {};
+      console.log('Session changed event:', sessionId, 'cached:', cached);
+      
+      // Load messages for the new session (both cached and non-cached scenarios)
+      if (sessionId) {
+        loadHistory(sessionId).catch(error => {
+          console.error('Error loading session history:', error);
+        });
+      }
+    };
+
     if (typeof window !== 'undefined') {
       // Listen for configuration and server changes
       window.addEventListener('cipher:configChanged', handleConfigChange as EventListener);
@@ -324,6 +336,7 @@ export function ChatProvider({
       window.addEventListener('cipher:conversationReset', handleSessionReset as EventListener);
       window.addEventListener('cipher:switchSession', handleExternalSessionSwitch as EventListener);
       window.addEventListener('cipher:requestWelcome', handleWelcomeRequest as EventListener);
+      window.addEventListener('cipher:sessionChanged', handleSessionChanged as EventListener);
 
       return () => {
         window.removeEventListener('cipher:configChanged', handleConfigChange as EventListener);
@@ -331,9 +344,20 @@ export function ChatProvider({
         window.removeEventListener('cipher:conversationReset', handleSessionReset as EventListener);
         window.removeEventListener('cipher:switchSession', handleExternalSessionSwitch as EventListener);
         window.removeEventListener('cipher:requestWelcome', handleWelcomeRequest as EventListener);
+        window.removeEventListener('cipher:sessionChanged', handleSessionChanged as EventListener);
       };
     }
-  }, [currentSessionId, setMessages, switchSession, returnToWelcome]);
+  }, [currentSessionId, setMessages, switchSession, returnToWelcome, loadHistory]);
+
+  // Load current session history on mount and session change
+  useEffect(() => {
+    if (currentSessionId && !isWelcomeState) {
+      console.log('Loading history for current session:', currentSessionId);
+      loadHistory(currentSessionId).catch(error => {
+        console.error('Error loading current session history:', error);
+      });
+    }
+  }, [currentSessionId, isWelcomeState, loadHistory]);
 
   // Cleanup on unmount
   useEffect(() => {
