@@ -86,14 +86,18 @@ async function createSession(sessionId?: string): Promise<Session> {
 }
 
 async function deleteSession(sessionId: string): Promise<void> {
+  console.log('🗑️ Deleting session:', sessionId)
   const response = await fetch(`/api/sessions/${sessionId}`, {
     method: 'DELETE',
   })
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}))
+    console.error('❌ Session deletion failed:', sessionId, errorData)
     throw new Error(errorData.error?.message || errorData.message || 'Failed to delete session')
   }
+  
+  console.log('✅ Session deletion successful:', sessionId)
 }
 
 async function loadSessionData(sessionId: string): Promise<{ session: Session; messages: ChatMessage[] }> {
@@ -146,9 +150,9 @@ export function useSessions() {
   const query = useQuery({
     queryKey: sessionQueryKeys.lists(),
     queryFn: fetchSessions,
-    staleTime: 30 * 1000, // 30 seconds - reasonable balance between freshness and performance
+    staleTime: 5 * 1000, // 5 seconds - shorter to ensure fresh data after operations
     gcTime: 5 * 60 * 1000, // 5 minutes garbage collection
-    refetchOnWindowFocus: false, // Prevent unnecessary refetches
+    refetchOnWindowFocus: true, // Refetch when window gains focus to sync state
     refetchOnMount: 'always', // Always fetch fresh data on mount
     refetchOnReconnect: true, // Refetch when network reconnects
   })
@@ -313,6 +317,7 @@ export function useDeleteSession() {
   return useMutation({
     mutationFn: deleteSession,
     onMutate: async (sessionId) => {
+      console.log('🔄 Starting optimistic deletion for session:', sessionId)
       setDeletingSessionId(sessionId)
       
       // Cancel any outgoing refetches to prevent race conditions
@@ -322,11 +327,16 @@ export function useDeleteSession() {
       const previousSessions = queryClient.getQueryData(sessionQueryKeys.lists()) as Session[] || []
       const sessionToDelete = previousSessions.find(s => s.id === sessionId)
       
-      if (!sessionToDelete) return { previousSessions }
+      if (!sessionToDelete) {
+        console.warn('⚠️ Session not found in cache for deletion:', sessionId)
+        return { previousSessions }
+      }
 
       // Optimistic update - immediately remove from cache for instant UI feedback
       queryClient.setQueryData(sessionQueryKeys.lists(), (oldSessions: Session[] = []) => {
-        return oldSessions.filter(session => session.id !== sessionId)
+        const filtered = oldSessions.filter(session => session.id !== sessionId)
+        console.log('📝 Optimistically removed session from cache. Before:', oldSessions.length, 'After:', filtered.length)
+        return filtered
       })
       
       return { sessionToDelete, previousSessions }
@@ -341,16 +351,16 @@ export function useDeleteSession() {
       }
     },
     onSuccess: (_, sessionId, context) => {
+      console.log('✅ Session deletion confirmed by server:', sessionId)
       setDeletingSessionId(null)
-      
-      // Ensure session is removed from cache (should already be done by optimistic update)
-      queryClient.setQueryData(sessionQueryKeys.lists(), (oldSessions: Session[] = []) => {
-        return oldSessions.filter(session => session.id !== sessionId)
-      })
       
       // Clean up all related queries
       queryClient.removeQueries({ queryKey: sessionQueryKeys.detail(sessionId) })
       queryClient.removeQueries({ queryKey: sessionQueryKeys.history(sessionId) })
+      
+      // IMPORTANT: Invalidate and refetch sessions list to ensure backend sync
+      console.log('🔄 Invalidating sessions list to sync with backend...')
+      queryClient.invalidateQueries({ queryKey: sessionQueryKeys.lists() })
       
       // Update store for compatibility
       const store = useSessionStore.getState()
@@ -370,6 +380,8 @@ export function useDeleteSession() {
           })
         )
       }
+      
+      console.log('🎯 Session deletion process completed for:', sessionId)
     },
   })
 }
