@@ -1496,7 +1496,8 @@ export class SessionManager {
 					// Include user messages
 					if (msg.role === 'user') return true;
 					// Include assistant messages that don't have tool calls
-					if (msg.role === 'assistant' && (!msg.toolCalls || msg.toolCalls.length === 0)) return true;
+					if (msg.role === 'assistant' && (!msg.toolCalls || msg.toolCalls.length === 0))
+						return true;
 					// Exclude everything else
 					return false;
 				});
@@ -1513,15 +1514,16 @@ export class SessionManager {
 					const historyKey = `messages:${sessionId}`;
 					const historyData = await backends.database.get(historyKey);
 					if (historyData && Array.isArray(historyData)) {
-											// Filter to only include user and assistant messages (excluding tool calls)
-					const filteredHistory = historyData.filter((msg: any) => {
-						// Include user messages
-						if (msg.role === 'user') return true;
-						// Include assistant messages that don't have tool calls
-						if (msg.role === 'assistant' && (!msg.toolCalls || msg.toolCalls.length === 0)) return true;
-						// Exclude everything else
-						return false;
-					});
+						// Filter to only include user and assistant messages (excluding tool calls)
+						const filteredHistory = historyData.filter((msg: any) => {
+							// Include user messages
+							if (msg.role === 'user') return true;
+							// Include assistant messages that don't have tool calls
+							if (msg.role === 'assistant' && (!msg.toolCalls || msg.toolCalls.length === 0))
+								return true;
+							// Exclude everything else
+							return false;
+						});
 						const count = filteredHistory.length;
 						this.setCacheResult(cacheKey, count);
 						return count;
@@ -1531,15 +1533,16 @@ export class SessionManager {
 					const sessionKey = this.getSessionStorageKey(sessionId);
 					const sessionData = await backends.database.get(sessionKey);
 					if ((sessionData as any)?.conversationHistory?.length) {
-											// Filter to only include user and assistant messages (excluding tool calls)
-					const filteredHistory = (sessionData as any).conversationHistory.filter((msg: any) => {
-						// Include user messages
-						if (msg.role === 'user') return true;
-						// Include assistant messages that don't have tool calls
-						if (msg.role === 'assistant' && (!msg.toolCalls || msg.toolCalls.length === 0)) return true;
-						// Exclude everything else
-						return false;
-					});
+						// Filter to only include user and assistant messages (excluding tool calls)
+						const filteredHistory = (sessionData as any).conversationHistory.filter((msg: any) => {
+							// Include user messages
+							if (msg.role === 'user') return true;
+							// Include assistant messages that don't have tool calls
+							if (msg.role === 'assistant' && (!msg.toolCalls || msg.toolCalls.length === 0))
+								return true;
+							// Exclude everything else
+							return false;
+						});
 						const count = filteredHistory.length;
 						this.setCacheResult(cacheKey, count);
 						return count;

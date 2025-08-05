@@ -6,10 +6,7 @@ import {
 	shouldDisableDefaultMemory,
 	validateWorkspaceMemorySetup,
 } from '../workspace-tools.js';
-import {
-	createWorkspacePayload,
-	extractWorkspaceInfo,
-} from '../workspace-payloads.js';
+import { createWorkspacePayload, extractWorkspaceInfo } from '../workspace-payloads.js';
 import {
 	loadWorkspaceConfigFromEnv,
 	validateWorkspaceMemoryConfig,

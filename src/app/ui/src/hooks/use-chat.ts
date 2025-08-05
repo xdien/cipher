@@ -292,8 +292,6 @@ export function useChat(wsUrl: string, options: UseChatOptions = {}) {
 		[onMessage]
 	);
 
-
-
 	const handleToolResultEvent = useCallback((payload: IncomingMessage['data']) => {
 		if (!isMountedRef.current) return;
 

@@ -528,13 +528,13 @@ export class ConversationSession {
 				const sessionBus = this.services.eventManager.getSessionEventBus(this.id);
 				sessionBus.emit('llm:thinking', {
 					sessionId: this.id,
-					timestamp: Date.now()
+					timestamp: Date.now(),
 				});
 				logger.debug('Emitted llm:thinking event', { sessionId: this.id });
 			} catch (error) {
 				logger.warn('Failed to emit thinking event', {
 					sessionId: this.id,
-					error: error instanceof Error ? error.message : String(error)
+					error: error instanceof Error ? error.message : String(error),
 				});
 			}
 		}
@@ -983,18 +983,18 @@ export class ConversationSession {
 			// Step 1: Extract reasoning steps from the interaction (only from user input)
 			let extractionResult: any;
 			try {
-							extractionResult = await this.services.unifiedToolManager.executeTool(
-				'cipher_extract_reasoning_steps',
-				{
-					userInput: userInput,
-					options: {
-						extractExplicit: true,
-						extractImplicit: true,
-						includeMetadata: true,
+				extractionResult = await this.services.unifiedToolManager.executeTool(
+					'cipher_extract_reasoning_steps',
+					{
+						userInput: userInput,
+						options: {
+							extractExplicit: true,
+							extractImplicit: true,
+							includeMetadata: true,
+						},
 					},
-				},
-				this.id
-			);
+					this.id
+				);
 
 				logger.debug('ConversationSession: Reasoning extraction completed', {
 					success: extractionResult.success,

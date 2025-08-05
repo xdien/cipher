@@ -61,7 +61,8 @@ async function fetchSessions(): Promise<Session[]> {
 						// Include user messages
 						if (msg.role === 'user') return true;
 						// Include assistant messages that don't have tool calls
-						if (msg.role === 'assistant' && (!msg.toolCalls || msg.toolCalls.length === 0)) return true;
+						if (msg.role === 'assistant' && (!msg.toolCalls || msg.toolCalls.length === 0))
+							return true;
 						// Exclude everything else
 						return false;
 					});
@@ -645,14 +646,16 @@ export function useSessionOperations() {
 				// Only increment message count for user messages (cipher:newMessage)
 				// Don't increment for cipher:response as it might be a tool call
 				const isUserMessage = event.type === 'cipher:newMessage';
-				
+
 				queryClient.setQueryData(sessionQueryKeys.lists(), (oldSessions: Session[] = []) => {
 					return oldSessions.map(session =>
 						session.id === sessionId
 							? {
 									...session,
 									lastActivity: new Date().toISOString(),
-									messageCount: isUserMessage ? (session.messageCount || 0) + 1 : session.messageCount,
+									messageCount: isUserMessage
+										? (session.messageCount || 0) + 1
+										: session.messageCount,
 								}
 							: session
 					);

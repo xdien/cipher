@@ -203,10 +203,14 @@ describe('QwenService Integration Tests', () => {
 			const result = await qwenService.generate('Read the file and analyze its contents');
 
 			expect(mockOpenAI.chat.completions.create).toHaveBeenCalledTimes(2);
-			expect(mockUnifiedToolManager.executeTool).toHaveBeenCalledWith('test_file_operation', {
-				path: '/test/file.txt',
-				operation: 'read',
-			}, undefined);
+			expect(mockUnifiedToolManager.executeTool).toHaveBeenCalledWith(
+				'test_file_operation',
+				{
+					path: '/test/file.txt',
+					operation: 'read',
+				},
+				undefined
+			);
 			expect(result).toContain('Based on the file content');
 		});
 
