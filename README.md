@@ -83,6 +83,10 @@ cipher --mode api
 
 # MCP server mode
 cipher --mode mcp
+
+# Web UI mode
+cipher --mode api --port 3002
+# Then open http://localhost:3002 in your browser
 ```
 
 ## Configuration
