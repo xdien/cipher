@@ -100,9 +100,6 @@ export function MessageList({ messages, className, maxHeight = "h-full" }: Messa
     }))
   }
 
-  const isToolResultExpanded = (messageId: string) => {
-    return toolResultsExpanded[messageId] ?? true // Default to expanded
-  }
 
   const toggleToolPanelExpansion = (messageId: string) => {
     setToolPanelsExpanded(prev => ({
@@ -112,7 +109,7 @@ export function MessageList({ messages, className, maxHeight = "h-full" }: Messa
   }
 
   const isToolPanelExpanded = (messageId: string) => {
-    return toolPanelsExpanded[messageId] ?? true // Default to expanded
+    return toolPanelsExpanded[messageId] ?? false // Default to expanded
   }
 
   // Dynamic styling logic
@@ -128,9 +125,9 @@ export function MessageList({ messages, className, maxHeight = "h-full" }: Messa
   const getBubbleClass = (role: string, isUser: boolean, isAi: boolean, isSystem: boolean, isToolProgress?: boolean, isSystemToolMessage?: boolean) => {
     return cn(
       role === 'tool'
-        ? "w-full text-muted-foreground/70 bg-secondary border border-muted/30 rounded-md text-sm p-3 min-h-[2rem]"
+        ? "max-w-lg w-full overflow-auto text-muted-foreground/70 bg-secondary border border-muted/30 rounded-md text-sm p-3 min-h-[2rem]"
         : isSystemToolMessage
-        ? "w-full text-muted-foreground/70 bg-secondary border border-muted/30 rounded-md text-sm p-3 min-h-[2rem]"
+        ? "max-w-lg w-full overflow-auto text-muted-foreground/70 bg-secondary border border-muted/30 rounded-md text-sm p-3 min-h-[2rem]"
         : isUser
         ? "p-3 rounded-xl shadow-sm max-w-[75%] bg-primary text-primary-foreground rounded-br-none text-sm"
         : isAi
@@ -381,7 +378,7 @@ export function MessageList({ messages, className, maxHeight = "h-full" }: Messa
       if (isToolProgress && msg.content !== null && msg.content !== undefined && String(msg.content).includes('📋 Tool Result:')) {
         const [header, ...contentParts] = String(msg.content).split('\n');
         const resultContent = contentParts.join('\n');
-        const isExpanded = isToolResultExpanded(msg.id);
+        const isExpanded = false;
         
         return (
           <div className="space-y-2">
@@ -492,7 +489,7 @@ export function MessageList({ messages, className, maxHeight = "h-full" }: Messa
               ) : null}
 
               {/* Message bubble */}
-              <div className="flex flex-col max-w-[75%]">
+              <div className={msg.role === 'tool' || isSystemToolMessage ? "flex flex-col w-full" : "flex flex-col max-w-[75%]"}>
                 <div className={getBubbleClass(msg.role, isUser, isAi, isSystem, isToolProgress, isSystemToolMessage)}>
                   {/* Tool header */}
                   {(isToolRelated || (msg.role === 'system' && msg.content !== null && msg.content !== undefined && (
@@ -522,7 +519,7 @@ export function MessageList({ messages, className, maxHeight = "h-full" }: Messa
                   )}
 
                   {/* Tool content - show content for tool messages, expandable for others */}
-                  {(msg.role === 'tool' || isToolPanelExpanded(msg.id)) && (
+                  {(msg.role === 'tool' || (isToolRelated && isToolPanelExpanded(msg.id)) || (!isToolRelated)) && (
                     <>
                       {/* Main content */}
                       {renderContent(msg, isToolProgress)}

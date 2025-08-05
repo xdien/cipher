@@ -966,17 +966,18 @@ export class ConversationSession {
 			// Step 1: Extract reasoning steps from the interaction (only from user input)
 			let extractionResult: any;
 			try {
-				extractionResult = await this.services.unifiedToolManager.executeTool(
-					'cipher_extract_reasoning_steps',
-					{
-						userInput: userInput,
-						options: {
-							extractExplicit: true,
-							extractImplicit: true,
-							includeMetadata: true,
-						},
-					}
-				);
+							extractionResult = await this.services.unifiedToolManager.executeTool(
+				'cipher_extract_reasoning_steps',
+				{
+					userInput: userInput,
+					options: {
+						extractExplicit: true,
+						extractImplicit: true,
+						includeMetadata: true,
+					},
+				},
+				this.id
+			);
 
 				logger.debug('ConversationSession: Reasoning extraction completed', {
 					success: extractionResult.success,
@@ -1028,7 +1029,8 @@ export class ConversationSession {
 							generateSuggestions: true,
 						},
 						llmService: evalLLMService,
-					}
+					},
+					this.id
 				);
 
 				logger.debug('ConversationSession: Reasoning evaluation completed', {
@@ -1065,7 +1067,8 @@ export class ConversationSession {
 					{
 						trace: reasoningTrace,
 						evaluation: evaluation,
-					}
+					},
+					this.id
 				);
 
 				logger.debug('ConversationSession: Reflection memory storage completed', {

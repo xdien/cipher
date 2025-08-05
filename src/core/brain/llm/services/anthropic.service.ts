@@ -114,7 +114,7 @@ export class AnthropicService {
 				const searchResult = await this.unifiedToolManager.executeTool('file_search', {
 					query: fileRef,
 					explanation: `Searching for file referenced by user: ${fileRef}`,
-				});
+				}, undefined); // No sessionId available in this context
 
 				if (searchResult && Array.isArray(searchResult) && searchResult.length > 0) {
 					foundFiles.push(`Found file: ${fileRef} at ${searchResult[0]}`);

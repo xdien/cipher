@@ -152,7 +152,7 @@ export class AnthropicService implements ILLMService {
 					try {
 						let result: any;
 						if (this.unifiedToolManager) {
-							result = await this.unifiedToolManager.executeTool(toolName, args);
+							result = await this.unifiedToolManager.executeTool(toolName, args, sessionId);
 						} else {
 							result = await this.mcpManager.executeTool(toolName, args);
 						}

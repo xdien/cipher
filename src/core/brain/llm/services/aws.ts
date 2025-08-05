@@ -264,7 +264,7 @@ export class AwsService implements ILLMService {
 						try {
 							let toolResult: string;
 							if (this.unifiedToolManager) {
-								toolResult = await this.unifiedToolManager.executeTool(toolName, args);
+								toolResult = await this.unifiedToolManager.executeTool(toolName, args, sessionId);
 							} else {
 								const toolExecutionResult = await this.mcpManager.executeTool(toolName, args);
 								toolResult = toolExecutionResult.content;

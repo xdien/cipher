@@ -272,7 +272,7 @@ export function SessionPanel({
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-1">
                 <Hash className="h-3 w-3" />
-                <span>{session.messageCount} messages</span>
+                <span>{session.messageCount || 0} messages</span>
               </div>
               <div className="flex items-center space-x-1">
                 <Clock className="h-3 w-3" />

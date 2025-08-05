@@ -83,7 +83,7 @@ export class SessionManager {
 		config: SessionManagerConfig = {}
 	) {
 		this.maxSessions = config.maxSessions ?? 100;
-		this.sessionTTL = config.sessionTTL ?? 3600000; // 1 hour
+		this.sessionTTL = config.sessionTTL ?? 24 * 3600000; // 24 hours (instead of 1 hour)
 
 		// Initialize persistence configuration with defaults
 		this.persistenceConfig = {
@@ -636,15 +636,20 @@ export class SessionManager {
 		// Run cleanup every 5 minutes
 		const cleanupIntervalMs = 5 * 60 * 1000;
 
-		this.cleanupInterval = setInterval(async () => {
-			try {
-				await this.cleanupExpiredSessions();
-				// Also cleanup expired cache entries
-				this.cleanupExpiredCache();
-			} catch (error) {
-				logger.error('Error during session cleanup:', error);
-			}
-		}, cleanupIntervalMs);
+		// Only start cleanup if sessionTTL is not 0 (disabled)
+		if (this.sessionTTL > 0) {
+			this.cleanupInterval = setInterval(async () => {
+				try {
+					await this.cleanupExpiredSessions();
+					// Also cleanup expired cache entries
+					this.cleanupExpiredCache();
+				} catch (error) {
+					logger.error('Error during session cleanup:', error);
+				}
+			}, cleanupIntervalMs);
+		} else {
+			logger.debug('Session cleanup disabled (sessionTTL = 0)');
+		}
 	}
 
 	/**
@@ -1486,7 +1491,16 @@ export class SessionManager {
 			const sessionMetadata = this.sessions.get(sessionId);
 			if (sessionMetadata) {
 				const history = await sessionMetadata.session.getConversationHistory();
-				const count = history.length;
+				// Filter to only include user and assistant messages (excluding tool calls)
+				const filteredHistory = history.filter((msg: any) => {
+					// Include user messages
+					if (msg.role === 'user') return true;
+					// Include assistant messages that don't have tool calls
+					if (msg.role === 'assistant' && (!msg.toolCalls || msg.toolCalls.length === 0)) return true;
+					// Exclude everything else
+					return false;
+				});
+				const count = filteredHistory.length;
 				this.setCacheResult(cacheKey, count);
 				return count;
 			}
@@ -1499,7 +1513,16 @@ export class SessionManager {
 					const historyKey = `messages:${sessionId}`;
 					const historyData = await backends.database.get(historyKey);
 					if (historyData && Array.isArray(historyData)) {
-						const count = historyData.length;
+											// Filter to only include user and assistant messages (excluding tool calls)
+					const filteredHistory = historyData.filter((msg: any) => {
+						// Include user messages
+						if (msg.role === 'user') return true;
+						// Include assistant messages that don't have tool calls
+						if (msg.role === 'assistant' && (!msg.toolCalls || msg.toolCalls.length === 0)) return true;
+						// Exclude everything else
+						return false;
+					});
+						const count = filteredHistory.length;
 						this.setCacheResult(cacheKey, count);
 						return count;
 					}
@@ -1508,7 +1531,16 @@ export class SessionManager {
 					const sessionKey = this.getSessionStorageKey(sessionId);
 					const sessionData = await backends.database.get(sessionKey);
 					if ((sessionData as any)?.conversationHistory?.length) {
-						const count = (sessionData as any).conversationHistory.length;
+											// Filter to only include user and assistant messages (excluding tool calls)
+					const filteredHistory = (sessionData as any).conversationHistory.filter((msg: any) => {
+						// Include user messages
+						if (msg.role === 'user') return true;
+						// Include assistant messages that don't have tool calls
+						if (msg.role === 'assistant' && (!msg.toolCalls || msg.toolCalls.length === 0)) return true;
+						// Exclude everything else
+						return false;
+					});
+						const count = filteredHistory.length;
 						this.setCacheResult(cacheKey, count);
 						return count;
 					}

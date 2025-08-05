@@ -86,6 +86,7 @@ export interface SessionEventMap {
 		executionId: string;
 		duration: number;
 		success: boolean;
+		result?: any;
 		timestamp: number;
 	};
 	'tool:executionFailed': {
