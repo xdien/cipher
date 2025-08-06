@@ -328,7 +328,7 @@ program
 			// Handle API prefix from environment variable or CLI option
 			const apiPrefix =
 				process.env.CIPHER_API_PREFIX !== undefined
-					? process.env.CIPHER_API_PREFIX
+					? process.env.CIPHER_API_PREFIX === '""' ? '' : process.env.CIPHER_API_PREFIX
 					: options.apiPrefix;
 
 			logger.info(`Starting API server on ${host}:${port}`, null, 'green');
@@ -379,7 +379,7 @@ program
 			// Handle API prefix from environment variable or CLI option
 			const apiPrefix =
 				process.env.CIPHER_API_PREFIX !== undefined
-					? process.env.CIPHER_API_PREFIX
+					? process.env.CIPHER_API_PREFIX === '""' ? '' : process.env.CIPHER_API_PREFIX
 					: options.apiPrefix;
 
 			logger.info(

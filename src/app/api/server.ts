@@ -114,7 +114,7 @@ export class ApiServer {
 	 * Helper method to construct API route paths
 	 */
 	private buildApiRoute(route: string): string {
-		if (!this.apiPrefix) {
+		if (!this.apiPrefix || this.apiPrefix === '') {
 			return route;
 		}
 		return `${this.apiPrefix}${route}`;
@@ -202,15 +202,15 @@ export class ApiServer {
 		}
 
 		// Handle SSE GET endpoint (for client to establish SSE connection)
-		this.app.get('/mcp/sse', (req: Request, res: Response) => {
+		this.app.get(this.buildApiRoute('/mcp/sse'), (req: Request, res: Response) => {
 			logger.info('[API Server] New MCP SSE client attempting connection.');
 			logger.debug('[API Server] SSE Request Headers:', req.headers);
 			logger.debug('[API Server] SSE Request URL:', req.url);
 
-			// Create SSE transport instance. The '/mcp' is the endpoint where client will POST messages.
+			// Create SSE transport instance. The buildApiRoute('/mcp') is the endpoint where client will POST messages.
 			// The SSEServerTransport will handle setting the SSE headers itself
-			const sseTransport = new SSEServerTransport('/mcp', res);
-			logger.debug('[API Server] SSEServerTransport created with endpoint /mcp');
+			const sseTransport = new SSEServerTransport(this.buildApiRoute('/mcp'), res);
+			logger.debug(`[API Server] SSEServerTransport created with endpoint ${this.buildApiRoute('/mcp')}`);
 
 			// Connect MCP server to this SSE transport (this will call sseTransport.start() and set headers)
 			this.mcpServer?.connect(sseTransport);
@@ -238,7 +238,7 @@ export class ApiServer {
 		});
 
 		// Handle POST requests for MCP messages over HTTP (part of Streamable HTTP)
-		this.app.post('/mcp', async (req: Request, res: Response) => {
+		this.app.post(this.buildApiRoute('/mcp'), async (req: Request, res: Response) => {
 			logger.debug('[API Server] MCP POST request received');
 			logger.debug('[API Server] POST Request Headers:', req.headers);
 			logger.debug('[API Server] POST Request Body:', req.body);
@@ -308,8 +308,8 @@ export class ApiServer {
 			}
 		});
 
-		const mcpSseRoute = this.apiPrefix ? `${this.apiPrefix}/mcp/sse` : '/mcp/sse';
-		const mcpPostRoute = this.apiPrefix ? `${this.apiPrefix}/mcp` : '/mcp';
+		const mcpSseRoute = this.buildApiRoute('/mcp/sse');
+		const mcpPostRoute = this.buildApiRoute('/mcp');
 		logger.info(
 			`[API Server] MCP SSE (GET ${mcpSseRoute}) and POST (${mcpPostRoute}?sessionId=...) routes registered.`
 		);
@@ -779,8 +779,8 @@ export class ApiServer {
 						'green'
 					);
 					if (this.config.mcpTransportType) {
-						const mcpSseEndpoint = this.apiPrefix ? `${this.apiPrefix}/mcp/sse` : '/mcp/sse';
-						const mcpEndpoint = this.apiPrefix ? `${this.apiPrefix}/mcp` : '/mcp';
+						const mcpSseEndpoint = this.buildApiRoute('/mcp/sse');
+						const mcpEndpoint = this.buildApiRoute('/mcp');
 						logger.info(
 							`[API Server] MCP SSE endpoints available at ${mcpSseEndpoint} and ${mcpEndpoint}`,
 							null,
