@@ -6,6 +6,9 @@ ARG NODE_VERSION=20.18.1
 # Build stage - optimized for smaller final image
 FROM node:${NODE_VERSION}-alpine AS builder
 
+# Build argument to control UI building (default: false)
+ARG BUILD_UI=false
+
 # Install build dependencies for native modules
 RUN apk add --no-cache \
     python3 \
@@ -26,8 +29,8 @@ RUN pnpm install --frozen-lockfile
 
 # Copy source and build
 COPY . .
-# Remove the build step (we build UI on host)
-# RUN pnpm run build
+# Use conditional build based on BUILD_UI arg
+RUN if [ "$BUILD_UI" = "true" ]; then pnpm run build; else pnpm run build:no-ui; fi
 
 # Clean up and prepare production node_modules
 RUN pnpm prune --prod && \
@@ -52,10 +55,6 @@ COPY --from=builder --chown=cipher:cipher /app/dist ./dist
 COPY --from=builder --chown=cipher:cipher /app/node_modules ./node_modules
 COPY --from=builder --chown=cipher:cipher /app/package.json ./
 COPY --from=builder --chown=cipher:cipher /app/memAgent ./memAgent
-# Copy prebuilt Next.js standalone UI (from host build)
-COPY ./dist/src/app/ui/.next/standalone ./ui
-COPY ./dist/src/app/ui/.next/static ./ui/.next/static
-COPY ./dist/src/app/ui/public ./ui/public
 
 # Create a minimal .env file for Docker (environment variables will be passed via docker)
 RUN echo "# Docker environment - variables passed via docker run" > .env

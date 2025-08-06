@@ -1,15 +1,18 @@
 services:
   cipher-api:
     build: .
+    image: cipher-api
     ports:
       - '3000:3000'
+    environment:
+      - CIPHER_API_PREFIX=""
     env_file:
       - .env
     command:
       [
         'sh',
         '-c',
-        'node dist/src/app/index.cjs --mode api --port 3000 --host 0.0.0.0 --agent /app/memAgent/cipher.yml --api-prefix "" --mcp-transport-type sse',
+        'node dist/src/app/index.cjs --mode api --port 3000 --host 0.0.0.0 --agent /app/memAgent/cipher.yml --mcp-transport-type sse',
       ]
     volumes:
       - ./memAgent:/app/memAgent:ro

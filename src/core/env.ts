@@ -43,6 +43,7 @@ const envSchema = z.object({
 	STORAGE_CACHE_TYPE: z.enum(['in-memory', 'redis']).default('in-memory'),
 	STORAGE_CACHE_HOST: z.string().optional(),
 	STORAGE_CACHE_PORT: z.number().optional(),
+	STORAGE_CACHE_USERNAME: z.string().optional(),
 	STORAGE_CACHE_PASSWORD: z.string().optional(),
 	STORAGE_CACHE_DATABASE: z.number().optional(),
 	STORAGE_DATABASE_TYPE: z.enum(['in-memory', 'sqlite', 'postgres']).default('in-memory'),
@@ -175,6 +176,8 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 				return process.env.STORAGE_CACHE_PORT
 					? parseInt(process.env.STORAGE_CACHE_PORT, 10)
 					: undefined;
+			case 'STORAGE_CACHE_USERNAME':
+				return process.env.STORAGE_CACHE_USERNAME;
 			case 'STORAGE_CACHE_PASSWORD':
 				return process.env.STORAGE_CACHE_PASSWORD;
 			case 'STORAGE_CACHE_DATABASE':
@@ -402,6 +405,7 @@ export const validateEnv = () => {
 		STORAGE_CACHE_PORT: process.env.STORAGE_CACHE_PORT
 			? parseInt(process.env.STORAGE_CACHE_PORT, 10)
 			: undefined,
+		STORAGE_CACHE_USERNAME: process.env.STORAGE_CACHE_USERNAME,
 		STORAGE_CACHE_PASSWORD: process.env.STORAGE_CACHE_PASSWORD,
 		STORAGE_CACHE_DATABASE: process.env.STORAGE_CACHE_DATABASE
 			? parseInt(process.env.STORAGE_CACHE_DATABASE, 10)

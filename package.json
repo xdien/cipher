@@ -34,6 +34,7 @@
 		"clean": "rm -rf dist",
 		"prebuild": "pnpm run clean",
 		"build": "pnpm run build-ui && tsup && pnpm run copy-ui-dist",
+		"build:no-ui": "tsup && pnpm run copy-ui-dist",
 		"build-ui": "cd src/app/ui && pnpm install && npx cross-env BUILD_STANDALONE=true pnpm run build",
 		"build-ui-only": "pnpm run build-ui && pnpm run copy-ui-dist",
 		"copy-ui-dist": "npx tsx scripts/copy-ui-dist.ts",
