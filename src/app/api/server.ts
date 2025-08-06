@@ -65,10 +65,10 @@ export class ApiServer {
 	constructor(agent: MemAgent, config: ApiServerConfig) {
 		this.agent = agent;
 		this.config = config;
-		
+
 		// Validate and set API prefix
 		this.apiPrefix = this.validateAndNormalizeApiPrefix(config.apiPrefix);
-		
+
 		this.app = express();
 		this.setupMiddleware();
 		this.setupRoutes();
