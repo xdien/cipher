@@ -85,8 +85,7 @@ cipher --mode api
 cipher --mode mcp
 
 # Web UI mode
-cipher --mode api --port 3002
-# Then open http://localhost:3002 in your browser
+cipher --mode ui 
 ```
 
 > **⚠️ Note:** When running MCP mode in terminal/shell, export all environment variables as Cipher won't read from `.env` file.
