@@ -392,8 +392,6 @@ async function evaluateReasoningQuality(
 		);
 	}
 
-
-
 	// Calculate quality score based on issues and step count
 	let qualityScore = 1.0;
 	qualityScore -= issues.filter(i => i.severity === 'high').length * 0.3;

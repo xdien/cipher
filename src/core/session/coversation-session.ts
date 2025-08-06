@@ -926,8 +926,10 @@ export class ConversationSession {
 			// Check if reflection memory tools are available for execution (not for agent access)
 			// These tools are background-only (agentAccessible: false) so they won't be in allTools in CLI mode
 			// We need to check their existence directly for background execution
-			const reflectionToolsAvailable = 
-				this.services.unifiedToolManager.isBackgroundToolAvailable('cipher_extract_reasoning_steps') &&
+			const reflectionToolsAvailable =
+				this.services.unifiedToolManager.isBackgroundToolAvailable(
+					'cipher_extract_reasoning_steps'
+				) &&
 				this.services.unifiedToolManager.isBackgroundToolAvailable('cipher_store_reasoning_memory');
 
 			if (embeddingsDisabled || !reflectionToolsAvailable) {

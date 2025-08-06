@@ -827,7 +827,7 @@ export async function createAgentServices(
 	} else if (appMode === 'mcp') {
 		// MCP Mode: Configure based on MCP_SERVER_MODE
 		const mcpServerMode = process.env.MCP_SERVER_MODE || 'default';
-		
+
 		if (mcpServerMode === 'aggregator') {
 			// Aggregator mode: Use aggregator mode for unified tool manager to expose all tools
 			unifiedToolManagerConfig = {
