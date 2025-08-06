@@ -96,6 +96,7 @@ program
 	.option('--port <port>', 'Port for API server (only used with --mode api or ui)', '3001')
 	.option('--ui-port <port>', 'Port for UI server (only used with --mode ui)', '3000')
 	.option('--host <host>', 'Host for API server (only used with --mode api or ui)', 'localhost')
+	.option('--api-prefix <prefix>', 'API prefix for routes (default: /api, use empty string to disable)', '/api')
 	.option(
 		'--mcp-transport-type <type>',
 		'MCP transport type (stdio, sse, streamable-http)',
@@ -320,6 +321,10 @@ program
 			const host = options.host || 'localhost';
 			const mcpTransportType = options.mcpTransportType || undefined; // Pass through from CLI options
 			const mcpPort = options.mcpPort ? parseInt(options.mcpPort, 10) : undefined; // Pass through from CLI options
+			// Handle API prefix from environment variable or CLI option
+			const apiPrefix = process.env.CIPHER_API_PREFIX !== undefined 
+				? process.env.CIPHER_API_PREFIX 
+				: options.apiPrefix;
 
 			logger.info(`Starting API server on ${host}:${port}`, null, 'green');
 
@@ -338,6 +343,7 @@ program
 					heartbeatInterval: 30000, // 30 seconds
 					enableCompression: true,
 				},
+				apiPrefix, // Add API prefix configuration
 				...(mcpTransportType && { mcpTransportType }), // Only include if defined
 				...(mcpPort !== undefined && { mcpPort }), // Only include if defined
 			});
@@ -365,6 +371,10 @@ program
 			const host = options.host || 'localhost';
 			const mcpTransportType = options.mcpTransportType || undefined;
 			const mcpPort = options.mcpPort ? parseInt(options.mcpPort, 10) : undefined;
+			// Handle API prefix from environment variable or CLI option
+			const apiPrefix = process.env.CIPHER_API_PREFIX !== undefined 
+				? process.env.CIPHER_API_PREFIX 
+				: options.apiPrefix;
 
 			logger.info(
 				`Starting UI mode - API server on ${host}:${apiPort}, UI server on ${host}:${uiPort}`,
@@ -388,6 +398,7 @@ program
 					heartbeatInterval: 30000, // 30 seconds
 					enableCompression: true,
 				},
+				apiPrefix, // Add API prefix configuration
 				...(mcpTransportType && { mcpTransportType }),
 				...(mcpPort !== undefined && { mcpPort }),
 			});
