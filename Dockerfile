@@ -26,7 +26,8 @@ RUN pnpm install --frozen-lockfile
 
 # Copy source and build
 COPY . .
-RUN pnpm run build
+# Remove the build step (we build UI on host)
+# RUN pnpm run build
 
 # Clean up and prepare production node_modules
 RUN pnpm prune --prod && \
@@ -51,6 +52,10 @@ COPY --from=builder --chown=cipher:cipher /app/dist ./dist
 COPY --from=builder --chown=cipher:cipher /app/node_modules ./node_modules
 COPY --from=builder --chown=cipher:cipher /app/package.json ./
 COPY --from=builder --chown=cipher:cipher /app/memAgent ./memAgent
+# Copy prebuilt Next.js standalone UI (from host build)
+COPY ./dist/src/app/ui/.next/standalone ./ui
+COPY ./dist/src/app/ui/.next/static ./ui/.next/static
+COPY ./dist/src/app/ui/public ./ui/public
 
 # Create a minimal .env file for Docker (environment variables will be passed via docker)
 RUN echo "# Docker environment - variables passed via docker run" > .env

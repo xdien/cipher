@@ -847,13 +847,26 @@ export async function createAgentServices(
 			};
 		}
 	} else {
-		// API Mode: Similar to CLI for now
-		unifiedToolManagerConfig = {
-			enableInternalTools: true,
-			enableMcpTools: true,
-			conflictResolution: 'prefix-internal',
-			mode: 'api',
-		};
+		// API Mode: Respect MCP_SERVER_MODE like MCP mode does
+		const mcpServerMode = process.env.MCP_SERVER_MODE || 'default';
+
+		if (mcpServerMode === 'aggregator') {
+			// Aggregator mode: Use aggregator mode for unified tool manager to expose all tools
+			unifiedToolManagerConfig = {
+				enableInternalTools: true,
+				enableMcpTools: true,
+				conflictResolution: 'prefix-internal',
+				mode: 'aggregator', // Aggregator mode exposes all tools without filtering
+			};
+		} else {
+			// Default API mode: Similar to CLI
+			unifiedToolManagerConfig = {
+				enableInternalTools: true,
+				enableMcpTools: true,
+				conflictResolution: 'prefix-internal',
+				mode: 'api',
+			};
+		}
 	}
 
 	const unifiedToolManager = new UnifiedToolManager(

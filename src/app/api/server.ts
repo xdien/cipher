@@ -42,12 +42,15 @@ export interface ApiServerConfig {
 	// WebSocket configuration
 	enableWebSocket?: boolean;
 	webSocketConfig?: WebSocketConfig;
+	// API prefix configuration
+	apiPrefix?: string;
 }
 
 export class ApiServer {
 	private app: Application;
 	private agent: MemAgent;
 	private config: ApiServerConfig;
+	private apiPrefix: string;
 	private mcpServer?: McpServer;
 	private activeMcpSseTransports: Map<string, SSEServerTransport> = new Map();
 
@@ -62,12 +65,59 @@ export class ApiServer {
 	constructor(agent: MemAgent, config: ApiServerConfig) {
 		this.agent = agent;
 		this.config = config;
+
+		// Validate and set API prefix
+		this.apiPrefix = this.validateAndNormalizeApiPrefix(config.apiPrefix);
+
 		this.app = express();
 		this.setupMiddleware();
 		this.setupRoutes();
 		this.setupErrorHandling();
 
 		// Note: MCP setup is now handled in start() method to properly handle async operations
+	}
+
+	/**
+	 * Validate and normalize API prefix configuration
+	 */
+	private validateAndNormalizeApiPrefix(prefix?: string): string {
+		// Default to '/api' for backward compatibility
+		if (prefix === undefined) {
+			return '/api';
+		}
+
+		// Allow empty string to disable prefix
+		if (prefix === '') {
+			return '';
+		}
+
+		// Validate prefix format
+		if (typeof prefix !== 'string') {
+			throw new Error('API prefix must be a string');
+		}
+
+		// Ensure prefix starts with '/' if not empty
+		if (!prefix.startsWith('/')) {
+			prefix = '/' + prefix;
+		}
+
+		// Remove trailing slash to normalize
+		if (prefix.endsWith('/') && prefix !== '/') {
+			prefix = prefix.slice(0, -1);
+		}
+
+		logger.info(`[API Server] Using API prefix: '${prefix || '(none)'}'`);
+		return prefix;
+	}
+
+	/**
+	 * Helper method to construct API route paths
+	 */
+	private buildApiRoute(route: string): string {
+		if (!this.apiPrefix) {
+			return route;
+		}
+		return `${this.apiPrefix}${route}`;
 	}
 
 	private async setupMcpServer(
@@ -258,8 +308,10 @@ export class ApiServer {
 			}
 		});
 
+		const mcpSseRoute = this.apiPrefix ? `${this.apiPrefix}/mcp/sse` : '/mcp/sse';
+		const mcpPostRoute = this.apiPrefix ? `${this.apiPrefix}/mcp` : '/mcp';
 		logger.info(
-			'[API Server] MCP SSE (GET /mcp/sse) and POST (/mcp?sessionId=...) routes registered.'
+			`[API Server] MCP SSE (GET ${mcpSseRoute}) and POST (${mcpPostRoute}?sessionId=...) routes registered.`
 		);
 	}
 
@@ -463,7 +515,10 @@ export class ApiServer {
 			standardHeaders: true,
 			legacyHeaders: false,
 		});
-		this.app.use('/api/', limiter);
+		// Apply rate limiting to API routes if prefix is configured
+		if (this.apiPrefix) {
+			this.app.use(`${this.apiPrefix}/`, limiter);
+		}
 
 		// Body parsing middleware
 		this.app.use(express.json({ limit: '10mb' })); // Support for image data
@@ -520,16 +575,16 @@ export class ApiServer {
 		});
 
 		// API routes
-		this.app.use('/api/message', createMessageRoutes(this.agent));
-		this.app.use('/api/sessions', createSessionRoutes(this.agent));
-		this.app.use('/api/mcp', createMcpRoutes(this.agent));
-		this.app.use('/api/llm', createLlmRoutes(this.agent));
-		this.app.use('/api/config', createConfigRoutes(this.agent));
-		this.app.use('/api/search', createSearchRoutes(this.agent));
-		this.app.use('/api/webhooks', createWebhookRoutes(this.agent));
+		this.app.use(this.buildApiRoute('/message'), createMessageRoutes(this.agent));
+		this.app.use(this.buildApiRoute('/sessions'), createSessionRoutes(this.agent));
+		this.app.use(this.buildApiRoute('/mcp'), createMcpRoutes(this.agent));
+		this.app.use(this.buildApiRoute('/llm'), createLlmRoutes(this.agent));
+		this.app.use(this.buildApiRoute('/config'), createConfigRoutes(this.agent));
+		this.app.use(this.buildApiRoute('/search'), createSearchRoutes(this.agent));
+		this.app.use(this.buildApiRoute('/webhooks'), createWebhookRoutes(this.agent));
 
 		// Legacy endpoint for MCP server connection
-		this.app.post('/api/connect-server', (req: Request, res: Response) => {
+		this.app.post(this.buildApiRoute('/connect-server'), (req: Request, res: Response) => {
 			// Forward to MCP routes
 			req.url = '/servers';
 			createMcpRoutes(this.agent)(req, res, () => {});
@@ -553,7 +608,7 @@ export class ApiServer {
 					capabilities: ['conversation', 'memory', 'tools', 'mcp', 'websocket', 'streaming'],
 					endpoints: {
 						base: `${req.protocol}://${req.get('host')}`,
-						api: `${req.protocol}://${req.get('host')}/api`,
+						api: `${req.protocol}://${req.get('host')}${this.apiPrefix || ''}`,
 						websocket: `ws://${req.get('host')}/ws`,
 						health: `${req.protocol}://${req.get('host')}/health`,
 					},
@@ -583,7 +638,7 @@ export class ApiServer {
 		});
 
 		// Global reset endpoint
-		this.app.post('/api/reset', async (req: Request, res: Response) => {
+		this.app.post(this.buildApiRoute('/reset'), async (req: Request, res: Response) => {
 			try {
 				const { sessionId } = req.body;
 
@@ -724,8 +779,10 @@ export class ApiServer {
 						'green'
 					);
 					if (this.config.mcpTransportType) {
+						const mcpSseEndpoint = this.apiPrefix ? `${this.apiPrefix}/mcp/sse` : '/mcp/sse';
+						const mcpEndpoint = this.apiPrefix ? `${this.apiPrefix}/mcp` : '/mcp';
 						logger.info(
-							`[API Server] MCP SSE endpoints available at /mcp/sse and /mcp`,
+							`[API Server] MCP SSE endpoints available at ${mcpSseEndpoint} and ${mcpEndpoint}`,
 							null,
 							'green'
 						);
