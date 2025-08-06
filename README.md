@@ -57,7 +57,7 @@ cp .env.example .env
 # Edit .env with your API keys
 
 # Start with Docker
-docker-compose up -d
+docker-compose up --build -d
 
 # Test
 curl http://localhost:3000/health
