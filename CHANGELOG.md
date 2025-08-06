@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.2.1] - 2025-08-02
+## [0.2.1] - 2025-08-06
 
 ### 🚀 Features
 - Added LM Studio support for LLM and embedding fallback. [#148](https://github.com/campfirein/cipher/pull/148)
