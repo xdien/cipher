@@ -45,6 +45,11 @@ export class OpenAIEmbedder implements Embedder {
 		this.config = config;
 		this.model = config.model || 'text-embedding-3-small';
 
+		// Validate that API key is provided
+		if (!config.apiKey || config.apiKey.trim() === '') {
+			throw new EmbeddingError('OpenAI API key is required', 'openai');
+		}
+
 		// Initialize OpenAI client with proper handling of undefined values
 		// Only pass defined values to avoid OpenAI SDK initialization issues
 		const openaiConfig: {

@@ -89,6 +89,10 @@ cipher --mode api --port 3002
 # Then open http://localhost:3002 in your browser
 ```
 
+> **⚠️ Note:** When running MCP mode in terminal/shell, export all environment variables as Cipher won't read from `.env` file.
+> 
+> **💡 Tip:** CLI mode automatically continues or creates the "default" session. Use `/session switch new` to start a fresh session.
+
 ## Configuration
 
 ### Agent Configuration (memAgent/cipher.yml)
