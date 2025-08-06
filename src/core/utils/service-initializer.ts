@@ -825,14 +825,27 @@ export async function createAgentServices(
 			mode: 'cli', // Special CLI mode
 		};
 	} else if (appMode === 'mcp') {
-		// MCP Mode: Always use 'cli' mode internally for agent access to all tools
-		// External MCP exposure is controlled separately in mcp_handler.ts
-		unifiedToolManagerConfig = {
-			enableInternalTools: true,
-			enableMcpTools: true,
-			conflictResolution: 'prefix-internal',
-			mode: 'cli', // Internal agent needs access to all tools regardless of MCP_SERVER_MODE
-		};
+		// MCP Mode: Configure based on MCP_SERVER_MODE
+		const mcpServerMode = process.env.MCP_SERVER_MODE || 'default';
+
+		if (mcpServerMode === 'aggregator') {
+			// Aggregator mode: Use aggregator mode for unified tool manager to expose all tools
+			unifiedToolManagerConfig = {
+				enableInternalTools: true,
+				enableMcpTools: true,
+				conflictResolution: 'prefix-internal',
+				mode: 'aggregator', // Aggregator mode exposes all tools without filtering
+			};
+		} else {
+			// Default MCP mode: Use cli mode internally for agent access to all tools
+			// External MCP exposure is controlled separately in mcp_handler.ts
+			unifiedToolManagerConfig = {
+				enableInternalTools: true,
+				enableMcpTools: true,
+				conflictResolution: 'prefix-internal',
+				mode: 'cli', // Internal agent needs access to all tools in default mode
+			};
+		}
 	} else {
 		// API Mode: Similar to CLI for now
 		unifiedToolManagerConfig = {
