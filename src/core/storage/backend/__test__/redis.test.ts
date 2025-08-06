@@ -406,12 +406,17 @@ describe('RedisBackend', () => {
 
 	describe('Administrative Operations', () => {
 		beforeEach(async () => {
+			// Reset mocks completely
+			vi.clearAllMocks();
+
 			mockRedisInstance.once.mockImplementation((event: string, callback: Function) => {
 				if (event === 'ready') {
 					setTimeout(callback, 10);
 				}
 			});
 			mockRedisInstance.connect.mockResolvedValue(undefined);
+			mockRedisInstance.status = 'ready'; // Ensure status is ready after connection
+
 			await backend.connect();
 		});
 
