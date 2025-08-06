@@ -85,12 +85,16 @@ cipher --mode api
 cipher --mode mcp
 
 # Web UI mode
-cipher --mode ui 
+cipher --mode ui
 ```
 
 > **⚠️ Note:** When running MCP mode in terminal/shell, export all environment variables as Cipher won't read from `.env` file.
 >
-> **💡 Tip:** CLI mode automatically continues or creates the "default" session. Use `/session switch new` to start a fresh session.
+> **💡 Tip:** CLI mode automatically continues or creates the "default" session. Use `/session new <session-name>` to start a fresh session.
+
+![Cipher Web UI](./assets/cipher_webUI.png)
+
+_The Cipher Web UI provides an intuitive interface for interacting with memory-powered AI agents, featuring session management, tool integration, and real-time chat capabilities._
 
 ## Configuration
 
