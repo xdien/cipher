@@ -76,10 +76,10 @@ llm:
 # Embedding configuration: ONLY ONE of the following
 # OpenAI:
 
-embedding:
-  type: openai
-  model: text-embedding-3-small
-  apiKey: $OPENAI_API_KEY
+# embedding:
+#   type: openai
+#   model: text-embedding-3-small
+#   apiKey: $OPENAI_API_KEY
 
 # Gemini:
 # embedding:
