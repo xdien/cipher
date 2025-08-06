@@ -122,20 +122,24 @@ export class UnifiedToolManager {
 	 */
 	private isEmbeddingRelatedTool(toolName: string): boolean {
 		const embeddingToolPatterns = [
+			'extract_and_operate_memory',
 			'search_memory',
 			'search_reasoning',
 			'store_reasoning_memory',
-			'extract_and_operate_memory',
+			'extract_reasoning_steps',
+			'evaluate_reasoning',
 			'memory_operation',
 			'knowledge_search',
 			'vector_search',
 			'embedding',
 			'similarity',
-			'cipher_search_memory',
-			'cipher_search_reasoning_patterns',
-			'cipher_store_reasoning_memory',
 			'cipher_extract_and_operate_memory',
-			// Workspace memory tools
+			'cipher_search_memory',
+			'cipher_store_reasoning_memory',
+			'cipher_extract_reasoning_steps',
+			'cipher_evaluate_reasoning',
+			'cipher_search_reasoning_patterns',
+			// Workspace memory tools still need embeddings
 			'cipher_workspace_search',
 			'cipher_workspace_store',
 			'workspace_search',
