@@ -591,7 +591,7 @@ export async function createMultiCollectionVectorStoreFromEnv(
 	const logger = createLogger({ level: env.CIPHER_LOG_LEVEL });
 
 	// Import MultiCollectionVectorManager dynamically to avoid circular dependencies
-	const { MultiCollectionVectorManager } = await import('./multi-collection-manager.js');
+	// const { MultiCollectionVectorManager } = await import('./multi-collection-manager.js'); // Not used in this scope
 
 	// Get base configuration from environment variables
 	const config = getVectorStoreConfigFromEnv(agentConfig);

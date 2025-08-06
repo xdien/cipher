@@ -80,7 +80,7 @@ export function errorResponse(
 			} else {
 				sanitizedDetails = String(details);
 			}
-		} catch (serializationError) {
+		} catch {
 			// If serialization fails, convert to string
 			sanitizedDetails = { message: String(details), serializationError: true };
 		}

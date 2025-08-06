@@ -988,7 +988,7 @@ export class CommandParser {
 											console.log(
 												chalk.gray('💡 LLM summary generated and cached for file-based provider.')
 											);
-										} catch (err) {
+										} catch {
 											console.log(
 												chalk.yellow(
 													'⚠️  LLM summarization failed to cache immediately, will retry on next /prompt.'
@@ -1036,8 +1036,6 @@ export class CommandParser {
 								}
 							}
 							await enhanced.addOrUpdateProvider(newConfig);
-							// Fetch the new provider instance after update
-							const updatedProvider = enhanced.getProvider(name);
 							// If summarize flag is set to true for file-based provider, trigger LLM summarization immediately
 							if (summarizeFlag && typeof name === 'string') {
 								const updatedProvider = enhanced.getProvider(name);
@@ -1054,7 +1052,7 @@ export class CommandParser {
 										console.log(
 											chalk.gray('💡 LLM summary generated and cached for file-based provider.')
 										);
-									} catch (err) {
+									} catch {
 										console.log(
 											chalk.yellow(
 												'⚠️  LLM summarization failed to cache immediately, will retry on next /prompt.'
@@ -1682,7 +1680,7 @@ export class CommandParser {
 				return false;
 			}
 
-			const providerName = args[0];
+			// const _providerName = args[0]; // Not used in this implementation
 
 			console.log(chalk.yellow('⚠️ Enhanced Prompt System Active'));
 			console.log('');
@@ -1720,7 +1718,7 @@ export class CommandParser {
 				return false;
 			}
 
-			const providerName = args[0];
+			// const _providerName = args[0]; // Not used in this implementation
 
 			console.log(chalk.yellow('⚠️ Enhanced Prompt System Active'));
 			console.log('');

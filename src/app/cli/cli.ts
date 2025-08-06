@@ -465,8 +465,8 @@ async function _showCompressionInfo(agent: MemAgent): Promise<void> {
 		const history = ctx['compressionHistory'];
 
 		if (Array.isArray(history) && history.length > lastCompressionHistoryLength) {
-			const event = history[history.length - 1];
-			_displayCompressionEvent(event);
+			const _event = history[history.length - 1];
+			_displayCompressionEvent(_event);
 			lastCompressionHistoryLength = history.length;
 		}
 	} catch {
@@ -477,7 +477,7 @@ async function _showCompressionInfo(agent: MemAgent): Promise<void> {
 /**
  * Display compression event information
  */
-function _displayCompressionEvent(event: any): void {
+function _displayCompressionEvent(_event: any): void {
 	console.log(chalk.yellowBright('⚡ Context has been compressed.'));
 }
 

@@ -248,11 +248,8 @@ export class WebSocketConnectionManager {
 			return;
 		}
 
-		let sentCount = 0;
 		for (const connectionId of connectionIds) {
-			if (this.sendToConnection(connectionId, message)) {
-				sentCount++;
-			}
+			this.sendToConnection(connectionId, message);
 		}
 	}
 

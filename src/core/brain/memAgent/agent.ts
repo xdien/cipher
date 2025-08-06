@@ -525,23 +525,25 @@ export class MemAgent {
 		return this.mcpManager.getFailedConnections();
 	}
 
-	public getAllMcpServers(): Array<{ name: string; status: string; error?: string }> {
+	public getAllMcpServers(): Array<{ id: string; name: string; status: string; error?: string }> {
 		this.ensureStarted();
 		const clients = this.mcpManager.getClients();
 		const failedConnections = this.mcpManager.getFailedConnections();
 
-		const servers: Array<{ name: string; status: string; error?: string }> = [];
+		const servers: Array<{ id: string; name: string; status: string; error?: string }> = [];
 
 		// Add connected servers
 		for (const [name, client] of clients.entries()) {
 			try {
-				const serverInfo = client.getServerInfo();
+				client.getServerInfo(); // Get server info but don't use it
 				servers.push({
+					id: name, // Use client name as id for API compatibility
 					name,
 					status: 'connected',
 				});
 			} catch (error) {
 				servers.push({
+					id: name, // Use client name as id for API compatibility
 					name,
 					status: 'error',
 					error: error instanceof Error ? error.message : String(error),
@@ -552,6 +554,7 @@ export class MemAgent {
 		// Add failed connections
 		for (const [name, error] of Object.entries(failedConnections)) {
 			servers.push({
+				id: name, // Use client name as id for API compatibility
 				name,
 				status: 'error',
 				error,

@@ -3,26 +3,19 @@ import { workspaceSearchTool } from '../workspace_search.js';
 import { workspaceStoreTool } from '../workspace_store.js';
 import {
 	getWorkspaceTools,
-	getAllWorkspaceToolDefinitions,
 	shouldDisableDefaultMemory,
 	validateWorkspaceMemorySetup,
 } from '../workspace-tools.js';
-import {
-	createWorkspacePayload,
-	extractWorkspaceInfo,
-	type WorkspacePayload,
-} from '../workspace-payloads.js';
+import { createWorkspacePayload, extractWorkspaceInfo } from '../workspace-payloads.js';
 import {
 	loadWorkspaceConfigFromEnv,
 	validateWorkspaceMemoryConfig,
 	DEFAULT_WORKSPACE_CONFIG,
 } from '../../../../../config/workspace-memory-config.schema.js';
-import { env } from '../../../../env.js';
 
 describe('Workspace Memory Integration Tests', () => {
 	let mockContext: any;
 	let mockEmbeddingManager: any;
-	let mockVectorStoreManager: any;
 	let mockDualVectorStoreManager: any;
 	let mockEmbedder: any;
 	let mockWorkspaceStore: any;
@@ -111,15 +104,15 @@ describe('Workspace Memory Integration Tests', () => {
 			}),
 		};
 
-		// Mock single collection vector store manager
-		mockVectorStoreManager = {
-			constructor: { name: 'VectorStoreManager' },
-			getStore: vi.fn().mockReturnValue(mockDefaultStore),
-			getNamedStore: vi.fn((collection: string) => {
-				if (collection === 'workspace_memory') return mockWorkspaceStore;
-				return mockDefaultStore;
-			}),
-		};
+		// Mock single collection vector store manager (not used in this test)
+		// const mockVectorStoreManager = {
+		// 	constructor: { name: 'VectorStoreManager' },
+		// 	getStore: vi.fn().mockReturnValue(mockDefaultStore),
+		// 	getNamedStore: vi.fn((collection: string) => {
+		// 		if (collection === 'workspace_memory') return mockWorkspaceStore;
+		// 		return mockDefaultStore;
+		// 	}),
+		// };
 
 		// Mock context
 		mockContext = {

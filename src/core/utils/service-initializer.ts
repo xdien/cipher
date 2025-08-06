@@ -424,8 +424,19 @@ export async function createAgentServices(
 						// API key not provided for explicit embedding config
 						embeddingResult = null;
 					} else {
+						// Create a clean config object similar to the fallback logic
+						const cleanEmbeddingConfig = {
+							type: embeddingConfig.type,
+							apiKey,
+							model: embeddingConfig.model || 'text-embedding-3-small',
+							baseUrl: embeddingConfig.baseUrl,
+							organization: embeddingConfig.organization,
+							timeout: embeddingConfig.timeout || 30000,
+							maxRetries: embeddingConfig.maxRetries || 3,
+							dimensions: embeddingConfig.dimensions,
+						};
 						embeddingResult = await embeddingManager.createEmbedderFromConfig(
-							embeddingConfig,
+							cleanEmbeddingConfig,
 							'default'
 						);
 					}

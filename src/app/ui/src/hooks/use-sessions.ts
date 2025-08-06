@@ -7,6 +7,15 @@ import { ChatMessage, SessionMessage } from '@/types/chat';
 import { useSessionStore, sessionStoreActions } from '@/stores/session-store';
 import { convertHistoryToUIMessages, loadSession, loadSessionHistory } from '@/lib/chat-config';
 
+// Browser event types
+declare global {
+	interface WindowEventMap {
+		'cipher:newMessage': CustomEvent;
+		'cipher:response': CustomEvent;
+		'cipher:responseComplete': CustomEvent;
+	}
+}
+
 // Simplified session sync (React Query handles most synchronization automatically)
 export function useSessionsSync() {
 	const queryClient = useQueryClient();
@@ -47,7 +56,17 @@ async function fetchSessions(): Promise<Session[]> {
 				if (historyResponse.ok) {
 					const historyData = await historyResponse.json();
 					const history = historyData.data?.history || historyData.history || [];
-					return { ...session, messageCount: history.length };
+					// Filter to only include user and assistant messages (excluding tool calls)
+					const filteredHistory = history.filter((msg: any) => {
+						// Include user messages
+						if (msg.role === 'user') return true;
+						// Include assistant messages that don't have tool calls
+						if (msg.role === 'assistant' && (!msg.toolCalls || msg.toolCalls.length === 0))
+							return true;
+						// Exclude everything else
+						return false;
+					});
+					return { ...session, messageCount: filteredHistory.length };
 				}
 			} catch (error) {
 				console.warn(`Failed to load message count for session ${session.id}:`, error);
@@ -135,7 +154,7 @@ async function loadSessionData(
 			} else {
 				throw new Error('Session not found');
 			}
-		} catch (error) {
+		} catch {
 			// Fallback session object
 			session = {
 				id: sessionId,
@@ -160,9 +179,9 @@ export function useSessions() {
 	const query = useQuery({
 		queryKey: sessionQueryKeys.lists(),
 		queryFn: fetchSessions,
-		staleTime: 1 * 1000, // 1 second - very short to prevent phantom sessions
+		staleTime: 30 * 1000, // 30 seconds - longer to prevent disappearing sessions
 		gcTime: 5 * 60 * 1000, // 5 minutes garbage collection
-		refetchOnWindowFocus: true, // Refetch when window gains focus to sync state
+		refetchOnWindowFocus: false, // Don't refetch on focus to prevent disappearing sessions
 		refetchOnMount: 'always', // Always fetch fresh data on mount
 		refetchOnReconnect: true, // Refetch when network reconnects
 	});
@@ -624,14 +643,19 @@ export function useSessionOperations() {
 			const customEvent = event as CustomEvent;
 			const { sessionId } = customEvent.detail || {};
 			if (sessionId) {
-				// Update message count and last activity
+				// Only increment message count for user messages (cipher:newMessage)
+				// Don't increment for cipher:response as it might be a tool call
+				const isUserMessage = event.type === 'cipher:newMessage';
+
 				queryClient.setQueryData(sessionQueryKeys.lists(), (oldSessions: Session[] = []) => {
 					return oldSessions.map(session =>
 						session.id === sessionId
 							? {
 									...session,
 									lastActivity: new Date().toISOString(),
-									messageCount: (session.messageCount || 0) + 1,
+									messageCount: isUserMessage
+										? (session.messageCount || 0) + 1
+										: session.messageCount,
 								}
 							: session
 					);

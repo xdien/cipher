@@ -43,6 +43,8 @@ export default [
 				AbortSignal: 'readonly',
 				structuredClone: 'readonly',
 				NodeJS: 'readonly',
+				Event: 'readonly',
+				EventListener: 'readonly',
 				CustomEvent: 'readonly',
 				localStorage: 'readonly',
 				FileReader: 'readonly',
@@ -50,9 +52,6 @@ export default [
 				fetch: 'readonly',
 				RequestInit: 'readonly',
 				Response: 'readonly',
-				// Browser globals for UI files
-				Event: 'readonly',
-				EventListener: 'readonly',
 				// Test globals
 				describe: 'readonly',
 				test: 'readonly',

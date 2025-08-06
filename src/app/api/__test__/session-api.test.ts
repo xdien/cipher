@@ -297,7 +297,7 @@ describe('Session API Endpoints', () => {
 		});
 
 		it('should validate session ID parameter', async () => {
-			const response = await request(app).delete('/api/sessions/').expect(404); // Express will return 404 for missing route param
+			await request(app).delete('/api/sessions/').expect(404); // Express will return 404 for missing route param
 		});
 	});
 

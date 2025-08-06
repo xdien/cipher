@@ -11,7 +11,7 @@ import { MessageList } from "@/components/message-list";
 import { InputArea } from "@/components/input-area";
 import { QuickAction } from "@/types/chat";
 import { convertChatMessageToMessage } from "@/lib/chat-utils";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 function MainChatInterface() {
   const {
@@ -30,18 +30,35 @@ function MainChatInterface() {
   const [isServersPanelOpen, setIsServersPanelOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Show session sidebar by default on page load
+  useEffect(() => {
+    setIsSessionsPanelOpen(true);
+  }, []);
+
   // Quick actions configuration - now uses default session
   const quickActions: QuickAction[] = [
     {
       title: "What can you do?",
       description: "See current capabilities",
-      action: () => sendQuickActionMessage("What tools and capabilities do you have available right now?"),
+      action: async () => {
+        // Ensure default session is opened before sending message
+        if (isWelcomeState) {
+          await switchSession('default');
+        }
+        sendQuickActionMessage("What tools and capabilities do you have available right now?");
+      },
       icon: "🤔"
     },
     {
       title: "Remember",
       description: "Save a coding pattern or concept",
-      action: () => sendQuickActionMessage("Help me store an important programming concept, design pattern, or coding technique that I can reference later. Please ask me what concept I'd like to store and then save it with proper examples and explanations."),
+      action: async () => {
+        // Ensure default session is opened before sending message
+        if (isWelcomeState) {
+          await switchSession('default');
+        }
+        sendQuickActionMessage("Help me store an important programming concept, design pattern, or coding technique that I can reference later. Please ask me what concept I'd like to store and then save it with proper examples and explanations.");
+      },
       icon: "💡"
     },
     {
@@ -53,7 +70,13 @@ function MainChatInterface() {
     {
       title: "Test existing tools",
       description: "Try out connected capabilities",
-      action: () => sendQuickActionMessage("Show me how to use one of your available tools. Pick an interesting one and demonstrate it."),
+      action: async () => {
+        // Ensure default session is opened before sending message
+        if (isWelcomeState) {
+          await switchSession('default');
+        }
+        sendQuickActionMessage("Show me how to use one of your available tools. Pick an interesting one and demonstrate it.");
+      },
       icon: "⚡"
     }
   ];

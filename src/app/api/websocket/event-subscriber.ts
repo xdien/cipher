@@ -39,7 +39,7 @@ export class WebSocketEventSubscriber {
 			) {
 				this.abortController.setMaxListeners(100);
 			}
-		} catch (error) {
+		} catch {
 			// Ignore if setMaxListeners is not available
 		}
 
@@ -345,18 +345,6 @@ export class WebSocketEventSubscriber {
 					},
 					signal
 				);
-
-				// Also send the traditional toolCall event for backward compatibility
-				this.handleEvent(
-					'toolCall',
-					{
-						toolName: data.toolName,
-						args: {}, // Tool args are not available at execution start
-						sessionId: data.sessionId,
-						callId: data.executionId,
-					},
-					signal
-				);
 			},
 			{ signal }
 		);
@@ -376,19 +364,6 @@ export class WebSocketEventSubscriber {
 					},
 					signal
 				);
-
-				// Send traditional toolResult event with actual result data
-				this.handleEvent(
-					'toolResult',
-					{
-						toolName: data.toolName,
-						result: data.result || 'Tool execution completed',
-						success: data.success,
-						sessionId: data.sessionId,
-						callId: data.executionId,
-					},
-					signal
-				);
 			},
 			{ signal }
 		);
@@ -405,19 +380,6 @@ export class WebSocketEventSubscriber {
 						sessionId: data.sessionId,
 						callId: data.executionId,
 						executionId: data.executionId,
-					},
-					signal
-				);
-
-				// Send traditional toolResult event
-				this.handleEvent(
-					'toolResult',
-					{
-						toolName: data.toolName,
-						result: data.error,
-						success: false,
-						sessionId: data.sessionId,
-						callId: data.executionId,
 					},
 					signal
 				);

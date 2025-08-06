@@ -56,9 +56,7 @@ export function useChat(wsUrl: string, options: UseChatOptions = {}) {
 			case 'conversationReset':
 				handleConversationReset();
 				break;
-			case 'toolCall':
-				handleToolCallEvent(payload);
-				break;
+
 			case 'toolExecutionStarted':
 				handleToolExecutionStarted(payload);
 				break;
@@ -294,24 +292,6 @@ export function useChat(wsUrl: string, options: UseChatOptions = {}) {
 		[onMessage]
 	);
 
-	const handleToolCallEvent = useCallback((payload: IncomingMessage['data']) => {
-		if (!isMountedRef.current) return;
-
-		const name = payload.toolName;
-		const args = payload.args;
-
-		const toolCallMessage: ChatMessage = {
-			id: generateUniqueId(),
-			role: 'tool',
-			content: null,
-			toolName: name,
-			toolArgs: args,
-			createdAt: Date.now(),
-		};
-
-		setMessages(ms => [...ms, toolCallMessage]);
-	}, []);
-
 	const handleToolResultEvent = useCallback((payload: IncomingMessage['data']) => {
 		if (!isMountedRef.current) return;
 
@@ -356,11 +336,13 @@ export function useChat(wsUrl: string, options: UseChatOptions = {}) {
 		const name = payload.toolName;
 		const callId = payload.callId || payload.executionId;
 
-		// Add a system message to show tool execution started
+		// Add a tool message to show tool execution started
 		const startMessage: ChatMessage = {
 			id: generateUniqueId(),
-			role: 'system',
+			role: 'tool',
 			content: `🔧 Using tool: ${name}`,
+			toolName: name,
+			toolArgs: payload.args || {},
 			createdAt: Date.now(),
 			toolExecutionId: callId,
 		};
@@ -401,16 +383,25 @@ export function useChat(wsUrl: string, options: UseChatOptions = {}) {
 	const handleToolExecutionCompleted = useCallback((payload: IncomingMessage['data']) => {
 		if (!isMountedRef.current) return;
 
-		const name = payload.toolName;
-		const success = payload.success !== false;
+		const result = payload.result || 'Tool execution completed';
 		const callId = payload.callId || payload.executionId;
 
 		setMessages(ms => {
 			// Remove any progress messages for this execution
 			const withoutProgress = ms.filter(m => !m.id?.startsWith(`progress-${callId}`));
 
-			// Don't add completion message - we'll show the actual result instead
-			return withoutProgress;
+			// Update the existing tool message with the result
+			const updatedMessages = withoutProgress.map(msg => {
+				if (msg.toolExecutionId === callId && msg.role === 'tool') {
+					return {
+						...msg,
+						toolResult: result,
+					};
+				}
+				return msg;
+			});
+
+			return updatedMessages;
 		});
 	}, []);
 

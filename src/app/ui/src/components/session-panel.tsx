@@ -272,7 +272,7 @@ export function SessionPanel({
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-1">
                 <Hash className="h-3 w-3" />
-                <span>{session.messageCount} messages</span>
+                <span>{session.messageCount || 0} messages</span>
               </div>
               <div className="flex items-center space-x-1">
                 <Clock className="h-3 w-3" />
@@ -309,6 +309,22 @@ export function SessionPanel({
   const handleInputChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setNewSessionId(e.target.value)
   }, [])
+
+  // Handle key down for Enter key
+  const handleKeyDown = React.useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !createSessionMutation.isPending) {
+      e.preventDefault()
+      const sessionId = newSessionId.trim() || undefined
+      createSessionMutation.mutateAsync(sessionId).then((session) => {
+        setNewSessionId('')
+        setNewSessionOpen(false)
+        onSessionChange(session.id)
+      }).catch((err) => {
+        console.error('Error creating session:', err)
+        setError(err instanceof Error ? err.message : 'Failed to create session')
+      })
+    }
+  }, [createSessionMutation, newSessionId, onSessionChange])
 
   // Delete confirmation dialog
   const DeleteConfirmationDialog = ({
@@ -451,6 +467,7 @@ export function SessionPanel({
                 id="new-session-id"
                 value={newSessionId}
                 onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
                 placeholder="e.g., user-123, project-alpha"
                 className="font-mono"
                 autoComplete="off"

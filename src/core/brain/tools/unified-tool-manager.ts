@@ -470,6 +470,7 @@ export class UnifiedToolManager {
 					executionId,
 					duration: Date.now() - startTime,
 					success: true,
+					result: result,
 					timestamp: Date.now(),
 				});
 			}

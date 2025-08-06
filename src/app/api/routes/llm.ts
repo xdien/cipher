@@ -220,7 +220,7 @@ async function getCurrentLLMConfig(req: Request, res: Response, agent: MemAgent)
  */
 async function switchLLMConfig(req: Request, res: Response, agent: MemAgent): Promise<void> {
 	try {
-		const { provider, model, config, sessionId } = req.body;
+		const { provider, model, sessionId } = req.body;
 
 		logger.info('Switching LLM configuration', {
 			requestId: req.requestId,
@@ -229,15 +229,15 @@ async function switchLLMConfig(req: Request, res: Response, agent: MemAgent): Pr
 			sessionId,
 		});
 
-		// Build LLM config object
-		const llmConfig: any = {
-			provider,
-			model,
-			...config,
-		};
+		// Build LLM config object (not used yet)
+		// const _llmConfig: any = {
+		// 	provider,
+		// 	model,
+		// 	...config,
+		// };
 
 		// TODO: Implement switchLLM method on MemAgent
-		// await agent.switchLLM(llmConfig, sessionId);
+		// await agent.switchLLM(_llmConfig, sessionId);
 		logger.warn('LLM switching not yet implemented', { provider, model, sessionId });
 
 		// Get updated configuration to return

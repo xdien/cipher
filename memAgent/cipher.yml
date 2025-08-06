@@ -11,7 +11,6 @@ mcpServers:
       - -y
       - '@modelcontextprotocol/server-filesystem'
       - .
-
 # Choose ONLY ONE of the following LLM providers
 llm:
   provider: openai
@@ -76,6 +75,7 @@ llm:
 
 # Embedding configuration: ONLY ONE of the following
 # OpenAI:
+
 # embedding:
 #   type: openai
 #   model: text-embedding-3-small

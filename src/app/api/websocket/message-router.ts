@@ -3,7 +3,7 @@ import { MemAgent } from '@core/brain/memAgent/index.js';
 import { logger } from '@core/logger/index.js';
 import { WebSocketMessage, WebSocketResponse, WebSocketEventType } from './types.js';
 import { WebSocketConnectionManager } from './connection-manager.js';
-import { v4 as uuidv4 } from 'uuid';
+// import { v4 as uuidv4 } from 'uuid'; // Not currently used
 
 export class WebSocketMessageRouter {
 	constructor(
