@@ -191,7 +191,7 @@ export function ChatProvider({
       console.error('Error creating default session:', error);
       throw error;
     }
-  }, [currentSessionId, switchSession, createSessionMutation]);
+  }, [currentSessionId, switchSession, createSessionMutation, loadSession]);
 
   // Enhanced send message with default session management
   const sendMessage = useCallback(async (
@@ -203,6 +203,8 @@ export function ChatProvider({
     // Auto-create or switch to "default" session if needed
     if (!sessionId && isWelcomeState) {
       sessionId = await ensureDefaultSession();
+      // Update UI state to reflect that we're no longer in welcome state
+      sessionStoreActions.switchToSession(sessionId);
     }
 
     if (sessionId) {

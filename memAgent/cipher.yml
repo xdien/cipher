@@ -11,6 +11,10 @@ mcpServers:
       - -y
       - '@modelcontextprotocol/server-filesystem'
       - .
+  semgrep:
+    type: "streamable-http"
+    url: "https://mcp.semgrep.ai/mcp/" 
+    enabled: true
 # Choose ONLY ONE of the following LLM providers
 llm:
   provider: openai

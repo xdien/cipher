@@ -376,9 +376,10 @@ export function ServersPanel({
         </div>
       )}
 
-      {/* Server list */}
+      {/* Main content area */}
       <div className="flex-1 flex flex-col min-h-0">
-        <div className="p-4">
+        {/* Server list section */}
+        <div className="p-4 border-b">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-medium">Connected Servers ({servers.length})</h3>
             <DropdownMenu>
@@ -416,116 +417,116 @@ export function ServersPanel({
               <p className="text-xs">Add a server to get started</p>
             </div>
           ) : (
-            <ScrollArea className="flex-1">
-              <div className="space-y-2">
-                {servers.map((server) => (
-                  <div
-                    key={server.id}
-                    className={cn(
-                      "p-3 rounded-lg border cursor-pointer transition-colors",
-                      selectedServerId === server.id
-                        ? "bg-accent border-accent-foreground/20"
-                        : "bg-card hover:bg-muted/50"
-                    )}
-                    onClick={() => {
-                      console.log(`🖱️ Server clicked: ${server.id} (${server.name})`)
-                      setSelectedServerId(server.id)
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <ServerStatusIndicator status={server.status} />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <p className="text-sm font-medium truncate">{server.name}</p>
-                            <div className="flex items-center gap-1">
-                              {getServerTypeIcon(server.config?.type || 'stdio')}
-                              <span className="text-xs text-muted-foreground uppercase font-mono">
-                                {server.config?.type || 'stdio'}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className={cn(
-                              "text-xs px-1.5 py-0.5 rounded text-white font-medium",
-                              getServerStatusColor(server.status)
-                            )}>
-                              {getServerStatusText(server.status)}
+            <div className="space-y-2">
+              {servers.map((server) => (
+                <div
+                  key={server.id}
+                  className={cn(
+                    "p-3 rounded-lg border cursor-pointer transition-colors",
+                    selectedServerId === server.id
+                      ? "bg-accent border-accent-foreground/20"
+                      : "bg-card hover:bg-muted/50"
+                  )}
+                  onClick={() => {
+                    console.log(`🖱️ Server clicked: ${server.id} (${server.name})`)
+                    setSelectedServerId(server.id)
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <ServerStatusIndicator status={server.status} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="text-sm font-medium truncate">{server.name}</p>
+                          <div className="flex items-center gap-1">
+                            {getServerTypeIcon(server.config?.type || 'stdio')}
+                            <span className="text-xs text-muted-foreground uppercase font-mono">
+                              {server.config?.type || 'stdio'}
                             </span>
-                            {server.lastSeen && (
-                              <span className="text-xs text-muted-foreground">
-                                Last seen: {new Date(server.lastSeen).toLocaleTimeString()}
-                              </span>
-                            )}
                           </div>
                         </div>
+                        <div className="flex items-center gap-2">
+                          <span className={cn(
+                            "text-xs px-1.5 py-0.5 rounded text-white font-medium",
+                            getServerStatusColor(server.status)
+                          )}>
+                            {getServerStatusText(server.status)}
+                          </span>
+                          {server.lastSeen && (
+                            <span className="text-xs text-muted-foreground">
+                              Last seen: {new Date(server.lastSeen).toLocaleTimeString()}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleDeleteServer(server.id)
-                        }}
-                        disabled={isDeletingServer === server.id}
-                        className="h-6 w-6 p-0"
-                      >
-                        {isDeletingServer === server.id ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        ) : (
-                          <Trash2 className="w-3 h-3" />
-                        )}
-                      </Button>
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDeleteServer(server.id)
+                      }}
+                      disabled={isDeletingServer === server.id}
+                      className="h-6 w-6 p-0"
+                    >
+                      {isDeletingServer === server.id ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-3 h-3" />
+                      )}
+                    </Button>
                   </div>
-                ))}
-              </div>
-            </ScrollArea>
+                </div>
+              ))}
+            </div>
           )}
         </div>
 
-        {/* Tools section */}
+        {/* Tools section - takes remaining space */}
         {selectedServer && (
-          <div className="border-t p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Wrench className="w-4 h-4" />
-                <h3 className="text-sm font-medium">Tools ({tools.length})</h3>
+          <div className="flex-1 flex flex-col min-h-0">
+            <div className="p-4 border-b">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Wrench className="w-4 h-4" />
+                  <h3 className="text-sm font-medium">Tools ({tools.length})</h3>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsToolsExpanded(!isToolsExpanded)}
+                  className="h-6 w-6 p-0"
+                >
+                  {isToolsExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                </Button>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsToolsExpanded(!isToolsExpanded)}
-                className="h-6 w-6 p-0"
-              >
-                {isToolsExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-              </Button>
+
+              {toolsError && (
+                <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-600">
+                  <div className="flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    <span>{toolsError}</span>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {toolsError && (
-              <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-600">
-                <div className="flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" />
-                  <span>{toolsError}</span>
-                </div>
-              </div>
-            )}
-
             {isToolsExpanded && (
-              <div className="space-y-2">
+              <div className="flex-1 flex flex-col min-h-0">
                 {isLoadingTools ? (
-                  <div className="flex items-center justify-center py-4">
+                  <div className="flex items-center justify-center py-8">
                     <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
                     <span className="ml-2 text-xs text-muted-foreground">Loading tools...</span>
                   </div>
                 ) : tools.length === 0 ? (
-                  <div className="text-center py-4 text-muted-foreground">
+                  <div className="text-center py-8 text-muted-foreground">
                     <Wrench className="w-8 h-8 mx-auto mb-2 opacity-50" />
                     <p className="text-xs">No tools available</p>
                   </div>
                 ) : (
-                  <ScrollArea className="max-h-40">
-                    <div className="space-y-2">
+                  <ScrollArea className="flex-1 px-4">
+                    <div className="space-y-2 pb-4">
                       {tools.map((tool) => (
                         <div key={tool.name} className="p-2 bg-muted/50 rounded text-xs">
                           <div className="flex items-center gap-2 mb-1">
