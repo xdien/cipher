@@ -3,8 +3,8 @@
  *
  * Tests for the Redis storage backend implementation.
  * Tests both connection management and cache operations.
- * 
- * Note: These tests use a mock Redis implementation to avoid 
+ *
+ * Note: These tests use a mock Redis implementation to avoid
  * requiring an actual Redis server for testing.
  */
 
@@ -142,7 +142,9 @@ describe('RedisBackend', () => {
 			const shortTimeoutConfig = { ...config, connectionTimeoutMillis: 100 };
 			const shortTimeoutBackend = new RedisBackend(shortTimeoutConfig);
 
-			await expect(shortTimeoutBackend.connect()).rejects.toThrow('Redis connection failed: timeout');
+			await expect(shortTimeoutBackend.connect()).rejects.toThrow(
+				'Redis connection failed: timeout'
+			);
 		});
 
 		it('should handle connection timeout with default timeout', async () => {
@@ -154,7 +156,9 @@ describe('RedisBackend', () => {
 			mockRedisInstance.once.mockImplementation(() => {});
 			mockRedisInstance.connect.mockImplementation(() => new Promise(() => {})); // Never resolves
 
-			await expect(backendWithoutTimeout.connect()).rejects.toThrow('Redis connection failed: timeout');
+			await expect(backendWithoutTimeout.connect()).rejects.toThrow(
+				'Redis connection failed: timeout'
+			);
 		}, 15000); // Increase timeout for this test
 
 		it('should handle connection error', async () => {
@@ -166,7 +170,9 @@ describe('RedisBackend', () => {
 			});
 			mockRedisInstance.connect.mockRejectedValue(connectionError);
 
-			await expect(backend.connect()).rejects.toThrow('Redis connection failed: Connection refused');
+			await expect(backend.connect()).rejects.toThrow(
+				'Redis connection failed: Connection refused'
+			);
 		});
 
 		it('should handle multiple connect calls', async () => {
@@ -229,7 +235,11 @@ describe('RedisBackend', () => {
 			mockRedisInstance.setex.mockResolvedValue('OK');
 
 			await backend.set('test-key', testValue, 3600);
-			expect(mockRedisInstance.setex).toHaveBeenCalledWith('test-key', 3600, JSON.stringify(testValue));
+			expect(mockRedisInstance.setex).toHaveBeenCalledWith(
+				'test-key',
+				3600,
+				JSON.stringify(testValue)
+			);
 		});
 
 		it('should return undefined for missing keys', async () => {
@@ -283,7 +293,10 @@ describe('RedisBackend', () => {
 		});
 
 		it('should mset multiple values', async () => {
-			const entries: [string, any][] = [['key1', 'value1'], ['key2', { data: 'value2' }]];
+			const entries: [string, any][] = [
+				['key1', 'value1'],
+				['key2', { data: 'value2' }],
+			];
 			mockPipeline.exec.mockResolvedValue([]);
 
 			await backend.mset(entries);
@@ -386,7 +399,7 @@ describe('RedisBackend', () => {
 
 			// Simulate Redis not being ready
 			mockRedisInstance.status = 'connecting';
-			
+
 			await expect(backend.get('key')).rejects.toThrow('RedisBackend not connected');
 		});
 	});

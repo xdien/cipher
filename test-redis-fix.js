@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
  * Redis Connection Fix Test Script
- * 
+ *
  * This script tests the fixes for GitHub issue #167:
  * 1. Connection initialization with lazyConnect: true
- * 2. Username support for Redis authentication  
+ * 2. Username support for Redis authentication
  * 3. Configurable timeout instead of hardcoded 1 second
  */
 
@@ -19,10 +19,16 @@ async function testRedisConnection() {
 	console.log(`  STORAGE_CACHE_TYPE: ${process.env.STORAGE_CACHE_TYPE}`);
 	console.log(`  STORAGE_CACHE_HOST: ${process.env.STORAGE_CACHE_HOST}`);
 	console.log(`  STORAGE_CACHE_PORT: ${process.env.STORAGE_CACHE_PORT}`);
-	console.log(`  STORAGE_CACHE_USERNAME: ${process.env.STORAGE_CACHE_USERNAME ? '***' : 'undefined'}`);
-	console.log(`  STORAGE_CACHE_PASSWORD: ${process.env.STORAGE_CACHE_PASSWORD ? '***' : 'undefined'}`);
+	console.log(
+		`  STORAGE_CACHE_USERNAME: ${process.env.STORAGE_CACHE_USERNAME ? '***' : 'undefined'}`
+	);
+	console.log(
+		`  STORAGE_CACHE_PASSWORD: ${process.env.STORAGE_CACHE_PASSWORD ? '***' : 'undefined'}`
+	);
 	console.log(`  STORAGE_CACHE_DATABASE: ${process.env.STORAGE_CACHE_DATABASE}`);
-	console.log(`  CONNECTION_TIMEOUT: ${process.env.STORAGE_CACHE_CONNECTION_TIMEOUT_MILLIS || 'default (10s)'}`);
+	console.log(
+		`  CONNECTION_TIMEOUT: ${process.env.STORAGE_CACHE_CONNECTION_TIMEOUT_MILLIS || 'default (10s)'}`
+	);
 	console.log();
 
 	if (process.env.STORAGE_CACHE_TYPE !== 'redis') {
@@ -44,9 +50,12 @@ async function testRedisConnection() {
 
 		// Test basic operations to ensure connection is working
 		console.log('\n🔧 Testing basic cache operations...');
-		
+
 		const testKey = 'test:redis-fix:' + Date.now();
-		const testValue = { message: 'Redis connection fix working!', timestamp: new Date().toISOString() };
+		const testValue = {
+			message: 'Redis connection fix working!',
+			timestamp: new Date().toISOString(),
+		};
 
 		// Set a value with TTL
 		await backends.cache.set(testKey, testValue, 60); // 60 second TTL
@@ -72,7 +81,7 @@ async function testRedisConnection() {
 		console.log(`   ✅ DELETE ${testKey}`);
 
 		console.log('\n🎉 All tests passed! The Redis connection fix is working correctly.');
-		
+
 		console.log('\n📊 Fix Validation:');
 		console.log('   ✅ Connection established (this.redis.connect() called)');
 		console.log('   ✅ Username configuration supported');
@@ -82,22 +91,21 @@ async function testRedisConnection() {
 		// Clean shutdown
 		await manager.disconnect();
 		console.log('\n🔌 Disconnected from Redis');
-
 	} catch (error) {
 		const connectionTime = Date.now() - startTime;
 		console.log(`❌ Connection failed after ${connectionTime}ms`);
 		console.error('Error details:', error.message);
-		
+
 		console.log('\n🔍 Troubleshooting:');
 		console.log('1. Ensure Redis server is running on the configured host/port');
 		console.log('2. Check username/password if authentication is required');
 		console.log('3. Verify network connectivity');
 		console.log('4. Check Redis logs for authentication/connection errors');
-		
+
 		if (error.message.includes('timeout')) {
 			console.log('5. Consider increasing STORAGE_CACHE_CONNECTION_TIMEOUT_MILLIS');
 		}
-		
+
 		process.exit(1);
 	}
 }

@@ -15,6 +15,13 @@ const targetDir: string = path.join(rootDir, 'dist', 'src', 'app', 'ui');
 
 async function copyUIBuild(): Promise<void> {
 	try {
+		// Check if UI build exists - if not, skip UI copy (for build:no-ui)
+		const standalonePath = path.join(sourceUIDir, '.next', 'standalone');
+		if (!fs.existsSync(standalonePath)) {
+			console.log('⚠️  UI build not found, skipping UI copy (this is expected when using build:no-ui)');
+			return;
+		}
+
 		// Ensure the target directory doesn't exist to avoid conflicts
 		if (fs.existsSync(targetDir)) {
 			console.log('Removing existing target directory...');
@@ -27,7 +34,6 @@ async function copyUIBuild(): Promise<void> {
 		await fs.ensureDir(targetDir);
 
 		// Validate that the source build exists
-		const standalonePath = path.join(sourceUIDir, '.next', 'standalone');
 		if (!fs.existsSync(standalonePath)) {
 			throw new Error('Next.js standalone build not found. Run `pnpm run build` in the UI directory first.');
 		}

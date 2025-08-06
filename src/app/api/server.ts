@@ -210,7 +210,9 @@ export class ApiServer {
 			// Create SSE transport instance. The buildApiRoute('/mcp') is the endpoint where client will POST messages.
 			// The SSEServerTransport will handle setting the SSE headers itself
 			const sseTransport = new SSEServerTransport(this.buildApiRoute('/mcp'), res);
-			logger.debug(`[API Server] SSEServerTransport created with endpoint ${this.buildApiRoute('/mcp')}`);
+			logger.debug(
+				`[API Server] SSEServerTransport created with endpoint ${this.buildApiRoute('/mcp')}`
+			);
 
 			// Connect MCP server to this SSE transport (this will call sseTransport.start() and set headers)
 			this.mcpServer?.connect(sseTransport);

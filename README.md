@@ -63,6 +63,10 @@ docker-compose up -d
 curl http://localhost:3000/health
 ```
 
+> **💡 Note:** Docker builds automatically skip the UI build step to avoid ARM64 compatibility issues with lightningcss. The UI is not included in the Docker image by default.
+>
+> To include the UI in the Docker build, use: `docker build --build-arg BUILD_UI=true .`
+
 ### From Source
 
 ```bash
