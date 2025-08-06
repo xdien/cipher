@@ -508,6 +508,21 @@ export class UnifiedToolManager {
 	}
 
 	/**
+	 * Check if a background tool exists (for internal execution, not agent access)
+	 */
+	isBackgroundToolAvailable(toolName: string): boolean {
+		try {
+			if (this.config.enableInternalTools && isInternalToolName(toolName)) {
+				const tool = this.internalToolManager.getTool(toolName);
+				return !!tool;
+			}
+			return false;
+		} catch (error) {
+			return false;
+		}
+	}
+
+	/**
 	 * Check if a tool is available (to agents) based on current mode
 	 */
 	async isToolAvailable(toolName: string): Promise<boolean> {

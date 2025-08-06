@@ -270,7 +270,12 @@ export const storeReasoningMemoryTool: InternalTool = {
 			// Check if should store based on evaluation
 			if (evaluation.shouldStore === false) {
 				logger.debug(
-					'StoreReasoningMemory: Skipping storage - evaluation indicates should not store'
+					'StoreReasoningMemory: Skipping storage - evaluation indicates should not store',
+					{
+						success: true,
+						qualityScore: evaluation.qualityScore,
+						shouldStore: evaluation.shouldStore,
+					}
 				);
 				return {
 					success: true,

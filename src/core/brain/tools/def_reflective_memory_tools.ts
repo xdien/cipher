@@ -392,26 +392,7 @@ async function evaluateReasoningQuality(
 		);
 	}
 
-	// Check for valuable content vs basic programming tasks
-	const hasValueableContent = trace.steps.some(
-		step =>
-			step.content.length > 50 &&
-			(step.content.toLowerCase().includes('analyze') ||
-				step.content.toLowerCase().includes('consider') ||
-				step.content.toLowerCase().includes('approach') ||
-				step.content.toLowerCase().includes('strategy') ||
-				step.content.toLowerCase().includes('pattern') ||
-				step.content.toLowerCase().includes('because'))
-	);
 
-	if (!hasValueableContent && trace.steps.length < 5) {
-		issues.push({
-			type: 'insufficient_insight',
-			description: 'Reasoning lacks substantial insights or analysis',
-			severity: 'medium',
-		});
-		suggestions.push('Include deeper analysis and reasoning about approach and decisions');
-	}
 
 	// Calculate quality score based on issues and step count
 	let qualityScore = 1.0;
@@ -420,11 +401,9 @@ async function evaluateReasoningQuality(
 	qualityScore -= issues.filter(i => i.severity === 'low').length * 0.1;
 	qualityScore = Math.max(0, Math.min(1, qualityScore));
 
-	// Enhanced storage decision - be more selective
+	// Enhanced storage decision - more lenient for learning
 	const shouldStore =
-		qualityScore >= 0.6 && // Raised threshold from 0.5 to 0.6
-		trace.steps.length >= 3 && // Require minimum steps
-		hasValueableContent && // Require valuable insights
+		qualityScore >= 0.4 && // Lowered threshold from 0.6 to 0.4 (more inclusive)
 		issues.filter(i => i.severity === 'high').length === 0; // No high-severity issues
 
 	return {

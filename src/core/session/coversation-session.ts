@@ -923,9 +923,12 @@ export class ConversationSession {
 				return;
 			}
 
-			// Check if reflection memory tools are available (using pre-loaded tools)
-			const reflectionToolsAvailable =
-				allTools['cipher_extract_reasoning_steps'] && allTools['cipher_store_reasoning_memory'];
+			// Check if reflection memory tools are available for execution (not for agent access)
+			// These tools are background-only (agentAccessible: false) so they won't be in allTools in CLI mode
+			// We need to check their existence directly for background execution
+			const reflectionToolsAvailable = 
+				this.services.unifiedToolManager.isBackgroundToolAvailable('cipher_extract_reasoning_steps') &&
+				this.services.unifiedToolManager.isBackgroundToolAvailable('cipher_store_reasoning_memory');
 
 			if (embeddingsDisabled || !reflectionToolsAvailable) {
 				logger.debug('ConversationSession: Reflection memory processing skipped', {
@@ -1010,9 +1013,6 @@ export class ConversationSession {
 
 			// Only proceed if we extracted reasoning steps
 			if (!extractionResult.success || !extractionResult.result?.trace?.steps?.length) {
-				logger.debug(
-					'ConversationSession: No reasoning steps extracted, skipping evaluation and storage'
-				);
 				return;
 			}
 
@@ -1064,7 +1064,7 @@ export class ConversationSession {
 			}
 
 			// Only proceed if evaluation was successful and indicates we should store
-			if (!evaluationResult.success || !evaluationResult.result?.evaluation?.shouldStore) {
+			if (!evaluationResult.result?.evaluation?.shouldStore) {
 				logger.debug(
 					'ConversationSession: Evaluation indicates should not store, skipping storage',
 					{
