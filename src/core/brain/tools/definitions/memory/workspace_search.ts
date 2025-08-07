@@ -260,9 +260,13 @@ export const workspaceSearchTool: InternalTool = {
 				queryPreview: originalQuery.substring(0, 50),
 			});
 			let queries: string[] = [originalQuery];
-			const enableQueryRefinement = (args.enable_query_refinement === true) || (env.ENABLE_QUERY_REFINEMENT === true);
+			const enableQueryRefinement =
+				args.enable_query_refinement === true || env.ENABLE_QUERY_REFINEMENT === true;
 			if (enableQueryRefinement) {
-				const rewrittenQueries = await rewriteUserQuery(originalQuery, context?.services?.llmService);
+				const rewrittenQueries = await rewriteUserQuery(
+					originalQuery,
+					context?.services?.llmService
+				);
 				logger.debug('WorkspaceSearch: Rewritten queries', {
 					rewrittenQueries,
 				});
@@ -312,7 +316,9 @@ export const workspaceSearchTool: InternalTool = {
 
 			logger.debug('WorkspaceSearch: Embedding generated successfully', {
 				embeddingTime: `${embeddingTime}ms`,
-				embeddingDimensions: Array.isArray(queryEmbeddings[0]) ? queryEmbeddings[0].length : 'unknown',
+				embeddingDimensions: Array.isArray(queryEmbeddings[0])
+					? queryEmbeddings[0].length
+					: 'unknown',
 			});
 
 			// Search workspace memory

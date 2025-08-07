@@ -749,7 +749,8 @@ export const searchReasoningPatterns: InternalTool = {
 					},
 					enable_query_refinement: {
 						type: 'boolean',
-						description: 'Whether to apply query refinement for better search results (default: false)',
+						description:
+							'Whether to apply query refinement for better search results (default: false)',
 						default: false,
 					},
 				},
@@ -819,11 +820,15 @@ export const searchReasoningPatterns: InternalTool = {
 
 			// Apply input refinement if enabled
 			let finalQueries: string[] = [input.query];
-			const enableQueryRefinement = (input.options?.enable_query_refinement === true) || (env.ENABLE_QUERY_REFINEMENT === true);
-			
+			const enableQueryRefinement =
+				input.options?.enable_query_refinement === true || env.ENABLE_QUERY_REFINEMENT === true;
+
 			if (enableQueryRefinement && _context?.services?.llmService) {
 				try {
-					const rewrittenQueries = await rewriteUserQuery(input.query, _context.services.llmService);
+					const rewrittenQueries = await rewriteUserQuery(
+						input.query,
+						_context.services.llmService
+					);
 					finalQueries = rewrittenQueries.queries;
 					logger.debug('ReasoningPatternSearch: Applied query refinement', {
 						originalQuery: input.query,
@@ -832,7 +837,8 @@ export const searchReasoningPatterns: InternalTool = {
 					});
 				} catch (refinementError) {
 					logger.warn('ReasoningPatternSearch: Query refinement failed, using original query', {
-						error: refinementError instanceof Error ? refinementError.message : String(refinementError),
+						error:
+							refinementError instanceof Error ? refinementError.message : String(refinementError),
 					});
 					// Keep original query if refinement fails
 					finalQueries = [input.query];

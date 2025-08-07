@@ -73,7 +73,13 @@ describe('Phase 3: Service Integration Tests', () => {
 					),
 					embedBatch: vi.fn().mockImplementation((queries: string[]) => {
 						// Return embeddings for each query
-						return Promise.resolve(queries.map(() => Array(128).fill(0).map(() => Math.random())));
+						return Promise.resolve(
+							queries.map(() =>
+								Array(128)
+									.fill(0)
+									.map(() => Math.random())
+							)
+						);
 					}),
 					getConfig: vi.fn().mockReturnValue({ type: 'openai' }),
 				}),

@@ -521,7 +521,7 @@ export class UnifiedToolManager {
 				return !!tool;
 			}
 			return false;
-		} catch (error) {
+		} catch {
 			return false;
 		}
 	}

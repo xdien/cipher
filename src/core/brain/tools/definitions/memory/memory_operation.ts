@@ -1515,21 +1515,21 @@ async function persistMemoryActions(
 /**
  * Step 1: Rewrite user query into sub-queries and disambiguate ambiguous terms
  * Uses LLM to generate more targeted queries for better retrieval
- * 
+ *
  * @param originalInput - The original user query to rewrite
  * @param llmService - The LLM service to use for rewriting
  * @returns An object containing the rewritten queries
-*/
+ */
 async function rewriteUserQuery(
-    originalInput: string,
-    llmService: any,
-): Promise<{queries: string[]}> {
-    // Add debugging to track function calls
-    const callId = Math.random().toString(36).substring(7);
-    console.log(`🔄 [${callId}] rewriteUserQuery called with: "${originalInput}"`);
-    
-    try {
-        const rewritePrompt = `
+	originalInput: string,
+	llmService: any
+): Promise<{ queries: string[] }> {
+	// Add debugging to track function calls
+	const callId = Math.random().toString(36).substring(7);
+	console.log(`🔄 [${callId}] rewriteUserQuery called with: "${originalInput}"`);
+
+	try {
+		const rewritePrompt = `
         You are a query decomposition and disambiguation expert. Break down this question into search queries for a knowledge base while handling ambiguous terms.
 
         QUESTION: "${originalInput}"
@@ -1567,47 +1567,49 @@ async function rewriteUserQuery(
 
         Now decompose and disambiguate: "${originalInput}"
         `;
-        const rewriteResponse = await llmService.directGenerate(rewritePrompt);
-        
-        // Parse the response to extract individual queries
-        const queries = rewriteResponse
-            .split('\n')
-            .map(line => line.trim())
-            .filter(line => line.length > 0)
-            .map(line => {
-                // Extract query content after "Query X:" prefix
-                const match = line.match(/^Query\s*\d+:\s*(.+)$/i);
-                return match ? match[1].trim() : null;
-            })
-            .filter(query => query !== null && query.length >= 3)
-            .filter((query, index, array) => array.indexOf(query) === index); // Remove duplicates
-        
-        console.log(`🔄 [${callId}] Parsed queries:`, queries);
-        console.log(`🔄 [${callId}] Query count: ${queries.length}`);
+		const rewriteResponse = await llmService.directGenerate(rewritePrompt);
 
-        // Ensure we have at least one query (fallback to original)
-        if (queries.length === 0) {
-            console.log(`🔄 [${callId}] No queries parsed, falling back to original input`);
-            return {
-                queries: [originalInput]
-            };
-        }
+		// Parse the response to extract individual queries
+		const queries = rewriteResponse
+			.split('\n')
+			.map((line: string) => line.trim())
+			.filter((line: string) => line.length > 0)
+			.map((line: string) => {
+				// Extract query content after "Query X:" prefix
+				const match = line.match(/^Query\s*\d+:\s*(.+)$/i);
+				return match && match[1] ? match[1].trim() : null;
+			})
+			.filter((query: string | null) => query !== null && query.length >= 3)
+			.filter(
+				(query: string | null, index: number, array: (string | null)[]) =>
+					array.indexOf(query) === index
+			); // Remove duplicates
 
-        console.log(`🔄 [${callId}] Returning ${queries.length} refined queries`);
-        return {
-            queries: queries
-        };
+		console.log(`🔄 [${callId}] Parsed queries:`, queries);
+		console.log(`🔄 [${callId}] Query count: ${queries.length}`);
 
-    } catch (error) {
-        console.log(`🔄 [${callId}] Error in rewriteUserQuery:`, error);
-        logger.warn('MemorySearch: Query rewriting failed', {
-            originalInput: originalInput.substring(0, 100),
-            error: error instanceof Error ? error.message : String(error)
-        });
-        return {
-            queries: [originalInput]
-        };
-    }
+		// Ensure we have at least one query (fallback to original)
+		if (queries.length === 0) {
+			console.log(`🔄 [${callId}] No queries parsed, falling back to original input`);
+			return {
+				queries: [originalInput],
+			};
+		}
+
+		console.log(`🔄 [${callId}] Returning ${queries.length} refined queries`);
+		return {
+			queries: queries,
+		};
+	} catch (error) {
+		console.log(`🔄 [${callId}] Error in rewriteUserQuery:`, error);
+		logger.warn('MemorySearch: Query rewriting failed', {
+			originalInput: originalInput.substring(0, 100),
+			error: error instanceof Error ? error.message : String(error),
+		});
+		return {
+			queries: [originalInput],
+		};
+	}
 }
 
-export { parseLLMDecision, MEMORY_OPERATION_PROMPTS, extractTechnicalTags, rewriteUserQuery};
+export { parseLLMDecision, MEMORY_OPERATION_PROMPTS, extractTechnicalTags, rewriteUserQuery };
