@@ -44,11 +44,11 @@ Use the provided `mcp.example.json` configuration. You can replace `OPENAI_API_K
   }
 }
 ```
-Below are the main environment variables for `workspace memory` in your mcp config. For more environment variable config, you can see here [.env.example](.env.example) or [README](README.md):
+Above are the main environment variables for `workspace memory` in your mcp config. For more environment variable config, you can see here [README](https://github.com/campfirein/cipher/blob/main/README.md) or [.env.example](https://github.com/campfirein/cipher/blob/main/.env.example) :
 
-> **💡 Note:** Note that on `aggregator` mode, the llm set in [cipher.yml](examples/05-workspace-memory-team-progress/cipher.yml) is only used for `ask_cipher` tool since your agents directly call all the other tools. So in the examples above, `USE_ASK_CIPHER=false` disables the llm usage entirely.
+> **💡 Note:** Note that on `aggregator` mode, the llm set in [cipher.yml](https://github.com/campfirein/cipher/blob/main/examples/05-workspace-memory-team-progress/cipher.yml) is only used for `ask_cipher` tool since your agents directly call all the other tools. So if `USE_ASK_CIPHER=false` like avoe, this disables the llm usage entirely.
 >
-> However, the reason we still need an API key is for the embedding model. If you don't set the embedding model in [cipher.yml](examples/05-workspace-memory-team-progress/cipher.yml), it uses the a default embedding of the same provider as the llm. For example, if the llm is from `openai`, the default embedding is `text-embedding-3-small`.
+> However, the reason we still need an API key is for **the embedding model**. If you don't set the embedding model in [cipher.yml](https://github.com/campfirein/cipher/blob/main/examples/05-workspace-memory-team-progress/cipher.yml), it uses the a default embedding of the same provider as the llm. For example, if the llm is from `openai`, the default embedding is `text-embedding-3-small`.
 ## Tool Availability
 
 Workspace memory provides two specialized tools for team progress tracking:
@@ -64,12 +64,13 @@ Automatically stores team progress information in the background after conversat
 
 For optimal workspace memory integration with Cursor, Claude Code, and other AI assistants:
 
-**+ When users are about to implement a new feature in the project, please use `cipher_workspace_search` to get the latest updates on the project's progress across the team**
+```
++ When users are about to implement a new feature in the project, please use `cipher_workspace_search` to get the latest updates on the project's progress across the team.
 
-**+ When users finished a new feature or implemented it partially, ideally at the end of that generation, store the progress using `cipher_workspace_memory`. Remember to provide sufficient information for the storage payload.**
++ When users finished a new feature or implemented it partially, ideally at the end of that generation, store the progress using `cipher_workspace_memory`. Remember to provide sufficient information for the storage payload
 
-**+ When users ask for team members' progress, provide enough context for the `cipher_workspace_search` tool, such as project name, repository, and present the results in a table format.**
-
++ When users ask for team members' progress, provide enough context for the `cipher_workspace_search` tool, such as project name, repository, and present the results in a table format.
+```
 ## Examples
 
 ### Progress Updates
