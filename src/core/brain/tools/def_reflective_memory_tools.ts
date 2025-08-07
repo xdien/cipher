@@ -12,6 +12,8 @@
 import { z } from 'zod';
 import { logger } from '../../logger/index.js';
 import type { InternalTool, InternalToolContext } from './types.js';
+import { rewriteUserQuery } from './definitions/memory/search_memory.js';
+import { env } from '../../env.js';
 
 /**
  * Core Types and Schemas
@@ -108,6 +110,7 @@ export const searchReasoningInputSchema = z.object({
 			maxResults: z.number().min(1).max(50).default(10),
 			minQualityScore: z.number().min(0).max(1).default(0.3),
 			includeEvaluations: z.boolean().default(true),
+			enable_query_refinement: z.boolean().default(false),
 		})
 		.optional()
 		.default({}),
@@ -744,6 +747,11 @@ export const searchReasoningPatterns: InternalTool = {
 						description: 'Whether to deduplicate similar queries within the same session',
 						default: true,
 					},
+					enable_query_refinement: {
+						type: 'boolean',
+						description: 'Whether to apply query refinement for better search results (default: false)',
+						default: false,
+					},
 				},
 			},
 		},
@@ -809,6 +817,28 @@ export const searchReasoningPatterns: InternalTool = {
 			let usedMock = false;
 			let fallback = false;
 
+			// Apply input refinement if enabled
+			let finalQueries: string[] = [input.query];
+			const enableQueryRefinement = (input.options?.enable_query_refinement === true) || (env.ENABLE_QUERY_REFINEMENT === true);
+			
+			if (enableQueryRefinement && _context?.services?.llmService) {
+				try {
+					const rewrittenQueries = await rewriteUserQuery(input.query, _context.services.llmService);
+					finalQueries = rewrittenQueries.queries;
+					logger.debug('ReasoningPatternSearch: Applied query refinement', {
+						originalQuery: input.query,
+						refinedQueries: finalQueries,
+						queryCount: finalQueries.length,
+					});
+				} catch (refinementError) {
+					logger.warn('ReasoningPatternSearch: Query refinement failed, using original query', {
+						error: refinementError instanceof Error ? refinementError.message : String(refinementError),
+					});
+					// Keep original query if refinement fails
+					finalQueries = [input.query];
+				}
+			}
+
 			if (
 				_context &&
 				_context.services &&
@@ -826,11 +856,12 @@ export const searchReasoningPatterns: InternalTool = {
 						logger.debug('ReasoningPatternSearch: Generating embedding for query', {
 							queryLength: input.query.length,
 							queryPreview: input.query.substring(0, 50),
+							refinedQueryCount: finalQueries.length,
 						});
 
-						let queryEmbedding;
+						let queryEmbeddings: number[][];
 						try {
-							queryEmbedding = await embedder.embed(input.query);
+							queryEmbeddings = await embedder.embedBatch(finalQueries);
 						} catch (embedError) {
 							logger.error(
 								'ReasoningPatternSearch: Failed to generate embedding, disabling embeddings globally',
@@ -867,8 +898,8 @@ export const searchReasoningPatterns: InternalTool = {
 						}
 
 						logger.debug('ReasoningPatternSearch: Embedding generated successfully', {
-							embeddingDimensions: Array.isArray(queryEmbedding)
-								? queryEmbedding.length
+							embeddingDimensions: Array.isArray(queryEmbeddings[0])
+								? queryEmbeddings[0].length
 								: 'unknown',
 						});
 
@@ -894,8 +925,8 @@ export const searchReasoningPatterns: InternalTool = {
 						}
 
 						if (store && typeof store.search === 'function') {
-							// Use the generated embedding for search
-							patterns = await store.search(queryEmbedding, input.options?.maxResults || 10);
+							// Use the first embedding for search (or combine results from all embeddings)
+							patterns = await store.search(queryEmbeddings[0], input.options?.maxResults || 10);
 							usedMock = false;
 							logger.debug('ReasoningPatternSearch: Successfully accessed vector store', {
 								isDualManager,
@@ -974,6 +1005,9 @@ export const searchReasoningPatterns: InternalTool = {
 						totalResults: filteredPatterns.length,
 						usedMock,
 						fallback,
+						queryRefinementApplied: finalQueries.length > 1,
+						originalQuery: input.query,
+						refinedQueries: finalQueries,
 					},
 				},
 				metadata: {

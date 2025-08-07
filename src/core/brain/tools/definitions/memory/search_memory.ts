@@ -95,8 +95,8 @@ export const searchMemoryTool: InternalTool = {
             },
             enable_query_refinement: {
                 type: 'boolean',
-                description: 'Whether to apply query refinement for better search results (default: true)',
-                default: true,
+                description: 'Whether to apply query refinement for better search results (default: false)',
+                default: false,
             },
         },
         required: ['query'],
@@ -187,7 +187,7 @@ export const searchMemoryTool: InternalTool = {
             const originalQuery = args.query.trim();
             const topK = Math.max(1, Math.min(50, args.top_k || 5));
             const similarityThreshold = Math.max(0.0, Math.min(1.0, args.similarity_threshold || 0.3));
-            const enableQueryRefinement = args.enable_query_refinement !== false && env.ENABLE_QUERY_REFINEMENT !== false;
+            const enableQueryRefinement = (args.enable_query_refinement === true) || (env.ENABLE_QUERY_REFINEMENT === true);
 
             // Get required services from context
             if (!context?.services) {

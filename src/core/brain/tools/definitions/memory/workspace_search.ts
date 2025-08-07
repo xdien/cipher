@@ -129,6 +129,11 @@ export const workspaceSearchTool: InternalTool = {
 				description: 'Whether to include detailed metadata in results (default: true)',
 				default: true,
 			},
+			enable_query_refinement: {
+				type: 'boolean',
+				description: 'Whether to apply query refinement for better search results (default: false)',
+				default: false,
+			},
 		},
 		required: ['query'],
 	},
@@ -255,7 +260,8 @@ export const workspaceSearchTool: InternalTool = {
 				queryPreview: originalQuery.substring(0, 50),
 			});
 			let queries: string[] = [originalQuery];
-			if (env.ENABLE_QUERY_REFINEMENT) {
+			const enableQueryRefinement = (args.enable_query_refinement === true) || (env.ENABLE_QUERY_REFINEMENT === true);
+			if (enableQueryRefinement) {
 				const rewrittenQueries = await rewriteUserQuery(originalQuery, context?.services?.llmService);
 				logger.debug('WorkspaceSearch: Rewritten queries', {
 					rewrittenQueries,

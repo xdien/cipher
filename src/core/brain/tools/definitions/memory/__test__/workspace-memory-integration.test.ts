@@ -39,6 +39,10 @@ describe('Workspace Memory Integration Tests', () => {
 		// Mock embedder with configuration
 		mockEmbedder = {
 			embed: vi.fn().mockResolvedValue([0.1, 0.2, 0.3, 0.4, 0.5]),
+			embedBatch: vi.fn().mockImplementation((queries: string[]) => {
+				// Return embeddings for each query
+				return Promise.resolve(queries.map(() => [0.1, 0.2, 0.3, 0.4, 0.5]));
+			}),
 			getConfig: vi.fn().mockReturnValue({ type: 'openai' }),
 		};
 
@@ -160,7 +164,7 @@ describe('Workspace Memory Integration Tests', () => {
 
 			expect(result.success).toBe(true);
 			expect(mockEmbeddingManager.getEmbedder).toHaveBeenCalledWith('default');
-			expect(mockEmbedder.embed).toHaveBeenCalledWith('What is John working on?');
+			expect(mockEmbedder.embedBatch).toHaveBeenCalledWith(['What is John working on?']);
 			expect(result.results).toHaveLength(1);
 			expect(result.results[0].teamMember).toBe('John');
 		});
@@ -169,7 +173,7 @@ describe('Workspace Memory Integration Tests', () => {
 			process.env.USE_WORKSPACE_MEMORY = 'true';
 
 			// Mock embedding failure
-			mockEmbedder.embed.mockRejectedValueOnce(new Error('OpenAI API error'));
+			mockEmbedder.embedBatch.mockRejectedValueOnce(new Error('OpenAI API error'));
 
 			const args = { query: 'test query' };
 			const result = await workspaceSearchTool.handler(args, mockContext);

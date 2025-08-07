@@ -517,6 +517,10 @@ Query 5: authentication security practices error handling
 			it('should use original query when refinement is disabled', async () => {
 				const originalQuery = 'What is TypeScript?';
 				
+				// Mock environment variable as false for this test
+				const { env } = await import('../../../../../env.js');
+				vi.mocked(env).ENABLE_QUERY_REFINEMENT = false;
+				
 				const args = {
 					query: originalQuery,
 					enable_query_refinement: false,
@@ -815,6 +819,10 @@ Query 3: Java JavaScript differences
 
 			it('should compare refined vs unrefined search performance', async () => {
 				const originalQuery = 'How to implement authentication?';
+				
+				// Mock environment variable as false for the disabled test
+				const { env } = await import('../../../../../env.js');
+				vi.mocked(env).ENABLE_QUERY_REFINEMENT = false;
 				
 				// Test with refinement disabled
 				mockLLMService.directGenerate.mockClear();
