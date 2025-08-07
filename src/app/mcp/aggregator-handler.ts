@@ -163,8 +163,12 @@ async function registerAggregatedTools(
 		inputSchema: (tool as any).parameters,
 	}));
 
-	// For backward compatibility, ensure ask_cipher is always present
-	if (!mcpTools.find(t => t.name === 'ask_cipher')) {
+	// Check if ask_cipher tool should be exposed (only in aggregator mode)
+	const useAskCipher = process.env.USE_ASK_CIPHER?.toLowerCase();
+	const shouldExposeAskCipher = useAskCipher !== 'false'; // Default to true if not set or not 'false'
+
+	// For backward compatibility, ensure ask_cipher is present if enabled
+	if (shouldExposeAskCipher && !mcpTools.find(t => t.name === 'ask_cipher')) {
 		mcpTools.push({
 			name: 'ask_cipher',
 			description:
@@ -196,6 +200,10 @@ async function registerAggregatedTools(
 		`[Aggregator Handler] Registering ${mcpTools.length} tools: ${mcpTools.map(t => t.name).join(', ')}`
 	);
 
+	if (!shouldExposeAskCipher) {
+		logger.info('[Aggregator Handler] ask_cipher tool is disabled (USE_ASK_CIPHER=false)');
+	}
+
 	// Register list tools handler (using default mode's working logic)
 	server.setRequestHandler(ListToolsRequestSchema, async () => {
 		return { tools: mcpTools };
@@ -206,7 +214,14 @@ async function registerAggregatedTools(
 		const { name, arguments: args } = request.params;
 		logger.info(`[Aggregator Handler] Tool called: ${name}`, { toolName: name, args });
 
+		// Check if ask_cipher tool should be handled (only in aggregator mode)
+		const useAskCipher = process.env.USE_ASK_CIPHER?.toLowerCase();
+		const shouldExposeAskCipher = useAskCipher !== 'false'; // Default to true if not set or not 'false'
+
 		if (name === 'ask_cipher') {
+			if (!shouldExposeAskCipher) {
+				throw new Error('ask_cipher tool is disabled in this aggregator configuration');
+			}
 			return await handleAskCipherTool(agent, args);
 		}
 
