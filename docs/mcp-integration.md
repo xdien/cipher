@@ -86,20 +86,20 @@ cipher --mode mcp --mcp-transport-type sse --mcp-port 4000
 }
 ```
 
-### HTTP Transport
+### Streamable HTTP Transport
 
-Direct HTTP communication:
+Direct HTTP communication with streaming:
 
 ```bash
-# Start Cipher with HTTP transport
-cipher --mode mcp --mcp-transport-type http --mcp-port 4000
+# Start Cipher with streamable HTTP transport
+cipher --mode mcp --mcp-transport-type streamable-http --mcp-port 4000
 ```
 
 ```json
 {
 	"mcpServers": {
 		"cipher-http": {
-			"type": "http", 
+			"type": "streamable-http", 
 			"url": "http://localhost:4000/mcp",
 			"env": {
 				"OPENAI_API_KEY": "sk-your-key"

@@ -172,6 +172,22 @@ WORKSPACE_VECTOR_STORE_COLLECTION=workspace_memory
 AWS_ACCESS_KEY_ID=your-aws-access-key
 AWS_SECRET_ACCESS_KEY=your-aws-secret-key
 AWS_DEFAULT_REGION=us-east-1
+
+# ====================
+# Advanced Options (Optional)
+# ====================
+# Logging and debugging
+CIPHER_LOG_LEVEL=info  # error, warn, info, debug, silly
+REDACT_SECRETS=true
+
+# Vector store configuration
+VECTOR_STORE_DIMENSION=1536
+VECTOR_STORE_DISTANCE=Cosine  # Cosine, Euclidean, Dot, Manhattan
+VECTOR_STORE_MAX_VECTORS=10000
+
+# Memory search configuration
+SEARCH_MEMORY_TYPE=both  # knowledge, reflection, both
+DISABLE_REFLECTION_MEMORY=false
 ```
 
 > **💡 Tip:** Copy `.env.example` to `.env` and fill in your values:

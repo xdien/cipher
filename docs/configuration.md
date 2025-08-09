@@ -35,7 +35,7 @@ Configure embeddings in `memAgent/cipher.yml`. If not specified, uses automatic 
 | **OpenAI**       | `type: openai`      | `text-embedding-3-small`       | No                         |
 | **Gemini**       | `type: gemini`      | `gemini-embedding-001`         | No                         |
 | **Qwen**         | `type: qwen`        | `text-embedding-v3`            | Yes (1024, 768, 512)       |
-| **Voyage**       | `type: voyage`      | `voyage-3-large`               | Yes (1024, 256, 512, 2048) |
+| **Voyage**       | `type: voyage`      | `voyage-3-large`               | Yes (1024 only)             |
 | **AWS Bedrock**  | `type: aws-bedrock` | `amazon.titan-embed-text-v2:0` | Yes (1024, 512, 256)       |
 | **Azure OpenAI** | `type: openai`      | `text-embedding-3-small`       | No                         |
 | **Ollama**       | `type: ollama`      | `nomic-embed-text`             | No                         |
@@ -72,12 +72,12 @@ embedding:
   apiKey: $AZURE_OPENAI_API_KEY
   baseUrl: $AZURE_OPENAI_ENDPOINT
 
-# Voyage (fixed dimensions - must specify)
+# Voyage (fixed dimensions - always 1024)
 embedding:
   type: voyage
   model: voyage-3-large
   apiKey: $VOYAGE_API_KEY
-  dimensions: 1024  # Required: 1024, 256, 512, or 2048
+  # Note: Voyage models use fixed 1024 dimensions
 
 # LM Studio (local, no API key required)
 embedding:

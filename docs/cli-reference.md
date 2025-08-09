@@ -49,7 +49,7 @@ cipher [options] [prompt]
 
 | Option | Description | Default | Example |
 |--------|-------------|---------|---------|
-| `--mcp-transport-type <type>` | Transport: `stdio`, `sse`, `http` | stdio | `cipher --mode mcp --mcp-transport-type sse` |
+| `--mcp-transport-type <type>` | Transport: `stdio`, `sse`, `streamable-http` | stdio | `cipher --mode mcp --mcp-transport-type sse` |
 | `--mcp-port <number>` | MCP server port (for SSE/HTTP) | 3000 | `cipher --mode mcp --mcp-port 4000` |
 | `--timeout <ms>` | Tool execution timeout | 60000 | `cipher --mode mcp --timeout 120000` |
 
@@ -171,13 +171,37 @@ When running in CLI mode, use these commands within the session:
 | `/clear` | Clear screen | `/clear` |
 | `/exit` | Exit Cipher | `/exit` |
 
-### Memory Commands
+### Available CLI Commands (Actual Implementation)
 
 | Command | Description | Example |
 |---------|-------------|---------|
-| `/memory search <query>` | Search memory | `/memory search authentication` |
-| `/memory stats` | Memory statistics | `/memory stats` |
-| `/memory clear` | Clear session memory | `/memory clear` |
+| `/help [command]` | Show help information | `/help session` |
+| `/exit` | Exit the CLI session | `/exit` |
+| `/clear` | Reset conversation history for current session | `/clear` |
+| `/config` | Display current configuration | `/config` |
+| `/stats` | Show system statistics and metrics | `/stats` |
+| `/tools` | List all available tools | `/tools` |
+| `/prompt` | Display current system prompt | `/prompt` |
+| `/session <subcommand>` | Manage conversation sessions | `/session list` |
+
+### Session Management Subcommands
+
+| Subcommand | Description | Example |
+|------------|-------------|---------|
+| `/session list` | List all sessions with status and activity | `/session list` |
+| `/session new [name]` | Create new session (optional custom name) | `/session new project-alpha` |
+| `/session switch <id>` | Switch to different session | `/session switch default` |
+| `/session current` | Show current session info | `/session current` |
+| `/session delete <id>` | Delete session (cannot delete active) | `/session delete old-session` |
+| `/session delete all` | Delete all sessions except active | `/session delete all` |
+
+### Advanced Commands
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/prompt-stats` | Show system prompt performance statistics | `/prompt-stats --detailed` |
+| `/prompt-providers <subcommand>` | Manage system prompt providers | `/prompt-providers list` |
+| `/show-prompt` | Display system prompt with enhanced formatting | `/show-prompt --detailed` |
 
 ## Configuration File
 

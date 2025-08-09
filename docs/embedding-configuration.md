@@ -16,7 +16,7 @@ Embeddings convert text into numerical vectors that represent semantic meaning. 
 | **OpenAI**       | `type: openai`      | `text-embedding-3-small`       | No                         |
 | **Gemini**       | `type: gemini`      | `gemini-embedding-001`         | No                         |
 | **Qwen**         | `type: qwen`        | `text-embedding-v3`            | Yes (1024, 768, 512)       |
-| **Voyage**       | `type: voyage`      | `voyage-3-large`               | Yes (1024, 256, 512, 2048) |
+| **Voyage**       | `type: voyage`      | `voyage-3-large`               | Yes (1024 only)            |
 | **AWS Bedrock**  | `type: aws-bedrock` | `amazon.titan-embed-text-v2:0` | Yes (1024, 512, 256)       |
 | **Azure OpenAI** | `type: openai`      | `text-embedding-3-small`       | No                         |
 | **Ollama**       | `type: ollama`      | `nomic-embed-text`             | No                         |
@@ -75,7 +75,7 @@ embedding:
   type: voyage
   model: voyage-3-large
   apiKey: $VOYAGE_API_KEY
-  dimensions: 1024  # Required: 1024, 256, 512, or 2048
+  # Note: Voyage models use fixed 1024 dimensions
 ```
 
 **Supported Models:**
@@ -83,7 +83,7 @@ embedding:
 - `voyage-3-medium` - Balanced
 - `voyage-3-small` - Compact
 
-**Dimensions:** Must specify one of: `1024`, `256`, `512`, `2048`
+**Dimensions:** Fixed at 1024 (automatically configured)
 
 ### AWS Bedrock (Fixed Dimensions)
 
@@ -167,19 +167,6 @@ llm:
   apiKey: $ANTHROPIC_API_KEY
 # No embedding config = auto-fallback to Voyage
 ```
-
-### Fallback Mapping
-
-| LLM Provider     | Auto-Selected Embedding | Required Env Var      |
-| ---------------- | ----------------------- | --------------------- |
-| **Anthropic**    | Voyage                  | `VOYAGE_API_KEY`      |
-| **AWS Bedrock**  | AWS Bedrock             | (same AWS creds)      |
-| **Azure OpenAI** | Azure OpenAI            | (same Azure creds)    |
-| **Qwen**         | Qwen                    | (same Qwen API key)   |
-| **LM Studio**    | LM Studio               | (none, local)         |
-| **Ollama**       | Ollama                  | (none, local)         |
-| **OpenAI**       | OpenAI                  | (same OpenAI API key) |
-| **Gemini**       | Gemini                  | (same Gemini API key) |
 
 ## Disabling Embeddings (Chat-Only Mode)
 
