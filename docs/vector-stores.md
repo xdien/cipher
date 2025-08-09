@@ -277,26 +277,6 @@ Ensure your vector store dimensions match your embedding model:
 
 ## Troubleshooting
 
-### Connection Issues
-
-**Qdrant Connection Failed**
-```
-Error: Failed to connect to Qdrant
-```
-**Solutions:**
-- Check URL format: `http://localhost:6333` or `https://cluster.qdrant.io`
-- Verify API key is correct
-- Ensure Qdrant service is running
-
-**Milvus Connection Failed**
-```
-Error: Cannot connect to Milvus
-```
-**Solutions:**
-- Verify endpoint URL format
-- Check username/password credentials
-- Ensure Milvus service is accessible
-
 ### Dimension Mismatch
 
 **Dimension Error**

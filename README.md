@@ -45,6 +45,7 @@ npm install @byterover/cipher
 ```
 
 ### Docker
+
 <details>
 <summary>Show Docker Setup</summary>
 
@@ -96,9 +97,11 @@ cipher --mode mcp
 # Web UI mode
 cipher --mode ui
 ```
+
 > **⚠️ Note:** When running MCP mode in terminal/shell, export all environment variables as Cipher won't read from `.env` file.
 >
 > **💡 Tip:** CLI mode automatically continues or creates the "default" session. Use `/session new <session-name>` to start a fresh session.
+
 </details>
 
 ![Cipher Web UI](./assets/cipher_webUI.png)
@@ -202,6 +205,7 @@ VECTOR_STORE_MAX_VECTORS=10000
 SEARCH_MEMORY_TYPE=both  # knowledge, reflection, both
 DISABLE_REFLECTION_MEMORY=false
 ```
+
 > **💡 Tip:** Copy `.env.example` to `.env` and fill in your values:
 >
 > ```bash
@@ -209,8 +213,6 @@ DISABLE_REFLECTION_MEMORY=false
 > ```
 
 </details>
-
-
 
 ## MCP Server Usage
 
