@@ -262,7 +262,7 @@ export async function startInteractiveCli(agent: MemAgent): Promise<void> {
 /**
  * Start MCP server mode for Model Context Protocol integration
  */
-export async function startMcpMode(agent: MemAgent): Promise<void> {
+export async function startMcpMode(agent: MemAgent, opts?: any): Promise<void> {
 	// DO NOT use console.log in MCP mode - it interferes with stdio protocol
 	// Log redirection is already done in index.ts before calling this function
 
@@ -278,11 +278,11 @@ export async function startMcpMode(agent: MemAgent): Promise<void> {
 	try {
 		switch (mcpServerMode) {
 			case 'aggregator':
-				await startAggregatorMode(agent);
+				await startAggregatorMode(agent, opts);
 				break;
 			case 'default':
 			default:
-				await startDefaultMcpMode(agent);
+				await startDefaultMcpMode(agent, opts);
 				break;
 		}
 	} catch (error) {
@@ -295,7 +295,7 @@ export async function startMcpMode(agent: MemAgent): Promise<void> {
 /**
  * Start the default MCP server mode with ask_cipher tool
  */
-async function startDefaultMcpMode(agent: MemAgent): Promise<void> {
+async function startDefaultMcpMode(agent: MemAgent, opts?: any): Promise<void> {
 	// Import MCP handler functions
 	const { createMcpTransport, initializeMcpServer, initializeAgentCardResource } = await import(
 		'../mcp/mcp_handler.js'
@@ -311,24 +311,78 @@ async function startDefaultMcpMode(agent: MemAgent): Promise<void> {
 		: {};
 	const agentCardData = initializeAgentCardResource(agentCardInput);
 
-	// Create stdio transport (primary transport for MCP mode)
-	logger.info('[MCP Mode] Creating stdio transport for default MCP server');
-	const mcpTransport = await createMcpTransport('stdio');
+	// Get transport type and configuration from CLI options
+	const transportType = opts?.mcpTransportType || 'stdio';
+	const mcpPort = opts?.mcpPort ? parseInt(opts.mcpPort, 10) : undefined;
+	const mcpHost = opts?.mcpHost || 'localhost';
+	const mcpDnsRebindingProtection = opts?.mcpDnsRebindingProtection || false;
 
 	// Initialize MCP server with agent capabilities (default mode)
 	logger.info('[MCP Mode] Initializing default MCP server with agent capabilities');
 	const server = await initializeMcpServer(agent, agentCardData, 'default');
-	await server.connect(mcpTransport.server);
+
+	// Create transport for MCP mode
+	logger.info(`[MCP Mode] Creating ${transportType} transport for default MCP server`);
+	const mcpTransportResult = await createMcpTransport(
+		transportType,
+		mcpPort,
+		server,
+		mcpHost,
+		mcpDnsRebindingProtection
+	);
+
+	// Handle transport connection based on type
+	if (transportType === 'stdio') {
+		// For stdio, connect server to transport
+		await server.connect(mcpTransportResult.server);
+	} else {
+		// For HTTP-based transports (SSE/streamable-http), the HTTP server handles connections
+		// The server is already connected via the HTTP server setup
+		logger.info(`[MCP Mode] HTTP server started for ${transportType} transport`);
+	}
+
+	// Set up graceful shutdown handling
+	let isShuttingDown = false;
+	const handleShutdown = async () => {
+		if (isShuttingDown) return;
+		isShuttingDown = true;
+
+		logger.info('[MCP Mode] Shutting down default MCP server...');
+
+		if (mcpTransportResult.cleanup) {
+			try {
+				await mcpTransportResult.cleanup();
+			} catch (error) {
+				logger.error(
+					'[MCP Mode] Error during cleanup:',
+					error instanceof Error ? error.message : String(error)
+				);
+			}
+		}
+
+		logger.info('[MCP Mode] Default MCP server stopped');
+		process.exit(0);
+	};
+
+	// Register shutdown handlers
+	process.on('SIGTERM', handleShutdown);
+	process.on('SIGINT', handleShutdown);
 
 	// Server is now running - keep process alive
 	logger.info('[MCP Mode] Cipher agent is now running as default MCP server');
-	process.stdin.resume();
+
+	if (transportType === 'stdio') {
+		process.stdin.resume();
+	} else {
+		// For HTTP transports, keep the event loop active
+		setInterval(() => {}, 1000);
+	}
 }
 
 /**
  * Start the aggregator MCP server mode
  */
-async function startAggregatorMode(agent: MemAgent): Promise<void> {
+async function startAggregatorMode(agent: MemAgent, opts?: any): Promise<void> {
 	// Import MCP handler functions
 	const { createMcpTransport, initializeMcpServer, initializeAgentCardResource } = await import(
 		'../mcp/mcp_handler.js'
@@ -347,18 +401,72 @@ async function startAggregatorMode(agent: MemAgent): Promise<void> {
 		: {};
 	const agentCardData = initializeAgentCardResource(agentCardInput);
 
-	// Create stdio transport (primary transport for MCP mode)
-	logger.info('[MCP Mode] Creating stdio transport for aggregator MCP server');
-	const mcpTransport = await createMcpTransport('stdio');
+	// Get transport type and configuration from CLI options
+	const transportType = opts?.mcpTransportType || 'stdio';
+	const mcpPort = opts?.mcpPort ? parseInt(opts.mcpPort, 10) : undefined;
+	const mcpHost = opts?.mcpHost || 'localhost';
+	const mcpDnsRebindingProtection = opts?.mcpDnsRebindingProtection || false;
 
 	// Initialize MCP server with agent capabilities (aggregator mode)
 	logger.info('[MCP Mode] Initializing aggregator MCP server with agent capabilities');
 	const server = await initializeMcpServer(agent, agentCardData, 'aggregator', aggregatorConfig);
-	await server.connect(mcpTransport.server);
+
+	// Create transport for MCP mode
+	logger.info(`[MCP Mode] Creating ${transportType} transport for aggregator MCP server`);
+	const mcpTransportResult = await createMcpTransport(
+		transportType,
+		mcpPort,
+		server,
+		mcpHost,
+		mcpDnsRebindingProtection
+	);
+
+	// Handle transport connection based on type
+	if (transportType === 'stdio') {
+		// For stdio, connect server to transport
+		await server.connect(mcpTransportResult.server);
+	} else {
+		// For HTTP-based transports (SSE/streamable-http), the HTTP server handles connections
+		// The server is already connected via the HTTP server setup
+		logger.info(`[MCP Mode] HTTP server started for ${transportType} transport`);
+	}
+
+	// Set up graceful shutdown handling
+	let isShuttingDown = false;
+	const handleShutdown = async () => {
+		if (isShuttingDown) return;
+		isShuttingDown = true;
+
+		logger.info('[MCP Mode] Shutting down aggregator MCP server...');
+
+		if (mcpTransportResult.cleanup) {
+			try {
+				await mcpTransportResult.cleanup();
+			} catch (error) {
+				logger.error(
+					'[MCP Mode] Error during cleanup:',
+					error instanceof Error ? error.message : String(error)
+				);
+			}
+		}
+
+		logger.info('[MCP Mode] Aggregator MCP server stopped');
+		process.exit(0);
+	};
+
+	// Register shutdown handlers
+	process.on('SIGTERM', handleShutdown);
+	process.on('SIGINT', handleShutdown);
 
 	// Server is now running - keep process alive
 	logger.info('[MCP Mode] Cipher is now running as aggregator MCP server');
-	process.stdin.resume();
+
+	if (transportType === 'stdio') {
+		process.stdin.resume();
+	} else {
+		// For HTTP transports, keep the event loop active
+		setInterval(() => {}, 1000);
+	}
 }
 
 /**

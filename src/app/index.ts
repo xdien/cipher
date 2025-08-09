@@ -106,7 +106,17 @@ program
 		'MCP transport type (stdio, sse, streamable-http)',
 		'stdio'
 	)
-	.option('--mcp-port <port>', 'Port for MCP server (only used with sse, streamable-http)', '3000');
+	.option('--mcp-port <port>', 'Port for MCP server (only used with sse, streamable-http)', '3000')
+	.option(
+		'--mcp-host <host>',
+		'Host for MCP server (only used with sse, streamable-http)',
+		'localhost'
+	)
+	.option(
+		'--mcp-dns-rebinding-protection',
+		'Enable DNS rebinding protection for MCP server',
+		false
+	);
 
 program
 	.description(
@@ -183,7 +193,7 @@ program
 		) {
 			// Use MCP-safe error reporting
 			const errorMsg =
-				'No API key or Ollama configuration found, please set at least one of OPENAI_API_KEY, ANTHROPIC_API_KEY, OPENROUTER_API_KEY, or OLLAMA_BASE_URL in your environment variables \nAvailable providers: OpenAI, Anthropic, OpenRouter, Ollama, Qwen';
+				'No API key or Ollama configuration found, please set at least one of OPENAI_API_KEY, ANTHROPIC_API_KEY, OPENROUTER_API_KEY, or OLLAMA_BASE_URL in your environment variables \nAvailable providers: OpenAI, Anthropic, OpenRouter, Ollama, Qwen, Gemini, Azure, AWS, LM Studio';
 
 			if (opts.mode === 'mcp') {
 				process.stderr.write(`[CIPHER-MCP] ERROR: ${errorMsg}\n`);
@@ -485,7 +495,7 @@ program
 				await startInteractiveCli(agent);
 				break;
 			case 'mcp':
-				await startMcpMode(agent);
+				await startMcpMode(agent, opts);
 				break;
 			case 'api':
 				await startApiMode(agent, opts);

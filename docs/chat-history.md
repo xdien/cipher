@@ -119,7 +119,7 @@ If PostgreSQL is not configured, Cipher automatically uses SQLite:
 
 ```bash
 # .env
-SQLITE_DATABASE_PATH="/custom/path/to/cipher.db"
+STORAGE_DATABASE_PATH="/custom/path/to/cipher.db"
 ```
 
 **Features:**
@@ -134,7 +134,7 @@ For testing and development only:
 
 ```bash
 # .env
-STORAGE_TYPE="memory"
+STORAGE_DATABASE_TYPE="in-memory"
 ```
 
 **Characteristics:**
@@ -210,8 +210,8 @@ Cipher uses consistent key patterns for data organization:
 | `STORAGE_DATABASE_USER` | Username | None | No |
 | `STORAGE_DATABASE_PASSWORD` | Password | None | No |
 | `STORAGE_DATABASE_SSL` | Enable SSL | false | No |
-| `SQLITE_DATABASE_PATH` | Custom SQLite location | ./data/cipher.db | No |
-| `STORAGE_TYPE` | Force storage type | auto | No |
+| `STORAGE_DATABASE_PATH` | Custom SQLite location | ./data/cipher.db | No |
+| `STORAGE_DATABASE_TYPE` | Force storage type | in-memory | No |
 
 ## Fallback Behavior
 

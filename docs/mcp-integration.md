@@ -65,7 +65,7 @@ Standard input/output transport - most widely supported:
 
 ### SSE Transport (Server-Sent Events)
 
-Real-time transport over HTTP:
+Real-time transport over HTTP. Endpoint: `/sse`.
 
 ```bash
 # Start Cipher with SSE transport
@@ -74,40 +74,36 @@ cipher --mode mcp --mcp-transport-type sse --mcp-port 4000
 
 ```json
 {
-	"mcpServers": {
-		"cipher-sse": {
-			"type": "sse",
-			"url": "http://localhost:4000/mcp",
-			"env": {
-				"OPENAI_API_KEY": "sk-your-key"
-			}
-		}
-	}
+  "mcpServers": {
+    "cipher-sse": {
+      "url": "http://localhost:4000/sse"
+    }
+  }
 }
 ```
 
-### Streamable HTTP Transport
+### Streamable-HTTP Transport
 
-Direct HTTP communication with streaming:
+HTTP request/response with streaming. Endpoint base: `/http`.
 
 ```bash
-# Start Cipher with streamable HTTP transport
+# Start Cipher with streamable-HTTP transport
 cipher --mode mcp --mcp-transport-type streamable-http --mcp-port 4000
 ```
 
 ```json
 {
-	"mcpServers": {
-		"cipher-http": {
-			"type": "streamable-http", 
-			"url": "http://localhost:4000/mcp",
-			"env": {
-				"OPENAI_API_KEY": "sk-your-key"
-			}
-		}
-	}
+  "mcpServers": {
+    "cipher-http": {
+      "url": "http://localhost:4000/http"
+    }
+  }
 }
 ```
+
+Note: Clients must send the correct Accept headers per spec. Examples:
+- GET `/http`: `Accept: text/event-stream`
+- POST `/http`: `Accept: application/json, text/event-stream` and `Content-Type: application/json`
 
 ## MCP Server Modes
 
@@ -159,12 +155,13 @@ Exposes **all available tools** including memory tools and connected MCP server 
 ```
 
 **Available Tools:**
-- `ask_cipher` - Main conversational interface
-- `cipher_memory_search` - Search stored memories
-- `cipher_extract_and_operate_memory` - Extract and store memories
-- `cipher_store_reasoning_memory` - Store reasoning patterns
-- `cipher_search_reasoning_patterns` - Search reasoning history
-- All tools from connected MCP servers (defined in `cipher.yml`)
+- All built-in Cipher tools:
+  - `ask_cipher` - Main conversational interface
+  - `cipher_memory_search` - Search stored memories
+  - `cipher_extract_and_operate_memory` - Extract and store memories
+  - `cipher_store_reasoning_memory` - Store reasoning patterns
+  - `cipher_search_reasoning_patterns` - Search reasoning history
+- Plus all tools from connected MCP servers (defined in `cipher.yml`)
 
 ## Aggregator Configuration
 
@@ -173,8 +170,11 @@ Exposes **all available tools** including memory tools and connected MCP server 
 | Variable | Description | Options | Default |
 |----------|-------------|---------|---------|
 | `MCP_SERVER_MODE` | Server mode | `default`, `aggregator` | `default` |
+| `USE_ASK_CIPHER` | Enable/disable ask_cipher tool (only LLM-requiring tool) | `true`, `false` | `true` |
 | `AGGREGATOR_CONFLICT_RESOLUTION` | Handle tool name conflicts | `prefix`, `first-wins`, `error` | `prefix` |
 | `AGGREGATOR_TIMEOUT` | Tool execution timeout (ms) | Number | `60000` |
+
+**Note:** When `USE_ASK_CIPHER=false`, the `ask_cipher` tool is disabled, which is the only tool requiring LLM functionality. However, API keys are still required for embedding models used by memory and reasoning tools (`cipher_memory_search`, `cipher_extract_and_operate_memory`, etc.).
 
 ### Conflict Resolution Strategies
 
@@ -227,20 +227,13 @@ Add to your Claude Desktop MCP configuration:
 
 ### Cursor
 
-Add to Cursor's MCP configuration:
+Add to Cursor's MCP configuration. Cursor URL entries are treated as SSE:
 
 ```json
 {
-	"mcpServers": {
-		"cipher": {
-			"type": "stdio",
-			"command": "cipher",
-			"args": ["--mode", "mcp"],
-			"env": {
-				"OPENAI_API_KEY": "sk-your-openai-key"
-			}
-		}
-	}
+  "mcpServers": {
+    "cipher-sse": { "url": "http://localhost:4000/sse" }
+  }
 }
 ```
 

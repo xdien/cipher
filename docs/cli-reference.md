@@ -17,12 +17,6 @@ cipher --mode mcp        # MCP server
 cipher --mode ui         # Web UI server
 ```
 
-## Command Syntax
-
-```
-cipher [prompt] [options]
-cipher [options] [prompt]
-```
 
 ## Global Options
 
@@ -50,7 +44,9 @@ cipher [options] [prompt]
 | Option | Description | Default | Example |
 |--------|-------------|---------|---------|
 | `--mcp-transport-type <type>` | Transport: `stdio`, `sse`, `streamable-http` | stdio | `cipher --mode mcp --mcp-transport-type sse` |
-| `--mcp-port <number>` | MCP server port (for SSE/HTTP) | 3000 | `cipher --mode mcp --mcp-port 4000` |
+| `--mcp-port <number>` | MCP server port (for `sse`/`streamable-http`) | 3000 (sse), 3001 (http) | `cipher --mode mcp --mcp-transport-type sse --mcp-port 4000` |
+| `--mcp-host <host>` | MCP server host (for `sse`/`streamable-http`) | localhost | `cipher --mode mcp --mcp-host 0.0.0.0 --mcp-transport-type sse` |
+| `--mcp-dns-rebinding-protection` | Enable DNS rebinding protection | false | `cipher --mode mcp --mcp-transport-type sse --mcp-dns-rebinding-protection` |
 | `--timeout <ms>` | Tool execution timeout | 60000 | `cipher --mode mcp --timeout 120000` |
 
 ### UI Mode Options
@@ -109,18 +105,26 @@ cipher --mode api --agent ./production-config.yml
 Model Context Protocol server:
 
 ```bash
-# Standard MCP server (stdio)
+# Standard MCP server (stdio transport - default)
 cipher --mode mcp
 
-# SSE transport
-cipher --mode mcp --mcp-transport-type sse --mcp-port 4000
+# Explicit stdio transport
+cipher --mode mcp --mcp-transport-type stdio
 
-# HTTP transport  
-cipher --mode mcp --mcp-transport-type http --mcp-port 4000
+# SSE transport (HTTP server)
+cipher --mode mcp --mcp-transport-type sse --mcp-port 3000
+
+# Streamable-HTTP transport (HTTP server)
+cipher --mode mcp --mcp-transport-type streamable-http --mcp-port 3001
 
 # Strict mode (reject invalid connections)
 cipher --mode mcp --strict
 ```
+
+**Transport Types:**
+- **stdio**: Direct process communication (default).
+- **sse**: Server-Sent Events over HTTP. Endpoint: `/sse`.
+- **streamable-http**: HTTP request/response with streaming. Endpoint: `/http`.
 
 **Environment Variables for MCP:**
 ```bash
@@ -246,8 +250,8 @@ AGGREGATOR_CONFLICT_RESOLUTION=prefix
 AGGREGATOR_TIMEOUT=60000
 
 # Transport settings
-MCP_TRANSPORT_TYPE=stdio  # stdio, sse, http
-MCP_PORT=3000
+MCP_TRANSPORT_TYPE=stdio     # stdio, sse, or streamable-http
+MCP_PORT=3000               # HTTP server port for sse/streamable-http transports
 ```
 
 ## Examples
@@ -261,7 +265,13 @@ VECTOR_STORE_TYPE=in-memory cipher
 cipher --mode api --port 8080 --cors
 
 # Test MCP integration
+cipher --mode mcp
+
+# Test MCP with SSE transport
 cipher --mode mcp --mcp-transport-type sse --mcp-port 4000
+
+# Test MCP with streamable-HTTP transport  
+cipher --mode mcp --mcp-transport-type streamable-http --mcp-port 5000
 ```
 
 ### Production Deployment
@@ -269,8 +279,14 @@ cipher --mode mcp --mcp-transport-type sse --mcp-port 4000
 # Production API server
 cipher --mode api --port 3000 --host 0.0.0.0 --agent /etc/cipher/production.yml
 
-# MCP server with custom timeout
+# MCP server with custom timeout (stdio)
 cipher --mode mcp --timeout 120000 --agent /etc/cipher/mcp-config.yml
+
+# Production MCP server with SSE transport
+cipher --mode mcp --mcp-transport-type sse --mcp-port 3000 --agent /etc/cipher/mcp-config.yml
+
+# Production MCP server with streamable-HTTP transport
+cipher --mode mcp --mcp-transport-type streamable-http --mcp-port 3001 --agent /etc/cipher/mcp-config.yml
 
 # Web UI for team access
 cipher --mode ui --ui-port 80 --ui-host 0.0.0.0
@@ -336,11 +352,22 @@ DEBUG=cipher:* cipher --mode api
 
 **MCP connection issues:**
 ```bash  
-# Test MCP server
-cipher --mode mcp --timeout 30000
+# Test MCP server with custom timeout
+cipher --mode mcp --timeout 120000
 
-# Check MCP transport
-cipher --mode mcp --mcp-transport-type http --mcp-port 4000
+# Test specific transport types
+cipher --mode mcp --mcp-transport-type sse --mcp-port 3000
+cipher --mode mcp --mcp-transport-type streamable-http --mcp-port 3001
+
+# Check HTTP endpoints
+# SSE (establish stream)
+curl -N -H "Accept: text/event-stream" http://localhost:3000/sse
+# Streamable-HTTP (client must send Accept headers)
+curl -sS -X POST \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":"1","method":"ping","params":{}}' \
+  http://localhost:3001/http
 ```
 
 ## Related Documentation

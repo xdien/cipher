@@ -32,10 +32,10 @@ VECTOR_STORE_API_KEY=your-qdrant-api-key
 
 ### Qdrant Local (Docker)
 
-Run Qdrant locally using Docker:
+Run Qdrant locally using Docker (official setup):
 
 ```bash
-# Start Qdrant with Docker
+# Start Qdrant with Docker (official command)
 docker run -p 6333:6333 qdrant/qdrant
 ```
 
@@ -46,6 +46,8 @@ VECTOR_STORE_HOST=localhost
 VECTOR_STORE_PORT=6333
 VECTOR_STORE_URL=http://localhost:6333
 ```
+
+**Important:** Before deploying to production, review the [Qdrant installation](https://qdrant.tech/documentation/guides/installation/) and [security](https://qdrant.tech/documentation/guides/security/) guides.
 
 ### Qdrant Docker Compose
 
@@ -90,12 +92,14 @@ VECTOR_STORE_PASSWORD=your-zilliz-password
 
 ### Milvus Local (Docker)
 
-Run Milvus locally:
+Run Milvus locally using the official installation script:
 
 ```bash
-# Download and run Milvus standalone
-wget https://github.com/milvus-io/milvus/releases/download/v2.3.0/milvus-standalone-docker-compose.yml -O docker-compose.yml
-docker compose up -d
+# Download the official installation script
+curl -sfL https://raw.githubusercontent.com/milvus-io/milvus/master/scripts/standalone_embed.sh -o standalone_embed.sh
+
+# Start the Docker container
+bash standalone_embed.sh start
 ```
 
 ```bash
@@ -103,6 +107,27 @@ docker compose up -d
 VECTOR_STORE_TYPE=milvus
 VECTOR_STORE_HOST=localhost
 VECTOR_STORE_PORT=19530
+```
+
+**Services Started:**
+- **Milvus server**: Port 19530
+- **Embedded etcd**: Port 2379  
+- **Web UI**: http://127.0.0.1:9091/webui/
+- **Data volume**: `volumes/milvus`
+
+**Service Management:**
+```bash
+# Restart Milvus
+bash standalone_embed.sh restart
+
+# Stop Milvus
+bash standalone_embed.sh stop
+
+# Upgrade Milvus
+bash standalone_embed.sh upgrade
+
+# Delete Milvus (removes all data)
+bash standalone_embed.sh delete
 ```
 
 ## In-Memory Vector Store
@@ -293,17 +318,6 @@ Error: Vector dimension mismatch
 **Memory Usage (In-Memory Store)**
 - Reduce `VECTOR_STORE_MAX_VECTORS` if memory is limited
 - Switch to external vector store for larger datasets
-
-## Migration Between Vector Stores
-
-To migrate between vector stores:
-
-1. **Export existing data** (if supported by your current store)
-2. **Update configuration** in `.env`
-3. **Restart Cipher** - it will create new collections
-4. **Re-index your data** by running conversations or importing
-
-**Note:** Migration tools are not currently built-in, but data will automatically rebuild as you use Cipher.
 
 ## Related Documentation
 

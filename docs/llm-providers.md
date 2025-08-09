@@ -11,11 +11,7 @@ llm:
   apiKey: $OPENAI_API_KEY
 ```
 
-**Supported Models:**
-- `gpt-4-turbo`
-- `gpt-4o`
-- `gpt-4o-mini`
-- `gpt-3.5-turbo`
+All OpenAI models are supported. Visit [OpenAI API documentation](https://platform.openai.com/docs/models) for the complete list of available models.
 
 ## Anthropic Claude
 
@@ -26,12 +22,9 @@ llm:
   apiKey: $ANTHROPIC_API_KEY
 ```
 
-**Supported Models:**
-- `claude-3-5-sonnet-20241022`
-- `claude-3-5-haiku-20241022`
-- `claude-3-opus-20240229`
+All Anthropic Claude models are supported. Visit [Anthropic documentation](https://docs.anthropic.com/en/docs/about-claude/models) for the complete list of available models.
 
-## OpenRouter (200+ Models)
+## OpenRouter
 
 Access to 200+ models through OpenRouter's unified API:
 
@@ -42,13 +35,7 @@ llm:
   apiKey: $OPENROUTER_API_KEY
 ```
 
-**Popular Models:**
-- `openai/gpt-4-turbo`
-- `anthropic/claude-3-5-sonnet`
-- `google/gemini-pro-1.5`
-- `meta-llama/llama-3.1-405b-instruct`
-
-Visit [OpenRouter Models](https://openrouter.ai/models) for the complete list.
+All models available through OpenRouter are supported. Visit [OpenRouter Models](https://openrouter.ai/models) for the complete list of available models and their specifications.
 
 ## Ollama (Self-Hosted, No API Key)
 
@@ -61,14 +48,11 @@ llm:
   baseURL: $OLLAMA_BASE_URL
 ```
 
-**Recommended Models:**
-- `qwen2.5:32b` - Best performance
-- `llama3.1:70b` - Good balance
-- `mistral:7b` - Lightweight option
+All Ollama models are supported. Visit [Ollama Models](https://ollama.com/models) to browse available models or use `ollama list` to see installed models.
 
 **Setup:**
 1. Install Ollama: `curl -fsSL https://ollama.com/install.sh | sh`
-2. Pull a model: `ollama pull qwen2.5:32b`
+2. Pull a model: `ollama pull <model-name>`
 3. Start Ollama: `ollama serve`
 
 ## LM Studio (Self-Hosted, No API Key - Now with Embedding Support!)
@@ -84,22 +68,22 @@ llm:
 # OPTIONAL: Configure specific embedding model
 # If not specified, Cipher will automatically try:
 # 1. Same model as LLM (if it supports embeddings)
-# 2. Default embedding model (nomic-embed-text-v1.5)
+# 2. Default embedding model
 # 3. OpenAI fallback (if OPENAI_API_KEY available)
 embedding:
   provider: lmstudio
-  model: nomic-embed-text-v1.5 # Optional - smart fallback if not specified
+  model: your-embedding-model # Optional - smart fallback if not specified
   # baseURL: http://localhost:1234/v1
 ```
 
 > **Note:** LM Studio is fully OpenAI-compatible and now supports both LLM and embedding models! By default, Cipher will connect to LM Studio at `http://localhost:1234/v1`. No API key is required.
 >
-> **🆕 Embedding Support**: LM Studio now supports embedding models like `nomic-embed-text-v1.5`, `bge-large`, `bge-base`, and other BERT-based models in GGUF format.
+> **Model Support**: All models available in LM Studio are supported, including both LLM and embedding models in GGUF format.
 >
 > **Smart Fallback Logic:**
 >
 > 1. **First try**: Uses the same model loaded for LLM as the embedding model (many models support both)
-> 2. **Second try**: Falls back to `nomic-embed-text-v1.5` if the LLM model doesn't support embeddings
+> 2. **Second try**: Falls back to a default embedding model if the LLM model doesn't support embeddings
 > 3. **Final fallback**: Uses OpenAI embeddings when available
 
 ## Alibaba Cloud Qwen
@@ -114,13 +98,8 @@ llm:
     thinkingBudget: 1000 # Thinking budget for complex reasoning
 ```
 
-**Supported Models:**
-- `qwen2.5-72b-instruct`
-- `qwen2.5-32b-instruct`
-- `qwen2.5-14b-instruct`
-- `qwen2.5-7b-instruct`
+All Qwen models available through DashScope are supported. Visit [Qwen documentation](https://help.aliyun.com/zh/dashscope/developer-reference/model-square) for the complete list.
 
-**Special Features:**
 - **Thinking Mode**: Enable deep reasoning with `enableThinking: true`
 - **Thinking Budget**: Control reasoning depth with `thinkingBudget`
 
@@ -145,11 +124,7 @@ llm:
 > - `AWS_SECRET_ACCESS_KEY`
 > - `AWS_SESSION_TOKEN` (optional, for temporary credentials)
 
-**Supported Models:**
-- `meta.llama3-1-70b-instruct-v1:0`
-- `anthropic.claude-3-5-sonnet-20240620-v1:0`
-- `amazon.nova-pro-v1:0`
-- `amazon.nova-lite-v1:0`
+All models available on AWS Bedrock are supported. Visit [AWS Bedrock documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html) for the complete list of available models.
 
 ## Azure OpenAI
 
