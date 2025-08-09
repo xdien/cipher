@@ -277,59 +277,6 @@ SQLITE_TEMP_STORE=memory
 SQLITE_SYNCHRONOUS=normal
 ```
 
-## Troubleshooting
-
-### PostgreSQL Connection Issues
-
-**Connection Refused:**
-```
-Error: Connection refused to PostgreSQL
-```
-**Solutions:**
-- Check PostgreSQL is running: `systemctl status postgresql`
-- Verify host and port in connection URL
-- Check firewall rules
-
-**Authentication Failed:**
-```
-Error: Password authentication failed
-```
-**Solutions:**
-- Verify username and password
-- Check `pg_hba.conf` authentication method
-- Ensure user has database permissions
-
-### SQLite Issues
-
-**Database Locked:**
-```
-Error: Database is locked
-```
-**Solutions:**
-- Ensure only one Cipher instance is running
-- Check file permissions on database file
-- Restart Cipher to release locks
-
-**Permission Denied:**
-```
-Error: Permission denied to create database
-```
-**Solutions:**
-- Check write permissions on data directory
-- Use custom path with `SQLITE_DATABASE_PATH`
-
-### General Storage Issues
-
-**Storage Fallback Warning:**
-```
-Warning: Falling back to in-memory storage
-```
-**Meaning:** Persistent storage failed, data will be lost on restart
-
-**Solutions:**
-- Check database configuration
-- Verify database services are running
-- Check connection strings and credentials
 
 ## Related Documentation
 

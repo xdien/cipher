@@ -25,15 +25,14 @@ Built by [Byterover team](https://byterover.dev/)
 
 **Key Features:**
 
-- ⁠MCP integration with any IDE you want.
-- ⁠Auto-generate AI coding memories that scale with your codebase.
-- ⁠Switch seamlessly between IDEs without losing memory and context.
-- ⁠Easily share coding memories across your dev team in real time.
-- ⁠Dual Memory Layer that captures System 1 (Programming Concepts & Business Logic & Past Interaction) and System 2 (reasoning steps of the model when generating code).
-- ⁠Install on your IDE with zero configuration needed.
-- ⁠**NEW: Workspace Memory** - Team-aware memory system that automatically tracks project progress, team activities, and collaborative context. See [Workspace Memory](./docs/workspace-memory.md) for details.
+- 🔌 MCP integration with any IDE you want.
+- 🧠 Auto-generate AI coding memories that scale with your codebase.
+- 🔄 Switch seamlessly between IDEs without losing memory and context.
+- 🤝 Easily share coding memories across your dev team in real time.
+- 🧬 Dual Memory Layer that captures System 1 (Programming Concepts & Business Logic & Past Interaction) and System 2 (reasoning steps of the model when generating code).
+- ⚙️ Install on your IDE with zero configuration needed.
 
-## Quick Start
+## Quick Start 🚀
 
 ### NPM Package (Recommended for Most Users)
 
@@ -46,6 +45,8 @@ npm install @byterover/cipher
 ```
 
 ### Docker
+<details>
+<summary>Show Docker Setup</summary>
 
 ```bash
 # Clone and setup
@@ -66,6 +67,7 @@ curl http://localhost:3000/health
 > **💡 Note:** Docker builds automatically skip the UI build step to avoid ARM64 compatibility issues with lightningcss. The UI is not included in the Docker image by default.
 >
 > To include the UI in the Docker build, use: `docker build --build-arg BUILD_UI=true .`
+</details>
 
 ### From Source
 
@@ -73,7 +75,10 @@ curl http://localhost:3000/health
 pnpm i && pnpm run build && npm link
 ```
 
-### CLI Usage
+### CLI Usage 💻
+
+<details>
+<summary>Show CLI commands</summary>
 
 ```bash
 # Interactive mode
@@ -91,10 +96,10 @@ cipher --mode mcp
 # Web UI mode
 cipher --mode ui
 ```
-
 > **⚠️ Note:** When running MCP mode in terminal/shell, export all environment variables as Cipher won't read from `.env` file.
 >
 > **💡 Tip:** CLI mode automatically continues or creates the "default" session. Use `/session new <session-name>` to start a fresh session.
+</details>
 
 ![Cipher Web UI](./assets/cipher_webUI.png)
 
@@ -104,7 +109,10 @@ _The Cipher Web UI provides an intuitive interface for interacting with memory-p
 
 Cipher supports multiple configuration options for different deployment scenarios. The main configuration file is located at `memAgent/cipher.yml`.
 
-### Basic Configuration
+### Basic Configuration ⚙️
+
+<details>
+<summary>Show YAML example</summary>
 
 ```yaml
 # LLM Configuration
@@ -124,6 +132,8 @@ mcpServers:
     args: ['-y', '@modelcontextprotocol/server-filesystem', '.']
 ```
 
+</details>
+
 ### Detailed Configuration
 
 For comprehensive configuration options including:
@@ -135,9 +145,12 @@ For comprehensive configuration options including:
 
 📖 **See [Configuration Guide](./docs/configuration.md)** for complete details.
 
-### Environment Variables
+### Environment Variables 🔐
 
 Create a `.env` file in your project root with these essential variables:
+
+<details>
+<summary>Show .env template</summary>
 
 ```bash
 # ====================
@@ -189,12 +202,15 @@ VECTOR_STORE_MAX_VECTORS=10000
 SEARCH_MEMORY_TYPE=both  # knowledge, reflection, both
 DISABLE_REFLECTION_MEMORY=false
 ```
-
 > **💡 Tip:** Copy `.env.example` to `.env` and fill in your values:
 >
 > ```bash
 > cp .env.example .env
 > ```
+
+</details>
+
+
 
 ## MCP Server Usage
 
@@ -212,6 +228,7 @@ To use Cipher as an MCP server in your MCP client configuration:
 			"command": "cipher",
 			"args": ["--mode", "mcp"],
 			"env": {
+				"MCP_SERVER_MODE": "aggregator",
 				"OPENAI_API_KEY": "your_openai_api_key",
 				"ANTHROPIC_API_KEY": "your_anthropic_api_key"
 			}
@@ -238,13 +255,6 @@ Watch our comprehensive tutorial on how to integrate Cipher with Claude Code thr
 [![Cipher + Claude Code Tutorial](https://img.youtube.com/vi/AZh9Py6g07Y/maxresdefault.jpg)](https://www.youtube.com/watch?v=AZh9Py6g07Y)
 
 > **Click the image above to watch the tutorial on YouTube.**
-
-This tutorial covers:
-
-- Setting up Cipher as an MCP server
-- Configuring Claude Code to use Cipher
-- Demonstrating memory storage and retrieval
-- Real-world coding scenarios with persistent context
 
 For detailed configuration instructions, see the [CLI Coding Agents guide](./examples/02-cli-coding-agents/README.md).
 

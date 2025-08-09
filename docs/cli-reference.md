@@ -4,6 +4,9 @@ Complete command-line interface reference for Cipher, covering all modes, option
 
 ## Basic Usage
 
+<details>
+<summary>Basic usage (terminal)</summary>
+
 ```bash
 # Interactive CLI mode
 cipher
@@ -16,6 +19,8 @@ cipher --mode api        # REST API server
 cipher --mode mcp        # MCP server  
 cipher --mode ui         # Web UI server
 ```
+
+</details>
 
 
 ## Global Options
@@ -62,6 +67,9 @@ cipher --mode ui         # Web UI server
 
 Interactive command-line interface:
 
+<details>
+<summary>CLI mode examples</summary>
+
 ```bash
 # Start interactive mode
 cipher
@@ -73,6 +81,8 @@ cipher "Add this to memory: CORS issues in Vite are usually solved by configurin
 cipher --agent ./my-config.yml "What do I know about authentication?"
 ```
 
+</details>
+
 **Features:**
 - Interactive chat interface
 - Session management
@@ -82,6 +92,9 @@ cipher --agent ./my-config.yml "What do I know about authentication?"
 ### API Mode
 
 RESTful HTTP API server:
+
+<details>
+<summary>API mode examples</summary>
 
 ```bash
 # Basic API server
@@ -94,6 +107,8 @@ cipher --mode api --port 8080 --host 0.0.0.0 --cors
 cipher --mode api --agent ./production-config.yml
 ```
 
+</details>
+
 **API Endpoints:**
 - `POST /api/chat` - Send messages
 - `GET /api/sessions` - List sessions
@@ -103,6 +118,9 @@ cipher --mode api --agent ./production-config.yml
 ### MCP Mode
 
 Model Context Protocol server:
+
+<details>
+<summary>MCP mode examples</summary>
 
 ```bash
 # Standard MCP server (stdio transport - default)
@@ -121,12 +139,17 @@ cipher --mode mcp --mcp-transport-type streamable-http --mcp-port 3001
 cipher --mode mcp --strict
 ```
 
+</details>
+
 **Transport Types:**
 - **stdio**: Direct process communication (default).
 - **sse**: Server-Sent Events over HTTP. Endpoint: `/sse`.
 - **streamable-http**: HTTP request/response with streaming. Endpoint: `/http`.
 
 **Environment Variables for MCP:**
+<details>
+<summary>MCP environment variables</summary>
+
 ```bash
 # MCP server behavior
 export MCP_SERVER_MODE=aggregator  # or 'default'
@@ -134,9 +157,14 @@ export AGGREGATOR_CONFLICT_RESOLUTION=prefix  # 'first-wins', 'error'
 export AGGREGATOR_TIMEOUT=60000
 ```
 
+</details>
+
 ### UI Mode
 
 Web interface server:
+
+<details>
+<summary>UI mode examples</summary>
 
 ```bash
 # Start web UI
@@ -148,6 +176,8 @@ cipher --mode ui --ui-port 8080
 # Accessible from network
 cipher --mode ui --ui-host 0.0.0.0 --ui-port 3001
 ```
+
+</details>
 
 **Access:** Open `http://localhost:3001` in your browser
 
@@ -211,9 +241,14 @@ When running in CLI mode, use these commands within the session:
 
 Specify custom configuration with `--agent`:
 
+<details>
+<summary>Using a custom configuration file</summary>
+
 ```bash
 cipher --agent /path/to/custom-config.yml
 ```
+
+</details>
 
 **Default locations:**
 1. `./memAgent/cipher.yml`
@@ -225,6 +260,9 @@ cipher --agent /path/to/custom-config.yml
 Set these in your `.env` file or environment:
 
 ### Core Settings
+<details>
+<summary>Core environment variables</summary>
+
 ```bash
 # LLM Configuration
 OPENAI_API_KEY=sk-your-key
@@ -242,7 +280,12 @@ VECTOR_STORE_URL=your-endpoint
 CIPHER_PG_URL=postgresql://user:pass@host:5432/db
 ```
 
+</details>
+
 ### MCP-Specific Settings
+<details>
+<summary>MCP-specific environment variables</summary>
+
 ```bash
 # MCP server mode
 MCP_SERVER_MODE=aggregator  # or 'default'
@@ -254,9 +297,14 @@ MCP_TRANSPORT_TYPE=stdio     # stdio, sse, or streamable-http
 MCP_PORT=3000               # HTTP server port for sse/streamable-http transports
 ```
 
+</details>
+
 ## Examples
 
 ### Development Setup
+<details>
+<summary>Examples: Development setup</summary>
+
 ```bash
 # Start with in-memory storage for testing
 VECTOR_STORE_TYPE=in-memory cipher
@@ -274,7 +322,12 @@ cipher --mode mcp --mcp-transport-type sse --mcp-port 4000
 cipher --mode mcp --mcp-transport-type streamable-http --mcp-port 5000
 ```
 
+</details>
+
 ### Production Deployment
+<details>
+<summary>Examples: Production deployment</summary>
+
 ```bash
 # Production API server
 cipher --mode api --port 3000 --host 0.0.0.0 --agent /etc/cipher/production.yml
@@ -292,7 +345,12 @@ cipher --mode mcp --mcp-transport-type streamable-http --mcp-port 3001 --agent /
 cipher --mode ui --ui-port 80 --ui-host 0.0.0.0
 ```
 
+</details>
+
 ### Team Collaboration
+<details>
+<summary>Examples: Team collaboration</summary>
+
 ```bash
 # Start workspace memory session
 USE_WORKSPACE_MEMORY=true cipher --new-session team-project
@@ -303,7 +361,12 @@ cipher
 > /session switch team-backend
 ```
 
+</details>
+
 ### Memory Management
+<details>
+<summary>Examples: Memory management</summary>
+
 ```bash
 # Search specific memories
 cipher "What do I know about React hooks?"
@@ -316,6 +379,8 @@ cipher
 > /memory stats
 > /stats
 ```
+
+</details>
 
 ## Exit Codes
 
@@ -333,6 +398,9 @@ cipher
 ### Common Issues
 
 **Command not found:**
+<details>
+<summary>Troubleshooting: Command not found</summary>
+
 ```bash
 # Install globally
 npm install -g @byterover/cipher
@@ -341,7 +409,12 @@ npm install -g @byterover/cipher
 npx @byterover/cipher --help
 ```
 
+</details>
+
 **Configuration errors:**
+<details>
+<summary>Troubleshooting: Configuration errors</summary>
+
 ```bash
 # Check configuration
 cipher --config
@@ -350,7 +423,12 @@ cipher --config
 DEBUG=cipher:* cipher --mode api
 ```
 
+</details>
+
 **MCP connection issues:**
+<details>
+<summary>Troubleshooting: MCP connection issues</summary>
+
 ```bash  
 # Test MCP server with custom timeout
 cipher --mode mcp --timeout 120000
@@ -369,6 +447,8 @@ curl -sS -X POST \
   -d '{"jsonrpc":"2.0","id":"1","method":"ping","params":{}}' \
   http://localhost:3001/http
 ```
+
+</details>
 
 ## Related Documentation
 
