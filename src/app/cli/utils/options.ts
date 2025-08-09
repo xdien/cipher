@@ -16,8 +16,15 @@ export function validateCliOptions(opts: any): void {
 		port: z.string().optional(),
 		uiPort: z.string().optional(),
 		host: z.string().optional(),
-		mcpTransportType: z.string().optional(),
+		mcpTransportType: z
+			.enum(['stdio', 'sse', 'streamable-http'], {
+				errorMap: () => ({ message: 'MCP transport type must be stdio, sse, or streamable-http' }),
+			})
+			.optional()
+			.default('stdio'),
 		mcpPort: z.string().optional(),
+		mcpHost: z.string().optional(),
+		mcpDnsRebindingProtection: z.boolean().optional(),
 	});
 
 	const cliOptionSchema = cliOptionShape;
@@ -32,6 +39,8 @@ export function validateCliOptions(opts: any): void {
 		host: opts.host,
 		mcpTransportType: opts.mcpTransportType,
 		mcpPort: opts.mcpPort,
+		mcpHost: opts.mcpHost,
+		mcpDnsRebindingProtection: opts.mcpDnsRebindingProtection,
 	});
 
 	if (!result.success) {
