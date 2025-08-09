@@ -17,6 +17,12 @@
 
 </div>
 
+<div align="center">
+  <a href="https://www.producthunt.com/products/byterover?embed=true&utm_source=badge-top-post-badge&utm_medium=badge&utm_source=badge-cipher&#0045;by&#0045;byterover" target="_blank">
+    <img src="https://api.producthunt.com/widgets/embed-image/v1/top-post-badge.svg?post_id=1000588&theme=light&period=daily&t=1754744170741" alt="Cipher&#0032;by&#0032;Byterover - Open&#0045;source&#0044;&#0032;shared&#0032;memory&#0032;for&#0032;coding&#0032;agents | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" />
+  </a>
+</div>
+
 ## Overview
 
 Cipher is an opensource memory layer specifically designed for coding agents. Compatible with **Cursor, Windsurf, Claude Desktop, Claude Code, Gemini CLI, AWS's Kiro, VS Code, and Roo Code** through MCP, and coding agents, such as **Kimi K2**. (see more on [examples](./examples))
@@ -68,6 +74,7 @@ curl http://localhost:3000/health
 > **💡 Note:** Docker builds automatically skip the UI build step to avoid ARM64 compatibility issues with lightningcss. The UI is not included in the Docker image by default.
 >
 > To include the UI in the Docker build, use: `docker build --build-arg BUILD_UI=true .`
+
 </details>
 
 ### From Source
@@ -136,15 +143,6 @@ mcpServers:
 ```
 
 </details>
-
-### Detailed Configuration
-
-For comprehensive configuration options including:
-
-- **LLM Providers** - OpenAI, Anthropic, AWS Bedrock, Azure, Qwen, Ollama, LM Studio
-- **Embedding Configuration** - Multiple embedding providers and settings
-- **Vector Stores** - Qdrant, Milvus, In-Memory options
-- **Chat History** - PostgreSQL, SQLite, In-Memory storage
 
 📖 **See [Configuration Guide](./docs/configuration.md)** for complete details.
 
@@ -239,16 +237,32 @@ To use Cipher as an MCP server in your MCP client configuration:
 }
 ```
 
-### Advanced MCP Features
-
-Cipher supports advanced MCP features including:
-
-- **Aggregator Mode** - Expose all tools and connected MCP servers
-- **SSE Transport** - Real-time Server-Sent Events transport
-- **Multiple Transport Types** - stdio, SSE, HTTP
-- **Tool Conflict Resolution** - Handle tool name conflicts intelligently
-
 📖 **See [MCP Integration Guide](./docs/mcp-integration.md)** for complete MCP setup and advanced features.
+
+👉 **Built‑in tools overview** — expand the dropdown below to scan everything at a glance. For full details, see [`docs/builtin-tools.md`](./docs/builtin-tools.md) 📘.
+
+<details>
+<summary>Built-in Tools (overview)</summary>
+
+- Memory
+  - `cipher_extract_and_operate_memory`: Extracts knowledge and applies ADD/UPDATE/DELETE in one step
+  - `cipher_memory_search`: Semantic search over stored knowledge
+  - `cipher_store_reasoning_memory`: Store high-quality reasoning traces
+- Reasoning (Reflection)
+  - `cipher_extract_reasoning_steps` (internal): Extract structured reasoning steps
+  - `cipher_evaluate_reasoning` (internal): Evaluate reasoning quality and suggest improvements
+  - `cipher_search_reasoning_patterns`: Search reflection memory for patterns
+- Workspace Memory (team)
+  - `cipher_workspace_search`: Search team/project workspace memory
+  - `cipher_workspace_store`: Background capture of team/project signals
+- Knowledge Graph
+  - `cipher_add_node`, `cipher_update_node`, `cipher_delete_node`, `cipher_add_edge`
+  - `cipher_search_graph`, `cipher_enhanced_search`, `cipher_get_neighbors`
+  - `cipher_extract_entities`, `cipher_query_graph`, `cipher_relationship_manager`
+- System
+  - `cipher_bash`: Execute bash commands (one-off or persistent)
+
+</details>
 
 ## Tutorial Video: Claude Code with Cipher MCP
 
