@@ -135,6 +135,51 @@ For comprehensive configuration options including:
 
 📖 **See [Configuration Guide](./docs/configuration.md)** for complete details.
 
+### Environment Variables
+
+Create a `.env` file in your project root with these essential variables:
+
+```bash
+# ====================
+# API Keys (At least one required)
+# ====================
+OPENAI_API_KEY=sk-your-openai-api-key
+ANTHROPIC_API_KEY=sk-ant-your-anthropic-key
+GEMINI_API_KEY=your-gemini-api-key
+QWEN_API_KEY=your-qwen-api-key
+
+# ====================
+# Vector Store (Optional - defaults to in-memory)
+# ====================
+VECTOR_STORE_TYPE=qdrant  # qdrant, milvus, or in-memory
+VECTOR_STORE_URL=https://your-cluster.qdrant.io
+VECTOR_STORE_API_KEY=your-qdrant-api-key
+
+# ====================
+# Chat History (Optional - defaults to SQLite)
+# ====================
+CIPHER_PG_URL=postgresql://user:pass@localhost:5432/cipher_db
+
+# ====================
+# Workspace Memory (Optional)
+# ====================
+USE_WORKSPACE_MEMORY=true
+WORKSPACE_VECTOR_STORE_COLLECTION=workspace_memory
+
+# ====================
+# AWS Bedrock (Optional)
+# ====================
+AWS_ACCESS_KEY_ID=your-aws-access-key
+AWS_SECRET_ACCESS_KEY=your-aws-secret-key
+AWS_DEFAULT_REGION=us-east-1
+```
+
+> **💡 Tip:** Copy `.env.example` to `.env` and fill in your values:
+>
+> ```bash
+> cp .env.example .env
+> ```
+
 ## MCP Server Usage
 
 Cipher can run as an MCP (Model Context Protocol) server, allowing integration with MCP-compatible clients like Claude Desktop, Cursor, Windsurf, and other AI coding assistants.
