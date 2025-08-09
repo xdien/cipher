@@ -112,9 +112,13 @@ describe('QwenService Simple Integration Tests', () => {
 			const result = await qwenService.generate('Use a tool to help me');
 
 			expect(mockOpenAI.chat.completions.create).toHaveBeenCalledTimes(2);
-			expect(mockUnifiedToolManager.executeTool).toHaveBeenCalledWith('test_tool', {
-				param: 'value',
-			});
+			expect(mockUnifiedToolManager.executeTool).toHaveBeenCalledWith(
+				'test_tool',
+				{
+					param: 'value',
+				},
+				undefined
+			);
 			expect(result).toContain('Tool executed successfully');
 		});
 

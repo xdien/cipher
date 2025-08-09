@@ -307,12 +307,24 @@ describe('UnifiedToolManager', () => {
 
 			// Internal tools stats should reflect current implementation
 			const { env } = await import('../../../env.js');
-			if (env.KNOWLEDGE_GRAPH_ENABLED) {
-				expect(stats.internalTools.totalTools).toBe(17);
-			} else {
-				expect(stats.internalTools.totalTools).toBe(6);
+
+			// Calculate expected tool count based on enabled features
+			let expectedMemoryTools = 6; // Base memory tools
+			if (env.USE_WORKSPACE_MEMORY) {
+				expectedMemoryTools += 2; // workspace_search + workspace_store
 			}
-			expect(stats.internalTools.toolsByCategory.memory).toBe(6);
+
+			// Add system tools to the expected count
+			const expectedSystemTools = 1; // bash tool
+			const expectedTotal = expectedMemoryTools + expectedSystemTools;
+
+			if (env.KNOWLEDGE_GRAPH_ENABLED) {
+				const expectedTotalWithKG = expectedTotal + 11; // memory tools + system tools + knowledge graph tools
+				expect(stats.internalTools.totalTools).toBe(expectedTotalWithKG);
+			} else {
+				expect(stats.internalTools.totalTools).toBe(expectedTotal);
+			}
+			expect(stats.internalTools.toolsByCategory.memory).toBe(expectedMemoryTools);
 		});
 
 		it('should handle disabled tool managers in stats', () => {

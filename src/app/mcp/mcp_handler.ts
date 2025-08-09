@@ -14,9 +14,19 @@ import { z } from 'zod';
 import * as fs from 'fs';
 import * as path from 'path';
 import type { AggregatorConfig } from '@core/mcp/types.js';
+import { McpSseServer } from './mcp_sse_server.js';
+import { McpStreamableHttpServer } from './mcp_streamable_http_server.js';
 
 // Derive the AgentCard type from the schema
 export type AgentCard = z.infer<typeof AgentCardSchema>;
+
+// MCP transport result interface
+export interface McpTransportResult {
+	server: any; // The transport instance (StdioServerTransport, etc.)
+	sseServer?: McpSseServer; // Optional SSE server for SSE transport
+	streamableHttpServer?: McpStreamableHttpServer; // Optional HTTP server for streamable-HTTP transport
+	cleanup?: () => Promise<void>; // Optional cleanup function
+}
 
 /**
  * Initialize MCP server with agent capabilities
@@ -273,9 +283,16 @@ async function handleAskCipherTool(agent: MemAgent, args: any): Promise<any> {
 	});
 
 	try {
-		// Run the agent with the provided message and session
+		// Add MCP-specific system instruction for detailed file summaries
+		const mcpSystemInstruction =
+			"IMPORTANT MCP MODE INSTRUCTION: If users ask you to read and then store a file or document, your response MUST show a detailed description of the file or document that you've read. Don't just reply with a vague comment like 'I've read the X file, what do you want me to do next?' Instead, provide a comprehensive description including key points, structure, and relevant content details.";
+
+		// Prepend the MCP instruction to the user message
+		const enhancedMessage = `${mcpSystemInstruction}\n\nUser request: ${message}`;
+
+		// Run the agent with the enhanced message and session
 		const { response, backgroundOperations } = await agent.run(
-			message,
+			enhancedMessage,
 			undefined,
 			session_id,
 			stream
@@ -524,22 +541,98 @@ export function initializeAgentCardResource(agentCard: Partial<AgentCard>): Agen
 }
 
 /**
- * Create MCP transport for stdio communication
- * @param type - Transport type (currently only 'stdio' is supported)
- * @returns Transport object with server property
+ * Create MCP transport with proper SDK transport implementations
+ * @param type - Transport type: 'stdio', 'sse', or 'streamable-http'
+ * @param port - Port number for HTTP-based transports (optional, defaults per transport type)
+ * @param mcpServer - MCP server instance for HTTP-based transports (required for sse/streamable-http)
+ * @param host - Host for HTTP-based transports (optional, defaults to 'localhost')
+ * @param enableDnsRebindingProtection - Enable DNS rebinding protection (optional, defaults to false)
+ * @returns Transport result with proper transport instance and HTTP server
  */
-export async function createMcpTransport(type: string): Promise<{ server: any }> {
-	if (type !== 'stdio') {
-		throw new Error(`Unsupported transport type: ${type}. Only 'stdio' is currently supported.`);
+export async function createMcpTransport(
+	type: string,
+	port?: number,
+	mcpServer?: Server,
+	host: string = 'localhost',
+	enableDnsRebindingProtection: boolean = false
+): Promise<McpTransportResult> {
+	logger.info(`[MCP Handler] Creating ${type} transport${port ? ` on port ${port}` : ''}`);
+
+	switch (type) {
+		case 'stdio': {
+			// Import stdio transport from MCP SDK
+			const { StdioServerTransport } = await import('@modelcontextprotocol/sdk/server/stdio.js');
+			const transport = new StdioServerTransport();
+			return { server: transport };
+		}
+
+		case 'sse': {
+			if (!mcpServer) {
+				throw new Error('MCP server instance is required for SSE transport');
+			}
+
+			const transportPort = port || 3000;
+			logger.info(
+				`[MCP Handler] Setting up SSE transport with dedicated SSE server on port ${transportPort}`
+			);
+
+			// Create dedicated SSE server that uses SSEServerTransport properly
+			const sseServer = new McpSseServer(transportPort, host, {
+				enableDnsRebindingProtection,
+			});
+
+			// Start the SSE server - it will handle MCP server connections internally
+			await sseServer.start(mcpServer);
+
+			// Return a placeholder transport since the real transport handling is done by SSE server
+			const { StdioServerTransport } = await import('@modelcontextprotocol/sdk/server/stdio.js');
+			const placeholderTransport = new StdioServerTransport();
+
+			return {
+				server: placeholderTransport,
+				sseServer: sseServer,
+				cleanup: async () => {
+					await sseServer.stop();
+				},
+			};
+		}
+
+		case 'streamable-http': {
+			if (!mcpServer) {
+				throw new Error('MCP server instance is required for streamable-HTTP transport');
+			}
+
+			const transportPort = port || 3001;
+			logger.info(
+				`[MCP Handler] Setting up streamable-HTTP transport with dedicated HTTP server on port ${transportPort}`
+			);
+
+			// Create dedicated streamable-HTTP server that uses StreamableHTTPServerTransport properly
+			const streamableHttpServer = new McpStreamableHttpServer(transportPort, host, {
+				enableDnsRebindingProtection,
+			});
+
+			// Start the streamable-HTTP server - it handles MCP server connections internally
+			await streamableHttpServer.start(mcpServer);
+
+			// Return a placeholder transport since the real transport handling is done by HTTP server
+			const { StdioServerTransport } = await import('@modelcontextprotocol/sdk/server/stdio.js');
+			const placeholderTransport = new StdioServerTransport();
+
+			return {
+				server: placeholderTransport,
+				streamableHttpServer: streamableHttpServer,
+				cleanup: async () => {
+					await streamableHttpServer.stop();
+				},
+			};
+		}
+
+		default:
+			throw new Error(
+				`Unsupported transport type: ${type}. Supported types are: stdio, sse, streamable-http`
+			);
 	}
-
-	// Import stdio transport from MCP SDK
-	const { StdioServerTransport } = await import('@modelcontextprotocol/sdk/server/stdio.js');
-
-	logger.info('[MCP Handler] Creating stdio transport');
-	const transport = new StdioServerTransport();
-
-	return { server: transport };
 }
 
 /**
