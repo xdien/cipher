@@ -417,22 +417,27 @@ export const workspaceSearchTool: InternalTool = {
 				.filter(result => {
 					// Apply similarity threshold filter
 					if ((result.score || 0) < similarityThreshold) return false;
-					
+
 					// Apply cross-tool memory sharing filter if workspace mode is shared
 					if (env.CIPHER_WORKSPACE_MODE === 'shared') {
 						const payload = result.payload || {};
-						
+
 						// Check if memory matches shared workspace criteria
-						const hasMatchingUserId = !env.CIPHER_USER_ID || !payload.userId || payload.userId === env.CIPHER_USER_ID;
-						const hasMatchingProjectId = !env.CIPHER_PROJECT_NAME || !payload.projectId || payload.projectId === env.CIPHER_PROJECT_NAME;
+						const hasMatchingUserId =
+							!env.CIPHER_USER_ID || !payload.userId || payload.userId === env.CIPHER_USER_ID;
+						const hasMatchingProjectId =
+							!env.CIPHER_PROJECT_NAME ||
+							!payload.projectId ||
+							payload.projectId === env.CIPHER_PROJECT_NAME;
 						const isSharedMode = payload.workspaceMode === 'shared';
-						
+
 						// Include memory if:
 						// 1. It's marked as shared mode AND (matches user OR project)
 						// 2. OR it has no sharing identifiers (legacy memories)
-						const shouldInclude = (isSharedMode && (hasMatchingUserId || hasMatchingProjectId)) || 
-											  (!payload.userId && !payload.projectId && !payload.workspaceMode);
-											  
+						const shouldInclude =
+							(isSharedMode && (hasMatchingUserId || hasMatchingProjectId)) ||
+							(!payload.userId && !payload.projectId && !payload.workspaceMode);
+
 						logger.debug('WorkspaceSearch: Cross-tool sharing filter applied', {
 							memoryId: result.id,
 							memoryUserId: payload.userId,
@@ -441,12 +446,12 @@ export const workspaceSearchTool: InternalTool = {
 							envUserId: env.CIPHER_USER_ID,
 							envProjectId: env.CIPHER_PROJECT_NAME,
 							envWorkspaceMode: env.CIPHER_WORKSPACE_MODE,
-							shouldInclude
+							shouldInclude,
 						});
-						
+
 						return shouldInclude;
 					}
-					
+
 					return true; // No filtering in isolated mode
 				})
 				.sort((a, b) => (b.score || 0) - (a.score || 0)); // Sort by similarity score descending

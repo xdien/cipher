@@ -43,7 +43,7 @@ export interface WorkspacePayload extends BasePayload {
 /**
  * Create new workspace payload
  */
-export function createWorkspacePayload(
+export async function createWorkspacePayload(
 	id: string | number,
 	text: string,
 	tags: string[],
@@ -73,10 +73,10 @@ export function createWorkspacePayload(
 		projectId?: string;
 		workspaceMode?: 'shared' | 'isolated';
 	}
-): WorkspacePayload {
+): Promise<WorkspacePayload> {
 	// Import env here to avoid circular dependencies
-	const { env } = require('../../../../env.js');
-	
+	const { env } = await import('../../../../env.js');
+
 	return {
 		id: typeof id === 'string' ? parseInt(id, 10) || 0 : id,
 		text,

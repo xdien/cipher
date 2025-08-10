@@ -270,12 +270,11 @@ async function registerAggregatedTools(
  * Handle the ask_cipher tool execution
  */
 async function handleAskCipherTool(agent: MemAgent, args: any): Promise<any> {
-    const { message, stream = false } = args;
+	const { message, stream = false } = args;
 
 	if (!message || typeof message !== 'string') {
 		throw new Error('Message parameter is required and must be a string');
 	}
-
 
 	try {
 		// Add MCP-specific system instruction for detailed file summaries
@@ -286,12 +285,12 @@ async function handleAskCipherTool(agent: MemAgent, args: any): Promise<any> {
 		const enhancedMessage = `${mcpSystemInstruction}\n\nUser request: ${message}`;
 
 		// Run the agent with the enhanced message and session
-        const { response, backgroundOperations } = await agent.run(
-            enhancedMessage,
-            undefined,
-            undefined,
-            stream
-        );
+		const { response, backgroundOperations } = await agent.run(
+			enhancedMessage,
+			undefined,
+			undefined,
+			stream
+		);
 		// In MCP mode, return response immediately, let background operations run asynchronously
 		if (backgroundOperations) {
 			backgroundOperations.catch(() => {

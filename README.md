@@ -200,8 +200,8 @@ VECTOR_STORE_DISTANCE=Cosine  # Cosine, Euclidean, Dot, Manhattan
 VECTOR_STORE_MAX_VECTORS=10000
 
 # Memory search configuration
-SEARCH_MEMORY_TYPE=both  # knowledge, reflection, both
-DISABLE_REFLECTION_MEMORY=false
+SEARCH_MEMORY_TYPE=knowledge  # knowledge, reflection, both
+DISABLE_REFLECTION_MEMORY=true
 ```
 
 > **💡 Tip:** Copy `.env.example` to `.env` and fill in your values:

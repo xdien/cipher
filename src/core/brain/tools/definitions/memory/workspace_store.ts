@@ -1,6 +1,10 @@
 import { InternalTool, InternalToolContext } from '../../types.js';
 import { logger } from '../../../../logger/index.js';
-import { createWorkspacePayload, extractWorkspaceInfo, mergeWorkspaceInfo } from './workspace-payloads.js';
+import {
+	createWorkspacePayload,
+	extractWorkspaceInfo,
+	mergeWorkspaceInfo,
+} from './workspace-payloads.js';
 import { env } from '../../../../env.js';
 
 /**
@@ -310,7 +314,8 @@ export const workspaceStoreTool: InternalTool = {
 			},
 			workspaceInfo: {
 				type: 'object',
-				description: 'Optional LLM-provided structured workspace information (takes precedence over regex extraction)',
+				description:
+					'Optional LLM-provided structured workspace information (takes precedence over regex extraction)',
 				properties: {
 					teamMember: {
 						type: 'string',
@@ -422,12 +427,15 @@ export const workspaceStoreTool: InternalTool = {
 		},
 		required: ['interaction'],
 	},
-	handler: async (args: { 
-		interaction: string | string[], 
-		workspaceInfo?: LLMWorkspaceInfo,
-		context?: any,
-		options?: any 
-	}, context?: InternalToolContext) => {
+	handler: async (
+		args: {
+			interaction: string | string[];
+			workspaceInfo?: LLMWorkspaceInfo;
+			context?: any;
+			options?: any;
+		},
+		context?: InternalToolContext
+	) => {
 		try {
 			// Check if workspace memory is enabled
 			if (!env.USE_WORKSPACE_MEMORY) {
@@ -560,7 +568,6 @@ export const workspaceStoreTool: InternalTool = {
 					event: 'ADD' as const,
 					tags: extractWorkspaceTags(content),
 					confidence: 0.6,
-					reasoning: 'Basic processing without vector services',
 				}));
 
 				return {
@@ -571,7 +578,6 @@ export const workspaceStoreTool: InternalTool = {
 						contentPreview: action.text.substring(0, 80),
 						action: action.event,
 						confidence: action.confidence,
-						reason: action.reasoning,
 						targetId: action.id,
 					})),
 					timestamp: new Date().toISOString(),
@@ -782,10 +788,10 @@ export const workspaceStoreTool: InternalTool = {
 					if (options.autoExtractWorkspaceInfo) {
 						// Get LLM-provided workspace info if available
 						const llmWorkspaceInfo = args.workspaceInfo || {};
-						
+
 						// Always extract from text as fallback/supplement
 						const regexWorkspaceInfo = extractWorkspaceInfo(content);
-						
+
 						// Merge LLM data (priority) with regex data (fallback)
 						workspaceInfo = mergeWorkspaceInfo(llmWorkspaceInfo, regexWorkspaceInfo);
 					}
