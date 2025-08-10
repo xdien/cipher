@@ -69,8 +69,14 @@ export function createWorkspacePayload(
 		domain?: string;
 		sourceSessionId?: string;
 		qualitySource: 'similarity' | 'llm' | 'heuristic';
+		userId?: string;
+		projectId?: string;
+		workspaceMode?: 'shared' | 'isolated';
 	}
 ): WorkspacePayload {
+	// Import env here to avoid circular dependencies
+	const { env } = require('../../../../env.js');
+	
 	return {
 		id: typeof id === 'string' ? parseInt(id, 10) || 0 : id,
 		text,
@@ -86,7 +92,85 @@ export function createWorkspacePayload(
 		...(options.domain && { domain: options.domain }),
 		...(options.sourceSessionId && { sourceSessionId: options.sourceSessionId }),
 		qualitySource: options.qualitySource,
+		// Add cross-tool sharing identifiers (env vars take precedence for security)
+		userId: env.CIPHER_USER_ID || options.userId,
+		projectId: env.CIPHER_PROJECT_NAME || options.projectId,
+		workspaceMode: env.CIPHER_WORKSPACE_MODE || options.workspaceMode || 'isolated',
 	};
+}
+
+/**
+ * Merge LLM-provided workspace info with regex-extracted info
+ * LLM data takes precedence, regex fills gaps
+ */
+export function mergeWorkspaceInfo(
+	llmProvided: Partial<{
+		teamMember?: string;
+		currentProgress?: {
+			feature: string;
+			status: 'in-progress' | 'completed' | 'blocked' | 'reviewing';
+			completion?: number;
+		};
+		bugsEncountered?: Array<{
+			description: string;
+			severity: 'low' | 'medium' | 'high' | 'critical';
+			status: 'open' | 'in-progress' | 'fixed';
+		}>;
+		workContext?: {
+			project?: string;
+			repository?: string;
+			branch?: string;
+		};
+		domain?: string;
+	}> = {},
+	regexExtracted: ReturnType<typeof extractWorkspaceInfo>
+): {
+	teamMember?: string;
+	currentProgress?: {
+		feature: string;
+		status: 'in-progress' | 'completed' | 'blocked' | 'reviewing';
+		completion?: number;
+	};
+	bugsEncountered?: Array<{
+		description: string;
+		severity: 'low' | 'medium' | 'high' | 'critical';
+		status: 'open' | 'in-progress' | 'fixed';
+	}>;
+	workContext?: {
+		project?: string;
+		repository?: string;
+		branch?: string;
+	};
+	domain?: string;
+} {
+	const result: any = {};
+
+	// Team member: LLM takes precedence
+	result.teamMember = llmProvided.teamMember || regexExtracted.teamMember;
+
+	// Current progress: merge intelligently
+	if (llmProvided.currentProgress || regexExtracted.currentProgress) {
+		result.currentProgress = {
+			...regexExtracted.currentProgress,
+			...llmProvided.currentProgress,
+		};
+	}
+
+	// Bugs encountered: LLM takes precedence, or use regex if LLM not provided
+	result.bugsEncountered = llmProvided.bugsEncountered || regexExtracted.bugsEncountered;
+
+	// Work context: merge individual fields
+	if (llmProvided.workContext || regexExtracted.workContext) {
+		result.workContext = {
+			...regexExtracted.workContext,
+			...llmProvided.workContext,
+		};
+	}
+
+	// Domain: LLM takes precedence
+	result.domain = llmProvided.domain || regexExtracted.domain;
+
+	return result;
 }
 
 /**

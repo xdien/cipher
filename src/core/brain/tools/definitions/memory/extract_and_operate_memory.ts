@@ -411,12 +411,11 @@ export const extractAndOperateMemoryTool: InternalTool = {
 			memoryMetadata: {
 				type: 'object',
 				description:
-					'Custom metadata to attach to created memories (projectId, userId, teamId, etc.)',
+					'Custom metadata to attach to created memories (projectId, userId, etc.)',
 				additionalProperties: true,
 				properties: {
 					projectId: { type: 'string', description: 'Project identifier for scoped memory' },
 					userId: { type: 'string', description: 'User identifier for personalized memory' },
-					teamId: { type: 'string', description: 'Team identifier for team-scoped memory' },
 					environment: { type: 'string', description: 'Environment (dev, staging, prod)' },
 					source: { type: 'string', description: 'Source of the memory (cli, api, web)' },
 				},

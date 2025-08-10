@@ -99,11 +99,6 @@ async function registerAgentTools(server: Server, agent: MemAgent): Promise<void
 						type: 'string',
 						description: 'The message or question to send to the Cipher agent',
 					},
-					session_id: {
-						type: 'string',
-						description: 'Optional session ID to maintain conversation context',
-						default: 'default',
-					},
 					stream: {
 						type: 'boolean',
 						description: 'Whether to stream the response (not supported via MCP)',
@@ -188,8 +183,12 @@ async function registerAggregatedTools(
 		inputSchema: (tool as any).parameters,
 	}));
 
-	// For backward compatibility, ensure ask_cipher is always present
-	if (!mcpTools.find(t => t.name === 'ask_cipher')) {
+	// Check if ask_cipher tool should be exposed (env-gated for aggregator mode)
+	const useAskCipher = process.env.USE_ASK_CIPHER?.toLowerCase();
+	const shouldExposeAskCipher = useAskCipher !== 'false'; // Default to true if not set or not 'false'
+
+	// For backward compatibility, ensure ask_cipher is present if enabled
+	if (shouldExposeAskCipher && !mcpTools.find(t => t.name === 'ask_cipher')) {
 		mcpTools.push({
 			name: 'ask_cipher',
 			description:
@@ -200,11 +199,6 @@ async function registerAggregatedTools(
 					message: {
 						type: 'string',
 						description: 'The message or question to send to the Cipher agent',
-					},
-					session_id: {
-						type: 'string',
-						description: 'Optional session ID to maintain conversation context',
-						default: 'default',
 					},
 					stream: {
 						type: 'boolean',
@@ -231,14 +225,19 @@ async function registerAggregatedTools(
 		const { name, arguments: args } = request.params;
 		logger.info(`[MCP Handler] Tool called: ${name}`, { toolName: name, args });
 
+		// Check if ask_cipher tool should be handled (env-gated)
+		const useAskCipher = process.env.USE_ASK_CIPHER?.toLowerCase();
+		const shouldExposeAskCipher = useAskCipher !== 'false';
+
 		if (name === 'ask_cipher') {
+			if (!shouldExposeAskCipher) {
+				throw new Error('ask_cipher tool is disabled in this aggregator configuration');
+			}
 			return await handleAskCipherTool(agent, args);
 		}
 
 		// Route to unifiedToolManager for all other tools
 		try {
-			const unifiedToolManager = agent.unifiedToolManager;
-
 			// Apply timeout if configured
 			const timeout = config?.timeout || 60000;
 			const result = await Promise.race([
@@ -271,16 +270,12 @@ async function registerAggregatedTools(
  * Handle the ask_cipher tool execution
  */
 async function handleAskCipherTool(agent: MemAgent, args: any): Promise<any> {
-	const { message, session_id = 'default', stream = false } = args;
+    const { message, stream = false } = args;
 
 	if (!message || typeof message !== 'string') {
 		throw new Error('Message parameter is required and must be a string');
 	}
 
-	logger.info('[MCP Handler] Processing ask_cipher request', {
-		sessionId: session_id,
-		messageLength: message.length,
-	});
 
 	try {
 		// Add MCP-specific system instruction for detailed file summaries
@@ -291,12 +286,12 @@ async function handleAskCipherTool(agent: MemAgent, args: any): Promise<any> {
 		const enhancedMessage = `${mcpSystemInstruction}\n\nUser request: ${message}`;
 
 		// Run the agent with the enhanced message and session
-		const { response, backgroundOperations } = await agent.run(
-			enhancedMessage,
-			undefined,
-			session_id,
-			stream
-		);
+        const { response, backgroundOperations } = await agent.run(
+            enhancedMessage,
+            undefined,
+            undefined,
+            stream
+        );
 		// In MCP mode, return response immediately, let background operations run asynchronously
 		if (backgroundOperations) {
 			backgroundOperations.catch(() => {
@@ -482,7 +477,7 @@ async function getSystemPrompt(agent: MemAgent): Promise<any> {
 		return {
 			messages: [
 				{
-					role: 'system',
+					role: 'assistant',
 					content: {
 						type: 'text',
 						text: systemPromptContent,

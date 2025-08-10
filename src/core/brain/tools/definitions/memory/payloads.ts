@@ -10,6 +10,10 @@ export interface BasePayload {
 	text: string;
 	timestamp: string;
 	version: 2; // Always V2 after cleanup
+	// Cross-tool sharing identifiers
+	userId?: string;
+	projectId?: string;
+	workspaceMode?: 'shared' | 'isolated';
 }
 
 /**
@@ -76,8 +80,14 @@ export function createKnowledgePayload(
 		qualitySource: 'similarity' | 'llm' | 'heuristic';
 		code_pattern?: string;
 		old_memory?: string;
+		userId?: string;
+		projectId?: string;
+		workspaceMode?: 'shared' | 'isolated';
 	}
 ): KnowledgePayload {
+	// Import env here to avoid circular dependencies
+	const { env } = require('../../../../env.js');
+	
 	return {
 		id,
 		text,
@@ -92,6 +102,10 @@ export function createKnowledgePayload(
 		qualitySource: options.qualitySource,
 		...(options.code_pattern && { code_pattern: options.code_pattern }),
 		...(options.old_memory && { old_memory: options.old_memory }),
+		// Add cross-tool sharing identifiers (env vars take precedence for security)
+		userId: env.CIPHER_USER_ID || options.userId,
+		projectId: env.CIPHER_PROJECT_NAME || options.projectId,
+		workspaceMode: env.CIPHER_WORKSPACE_MODE || options.workspaceMode || 'isolated',
 	};
 }
 
@@ -120,8 +134,14 @@ export function createReasoningPayload(
 	context: string,
 	options: {
 		sourceSessionId?: string;
+		userId?: string;
+		projectId?: string;
+		workspaceMode?: 'shared' | 'isolated';
 	} = {}
 ): ReasoningPayload {
+	// Import env here to avoid circular dependencies
+	const { env } = require('../../../../env.js');
+	
 	// Compute derived metrics from raw data
 	const stepCount = reasoningSteps.length;
 	const stepTypes = Array.from(new Set(reasoningSteps.map(step => step.type)));
@@ -140,5 +160,9 @@ export function createReasoningPayload(
 		stepTypes,
 		issueCount,
 		...(options.sourceSessionId && { sourceSessionId: options.sourceSessionId }),
+		// Add cross-tool sharing identifiers (env vars take precedence for security)
+		userId: env.CIPHER_USER_ID || options.userId,
+		projectId: env.CIPHER_PROJECT_NAME || options.projectId,
+		workspaceMode: env.CIPHER_WORKSPACE_MODE || options.workspaceMode || 'isolated',
 	};
 }

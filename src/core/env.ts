@@ -116,6 +116,10 @@ const envSchema = z.object({
 	WORKSPACE_VECTOR_STORE_MAX_VECTORS: z.number().default(10000),
 	// Query Refinement Configuration
 	ENABLE_QUERY_REFINEMENT: z.boolean().default(true),
+	// Cross-Tool Memory Sharing Configuration
+	CIPHER_USER_ID: z.string().optional(),
+	CIPHER_PROJECT_NAME: z.string().optional(),
+	CIPHER_WORKSPACE_MODE: z.enum(['shared', 'isolated']).default('isolated'),
 });
 
 type EnvSchema = z.infer<typeof envSchema>;
@@ -333,6 +337,13 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 				return process.env.WORKSPACE_VECTOR_STORE_MAX_VECTORS
 					? parseInt(process.env.WORKSPACE_VECTOR_STORE_MAX_VECTORS, 10)
 					: 10000;
+			// Cross-Tool Memory Sharing Configuration
+			case 'CIPHER_USER_ID':
+				return process.env.CIPHER_USER_ID;
+			case 'CIPHER_PROJECT_NAME':
+				return process.env.CIPHER_PROJECT_NAME;
+			case 'CIPHER_WORKSPACE_MODE':
+				return process.env.CIPHER_WORKSPACE_MODE || 'isolated';
 			default:
 				return process.env[prop];
 		}
@@ -485,6 +496,10 @@ export const validateEnv = () => {
 		WORKSPACE_VECTOR_STORE_MAX_VECTORS: process.env.WORKSPACE_VECTOR_STORE_MAX_VECTORS
 			? parseInt(process.env.WORKSPACE_VECTOR_STORE_MAX_VECTORS, 10)
 			: 10000,
+		// Cross-Tool Memory Sharing Configuration
+		CIPHER_USER_ID: process.env.CIPHER_USER_ID,
+		CIPHER_PROJECT_NAME: process.env.CIPHER_PROJECT_NAME,
+		CIPHER_WORKSPACE_MODE: process.env.CIPHER_WORKSPACE_MODE || 'isolated',
 	};
 
 	const result = envSchema.safeParse(envToValidate);
