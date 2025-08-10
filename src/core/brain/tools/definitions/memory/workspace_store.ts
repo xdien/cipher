@@ -1,7 +1,34 @@
 import { InternalTool, InternalToolContext } from '../../types.js';
 import { logger } from '../../../../logger/index.js';
-import { createWorkspacePayload, extractWorkspaceInfo } from './workspace-payloads.js';
+import {
+	createWorkspacePayload,
+	extractWorkspaceInfo,
+	mergeWorkspaceInfo,
+} from './workspace-payloads.js';
 import { env } from '../../../../env.js';
+
+/**
+ * Type definition for LLM-provided workspace information
+ */
+export interface LLMWorkspaceInfo {
+	teamMember?: string;
+	currentProgress?: {
+		feature: string;
+		status: 'in-progress' | 'completed' | 'blocked' | 'reviewing';
+		completion?: number;
+	};
+	bugsEncountered?: Array<{
+		description: string;
+		severity: 'low' | 'medium' | 'high' | 'critical';
+		status: 'open' | 'in-progress' | 'fixed';
+	}>;
+	workContext?: {
+		project?: string;
+		repository?: string;
+		branch?: string;
+	};
+	domain?: string;
+}
 
 /**
  * Determines if a piece of content is significant for workspace memory
@@ -285,19 +312,84 @@ export const workspaceStoreTool: InternalTool = {
 				description:
 					'Raw user interaction(s) or conversation text(s) to extract workspace information from.',
 			},
+			workspaceInfo: {
+				type: 'object',
+				description:
+					'Optional LLM-provided structured workspace information (takes precedence over regex extraction)',
+				properties: {
+					teamMember: {
+						type: 'string',
+						description: 'Name/ID of team member',
+					},
+					currentProgress: {
+						type: 'object',
+						description: 'Current feature progress information',
+						properties: {
+							feature: { type: 'string', description: 'Feature being worked on' },
+							status: {
+								type: 'string',
+								enum: ['in-progress', 'completed', 'blocked', 'reviewing'],
+								description: 'Current status of the feature',
+							},
+							completion: {
+								type: 'number',
+								minimum: 0,
+								maximum: 100,
+								description: 'Completion percentage (0-100)',
+							},
+						},
+						required: ['feature', 'status'],
+						additionalProperties: false,
+					},
+					bugsEncountered: {
+						type: 'array',
+						description: 'Array of bug information',
+						items: {
+							type: 'object',
+							properties: {
+								description: { type: 'string', description: 'Bug description' },
+								severity: {
+									type: 'string',
+									enum: ['low', 'medium', 'high', 'critical'],
+									description: 'Bug severity level',
+								},
+								status: {
+									type: 'string',
+									enum: ['open', 'in-progress', 'fixed'],
+									description: 'Bug resolution status',
+								},
+							},
+							required: ['description', 'severity', 'status'],
+							additionalProperties: false,
+						},
+					},
+					workContext: {
+						type: 'object',
+						description: 'Work context information',
+						properties: {
+							project: { type: 'string', description: 'Project identifier' },
+							repository: { type: 'string', description: 'Git repository if relevant' },
+							branch: { type: 'string', description: 'Current working branch' },
+						},
+						additionalProperties: false,
+					},
+					domain: {
+						type: 'string',
+						description: 'Technical domain (e.g., frontend, backend, devops)',
+					},
+				},
+				additionalProperties: false,
+			},
 			context: {
 				type: 'object',
 				description: 'Optional context information for workspace operations',
 				properties: {
 					sessionId: { type: 'string', description: 'Current session identifier' },
-					teamId: { type: 'string', description: 'Team identifier' },
 					projectId: {
 						type: 'string',
 						description: 'Project identifier for scoped workspace memory',
 					},
 					userId: { type: 'string', description: 'User identifier' },
-					conversationTopic: { type: 'string', description: 'Current conversation topic or theme' },
-					workEnvironment: { type: 'string', description: 'Work environment (dev, staging, prod)' },
 				},
 				additionalProperties: false,
 			},
@@ -335,7 +427,15 @@ export const workspaceStoreTool: InternalTool = {
 		},
 		required: ['interaction'],
 	},
-	handler: async (args: any, context?: InternalToolContext) => {
+	handler: async (
+		args: {
+			interaction: string | string[];
+			workspaceInfo?: LLMWorkspaceInfo;
+			context?: any;
+			options?: any;
+		},
+		context?: InternalToolContext
+	) => {
 		try {
 			// Check if workspace memory is enabled
 			if (!env.USE_WORKSPACE_MEMORY) {
@@ -468,7 +568,6 @@ export const workspaceStoreTool: InternalTool = {
 					event: 'ADD' as const,
 					tags: extractWorkspaceTags(content),
 					confidence: 0.6,
-					reasoning: 'Basic processing without vector services',
 				}));
 
 				return {
@@ -479,7 +578,6 @@ export const workspaceStoreTool: InternalTool = {
 						contentPreview: action.text.substring(0, 80),
 						action: action.event,
 						confidence: action.confidence,
-						reason: action.reasoning,
 						targetId: action.id,
 					})),
 					timestamp: new Date().toISOString(),
@@ -685,10 +783,17 @@ export const workspaceStoreTool: InternalTool = {
 						}
 					}
 
-					// Extract workspace-specific information if enabled
+					// Extract workspace-specific information using hybrid approach
 					let workspaceInfo = {};
 					if (options.autoExtractWorkspaceInfo) {
-						workspaceInfo = extractWorkspaceInfo(content);
+						// Get LLM-provided workspace info if available
+						const llmWorkspaceInfo = args.workspaceInfo || {};
+
+						// Always extract from text as fallback/supplement
+						const regexWorkspaceInfo = extractWorkspaceInfo(content);
+
+						// Merge LLM data (priority) with regex data (fallback)
+						workspaceInfo = mergeWorkspaceInfo(llmWorkspaceInfo, regexWorkspaceInfo);
 					}
 
 					workspaceActions.push({

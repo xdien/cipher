@@ -79,10 +79,10 @@ const envSchema = z.object({
 	KNOWLEDGE_GRAPH_PASSWORD: z.string().optional(),
 	KNOWLEDGE_GRAPH_DATABASE: z.string().default('neo4j'),
 	// Memory Search Configuration
-	SEARCH_MEMORY_TYPE: z.enum(['knowledge', 'reflection', 'both']).default('both'),
+	SEARCH_MEMORY_TYPE: z.enum(['knowledge', 'reflection', 'both']).default('knowledge'),
 	// Reflection Memory Configuration
 	REFLECTION_VECTOR_STORE_COLLECTION: z.string().default('reflection_memory'),
-	DISABLE_REFLECTION_MEMORY: z.boolean().default(false),
+	DISABLE_REFLECTION_MEMORY: z.boolean().default(true),
 	// Event Persistence Configuration
 	EVENT_PERSISTENCE_ENABLED: z.boolean().default(false),
 	EVENT_PERSISTENCE_PATH: z.string().optional(),
@@ -116,6 +116,12 @@ const envSchema = z.object({
 	WORKSPACE_VECTOR_STORE_MAX_VECTORS: z.number().default(10000),
 	// Query Refinement Configuration
 	ENABLE_QUERY_REFINEMENT: z.boolean().default(true),
+	// Cross-Tool Memory Sharing Configuration
+	CIPHER_USER_ID: z.string().optional(),
+	CIPHER_PROJECT_NAME: z.string().optional(),
+	CIPHER_WORKSPACE_MODE: z.enum(['shared', 'isolated']).default('isolated'),
+	// MCP Aggregator Configuration
+	USE_ASK_CIPHER: z.boolean().default(false),
 });
 
 type EnvSchema = z.infer<typeof envSchema>;
@@ -259,7 +265,7 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 				return process.env.KNOWLEDGE_GRAPH_DATABASE || 'neo4j';
 			// Memory Search Configuration
 			case 'SEARCH_MEMORY_TYPE':
-				return process.env.SEARCH_MEMORY_TYPE || 'both';
+				return process.env.SEARCH_MEMORY_TYPE || 'knowledge';
 			// Reflection Memory Configuration
 			case 'REFLECTION_VECTOR_STORE_COLLECTION': {
 				// Handle boolean conversion for test compatibility
@@ -333,6 +339,15 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 				return process.env.WORKSPACE_VECTOR_STORE_MAX_VECTORS
 					? parseInt(process.env.WORKSPACE_VECTOR_STORE_MAX_VECTORS, 10)
 					: 10000;
+			// Cross-Tool Memory Sharing Configuration
+			case 'CIPHER_USER_ID':
+				return process.env.CIPHER_USER_ID;
+			case 'CIPHER_PROJECT_NAME':
+				return process.env.CIPHER_PROJECT_NAME;
+			case 'CIPHER_WORKSPACE_MODE':
+				return process.env.CIPHER_WORKSPACE_MODE || 'isolated';
+			case 'USE_ASK_CIPHER':
+				return process.env.USE_ASK_CIPHER === 'true';
 			default:
 				return process.env[prop];
 		}
@@ -455,7 +470,7 @@ export const validateEnv = () => {
 		KNOWLEDGE_GRAPH_PASSWORD: process.env.KNOWLEDGE_GRAPH_PASSWORD,
 		KNOWLEDGE_GRAPH_DATABASE: process.env.KNOWLEDGE_GRAPH_DATABASE || 'neo4j',
 		// Memory Search Configuration
-		SEARCH_MEMORY_TYPE: process.env.SEARCH_MEMORY_TYPE || 'both',
+		SEARCH_MEMORY_TYPE: process.env.SEARCH_MEMORY_TYPE || 'knowledge',
 		// Reflection Memory Configuration
 		REFLECTION_VECTOR_STORE_COLLECTION:
 			process.env.REFLECTION_VECTOR_STORE_COLLECTION || 'reflection_memory',
@@ -485,6 +500,10 @@ export const validateEnv = () => {
 		WORKSPACE_VECTOR_STORE_MAX_VECTORS: process.env.WORKSPACE_VECTOR_STORE_MAX_VECTORS
 			? parseInt(process.env.WORKSPACE_VECTOR_STORE_MAX_VECTORS, 10)
 			: 10000,
+		// Cross-Tool Memory Sharing Configuration
+		CIPHER_USER_ID: process.env.CIPHER_USER_ID,
+		CIPHER_PROJECT_NAME: process.env.CIPHER_PROJECT_NAME,
+		CIPHER_WORKSPACE_MODE: process.env.CIPHER_WORKSPACE_MODE || 'isolated',
 	};
 
 	const result = envSchema.safeParse(envToValidate);

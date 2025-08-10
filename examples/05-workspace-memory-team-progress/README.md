@@ -38,7 +38,7 @@ Use the provided `mcp.example.json` configuration. You can replace `OPENAI_API_K
         "WORKSPACE_VECTOR_STORE_HOST": "localhost",
         "WORKSPACE_VECTOR_STORE_PORT": "6333",
         "WORKSPACE_VECTOR_STORE_URL": "http://localhost:6333",
-        "USE_ASK_CIPHER": "false"
+        "USE_ASK_CIPHER": "false"  # default: false
       }
     }
   }

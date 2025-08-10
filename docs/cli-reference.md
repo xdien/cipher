@@ -270,7 +270,7 @@ ANTHROPIC_API_KEY=sk-ant-your-key
 
 # Memory Settings  
 USE_WORKSPACE_MEMORY=true
-DISABLE_REFLECTION_MEMORY=false
+DISABLE_REFLECTION_MEMORY=true  # default: true
 
 # Vector Store
 VECTOR_STORE_TYPE=qdrant

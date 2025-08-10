@@ -153,7 +153,7 @@ VECTOR_STORE_DISTANCE=Cosine
 
 # Reflection memory (optional)
 REFLECTION_VECTOR_STORE_COLLECTION=reflection_memory
-DISABLE_REFLECTION_MEMORY=true
+DISABLE_REFLECTION_MEMORY=true  # default: true
 ```
 
 ## Related Documentation

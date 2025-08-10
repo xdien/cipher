@@ -20,6 +20,16 @@ Workspace memory is Cipher's specialized memory system for teams. While Cipher's
 
 Add to your `.env` file:
 
+### Cross-Tool Memory Sharing
+
+For teams working across multiple tools or projects, you can configure shared memory identifiers:
+
+- **`CIPHER_USER_ID`**: Unique identifier for your team (e.g., `rokamenu-team`, `frontend-team`)
+- **`CIPHER_PROJECT_NAME`**: Project identifier (e.g., `rokamenu`, `ecommerce-app`)
+- **`CIPHER_WORKSPACE_MODE`**: Memory sharing mode (`shared` or `isolated`)
+
+These settings enable cross-tool memory sharing, allowing different Cipher instances to access the same workspace memory when configured with the same identifiers.
+
 ### Required Settings
 
 ```bash
@@ -35,6 +45,11 @@ GEMINI_API_KEY=your-gemini-api-key-here
 ### Optional Settings
 
 ```bash
+# Cross-tool memory sharing
+CIPHER_USER_ID=your-team-id              # Team identifier for shared memory
+CIPHER_PROJECT_NAME=your-project-name    # Project identifier for shared memory
+CIPHER_WORKSPACE_MODE=shared             # shared or isolated memory mode
+
 # Memory mode
 DISABLE_DEFAULT_MEMORY=true              # Workspace-only mode
 
