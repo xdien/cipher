@@ -170,7 +170,7 @@ Cipher supports a separate collection for reflection memory:
 REFLECTION_VECTOR_STORE_COLLECTION=reflection_memory
 
 # Disable reflection memory entirely
-DISABLE_REFLECTION_MEMORY=true
+DISABLE_REFLECTION_MEMORY=true  # default: true
 ```
 
 ### Performance Settings
@@ -223,7 +223,7 @@ VECTOR_STORE_DISTANCE=Cosine
 
 # Reflection memory
 REFLECTION_VECTOR_STORE_COLLECTION=reflection_memory
-DISABLE_REFLECTION_MEMORY=false
+DISABLE_REFLECTION_MEMORY=false  # default: true
 
 # Workspace memory
 USE_WORKSPACE_MEMORY=true
@@ -240,7 +240,7 @@ VECTOR_STORE_DIMENSION=1536
 VECTOR_STORE_MAX_VECTORS=5000
 
 # Disable reflection memory for simplicity
-DISABLE_REFLECTION_MEMORY=true
+DISABLE_REFLECTION_MEMORY=true  # default: true
 
 # Enable workspace memory for testing
 USE_WORKSPACE_MEMORY=true
