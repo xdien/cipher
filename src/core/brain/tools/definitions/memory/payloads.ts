@@ -149,8 +149,12 @@ export function mergeKnowledgeInfo(
 	extracted: ReturnType<typeof extractKnowledgeInfo> = {}
 ): { domain?: string; codePattern?: string } {
 	return {
-		domain: llmProvided.domain || extracted.domain,
-		codePattern: llmProvided.codePattern || extracted.codePattern,
+		...((llmProvided.domain || extracted.domain) && {
+			domain: llmProvided.domain || extracted.domain,
+		}),
+		...((llmProvided.codePattern || extracted.codePattern) && {
+			codePattern: llmProvided.codePattern || extracted.codePattern,
+		}),
 	};
 }
 

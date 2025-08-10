@@ -421,7 +421,7 @@ export const searchMemoryTool: InternalTool = {
 					return {
 						...baseResult,
 						confidence: knowledgePayload.confidence || 0,
-						reasoning: knowledgePayload.reasoning || 'No reasoning available',
+						reasoning: 'No reasoning available', // KnowledgePayload doesn't have reasoning field
 						event: knowledgePayload.event,
 						...(knowledgePayload.domain && { domain: knowledgePayload.domain }),
 						qualitySource: knowledgePayload.qualitySource,

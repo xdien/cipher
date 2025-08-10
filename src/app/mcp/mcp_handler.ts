@@ -184,8 +184,8 @@ async function registerAggregatedTools(
 	}));
 
 	// Check if ask_cipher tool should be exposed (env-gated for aggregator mode)
-	const useAskCipher = process.env.USE_ASK_CIPHER?.toLowerCase();
-	const shouldExposeAskCipher = useAskCipher !== 'false'; // Default to true if not set or not 'false'
+	const { env } = await import('../../core/env.js');
+	const shouldExposeAskCipher = env.USE_ASK_CIPHER;
 
 	// For backward compatibility, ensure ask_cipher is present if enabled
 	if (shouldExposeAskCipher && !mcpTools.find(t => t.name === 'ask_cipher')) {
@@ -226,8 +226,8 @@ async function registerAggregatedTools(
 		logger.info(`[MCP Handler] Tool called: ${name}`, { toolName: name, args });
 
 		// Check if ask_cipher tool should be handled (env-gated)
-		const useAskCipher = process.env.USE_ASK_CIPHER?.toLowerCase();
-		const shouldExposeAskCipher = useAskCipher !== 'false';
+		const { env } = await import('../../core/env.js');
+		const shouldExposeAskCipher = env.USE_ASK_CIPHER;
 
 		if (name === 'ask_cipher') {
 			if (!shouldExposeAskCipher) {

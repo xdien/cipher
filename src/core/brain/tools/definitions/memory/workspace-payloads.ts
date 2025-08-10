@@ -93,8 +93,10 @@ export async function createWorkspacePayload(
 		...(options.sourceSessionId && { sourceSessionId: options.sourceSessionId }),
 		qualitySource: options.qualitySource,
 		// Add cross-tool sharing identifiers (env vars take precedence for security)
-		userId: env.CIPHER_USER_ID || options.userId,
-		projectId: env.CIPHER_PROJECT_NAME || options.projectId,
+		...((env.CIPHER_USER_ID || options.userId) && { userId: env.CIPHER_USER_ID || options.userId }),
+		...((env.CIPHER_PROJECT_NAME || options.projectId) && {
+			projectId: env.CIPHER_PROJECT_NAME || options.projectId,
+		}),
 		workspaceMode: env.CIPHER_WORKSPACE_MODE || options.workspaceMode || 'isolated',
 	};
 }

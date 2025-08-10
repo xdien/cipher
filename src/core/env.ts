@@ -120,6 +120,8 @@ const envSchema = z.object({
 	CIPHER_USER_ID: z.string().optional(),
 	CIPHER_PROJECT_NAME: z.string().optional(),
 	CIPHER_WORKSPACE_MODE: z.enum(['shared', 'isolated']).default('isolated'),
+	// MCP Aggregator Configuration
+	USE_ASK_CIPHER: z.boolean().default(false),
 });
 
 type EnvSchema = z.infer<typeof envSchema>;
@@ -344,6 +346,8 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 				return process.env.CIPHER_PROJECT_NAME;
 			case 'CIPHER_WORKSPACE_MODE':
 				return process.env.CIPHER_WORKSPACE_MODE || 'isolated';
+			case 'USE_ASK_CIPHER':
+				return process.env.USE_ASK_CIPHER === 'true';
 			default:
 				return process.env[prop];
 		}
