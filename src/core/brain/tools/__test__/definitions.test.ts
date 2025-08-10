@@ -133,23 +133,35 @@ describe('Tool Definitions', () => {
 	describe('Tool Registration', () => {
 		it('should load all tool definitions', async () => {
 			const tools = await getAllToolDefinitions();
+			const { env } = await import('../../../env.js');
 
 			// Check memory tools (always loaded)
 			expect(tools['cipher_extract_and_operate_memory']).toBeDefined();
 			expect(tools['cipher_memory_search']).toBeDefined();
-			expect(tools['cipher_store_reasoning_memory']).toBeDefined();
-			expect(tools['cipher_extract_reasoning_steps']).toBeDefined();
-			expect(tools['cipher_evaluate_reasoning']).toBeDefined();
-			expect(tools['cipher_search_reasoning_patterns']).toBeDefined();
+
+			// Check reflection tools (conditionally loaded based on DISABLE_REFLECTION_MEMORY)
+			if (env.DISABLE_REFLECTION_MEMORY !== true) {
+				expect(tools['cipher_store_reasoning_memory']).toBeDefined();
+				expect(tools['cipher_extract_reasoning_steps']).toBeDefined();
+				expect(tools['cipher_evaluate_reasoning']).toBeDefined();
+				expect(tools['cipher_search_reasoning_patterns']).toBeDefined();
+			} else {
+				expect(tools['cipher_store_reasoning_memory']).toBeUndefined();
+				expect(tools['cipher_extract_reasoning_steps']).toBeUndefined();
+				expect(tools['cipher_evaluate_reasoning']).toBeUndefined();
+				expect(tools['cipher_search_reasoning_patterns']).toBeUndefined();
+			}
 
 			// Check system tools (always loaded)
 			expect(tools['cipher_bash']).toBeDefined();
 
 			// Check knowledge graph tools (conditionally loaded)
-			const { env } = await import('../../../env.js');
 
 			// Calculate expected tool count based on enabled features
-			let expectedMemoryTools = 6; // Base memory tools
+			let expectedMemoryTools = 2; // Base knowledge memory tools
+			if (env.DISABLE_REFLECTION_MEMORY !== true) {
+				expectedMemoryTools += 4; // Add reflection tools
+			}
 			if (env.USE_WORKSPACE_MEMORY) {
 				expectedMemoryTools += 2; // workspace_search + workspace_store
 			}
@@ -172,23 +184,35 @@ describe('Tool Definitions', () => {
 
 		it('should register all tools successfully', async () => {
 			const result = await registerAllTools(manager);
+			const { env } = await import('../../../env.js');
 
 			// Check memory tools (always registered)
 			expect(result.registered).toContain('cipher_extract_and_operate_memory');
 			expect(result.registered).toContain('cipher_memory_search');
-			expect(result.registered).toContain('cipher_store_reasoning_memory');
-			expect(result.registered).toContain('cipher_extract_reasoning_steps');
-			expect(result.registered).toContain('cipher_evaluate_reasoning');
-			expect(result.registered).toContain('cipher_search_reasoning_patterns');
+
+			// Check reflection tools (conditionally registered based on DISABLE_REFLECTION_MEMORY)
+			if (env.DISABLE_REFLECTION_MEMORY !== true) {
+				expect(result.registered).toContain('cipher_store_reasoning_memory');
+				expect(result.registered).toContain('cipher_extract_reasoning_steps');
+				expect(result.registered).toContain('cipher_evaluate_reasoning');
+				expect(result.registered).toContain('cipher_search_reasoning_patterns');
+			} else {
+				expect(result.registered).not.toContain('cipher_store_reasoning_memory');
+				expect(result.registered).not.toContain('cipher_extract_reasoning_steps');
+				expect(result.registered).not.toContain('cipher_evaluate_reasoning');
+				expect(result.registered).not.toContain('cipher_search_reasoning_patterns');
+			}
 
 			// Check system tools (always registered)
 			expect(result.registered).toContain('cipher_bash');
 
 			// Check knowledge graph tools (conditionally registered)
-			const { env } = await import('../../../env.js');
 
 			// Calculate expected tool count based on enabled features
-			let expectedMemoryTools = 6; // Base memory tools
+			let expectedMemoryTools = 2; // Base knowledge memory tools
+			if (env.DISABLE_REFLECTION_MEMORY !== true) {
+				expectedMemoryTools += 4; // Add reflection tools
+			}
 			if (env.USE_WORKSPACE_MEMORY) {
 				expectedMemoryTools += 2; // workspace_search + workspace_store
 			}
@@ -250,7 +274,10 @@ describe('Tool Definitions', () => {
 			const { env } = await import('../../../env.js');
 
 			// Calculate expected tool count based on enabled features
-			let expectedMemoryTools = 6; // Base memory tools
+			let expectedMemoryTools = 2; // Base knowledge memory tools
+			if (env.DISABLE_REFLECTION_MEMORY !== true) {
+				expectedMemoryTools += 4; // Add reflection tools
+			}
 			if (env.USE_WORKSPACE_MEMORY) {
 				expectedMemoryTools += 2; // workspace_search + workspace_store
 			}

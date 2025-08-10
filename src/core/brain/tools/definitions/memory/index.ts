@@ -108,13 +108,11 @@ export async function getMemoryTools(
 	const defaultTools: Record<string, InternalTool> = disableDefaultMemory
 		? {}
 		: {
-				...(env.SEARCH_MEMORY_TYPE !== 'reflection' && {
-					// Knowledge or both
-					cipher_extract_and_operate_memory: extractAndOperateTool,
-					cipher_memory_search: searchMemoryTool,
-				}),
-				...(env.SEARCH_MEMORY_TYPE !== 'knowledge' && {
-					// Reflection or both
+				// Knowledge tools (always available for functionality)
+				cipher_extract_and_operate_memory: extractAndOperateTool,
+				cipher_memory_search: searchMemoryTool,
+				// Reflection tools (only available if reflection memory is enabled)
+				...(env.DISABLE_REFLECTION_MEMORY !== true && {
 					cipher_store_reasoning_memory: storeReasoningMemoryTool,
 					cipher_extract_reasoning_steps: extractReasoningSteps,
 					cipher_evaluate_reasoning: evaluateReasoning,
@@ -186,15 +184,12 @@ export async function getAllMemoryToolDefinitions(
 	const defaultTools: Record<string, InternalTool> = disableDefaultMemory
 		? {}
 		: {
-				...(env.SEARCH_MEMORY_TYPE !== 'reflection' && {
-					// Knowledge or both
-					cipher_extract_and_operate_memory: extractAndOperateTool,
-					cipher_memory_search: searchMemoryTool,
-				}),
-				...(env.SEARCH_MEMORY_TYPE !== 'knowledge' && {
-					// Reflection or both
+				// Knowledge tools (always available for functionality)
+				cipher_extract_and_operate_memory: extractAndOperateTool,
+				cipher_memory_search: searchMemoryTool,
+				// Reflection tools (only available if reflection memory is enabled)
+				...(env.DISABLE_REFLECTION_MEMORY !== true && {
 					cipher_store_reasoning_memory: storeReasoningMemoryTool,
-					// All reasoning tools are always available for testing and functionality
 					cipher_extract_reasoning_steps: extractReasoningSteps,
 					cipher_evaluate_reasoning: evaluateReasoning,
 					cipher_search_reasoning_patterns: searchReasoningPatterns,
