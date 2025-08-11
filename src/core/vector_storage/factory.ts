@@ -122,7 +122,7 @@ export async function createVectorStore(config: VectorStoreConfig): Promise<Vect
  * Convenience function that creates vector storage with in-memory backend.
  * Useful for testing or development environments.
  *
- * @param collectionName - Optional collection name (default: 'default')
+ * @param collectionName - Optional collection name (default: 'knowledge_memory')
  * @param dimension - Optional vector dimension (default: 1536)
  * @returns Promise resolving to manager and connected vector store
  *
@@ -136,8 +136,8 @@ export async function createVectorStore(config: VectorStoreConfig): Promise<Vect
  * ```
  */
 export async function createDefaultVectorStore(
-	collectionName: string = 'default',
-	dimension: number = 1536
+    collectionName: string = 'knowledge_memory',
+    dimension: number = 1536
 ): Promise<VectorStoreFactory> {
 	return createVectorStore({
 		type: 'in-memory',
@@ -327,10 +327,8 @@ export function getVectorStoreConfigFromEnv(agentConfig?: any): VectorStoreConfi
 	// Get configuration from centralized env object with fallbacks for invalid values
 	const storeType = env.VECTOR_STORE_TYPE;
 	const collectionName = env.VECTOR_STORE_COLLECTION;
-	let dimension = Number.isNaN(env.VECTOR_STORE_DIMENSION) ? 1536 : env.VECTOR_STORE_DIMENSION;
-	const maxVectors = Number.isNaN(env.VECTOR_STORE_MAX_VECTORS)
-		? 10000
-		: env.VECTOR_STORE_MAX_VECTORS;
+	let dimension = env.VECTOR_STORE_DIMENSION !== undefined && !Number.isNaN(env.VECTOR_STORE_DIMENSION) ? env.VECTOR_STORE_DIMENSION : 1536;
+	const maxVectors = env.VECTOR_STORE_MAX_VECTORS !== undefined && !Number.isNaN(env.VECTOR_STORE_MAX_VECTORS) ? env.VECTOR_STORE_MAX_VECTORS : 10000;
 
 	// Override dimension from agent config if embedding configuration is present
 	if (
@@ -493,16 +491,16 @@ export function getWorkspaceVectorStoreConfigFromEnv(agentConfig?: any): VectorS
 	// Get workspace-specific configuration with fallbacks to default vector store config
 	const storeType = env.WORKSPACE_VECTOR_STORE_TYPE || env.VECTOR_STORE_TYPE;
 	const collectionName = env.WORKSPACE_VECTOR_STORE_COLLECTION || 'workspace_memory';
-	let dimension = Number.isNaN(env.WORKSPACE_VECTOR_STORE_DIMENSION)
-		? Number.isNaN(env.VECTOR_STORE_DIMENSION)
-			? 1536
-			: env.VECTOR_STORE_DIMENSION
-		: env.WORKSPACE_VECTOR_STORE_DIMENSION;
-	const maxVectors = Number.isNaN(env.WORKSPACE_VECTOR_STORE_MAX_VECTORS)
-		? Number.isNaN(env.VECTOR_STORE_MAX_VECTORS)
-			? 10000
-			: env.VECTOR_STORE_MAX_VECTORS
-		: env.WORKSPACE_VECTOR_STORE_MAX_VECTORS;
+	let dimension = env.WORKSPACE_VECTOR_STORE_DIMENSION !== undefined && !Number.isNaN(env.WORKSPACE_VECTOR_STORE_DIMENSION)
+		? env.WORKSPACE_VECTOR_STORE_DIMENSION
+		: env.VECTOR_STORE_DIMENSION !== undefined && !Number.isNaN(env.VECTOR_STORE_DIMENSION)
+		? env.VECTOR_STORE_DIMENSION
+		: 1536;
+	const maxVectors = env.WORKSPACE_VECTOR_STORE_MAX_VECTORS !== undefined && !Number.isNaN(env.WORKSPACE_VECTOR_STORE_MAX_VECTORS)
+		? env.WORKSPACE_VECTOR_STORE_MAX_VECTORS
+		: env.VECTOR_STORE_MAX_VECTORS !== undefined && !Number.isNaN(env.VECTOR_STORE_MAX_VECTORS)
+		? env.VECTOR_STORE_MAX_VECTORS
+		: 10000;
 
 	// Override dimension from agent config if embedding configuration is present
 	if (

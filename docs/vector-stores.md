@@ -248,14 +248,15 @@ VECTOR_STORE_TYPE=in-memory
 </details>
 
 ## Configuration Settings
+**🛎️ Note**: All the configuration variables below have a default value. By default, only **knowledge memory** is enabled, if you want enable **reflection memory** and **workspace memory**, please set `USE_WORKSPACE_MEMORY=true` and `DISABLE_REFLECTION_MEMORY=false`
 
 <details>
-<summary><strong>⚙️ Vector Store Settings</strong></summary>
+<summary><strong>⚙️ Knowledge and Reflection Collections</strong></summary>
 
 ### 📁 Collection Configuration
 
 ```bash
-# Collection name for knowledge memory
+# Set the name for knowledge memory collection - default: "knowledge_memory"
 VECTOR_STORE_COLLECTION=knowledge_memory
 
 # Vector dimensions (must match your embedding model)
@@ -271,7 +272,7 @@ VECTOR_STORE_DISTANCE=Cosine  # Options: Cosine, Euclidean, Dot (Qdrant/Milvus)
 Cipher supports a separate collection for reflection memory:
 
 ```bash
-# Enable reflection memory with separate collection
+# Set the name for reflection memory collection - default: "reflection_memory"
 REFLECTION_VECTOR_STORE_COLLECTION=reflection_memory
 
 # Disable reflection memory entirely
@@ -298,7 +299,7 @@ When using [workspace memory](./workspace-memory.md), you can configure separate
 
 ```bash
 # Enable workspace memory
-USE_WORKSPACE_MEMORY=true
+USE_WORKSPACE_MEMORY=true # default: false
 
 # Workspace-specific collection
 WORKSPACE_VECTOR_STORE_COLLECTION=workspace_memory

@@ -64,7 +64,7 @@ const envSchema = z.object({
 	VECTOR_STORE_API_KEY: z.string().optional(),
 	VECTOR_STORE_USERNAME: z.string().optional(),
 	VECTOR_STORE_PASSWORD: z.string().optional(),
-	VECTOR_STORE_COLLECTION: z.string().default('default'),
+	VECTOR_STORE_COLLECTION: z.string().default('knowledge_memory'),
 	VECTOR_STORE_DIMENSION: z.number().default(1536),
 	VECTOR_STORE_DISTANCE: z.enum(['Cosine', 'Euclidean', 'Dot', 'Manhattan']).default('Cosine'),
 	VECTOR_STORE_ON_DISK: z.boolean().default(false),
@@ -108,12 +108,10 @@ const envSchema = z.object({
 	WORKSPACE_VECTOR_STORE_USERNAME: z.string().optional(),
 	WORKSPACE_VECTOR_STORE_PASSWORD: z.string().optional(),
 	WORKSPACE_VECTOR_STORE_COLLECTION: z.string().default('workspace_memory'),
-	WORKSPACE_VECTOR_STORE_DIMENSION: z.number().default(1536),
-	WORKSPACE_VECTOR_STORE_DISTANCE: z
-		.enum(['Cosine', 'Euclidean', 'Dot', 'Manhattan'])
-		.default('Cosine'),
-	WORKSPACE_VECTOR_STORE_ON_DISK: z.boolean().default(false),
-	WORKSPACE_VECTOR_STORE_MAX_VECTORS: z.number().default(10000),
+	WORKSPACE_VECTOR_STORE_DIMENSION: z.number().optional(),
+	WORKSPACE_VECTOR_STORE_DISTANCE: z.enum(['Cosine', 'Euclidean', 'Dot', 'Manhattan']).optional(),
+	WORKSPACE_VECTOR_STORE_ON_DISK: z.boolean().optional(),
+	WORKSPACE_VECTOR_STORE_MAX_VECTORS: z.number().optional(),
 	// Query Refinement Configuration
 	ENABLE_QUERY_REFINEMENT: z.boolean().default(true),
 	// Cross-Tool Memory Sharing Configuration
@@ -231,7 +229,7 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 			case 'VECTOR_STORE_PASSWORD':
 				return process.env.VECTOR_STORE_PASSWORD;
 			case 'VECTOR_STORE_COLLECTION':
-				return process.env.VECTOR_STORE_COLLECTION || 'default';
+				return process.env.VECTOR_STORE_COLLECTION || 'knowledge_memory';
 			case 'VECTOR_STORE_DIMENSION':
 				return process.env.VECTOR_STORE_DIMENSION
 					? parseInt(process.env.VECTOR_STORE_DIMENSION, 10)
@@ -330,15 +328,27 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 			case 'WORKSPACE_VECTOR_STORE_DIMENSION':
 				return process.env.WORKSPACE_VECTOR_STORE_DIMENSION
 					? parseInt(process.env.WORKSPACE_VECTOR_STORE_DIMENSION, 10)
-					: 1536;
+					: process.env.VECTOR_STORE_DIMENSION
+						? parseInt(process.env.VECTOR_STORE_DIMENSION, 10)
+						: 1536;
 			case 'WORKSPACE_VECTOR_STORE_DISTANCE':
-				return process.env.WORKSPACE_VECTOR_STORE_DISTANCE || 'Cosine';
+				return (
+					process.env.WORKSPACE_VECTOR_STORE_DISTANCE ||
+					process.env.VECTOR_STORE_DISTANCE ||
+					'Cosine'
+				);
 			case 'WORKSPACE_VECTOR_STORE_ON_DISK':
-				return process.env.WORKSPACE_VECTOR_STORE_ON_DISK === 'true';
+				return process.env.WORKSPACE_VECTOR_STORE_ON_DISK !== undefined
+					? process.env.WORKSPACE_VECTOR_STORE_ON_DISK === 'true'
+					: process.env.VECTOR_STORE_ON_DISK !== undefined
+						? process.env.VECTOR_STORE_ON_DISK === 'true'
+						: false;
 			case 'WORKSPACE_VECTOR_STORE_MAX_VECTORS':
 				return process.env.WORKSPACE_VECTOR_STORE_MAX_VECTORS
 					? parseInt(process.env.WORKSPACE_VECTOR_STORE_MAX_VECTORS, 10)
-					: 10000;
+					: process.env.VECTOR_STORE_MAX_VECTORS
+						? parseInt(process.env.VECTOR_STORE_MAX_VECTORS, 10)
+						: 10000;
 			// Cross-Tool Memory Sharing Configuration
 			case 'CIPHER_USER_ID':
 				return process.env.CIPHER_USER_ID;
@@ -449,7 +459,7 @@ export const validateEnv = () => {
 		VECTOR_STORE_API_KEY: process.env.VECTOR_STORE_API_KEY,
 		VECTOR_STORE_USERNAME: process.env.VECTOR_STORE_USERNAME,
 		VECTOR_STORE_PASSWORD: process.env.VECTOR_STORE_PASSWORD,
-		VECTOR_STORE_COLLECTION: process.env.VECTOR_STORE_COLLECTION || 'default',
+		VECTOR_STORE_COLLECTION: process.env.VECTOR_STORE_COLLECTION || 'knowledge_memory',
 		VECTOR_STORE_DIMENSION: process.env.VECTOR_STORE_DIMENSION
 			? parseInt(process.env.VECTOR_STORE_DIMENSION, 10)
 			: 1536,
