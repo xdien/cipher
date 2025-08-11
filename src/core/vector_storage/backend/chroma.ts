@@ -15,7 +15,13 @@
 
 import { ChromaClient } from 'chromadb';
 import type { VectorStore } from './vector-store.js';
-import type { SearchFilters, VectorStoreResult, ChromaBackendConfig, ChromaPayloadAdapter, PayloadTransformationConfig } from './types.js';
+import type {
+	SearchFilters,
+	VectorStoreResult,
+	ChromaBackendConfig,
+	ChromaPayloadAdapter,
+	PayloadTransformationConfig,
+} from './types.js';
 import { VectorStoreError, VectorStoreConnectionError, VectorDimensionError } from './types.js';
 import { Logger, createLogger } from '../../logger/index.js';
 import { LOG_PREFIXES, DEFAULTS, ERROR_MESSAGES } from '../constants.js';
@@ -94,7 +100,10 @@ export class ChromaBackend implements VectorStore {
 		this.logger.debug(`${LOG_PREFIXES.CHROMA} Initialized`, {
 			collection: this.collectionName,
 			dimension: this.dimension,
-			url: config.url || `${clientConfig.ssl ? 'https' : 'http'}://${clientConfig.host}:${clientConfig.port}` || 'embedded',
+			url:
+				config.url ||
+				`${clientConfig.ssl ? 'https' : 'http'}://${clientConfig.host}:${clientConfig.port}` ||
+				'embedded',
 		});
 	}
 
@@ -214,16 +223,17 @@ export class ChromaBackend implements VectorStore {
 
 		// Convert IDs to strings as ChromaDB expects string IDs
 		const stringIds = ids.map(id => id.toString());
-		
+
 		// Convert payloads to be ChromaDB compatible using the payload adapter
-		const chromaCompatiblePayloads = payloads.map(payload => this.payloadAdapter.serialize(payload));
-		
+		const chromaCompatiblePayloads = payloads.map(payload =>
+			this.payloadAdapter.serialize(payload)
+		);
+
 		const addParams = {
 			ids: stringIds,
 			embeddings: vectors,
 			metadatas: chromaCompatiblePayloads,
 		};
-
 
 		try {
 			// Use upsert to avoid duplicate ID errors on re-inserts
@@ -231,7 +241,7 @@ export class ChromaBackend implements VectorStore {
 
 			this.logger.debug(`${LOG_PREFIXES.CHROMA} Successfully inserted ${vectors.length} vectors`);
 		} catch (error) {
-			this.logger.error(`${LOG_PREFIXES.CHROMA} Insert failed`, { 
+			this.logger.error(`${LOG_PREFIXES.CHROMA} Insert failed`, {
 				error: error instanceof Error ? error.message : String(error),
 				vectorCount: vectors.length,
 				collectionName: this.collectionName,
@@ -272,7 +282,6 @@ export class ChromaBackend implements VectorStore {
 				searchParams.where = chromaFilter;
 			}
 
-
 			const searchResponse = await this.collection.query(searchParams);
 
 			// ChromaDB returns results in arrays
@@ -299,7 +308,7 @@ export class ChromaBackend implements VectorStore {
 
 			return results;
 		} catch (error) {
-			this.logger.error(`${LOG_PREFIXES.CHROMA} Search failed`, { 
+			this.logger.error(`${LOG_PREFIXES.CHROMA} Search failed`, {
 				error: error instanceof Error ? error.message : String(error),
 				queryLength: query.length,
 				limit,
@@ -355,7 +364,7 @@ export class ChromaBackend implements VectorStore {
 		try {
 			// Convert payload to be ChromaDB compatible using the payload adapter
 			const convertedPayload = this.payloadAdapter.serialize(payload);
-			
+
 			// ChromaDB doesn't have a direct update method, so we use upsert
 			await this.collection.upsert({
 				ids: [vectorId.toString()],
@@ -474,7 +483,7 @@ export class ChromaBackend implements VectorStore {
 			try {
 				this.collection = await this.client.getCollection({
 					name: this.collectionName,
-					embeddingFunction: undefined, // Use default embedding function
+					embeddingFunction: null as any, // Use null to indicate no embedding function
 				});
 
 				this.logger.debug(
@@ -498,10 +507,9 @@ export class ChromaBackend implements VectorStore {
 					metadata: {
 						'hnsw:space': metricName,
 					},
-					embeddingFunction: undefined, // Use default embedding function
+					embeddingFunction: null as any, // Use null to indicate no embedding function
 				});
 			}
-
 
 			this.connected = true;
 			this.logger.info(`${LOG_PREFIXES.CHROMA} Successfully connected`);

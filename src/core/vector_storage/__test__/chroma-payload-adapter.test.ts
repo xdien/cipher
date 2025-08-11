@@ -82,7 +82,7 @@ describe('DefaultChromaPayloadAdapter', () => {
 
 			const deserialized = adapter.deserialize(serialized);
 			expect(deserialized.tags).toEqual(['important', 'reviewed', 'final']);
-			expect(deserialized.numbers).toEqual(['1', '2', '3', '4']); // Note: numbers become strings
+			expect(deserialized.numbers).toEqual([1, 2, 3, 4]); // Numbers should be preserved as numbers
 		});
 
 		it('should handle empty arrays', () => {
@@ -167,12 +167,12 @@ describe('DefaultChromaPayloadAdapter', () => {
 			};
 
 			const serialized = adapter.serialize(payload);
-			
+
 			// This structure is considered "simple" and uses dot notation strategy
 			expect(serialized.user_profile_personal_name).toBe('John');
 			expect(serialized.user_profile_personal_age).toBe(30);
 			expect(serialized.user_profile_skills).toBe('js,ts');
-			
+
 			const deserialized = adapter.deserialize(serialized);
 			expect(deserialized.user).toEqual(payload.user);
 		});
@@ -238,7 +238,7 @@ describe('DefaultChromaPayloadAdapter', () => {
 			};
 
 			const serialized = adapter.serialize(payload);
-			
+
 			// Legacy fields should use their configured strategies
 			expect(serialized.tags).toBe('important,reviewed');
 			expect(typeof serialized.currentProgress).toBe('string');
@@ -277,8 +277,8 @@ describe('DefaultChromaPayloadAdapter', () => {
 					dateField: {
 						strategy: 'preserve',
 						customTransformer: {
-							serialize: (value) => value instanceof Date ? value.toISOString() : value,
-							deserialize: (value) => typeof value === 'string' ? new Date(value) : value,
+							serialize: value => (value instanceof Date ? value.toISOString() : value),
+							deserialize: value => (typeof value === 'string' ? new Date(value) : value),
 						},
 					},
 				},
@@ -311,7 +311,7 @@ describe('DefaultChromaPayloadAdapter', () => {
 			};
 
 			const serialized = adapter.serialize(payload);
-			
+
 			// Should still serialize the normal field
 			expect(serialized.normal).toBe('value');
 		});
@@ -364,7 +364,7 @@ describe('DefaultChromaPayloadAdapter', () => {
 			};
 
 			const serialized = adapter.serialize(payload);
-			
+
 			// All values should be primitive types acceptable to ChromaDB
 			expect(typeof serialized.string).toBe('string');
 			expect(typeof serialized.number).toBe('number');
@@ -378,7 +378,7 @@ describe('DefaultChromaPayloadAdapter', () => {
 			// Create nested structure at max depth
 			const maxDepth = adapter.getConfig().maxNestingDepth;
 			let nested: any = { value: 'deep' };
-			
+
 			for (let i = 0; i < maxDepth - 1; i++) {
 				nested = { level: i, data: nested };
 			}
@@ -395,9 +395,9 @@ describe('DefaultChromaPayloadAdapter', () => {
 		it('should support boolean flags strategy with custom config', () => {
 			const customConfig: Partial<PayloadTransformationConfig> = {
 				fieldConfigs: {
-					categories: { 
+					categories: {
 						strategy: 'boolean-flags',
-						prefix: 'cat'
+						prefix: 'cat',
 					},
 				},
 			};
@@ -409,7 +409,7 @@ describe('DefaultChromaPayloadAdapter', () => {
 			};
 
 			const serialized = adapter.serialize(payload);
-			
+
 			expect(serialized.cat_tech).toBe(true);
 			expect(serialized.cat_science).toBe(true);
 			expect(serialized.cat_programming).toBe(true);

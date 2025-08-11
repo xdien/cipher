@@ -196,14 +196,14 @@ export class DefaultChromaPayloadAdapter implements ChromaPayloadAdapter {
 	 */
 	updateConfig(config: Partial<PayloadTransformationConfig>): void {
 		// Merge the configuration properly, preserving existing field configs
-		const mergedFieldConfigs = config.fieldConfigs 
+		const mergedFieldConfigs = config.fieldConfigs
 			? { ...this.config.fieldConfigs, ...config.fieldConfigs }
 			: this.config.fieldConfigs;
 
-		this.config = { 
-			...this.config, 
+		this.config = {
+			...this.config,
 			...config,
-			fieldConfigs: mergedFieldConfigs
+			fieldConfigs: mergedFieldConfigs,
 		};
 	}
 
@@ -228,6 +228,10 @@ export class DefaultChromaPayloadAdapter implements ChromaPayloadAdapter {
 		}
 
 		if (typeof value === 'object') {
+			// Empty objects should use JSON string strategy to preserve them
+			if (Object.keys(value).length === 0) {
+				return 'json-string';
+			}
 			// Check if object is simple enough for dot notation
 			if (this.isSimpleObject(value)) {
 				return 'dot-notation';
@@ -248,8 +252,10 @@ export class DefaultChromaPayloadAdapter implements ChromaPayloadAdapter {
 				return 'comma-separated';
 			}
 			// Check if it looks like JSON
-			if ((value.startsWith('{') && value.endsWith('}')) || 
-			    (value.startsWith('[') && value.endsWith(']'))) {
+			if (
+				(value.startsWith('{') && value.endsWith('}')) ||
+				(value.startsWith('[') && value.endsWith(']'))
+			) {
 				return 'json-string';
 			}
 			// Check if this might be a single-item array that was originally serialized
@@ -273,7 +279,8 @@ export class DefaultChromaPayloadAdapter implements ChromaPayloadAdapter {
 
 		// Count the total number of nested levels and complexity
 		const keys = Object.keys(obj);
-		if (keys.length > 10) { // Too many keys at this level
+		if (keys.length > 10) {
+			// Too many keys at this level
 			return false;
 		}
 
@@ -284,7 +291,10 @@ export class DefaultChromaPayloadAdapter implements ChromaPayloadAdapter {
 			}
 			if (Array.isArray(value)) {
 				// Only simple arrays with primitive values
-				return value.length <= 5 && value.every(item => typeof item === 'string' || typeof item === 'number');
+				return (
+					value.length <= 5 &&
+					value.every(item => typeof item === 'string' || typeof item === 'number')
+				);
 			}
 			if (typeof value === 'object') {
 				return this.isSimpleObject(value, depth + 1);
@@ -397,7 +407,18 @@ export class DefaultChromaPayloadAdapter implements ChromaPayloadAdapter {
 					if (value === '') {
 						return [];
 					}
-					return value.split(',').filter(item => item.trim().length > 0);
+					return value
+						.split(',')
+						.filter(item => item.trim().length > 0)
+						.map(item => {
+							const trimmed = item.trim();
+							// Try to convert back to number if it looks like a number
+							if (/^-?\d+(\.\d+)?$/.test(trimmed)) {
+								const num = Number(trimmed);
+								return isNaN(num) ? trimmed : num;
+							}
+							return trimmed;
+						});
 				}
 				return Array.isArray(value) ? value : [value];
 
@@ -503,6 +524,7 @@ export class DefaultChromaPayloadAdapter implements ChromaPayloadAdapter {
 
 			for (let i = 0; i < parts.length - 1; i++) {
 				const part = parts[i];
+				if (!part) continue; // Skip undefined parts
 				if (!(part in current)) {
 					current[part] = {};
 				}
@@ -510,10 +532,22 @@ export class DefaultChromaPayloadAdapter implements ChromaPayloadAdapter {
 			}
 
 			const finalKey = parts[parts.length - 1];
-			
+			if (!finalKey) continue; // Skip if finalKey is undefined
+
 			// Try to parse comma-separated values back to arrays
 			if (typeof value === 'string' && value.includes(',')) {
-				const arrayValue = value.split(',').filter(item => item.trim().length > 0);
+				const arrayValue = value
+					.split(',')
+					.filter(item => item.trim().length > 0)
+					.map(item => {
+						const trimmed = item.trim();
+						// Try to convert back to number if it looks like a number
+						if (/^-?\d+(\.\d+)?$/.test(trimmed)) {
+							const num = Number(trimmed);
+							return isNaN(num) ? trimmed : num;
+						}
+						return trimmed;
+					});
 				// Only convert to array if it looks like it should be an array
 				current[finalKey] = arrayValue.length > 1 ? arrayValue : value;
 			} else {

@@ -47,7 +47,7 @@ describe('OpenAI Message Flow Validation', () => {
 			await contextManager.addAssistantMessage('I am doing well, thank you!');
 
 			const formatted = await contextManager.getAllFormattedMessages();
-			
+
 			// Should have system + 4 conversation messages
 			expect(formatted).toHaveLength(5);
 			expect(formatted[0].role).toBe('system');
@@ -59,7 +59,7 @@ describe('OpenAI Message Flow Validation', () => {
 
 		it('should handle valid tool call flow', async () => {
 			await contextManager.addUserMessage('What is the weather?');
-			
+
 			// Assistant message with tool calls
 			await contextManager.addAssistantMessage('Let me check the weather for you.', [
 				{
@@ -82,7 +82,7 @@ describe('OpenAI Message Flow Validation', () => {
 			await contextManager.addAssistantMessage('The weather in New York is 72°F and sunny.');
 
 			const formatted = await contextManager.getAllFormattedMessages();
-			
+
 			// Should have system + user + assistant_with_tools + tool + assistant
 			expect(formatted).toHaveLength(5);
 			expect(formatted[0].role).toBe('system');
@@ -107,7 +107,9 @@ describe('OpenAI Message Flow Validation', () => {
 			];
 
 			// Directly access the private method for testing
-			const validateMethod = (contextManager as any).validateAndRepairMessageFlow.bind(contextManager);
+			const validateMethod = (contextManager as any).validateAndRepairMessageFlow.bind(
+				contextManager
+			);
 			const repairedMessages = validateMethod(messages);
 
 			// Should remove the orphaned tool message
@@ -133,11 +135,18 @@ describe('OpenAI Message Flow Validation', () => {
 				// Valid tool response
 				{ role: 'tool', content: 'Valid result', toolCallId: 'call_valid', name: 'valid_tool' },
 				// Invalid orphaned tool response
-				{ role: 'tool', content: 'Invalid result', toolCallId: 'call_invalid', name: 'invalid_tool' },
+				{
+					role: 'tool',
+					content: 'Invalid result',
+					toolCallId: 'call_invalid',
+					name: 'invalid_tool',
+				},
 				{ role: 'assistant', content: 'Here is the result.' },
 			];
 
-			const validateMethod = (contextManager as any).validateAndRepairMessageFlow.bind(contextManager);
+			const validateMethod = (contextManager as any).validateAndRepairMessageFlow.bind(
+				contextManager
+			);
 			const repairedMessages = validateMethod(messages);
 
 			// Should keep valid tool message, remove invalid one
@@ -174,14 +183,16 @@ describe('OpenAI Message Flow Validation', () => {
 				{ role: 'assistant', content: 'Done with both tasks.' },
 			];
 
-			const validateMethod = (contextManager as any).validateAndRepairMessageFlow.bind(contextManager);
+			const validateMethod = (contextManager as any).validateAndRepairMessageFlow.bind(
+				contextManager
+			);
 			const repairedMessages = validateMethod(messages);
 
 			// Should keep the 2 valid tool messages, remove the invalid one
 			expect(repairedMessages).toHaveLength(5);
 			const roles = repairedMessages.map(m => m.role);
 			expect(roles).toEqual(['user', 'assistant', 'tool', 'tool', 'assistant']);
-			
+
 			// Check that correct tool call IDs are preserved
 			const toolMessages = repairedMessages.filter(m => m.role === 'tool');
 			expect(toolMessages.map(m => m.toolCallId)).toEqual(['call_1', 'call_2']);
@@ -203,28 +214,38 @@ describe('OpenAI Message Flow Validation', () => {
 					],
 				},
 				{ role: 'tool', content: 'First result', toolCallId: 'call_first', name: 'first_tool' },
-				
+
 				// New user message should reset tracking
 				{ role: 'user', content: [{ type: 'text', text: 'Second question' }] },
-				
+
 				// This tool message should be orphaned now (no recent assistant with tool calls)
 				{ role: 'tool', content: 'Orphaned result', toolCallId: 'call_first', name: 'first_tool' },
-				
+
 				{ role: 'assistant', content: 'Second answer.' },
 			];
 
-			const validateMethod = (contextManager as any).validateAndRepairMessageFlow.bind(contextManager);
+			const validateMethod = (contextManager as any).validateAndRepairMessageFlow.bind(
+				contextManager
+			);
 			const repairedMessages = validateMethod(messages);
 
 			// Should remove the orphaned tool message after the second user message
 			expect(repairedMessages).toHaveLength(5);
-			expect(repairedMessages.map(m => m.role)).toEqual(['user', 'assistant', 'tool', 'user', 'assistant']);
+			expect(repairedMessages.map(m => m.role)).toEqual([
+				'user',
+				'assistant',
+				'tool',
+				'user',
+				'assistant',
+			]);
 		});
 	});
 
 	describe('Edge Cases', () => {
 		it('should handle empty message list', async () => {
-			const validateMethod = (contextManager as any).validateAndRepairMessageFlow.bind(contextManager);
+			const validateMethod = (contextManager as any).validateAndRepairMessageFlow.bind(
+				contextManager
+			);
 			const repairedMessages = validateMethod([]);
 
 			expect(repairedMessages).toHaveLength(0);
@@ -237,7 +258,9 @@ describe('OpenAI Message Flow Validation', () => {
 				{ role: 'tool', content: 'Tool result', toolCallId: 'call_123', name: 'tool' },
 			];
 
-			const validateMethod = (contextManager as any).validateAndRepairMessageFlow.bind(contextManager);
+			const validateMethod = (contextManager as any).validateAndRepairMessageFlow.bind(
+				contextManager
+			);
 			const repairedMessages = validateMethod(messages);
 
 			// Should remove the orphaned tool message
@@ -252,7 +275,9 @@ describe('OpenAI Message Flow Validation', () => {
 				{ role: 'tool', content: 'Tool result', toolCallId: 'call_123', name: 'tool' },
 			];
 
-			const validateMethod = (contextManager as any).validateAndRepairMessageFlow.bind(contextManager);
+			const validateMethod = (contextManager as any).validateAndRepairMessageFlow.bind(
+				contextManager
+			);
 			const repairedMessages = validateMethod(messages);
 
 			// Should remove the orphaned tool message

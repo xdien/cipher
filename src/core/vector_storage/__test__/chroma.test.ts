@@ -53,7 +53,7 @@ describe('ChromaBackend', () => {
 
 		// Reset mocks
 		vi.clearAllMocks();
-		
+
 		// Setup default mock behavior
 		mockClient.getCollection.mockResolvedValue(mockCollection);
 		mockClient.createCollection.mockResolvedValue(mockCollection);
@@ -82,26 +82,26 @@ describe('ChromaBackend', () => {
 	describe('Connection Management', () => {
 		it('should connect successfully when collection exists', async () => {
 			expect(backend.isConnected()).toBe(false);
-			
+
 			await backend.connect();
-			
+
 			expect(backend.isConnected()).toBe(true);
 			expect(mockClient.getCollection).toHaveBeenCalledWith({
 				name: 'test_collection',
-				embeddingFunction: undefined,
+				embeddingFunction: null,
 			});
 		});
 
 		it('should create collection if it does not exist', async () => {
 			mockClient.getCollection.mockRejectedValueOnce(new Error('Collection not found'));
-			
+
 			await backend.connect();
-			
+
 			expect(backend.isConnected()).toBe(true);
 			expect(mockClient.createCollection).toHaveBeenCalledWith({
 				name: 'test_collection',
 				metadata: { 'hnsw:space': 'cosine' },
-				embeddingFunction: undefined,
+				embeddingFunction: null,
 			});
 		});
 
@@ -115,7 +115,7 @@ describe('ChromaBackend', () => {
 			expect(mockClient.createCollection).toHaveBeenCalledWith({
 				name: 'test_collection',
 				metadata: { 'hnsw:space': 'l2' },
-				embeddingFunction: undefined,
+				embeddingFunction: null,
 			});
 
 			await euclideanBackend.disconnect();
@@ -124,14 +124,14 @@ describe('ChromaBackend', () => {
 		it('should handle multiple connect calls', async () => {
 			await backend.connect();
 			await backend.connect(); // Second call should be no-op
-			
+
 			expect(mockClient.getCollection).toHaveBeenCalledTimes(1);
 		});
 
 		it('should disconnect successfully', async () => {
 			await backend.connect();
 			expect(backend.isConnected()).toBe(true);
-			
+
 			await backend.disconnect();
 			expect(backend.isConnected()).toBe(false);
 		});
@@ -146,14 +146,17 @@ describe('ChromaBackend', () => {
 		it('should accept custom payload adapter', () => {
 			const customAdapter = new DefaultChromaPayloadAdapter();
 			const customBackend = new ChromaBackend(config, customAdapter);
-			
+
 			expect(customBackend.getPayloadAdapter()).toBe(customAdapter);
 		});
 
 		it('should serialize payloads before inserting', async () => {
 			await backend.connect();
-			
-			const vectors = [[1, 2, 3], [4, 5, 6]];
+
+			const vectors = [
+				[1, 2, 3],
+				[4, 5, 6],
+			];
 			const ids = [1, 2];
 			const payloads = [
 				{ tags: ['important', 'reviewed'], nested: { key: 'value' } },
@@ -174,7 +177,7 @@ describe('ChromaBackend', () => {
 
 		it('should deserialize metadata when searching', async () => {
 			await backend.connect();
-			
+
 			mockCollection.query.mockResolvedValue({
 				ids: [['1']],
 				distances: [[0.1]],
@@ -183,14 +186,16 @@ describe('ChromaBackend', () => {
 
 			const results = await backend.search([1, 2, 3], 5);
 
-			expect(results).toEqual([{
-				id: 1,
-				score: 0.9, // 1 - 0.1
-				payload: {
-					tags: ['important', 'reviewed'],
-					nested: { key: 'value' },
+			expect(results).toEqual([
+				{
+					id: 1,
+					score: 0.9, // 1 - 0.1
+					payload: {
+						tags: ['important', 'reviewed'],
+						nested: { key: 'value' },
+					},
 				},
-			}]);
+			]);
 		});
 	});
 
@@ -200,7 +205,10 @@ describe('ChromaBackend', () => {
 		});
 
 		it('should insert vectors successfully', async () => {
-			const vectors = [[1, 2, 3], [4, 5, 6]];
+			const vectors = [
+				[1, 2, 3],
+				[4, 5, 6],
+			];
 			const ids = [1, 2];
 			const payloads = [{ text: 'hello' }, { text: 'world' }];
 
@@ -218,8 +226,7 @@ describe('ChromaBackend', () => {
 			const ids = [1];
 			const payloads = [{ text: 'hello' }];
 
-			await expect(backend.insert(vectors, ids, payloads))
-				.rejects.toThrow(VectorDimensionError);
+			await expect(backend.insert(vectors, ids, payloads)).rejects.toThrow(VectorDimensionError);
 		});
 
 		it('should validate input array lengths', async () => {
@@ -227,8 +234,7 @@ describe('ChromaBackend', () => {
 			const ids = [1, 2]; // Mismatched length
 			const payloads = [{ text: 'hello' }];
 
-			await expect(backend.insert(vectors, ids, payloads))
-				.rejects.toThrow(VectorStoreError);
+			await expect(backend.insert(vectors, ids, payloads)).rejects.toThrow(VectorStoreError);
 		});
 
 		it('should search vectors successfully', async () => {
@@ -309,7 +315,10 @@ describe('ChromaBackend', () => {
 		it('should list vectors with metadata', async () => {
 			mockCollection.get.mockResolvedValue({
 				ids: ['1', '2'],
-				embeddings: [[1, 2, 3], [4, 5, 6]],
+				embeddings: [
+					[1, 2, 3],
+					[4, 5, 6],
+				],
 				metadatas: [{ text: 'hello' }, { text: 'world' }],
 			});
 
@@ -342,32 +351,30 @@ describe('ChromaBackend', () => {
 
 	describe('Error Handling', () => {
 		it('should throw connection error when not connected', async () => {
-			await expect(backend.search([1, 2, 3], 5))
-				.rejects.toThrow(VectorStoreError);
+			await expect(backend.search([1, 2, 3], 5)).rejects.toThrow(VectorStoreError);
 		});
 
 		it('should handle collection creation errors', async () => {
 			mockClient.getCollection.mockRejectedValue(new Error('Not found'));
 			mockClient.createCollection.mockRejectedValue(new Error('Creation failed'));
 
-			await expect(backend.connect())
-				.rejects.toThrow('Failed to connect to vector store backend');
+			await expect(backend.connect()).rejects.toThrow('Failed to connect to vector store backend');
 		});
 
 		it('should handle insert errors', async () => {
 			await backend.connect();
 			mockCollection.upsert.mockRejectedValue(new Error('Insert failed'));
 
-			await expect(backend.insert([[1, 2, 3]], [1], [{ text: 'test' }]))
-				.rejects.toThrow('Failed to insert vectors');
+			await expect(backend.insert([[1, 2, 3]], [1], [{ text: 'test' }])).rejects.toThrow(
+				'Failed to insert vectors'
+			);
 		});
 
 		it('should handle search errors', async () => {
 			await backend.connect();
 			mockCollection.query.mockRejectedValue(new Error('Search failed'));
 
-			await expect(backend.search([1, 2, 3], 5))
-				.rejects.toThrow('Vector search operation failed');
+			await expect(backend.search([1, 2, 3], 5)).rejects.toThrow('Vector search operation failed');
 		});
 	});
 
@@ -402,7 +409,7 @@ describe('ChromaBackend', () => {
 			const headersConfig = {
 				type: 'chroma' as const,
 				url: 'http://localhost:8000',
-				headers: { 'Authorization': 'Bearer token' },
+				headers: { Authorization: 'Bearer token' },
 				collectionName: 'test',
 				dimension: 3,
 			};
@@ -489,8 +496,7 @@ describe('ChromaBackend', () => {
 			await backend.connect();
 			mockClient.deleteCollection.mockRejectedValue(new Error('Delete failed'));
 
-			await expect(backend.deleteCollection())
-				.rejects.toThrow('Failed to delete collection');
+			await expect(backend.deleteCollection()).rejects.toThrow('Failed to delete collection');
 		});
 	});
 });

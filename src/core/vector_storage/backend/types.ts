@@ -192,12 +192,12 @@ export class CollectionNotFoundError extends VectorStoreError {
 /**
  * Transformation strategy for handling complex payload fields
  */
-export type PayloadTransformationStrategy = 
-	| 'json-string'        // Serialize complex objects to JSON strings
-	| 'dot-notation'       // Flatten nested objects using dot notation (e.g., user.name -> user_name)
-	| 'comma-separated'    // Convert arrays to comma-separated strings
-	| 'boolean-flags'      // Convert arrays to multiple boolean fields
-	| 'preserve';          // Keep as-is (for simple types)
+export type PayloadTransformationStrategy =
+	| 'json-string' // Serialize complex objects to JSON strings
+	| 'dot-notation' // Flatten nested objects using dot notation (e.g., user.name -> user_name)
+	| 'comma-separated' // Convert arrays to comma-separated strings
+	| 'boolean-flags' // Convert arrays to multiple boolean fields
+	| 'preserve'; // Keep as-is (for simple types)
 
 /**
  * Configuration for field transformation

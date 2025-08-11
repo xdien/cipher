@@ -215,13 +215,7 @@ const ChromaBackendSchema = BaseVectorStoreSchema.extend({
 	host: z.string().optional().describe('ChromaDB host'),
 
 	/** ChromaDB HTTP port (default: 8000) */
-	port: z
-		.number()
-		.int()
-		.positive()
-		.default(8000)
-		.optional()
-		.describe('ChromaDB port'),
+	port: z.number().int().positive().default(8000).optional().describe('ChromaDB port'),
 
 	/** Use SSL/TLS for connection (default: false) */
 	ssl: z.boolean().default(false).optional().describe('Use SSL/TLS for connection'),
@@ -251,16 +245,20 @@ export type ChromaBackendConfig = z.infer<typeof ChromaBackendSchema>;
  * Includes custom validation to ensure backends have required connection info.
  */
 const BackendConfigSchema = z
-	.discriminatedUnion('type', [InMemoryBackendSchema, QdrantBackendSchema, MilvusBackendSchema, ChromaBackendSchema], {
-		errorMap: (issue, ctx) => {
-			if (issue.code === z.ZodIssueCode.invalid_union_discriminator) {
-				return {
-					message: `Invalid backend type. Expected 'in-memory', 'qdrant', 'milvus', or 'chroma'.`,
-				};
-			}
-			return { message: ctx.defaultError };
-		},
-	})
+	.discriminatedUnion(
+		'type',
+		[InMemoryBackendSchema, QdrantBackendSchema, MilvusBackendSchema, ChromaBackendSchema],
+		{
+			errorMap: (issue, ctx) => {
+				if (issue.code === z.ZodIssueCode.invalid_union_discriminator) {
+					return {
+						message: `Invalid backend type. Expected 'in-memory', 'qdrant', 'milvus', or 'chroma'.`,
+					};
+				}
+				return { message: ctx.defaultError };
+			},
+		}
+	)
 	.describe('Backend configuration for vector storage system')
 	.superRefine((data, ctx) => {
 		// Validate Qdrant backend requirements

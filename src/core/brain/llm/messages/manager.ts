@@ -626,6 +626,11 @@ export class ContextManager {
 		for (let i = 0; i < messages.length; i++) {
 			const message = messages[i];
 
+			// Skip undefined messages
+			if (!message) {
+				continue;
+			}
+
 			switch (message.role) {
 				case 'system':
 				case 'user':
@@ -646,7 +651,10 @@ export class ContextManager {
 
 				case 'tool':
 					// Tool messages must follow assistant messages with tool_calls
-					if (lastAssistantWithToolCalls && this.isValidToolResponse(message, lastAssistantWithToolCalls)) {
+					if (
+						lastAssistantWithToolCalls &&
+						this.isValidToolResponse(message, lastAssistantWithToolCalls)
+					) {
 						repairedMessages.push(message);
 					} else {
 						// Orphaned tool message - skip silently
@@ -670,14 +678,19 @@ export class ContextManager {
 	/**
 	 * Validates that a tool message is a valid response to the given assistant message.
 	 */
-	private isValidToolResponse(toolMessage: InternalMessage, assistantMessage: InternalMessage): boolean {
+	private isValidToolResponse(
+		toolMessage: InternalMessage,
+		assistantMessage: InternalMessage
+	): boolean {
 		if (!assistantMessage.toolCalls || assistantMessage.toolCalls.length === 0) {
 			return false;
 		}
 
 		// Check if the tool message's toolCallId matches any of the assistant's tool calls
-		const matchingToolCall = assistantMessage.toolCalls.find(tc => tc.id === toolMessage.toolCallId);
-		
+		const matchingToolCall = assistantMessage.toolCalls.find(
+			tc => tc.id === toolMessage.toolCallId
+		);
+
 		return !!matchingToolCall;
 	}
 }
