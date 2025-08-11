@@ -4,16 +4,20 @@ Vector stores are databases optimized for storing and searching high-dimensional
 
 ## Supported Vector Stores
 
-Cipher supports three vector database types:
+Cipher supports four vector database types:
 - **Qdrant** - High-performance vector search engine
 - **Milvus** - Open-source vector database with cloud options
+- **ChromaDB** - Developer-friendly open-source embedding database
 - **In-Memory** - Built-in solution for development/testing
 
-## Qdrant Configuration
+## Vector Store Configurations
+
+<details>
+<summary><strong>🔧 Qdrant Configuration</strong></summary>
 
 [Qdrant](https://qdrant.tech/) is a high-performance vector search engine with excellent performance and features.
 
-### Qdrant Cloud (Managed)
+### ☁️ Qdrant Cloud (Managed)
 
 The easiest way to get started with Qdrant:
 
@@ -28,15 +32,18 @@ VECTOR_STORE_API_KEY=your-qdrant-api-key
 1. Create account at [Qdrant Cloud](https://cloud.qdrant.io/)
 2. Create a new cluster
 3. Copy your cluster URL and API key
-4. Add to your `.env` file
+4. Add to your `.env` file or your `json` mcp config
 
-### Qdrant Local (Docker)
+### 🐳 Qdrant Local (Docker)
 
-Run Qdrant locally using Docker (official setup):
+Run Qdrant locally using Docker:
 
 ```bash
-# Start Qdrant with Docker (official command)
-docker run -p 6333:6333 qdrant/qdrant
+# Basic setup (data lost on removing the container)
+docker run -d --name qdrant-basic -p 6333:6333 qdrant/qdrant
+
+# With persistent storage
+docker run -d --name qdrant-storage -v ./qdrant-data:/qdrant/storage -p 6333:6333 qdrant/qdrant
 ```
 
 ```bash
@@ -49,7 +56,7 @@ VECTOR_STORE_URL=http://localhost:6333
 
 **Important:** Before deploying to production, review the [Qdrant installation](https://qdrant.tech/documentation/guides/installation/) and [security](https://qdrant.tech/documentation/guides/security/) guides.
 
-### Qdrant Docker Compose
+### 🐳 Qdrant Docker Compose
 
 Add to your `docker-compose.yml`:
 
@@ -68,11 +75,14 @@ volumes:
   qdrant_data:
 ```
 
-## Milvus Configuration
+</details>
+
+<details>
+<summary><strong>🔧 Milvus Configuration</strong></summary>
 
 [Milvus](https://milvus.io/) is an open-source vector database with excellent scalability.
 
-### Zilliz Cloud (Managed Milvus)
+### ☁️ Zilliz Cloud (Managed Milvus)
 
 [Zilliz Cloud](https://zilliz.com/) provides managed Milvus hosting:
 
@@ -88,9 +98,9 @@ VECTOR_STORE_PASSWORD=your-zilliz-password
 1. Create account at [Zilliz Cloud](https://cloud.zilliz.com/)
 2. Create a new cluster
 3. Get your cluster endpoint and credentials
-4. Add to your `.env` file
+4. Add to your `.env` file or your `json` mcp config
 
-### Milvus Local (Docker)
+### 🐳 Milvus Local (Docker)
 
 Run Milvus locally using the official installation script:
 
@@ -130,7 +140,98 @@ bash standalone_embed.sh upgrade
 bash standalone_embed.sh delete
 ```
 
-## In-Memory Vector Store
+</details>
+
+<details>
+<summary><strong>🔧 ChromaDB Configuration</strong></summary>
+
+[ChromaDB](https://www.trychroma.com/) is a developer-friendly open-source embedding database designed for AI applications.
+
+### ☁️ ChromaDB Cloud (Managed)
+
+ChromaDB offers managed cloud hosting for production deployments:
+
+```bash
+# .env configuration
+VECTOR_STORE_TYPE=chroma
+VECTOR_STORE_URL=https://your-chroma-instance.chroma.dev
+VECTOR_STORE_API_KEY=your-chroma-api-key
+```
+
+**Setup Steps:**
+1. Create account at [ChromaDB Cloud](https://www.trychroma.com/)
+2. Create a new database instance
+3. Copy your instance URL and API key
+4. Add to your `.env` file or your `json` mcp config
+
+### 🐳 ChromaDB Local (Docker)
+
+Run ChromaDB locally using Docker:
+
+```bash
+# Basic setup (data lost on removing the container)
+docker run -d --name chroma-basic -p 8000:8000 chromadb/chroma
+
+# With persistent storage
+docker run -d --name chroma-storage -v ./chroma-data:/data -p 8000:8000 chromadb/chroma
+```
+
+```bash
+# .env configuration
+VECTOR_STORE_TYPE=chroma
+VECTOR_STORE_HOST=localhost
+VECTOR_STORE_PORT=8000
+VECTOR_STORE_URL=http://localhost:8000
+```
+
+**Important:** For production deployments, review the [ChromaDB deployment guide](https://docs.trychroma.com/deployment) and [security considerations](https://docs.trychroma.com/deployment#security).
+
+### 🐳 ChromaDB Docker Compose
+
+Add to your `docker-compose.yml`:
+
+```yaml
+services:
+  chromadb:
+    image: chromadb/chroma:latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/chroma/chroma
+      - ANONYMIZED_TELEMETRY=FALSE
+
+volumes:
+  chroma_data:
+```
+
+### ⚙️ ChromaDB Configuration
+
+```bash
+# Basic setup
+VECTOR_STORE_TYPE=chroma
+VECTOR_STORE_URL=http://localhost:8000
+
+# With SSL/TLS
+VECTOR_STORE_TYPE=chroma
+VECTOR_STORE_HOST=localhost
+VECTOR_STORE_PORT=8000
+VECTOR_STORE_SSL=true
+```
+
+**Distance Metrics:** Cipher automatically converts user-friendly terms:
+- `euclidean` → `l2`
+- `dot` → `ip` 
+- `cosine` → `cosine`
+
+**Compatibility:** Use ChromaDB 1.10.5 for best results. Array fields in metadata are automatically converted to strings.
+
+</details>
+
+<details>
+<summary><strong>🔧 In-Memory Vector Store</strong></summary>
 
 For development and testing, Cipher includes a built-in in-memory vector store:
 
@@ -146,9 +247,14 @@ VECTOR_STORE_TYPE=in-memory
 - Data is lost when application restarts
 - Perfect for development and testing
 
-## Vector Store Settings
+</details>
 
-### Collection Configuration
+## Configuration Settings
+
+<details>
+<summary><strong>⚙️ Vector Store Settings</strong></summary>
+
+### 📁 Collection Configuration
 
 ```bash
 # Collection name for knowledge memory
@@ -158,10 +264,11 @@ VECTOR_STORE_COLLECTION=knowledge_memory
 VECTOR_STORE_DIMENSION=1536
 
 # Distance metric for similarity calculations
-VECTOR_STORE_DISTANCE=Cosine  # Options: Cosine, Euclidean, Dot
+VECTOR_STORE_DISTANCE=Cosine  # Options: Cosine, Euclidean, Dot (Qdrant/Milvus)
+# VECTOR_STORE_DISTANCE=cosine  # Options: cosine, l2, euclidean, ip, dot (ChromaDB)
 ```
 
-### Reflection Memory (Optional)
+### 🧠 Reflection Memory (Optional)
 
 Cipher supports a separate collection for reflection memory:
 
@@ -173,7 +280,7 @@ REFLECTION_VECTOR_STORE_COLLECTION=reflection_memory
 DISABLE_REFLECTION_MEMORY=true  # default: true
 ```
 
-### Performance Settings
+### ⚡ Performance Settings
 
 ```bash
 # Maximum number of vectors to store (in-memory only)
@@ -184,7 +291,10 @@ VECTOR_STORE_SEARCH_LIMIT=50
 VECTOR_STORE_SIMILARITY_THRESHOLD=0.7
 ```
 
-## Workspace Memory Collections
+</details>
+
+<details>
+<summary><strong>🏢 Workspace Memory Collections</strong></summary>
 
 When using [workspace memory](./workspace-memory.md), you can configure separate vector store settings:
 
@@ -196,7 +306,7 @@ USE_WORKSPACE_MEMORY=true
 WORKSPACE_VECTOR_STORE_COLLECTION=workspace_memory
 
 # Use separate vector store for workspace (optional)
-WORKSPACE_VECTOR_STORE_TYPE=qdrant
+WORKSPACE_VECTOR_STORE_TYPE=qdrant  # or: milvus, chroma, in-memory
 WORKSPACE_VECTOR_STORE_HOST=localhost
 WORKSPACE_VECTOR_STORE_PORT=6333
 WORKSPACE_VECTOR_STORE_URL=http://localhost:6333
@@ -208,76 +318,15 @@ WORKSPACE_VECTOR_STORE_DIMENSION=1536
 WORKSPACE_VECTOR_STORE_MAX_VECTORS=10000
 ```
 
-## Complete Configuration Examples
+</details>
 
-### Production Setup (Qdrant Cloud)
-
-```bash
-# .env
-VECTOR_STORE_TYPE=qdrant
-VECTOR_STORE_URL=https://your-cluster.qdrant.io
-VECTOR_STORE_API_KEY=your-qdrant-api-key
-VECTOR_STORE_COLLECTION=knowledge_memory
-VECTOR_STORE_DIMENSION=1536
-VECTOR_STORE_DISTANCE=Cosine
-
-# Reflection memory
-REFLECTION_VECTOR_STORE_COLLECTION=reflection_memory
-DISABLE_REFLECTION_MEMORY=false  # default: true
-
-# Workspace memory
-USE_WORKSPACE_MEMORY=true
-WORKSPACE_VECTOR_STORE_COLLECTION=workspace_memory
-```
-
-### Development Setup (In-Memory)
-
-```bash
-# .env
-VECTOR_STORE_TYPE=in-memory
-VECTOR_STORE_COLLECTION=knowledge_memory
-VECTOR_STORE_DIMENSION=1536
-VECTOR_STORE_MAX_VECTORS=5000
-
-# Disable reflection memory for simplicity
-DISABLE_REFLECTION_MEMORY=true  # default: true
-
-# Enable workspace memory for testing
-USE_WORKSPACE_MEMORY=true
-WORKSPACE_VECTOR_STORE_COLLECTION=workspace_memory
-```
-
-### Hybrid Setup (Multiple Databases)
-
-```bash
-# .env - Main memory in Qdrant, workspace in Milvus
-VECTOR_STORE_TYPE=qdrant
-VECTOR_STORE_URL=https://your-qdrant-cluster.qdrant.io
-VECTOR_STORE_API_KEY=your-qdrant-api-key
-
-# Workspace memory in separate Milvus instance
-USE_WORKSPACE_MEMORY=true
-WORKSPACE_VECTOR_STORE_TYPE=milvus
-WORKSPACE_VECTOR_STORE_URL=your-milvus-endpoint
-WORKSPACE_VECTOR_STORE_USERNAME=your-milvus-username
-WORKSPACE_VECTOR_STORE_PASSWORD=your-milvus-password
-```
-
-## Dimension Compatibility
-
-Ensure your vector store dimensions match your embedding model:
-
-| Embedding Provider | Default Dimensions | Configuration |
-| ------------------ | ------------------ | ------------- |
-| OpenAI text-embedding-3-small | 1536 | `VECTOR_STORE_DIMENSION=1536` |
-| OpenAI text-embedding-3-large | 3072 | `VECTOR_STORE_DIMENSION=3072` |
-| Gemini embedding-001 | 768 | `VECTOR_STORE_DIMENSION=768` |
-| Qwen text-embedding-v3 | 1024/768/512 | Set matching dimension |
-| Voyage models | 1024/2048/etc | Set matching dimension |
 
 ## Troubleshooting
 
-### Dimension Mismatch
+<details>
+<summary><strong>🔧 Common Issues</strong></summary>
+
+### ❌ Dimension Mismatch
 
 **Dimension Error**
 ```
@@ -288,7 +337,7 @@ Error: Vector dimension mismatch
 - Update `VECTOR_STORE_DIMENSION` to match
 - Recreate collections if dimensions changed
 
-### Performance Issues
+### 🐌 Performance Issues
 
 **Slow Search Performance**
 - Increase `VECTOR_STORE_SEARCH_LIMIT` for more results
@@ -298,6 +347,15 @@ Error: Vector dimension mismatch
 **Memory Usage (In-Memory Store)**
 - Reduce `VECTOR_STORE_MAX_VECTORS` if memory is limited
 - Switch to external vector store for larger datasets
+
+### 🔧 ChromaDB Issues
+
+**Common Errors:**
+- `Cannot find package '@chroma-core/default-embed'` → Use ChromaDB 1.10.5
+- `HTTP 422: Unprocessable Entity` → Metadata must be primitive types only
+- `Invalid distance metric` → Use `cosine`, `l2`, or `ip` (auto-converted from `euclidean`/`dot`)
+
+</details>
 
 ## Related Documentation
 

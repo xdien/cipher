@@ -884,7 +884,7 @@ export const workspaceStoreTool: InternalTool = {
 							options.sourceSessionId = context.sessionId;
 						}
 
-						const payload = createWorkspacePayload(
+						const payload = await createWorkspacePayload(
 							action.id,
 							action.text,
 							action.tags,

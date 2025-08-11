@@ -106,6 +106,7 @@
 		"better-sqlite3": "^12.2.0",
 		"boxen": "^8.0.1",
 		"chalk": "^5.4.1",
+		"chromadb": "1.10.5",
 		"commander": "^11.1.0",
 		"cors": "^2.8.5",
 		"dotenv": "^16.6.0",
