@@ -25,9 +25,6 @@ const DEFAULT_CONFIG: PayloadTransformationConfig = {
 	autoFlattenNested: true,
 	maxNestingDepth: 3,
 	fieldConfigs: {
-		// Text content fields - preserve as-is
-		text: { strategy: 'preserve' },
-		content: { strategy: 'preserve' },
 		// Legacy field configurations for backward compatibility
 		tags: { strategy: 'comma-separated' },
 		currentProgress: { strategy: 'json-string' },

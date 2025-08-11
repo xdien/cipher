@@ -54,8 +54,6 @@ VECTOR_STORE_PORT=6333
 VECTOR_STORE_URL=http://localhost:6333
 ```
 
-**Important:** Before deploying to production, review the [Qdrant installation](https://qdrant.tech/documentation/guides/installation/) and [security](https://qdrant.tech/documentation/guides/security/) guides.
-
 ### 🐳 Qdrant Docker Compose
 
 Add to your `docker-compose.yml`:
