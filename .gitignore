@@ -64,3 +64,6 @@ env.example.txt
 .kilocode/
 .trae/
 .claude/
+chroma-data/
+qdrant-data/
+volumes/

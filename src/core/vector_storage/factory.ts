@@ -411,6 +411,54 @@ export function getVectorStoreConfigFromEnv(agentConfig?: any): VectorStoreConfi
 			password,
 			token,
 		};
+	} else if ((storeType as string) === 'chroma') {
+		const host = env.VECTOR_STORE_HOST;
+		const url = env.VECTOR_STORE_URL;
+		const port = Number.isNaN(env.VECTOR_STORE_PORT) ? undefined : env.VECTOR_STORE_PORT;
+		const headers = undefined; // Headers not currently supported in env vars
+		// Map distance metrics from environment to ChromaDB format
+		const envDistance = env.VECTOR_STORE_DISTANCE;
+		let distance: 'cosine' | 'l2' | 'euclidean' | 'ip' | 'dot' = 'cosine';
+		if (envDistance) {
+			switch (envDistance.toLowerCase()) {
+				case 'cosine':
+					distance = 'cosine';
+					break;
+				case 'euclidean':
+				case 'l2':
+					distance = 'l2';
+					break;
+				case 'dot':
+				case 'ip':
+					distance = 'ip';
+					break;
+				default:
+					distance = 'cosine';
+			}
+		}
+
+		if (!url && !host) {
+			// Return in-memory config with fallback marker
+			return {
+				type: 'in-memory',
+				collectionName,
+				dimension,
+				maxVectors,
+				// Add a special property to indicate this is a fallback from ChromaDB
+				_fallbackFrom: 'chroma',
+			} as any;
+		}
+
+		return {
+			type: 'chroma',
+			collectionName,
+			dimension,
+			url,
+			host,
+			port,
+			headers,
+			distance,
+		};
 	} else {
 		return {
 			type: 'in-memory',
@@ -552,6 +600,58 @@ export function getWorkspaceVectorStoreConfigFromEnv(agentConfig?: any): VectorS
 			password,
 			token,
 		};
+	} else if ((storeType as string) === 'chroma') {
+		const host = env.WORKSPACE_VECTOR_STORE_HOST || env.VECTOR_STORE_HOST;
+		const url = env.WORKSPACE_VECTOR_STORE_URL || env.VECTOR_STORE_URL;
+		const port = Number.isNaN(env.WORKSPACE_VECTOR_STORE_PORT)
+			? Number.isNaN(env.VECTOR_STORE_PORT)
+				? undefined
+				: env.VECTOR_STORE_PORT
+			: env.WORKSPACE_VECTOR_STORE_PORT;
+		const headers = undefined; // Headers not currently supported in env vars
+		// Map distance metrics from environment to ChromaDB format
+		const envDistance = env.WORKSPACE_VECTOR_STORE_DISTANCE || env.VECTOR_STORE_DISTANCE;
+		let distance: 'cosine' | 'l2' | 'euclidean' | 'ip' | 'dot' = 'cosine';
+		if (envDistance) {
+			switch (envDistance.toLowerCase()) {
+				case 'cosine':
+					distance = 'cosine';
+					break;
+				case 'euclidean':
+				case 'l2':
+					distance = 'l2';
+					break;
+				case 'dot':
+				case 'ip':
+					distance = 'ip';
+					break;
+				default:
+					distance = 'cosine';
+			}
+		}
+
+		if (!url && !host) {
+			// Return in-memory config with fallback marker
+			return {
+				type: 'in-memory',
+				collectionName,
+				dimension,
+				maxVectors,
+				// Add a special property to indicate this is a fallback from ChromaDB
+				_fallbackFrom: 'chroma-workspace',
+			} as any;
+		}
+
+		return {
+			type: 'chroma',
+			collectionName,
+			dimension,
+			url,
+			host,
+			port,
+			headers,
+			distance,
+		};
 	} else {
 		return {
 			type: 'in-memory',
@@ -686,7 +786,7 @@ async function createMultiCollectionVectorStoreInternal(
  * vector store configuration if workspace-specific variables are not set.
  *
  * Environment variables (with fallbacks to default VECTOR_STORE_* variables):
- * - WORKSPACE_VECTOR_STORE_TYPE: Backend type (qdrant, milvus, in-memory)
+ * - WORKSPACE_VECTOR_STORE_TYPE: Backend type (qdrant, milvus, chroma, in-memory)
  * - WORKSPACE_VECTOR_STORE_HOST: Host (fallback to VECTOR_STORE_HOST)
  * - WORKSPACE_VECTOR_STORE_PORT: Port (fallback to VECTOR_STORE_PORT)
  * - WORKSPACE_VECTOR_STORE_URL: URL (fallback to VECTOR_STORE_URL)

@@ -137,7 +137,17 @@ export class MultiCollectionVectorManager {
 				(workspaceConfig as any).password = env.WORKSPACE_VECTOR_STORE_PASSWORD;
 			}
 			if ('distance' in baseConfig && env.WORKSPACE_VECTOR_STORE_DISTANCE) {
-				(workspaceConfig as any).distance = env.WORKSPACE_VECTOR_STORE_DISTANCE;
+				// Normalize distance per backend requirements
+				let wsDistance: any = env.WORKSPACE_VECTOR_STORE_DISTANCE;
+				const wsType = (workspaceConfig as any).type || baseConfig.type;
+				if (wsType === 'chroma') {
+					const d = String(wsDistance).toLowerCase();
+					if (d === 'cosine') wsDistance = 'cosine';
+					else if (d === 'euclidean' || d === 'l2') wsDistance = 'l2';
+					else if (d === 'dot' || d === 'ip') wsDistance = 'ip';
+					else wsDistance = 'cosine';
+				}
+				(workspaceConfig as any).distance = wsDistance;
 			}
 			if ('onDisk' in baseConfig && env.WORKSPACE_VECTOR_STORE_ON_DISK !== undefined) {
 				(workspaceConfig as any).onDisk = env.WORKSPACE_VECTOR_STORE_ON_DISK;
