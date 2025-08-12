@@ -20,6 +20,7 @@ export type {
 	QdrantBackendConfig,
 	MilvusBackendConfig,
 	ChromaBackendConfig,
+	PineconeBackendConfig,
 } from '../config.js';
 
 /**

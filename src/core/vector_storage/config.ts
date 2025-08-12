@@ -13,7 +13,7 @@
  * - Qdrant: High-performance vector similarity search engine
  * - Milvus: Open-source vector database with horizontal scaling
  * - ChromaDB: Developer-friendly open-source embedding database
- * - Pinecone: Managed vector database service (planned)
+ * - Pinecone: Managed vector database service
  * - Weaviate: Open-source vector search engine (planned)
  *
  * @module vector_storage/config
@@ -237,6 +237,54 @@ const ChromaBackendSchema = BaseVectorStoreSchema.extend({
 export type ChromaBackendConfig = z.infer<typeof ChromaBackendSchema>;
 
 /**
+ * Pinecone Backend Configuration
+ *
+ * Configuration for Pinecone managed vector database backend.
+ * Requires API key and environment for authentication.
+ *
+ * @example
+ * ```typescript
+ * const config: PineconeBackendConfig = {
+ *   type: 'pinecone',
+ *   apiKey: 'your-api-key',
+ *   indexName: 'knowledge-memory',
+ *   dimension: 1536,
+ *   namespace: 'default'
+ * };
+ * ```
+ */
+const PineconeBackendSchema = BaseVectorStoreSchema.extend({
+	type: z.literal('pinecone'),
+
+	/** Pinecone API key for authentication */
+	apiKey: z.string().min(1).describe('Pinecone API key'),
+
+	/** Pinecone index name (equivalent to collectionName) */
+	indexName: z.string().min(1).describe('Pinecone index name'),
+
+	/** Pinecone namespace for multi-tenancy (optional) */
+	namespace: z.string().optional().describe('Pinecone namespace'),
+
+	/** Distance metric for similarity search */
+	metric: z
+		.enum(['cosine', 'euclidean', 'dotproduct'] as const)
+		.default('cosine')
+		.optional()
+		.describe('Distance metric'),
+
+	/** Pinecone pod type (for performance tuning) */
+	podType: z.string().optional().describe('Pinecone pod type'),
+
+	/** Number of replicas for high availability */
+	replicas: z.number().int().positive().optional().describe('Number of replicas'),
+
+	/** Source collection for cloning */
+	sourceCollection: z.string().optional().describe('Source collection for cloning'),
+}).strict();
+
+export type PineconeBackendConfig = z.infer<typeof PineconeBackendSchema>;
+
+/**
  * Backend Configuration Union Schema
  *
  * Discriminated union of all supported backend configurations.
@@ -247,12 +295,18 @@ export type ChromaBackendConfig = z.infer<typeof ChromaBackendSchema>;
 const BackendConfigSchema = z
 	.discriminatedUnion(
 		'type',
-		[InMemoryBackendSchema, QdrantBackendSchema, MilvusBackendSchema, ChromaBackendSchema],
+		[
+			InMemoryBackendSchema,
+			QdrantBackendSchema,
+			MilvusBackendSchema,
+			ChromaBackendSchema,
+			PineconeBackendSchema,
+		],
 		{
 			errorMap: (issue, ctx) => {
 				if (issue.code === z.ZodIssueCode.invalid_union_discriminator) {
 					return {
-						message: `Invalid backend type. Expected 'in-memory', 'qdrant', 'milvus', or 'chroma'.`,
+						message: `Invalid backend type. Expected 'in-memory', 'qdrant', 'milvus', 'chroma', or 'pinecone'.`,
 					};
 				}
 				return { message: ctx.defaultError };
@@ -290,6 +344,24 @@ const BackendConfigSchema = z
 					code: z.ZodIssueCode.custom,
 					message: "ChromaDB backend requires either 'url' or 'host' to be specified",
 					path: ['url'],
+				});
+			}
+		}
+		// Validate Pinecone backend requirements
+		if (data.type === 'pinecone') {
+			// Pinecone requires API key, environment, and indexName
+			if (!data.apiKey) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: "Pinecone backend requires 'apiKey' to be specified",
+					path: ['apiKey'],
+				});
+			}
+			if (!data.indexName) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: "Pinecone backend requires 'indexName' to be specified",
+					path: ['indexName'],
 				});
 			}
 		}

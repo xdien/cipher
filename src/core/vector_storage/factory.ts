@@ -463,6 +463,36 @@ export function getVectorStoreConfigFromEnv(agentConfig?: any): VectorStoreConfi
 			headers,
 			distance,
 		};
+	} else if ((storeType as string) === 'pinecone') {
+		const apiKey = env.VECTOR_STORE_API_KEY;
+		const indexName = collectionName;
+		const namespace = env.PINECONE_NAMESPACE;
+		const metric = env.PINECONE_METRIC || env.VECTOR_STORE_DISTANCE;
+
+		if (!apiKey) {
+			logger.warn('Pinecone configuration incomplete, falling back to in-memory storage', {
+				hasApiKey: !!apiKey,
+			});
+			// Return in-memory config with fallback marker
+			return {
+				type: 'in-memory',
+				collectionName,
+				dimension,
+				maxVectors,
+				// Add a special property to indicate this is a fallback from Pinecone
+				_fallbackFrom: 'pinecone',
+			} as any;
+		}
+
+		return {
+			type: 'pinecone',
+			collectionName: indexName,
+			dimension,
+			apiKey,
+			indexName,
+			namespace,
+			metric: metric as 'cosine' | 'euclidean' | 'dotproduct',
+		};
 	} else {
 		return {
 			type: 'in-memory',
@@ -659,6 +689,39 @@ export function getWorkspaceVectorStoreConfigFromEnv(agentConfig?: any): VectorS
 			port,
 			headers,
 			distance,
+		};
+	} else if ((storeType as string) === 'pinecone') {
+		const apiKey = env.VECTOR_STORE_API_KEY;
+		const indexName = collectionName;
+		const namespace = env.PINECONE_NAMESPACE;
+		const metric = env.PINECONE_METRIC || env.VECTOR_STORE_DISTANCE;
+
+		if (!apiKey) {
+			logger.warn(
+				'Pinecone configuration incomplete for workspace store, falling back to in-memory storage',
+				{
+					hasApiKey: !!apiKey,
+				}
+			);
+			// Return in-memory config with fallback marker
+			return {
+				type: 'in-memory',
+				collectionName,
+				dimension,
+				maxVectors,
+				// Add a special property to indicate this is a fallback from Pinecone
+				_fallbackFrom: 'pinecone-workspace',
+			} as any;
+		}
+
+		return {
+			type: 'pinecone',
+			collectionName: indexName,
+			dimension,
+			apiKey,
+			indexName,
+			namespace: namespace ? `${namespace}-workspace` : 'workspace', // Separate namespace for workspace
+			metric: metric as 'cosine' | 'euclidean' | 'dotproduct',
 		};
 	} else {
 		return {

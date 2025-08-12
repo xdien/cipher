@@ -2,7 +2,7 @@ import { defineConfig } from 'tsup';
 export default defineConfig([
 	{
 		entry: ['src/core/index.ts'],
-		format: ['cjs','esm'],
+		format: ['cjs', 'esm'],
 		outDir: 'dist/src/core',
 		dts: true,
 		shims: true,
@@ -12,18 +12,18 @@ export default defineConfig([
 	},
 	{
 		entry: ['src/app/index.ts'],
-		format: ['cjs'],  // Use only CommonJS for app to avoid dynamic require issues
+		format: ['cjs'], // Use only CommonJS for app to avoid dynamic require issues
 		outDir: 'dist/src/app',
 		shims: true,
 		bundle: true,
 		platform: 'node',
-		target: 'node18',  // Specify Node.js target version
+		target: 'node18', // Specify Node.js target version
 		external: [
 			// Database drivers
-			'better-sqlite3', 
-			'pg', 
-			'neo4j-driver', 
-			'ioredis', 
+			'better-sqlite3',
+			'pg',
+			'neo4j-driver',
+			'ioredis',
 			// Node.js built-in modules to prevent bundling issues
 			'fs',
 			'path',
@@ -32,7 +32,7 @@ export default defineConfig([
 			'stream',
 			'util',
 			'events',
-			'child_process'
+			'child_process',
 		],
 		noExternal: ['chalk', 'boxen', 'commander'],
 	},
