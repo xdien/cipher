@@ -205,6 +205,12 @@ export class PgVectorBackend implements VectorStore {
 			for (let i = 0; i < vectors.length; i++) {
 				const vector = vectors[i];
 				const payload = payloads[i];
+				if (!vector || !Array.isArray(vector)) {
+					throw new VectorStoreError('Invalid vector', 'insert');
+				}
+				if (!payload || typeof payload !== 'object') {
+					throw new VectorStoreError('Invalid payload', 'insert');
+				}
 				this.validateDimension(vector, 'insert');
 				values.push(ids[i], `[${vector.join(',')}]`, payload);
 				placeholders.push(`($${i * 3 + 1}, $${i * 3 + 2}, $${i * 3 + 3})`);
