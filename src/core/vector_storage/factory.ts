@@ -463,27 +463,6 @@ export function getVectorStoreConfigFromEnv(agentConfig?: any): VectorStoreConfi
 			headers,
 			distance,
 		};
-	} else if (storeType === 'pgvector') {
-		const url = env.VECTOR_STORE_URL;
-
-		if (!url) {
-			// Return in-memory config with fallback marker
-			return {
-				type: 'in-memory',
-				collectionName,
-				dimension,
-				maxVectors,
-				// Add a special property to indicate this is a fallback from PgVector
-				_fallbackFrom: 'pgvector',
-			} as any;
-		}
-
-		return {
-			type: 'pgvector',
-			collectionName,
-			dimension,
-			url,
-		};
 	} else {
 		return {
 			type: 'in-memory',
@@ -680,27 +659,6 @@ export function getWorkspaceVectorStoreConfigFromEnv(agentConfig?: any): VectorS
 			port,
 			headers,
 			distance,
-		};
-	} else if (storeType === 'pgvector') {
-		const url = env.WORKSPACE_VECTOR_STORE_URL || env.VECTOR_STORE_URL;
-
-		if (!url) {
-			// Return in-memory config with fallback marker
-			return {
-				type: 'in-memory',
-				collectionName,
-				dimension,
-				maxVectors,
-				// Add a special property to indicate this is a fallback from PgVector
-				_fallbackFrom: 'pgvector-workspace',
-			} as any;
-		}
-
-		return {
-			type: 'pgvector',
-			collectionName,
-			dimension,
-			url,
 		};
 	} else {
 		return {
