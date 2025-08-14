@@ -259,9 +259,6 @@ const PineconeBackendSchema = BaseVectorStoreSchema.extend({
 	/** Pinecone API key for authentication */
 	apiKey: z.string().min(1).describe('Pinecone API key'),
 
-	/** Pinecone index name (equivalent to collectionName) */
-	indexName: z.string().min(1).describe('Pinecone index name'),
-
 	/** Pinecone namespace for multi-tenancy (optional) */
 	namespace: z.string().optional().describe('Pinecone namespace'),
 
@@ -355,13 +352,6 @@ const BackendConfigSchema = z
 					code: z.ZodIssueCode.custom,
 					message: "Pinecone backend requires 'apiKey' to be specified",
 					path: ['apiKey'],
-				});
-			}
-			if (!data.indexName) {
-				ctx.addIssue({
-					code: z.ZodIssueCode.custom,
-					message: "Pinecone backend requires 'indexName' to be specified",
-					path: ['indexName'],
 				});
 			}
 		}

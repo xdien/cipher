@@ -73,7 +73,6 @@ const envSchema = z.object({
 	VECTOR_STORE_MAX_VECTORS: z.number().default(10000),
 	// Pinecone-specific Configuration
 	PINECONE_NAMESPACE: z.string().default('default'),
-	PINECONE_METRIC: z.enum(['cosine', 'euclidean', 'dotproduct']).default('cosine'),
 	// Knowledge Graph Configuration
 	KNOWLEDGE_GRAPH_ENABLED: z.boolean().default(false),
 	KNOWLEDGE_GRAPH_TYPE: z.enum(['neo4j', 'in-memory']).default('in-memory'),

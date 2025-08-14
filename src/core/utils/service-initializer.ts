@@ -621,6 +621,7 @@ export async function createAgentServices(
 		logger.warn('Failed to initialize vector storage manager', {
 			error: error instanceof Error ? error.message : String(error),
 		});
+		logger.warn(error instanceof Error ? error.message : String(error));
 		// Fallback to regular manager in case of error
 		const { manager } = await createVectorStoreFromEnv(config);
 		vectorStoreManager = manager;

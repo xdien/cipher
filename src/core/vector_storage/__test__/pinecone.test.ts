@@ -1,8 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach, vi, type MockedFunction } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { PineconeBackend } from '../backend/pinecone.js';
-import type { PineconeBackendConfig } from '../backend/types.js';
-import { VectorStoreError, VectorStoreConnectionError } from '../backend/types.js';
-import { DEFAULTS, ERROR_MESSAGES } from '../constants.js';
+import {
+	VectorStoreError,
+	VectorStoreConnectionError,
+	VectorDimensionError,
+} from '../backend/types.js';
+import type { PineconeBackendConfig, SearchFilters } from '../backend/types.js';
 
 // Mock Pinecone client
 const mockIndex = {
@@ -10,26 +13,16 @@ const mockIndex = {
 	query: vi.fn(),
 	fetch: vi.fn(),
 	delete: vi.fn(),
-	describeIndexStats: vi.fn(),
 };
 
 const mockPineconeClient = {
-	Index: vi.fn(() => mockIndex),
+	listIndexes: vi.fn(),
+	createIndex: vi.fn(),
+	index: vi.fn().mockReturnValue(mockIndex),
 };
 
-// Mock the Pinecone import
 vi.mock('@pinecone-database/pinecone', () => ({
-	Pinecone: vi.fn(() => mockPineconeClient),
-}));
-
-// Mock logger
-vi.mock('../../../logger/index.js', () => ({
-	createLogger: vi.fn(() => ({
-		debug: vi.fn(),
-		info: vi.fn(),
-		warn: vi.fn(),
-		error: vi.fn(),
-	})),
+	Pinecone: vi.fn().mockImplementation(() => mockPineconeClient),
 }));
 
 describe('PineconeBackend', () => {
@@ -37,536 +30,622 @@ describe('PineconeBackend', () => {
 	let config: PineconeBackendConfig;
 
 	beforeEach(() => {
+		vi.clearAllMocks();
+
 		config = {
-			type: 'pinecone',
 			apiKey: 'test-api-key',
-			indexName: 'test-index',
-			collectionName: 'test-collection',
-			dimension: 128,
+			collectionName: 'test-index',
+			dimension: 384,
 			namespace: 'test-namespace',
+			metric: 'cosine',
 		};
 
 		backend = new PineconeBackend(config);
-
-		// Reset all mocks
-		vi.clearAllMocks();
-		mockIndex.describeIndexStats.mockResolvedValue({});
 	});
 
-	afterEach(() => {
-		vi.clearAllMocks();
+	afterEach(async () => {
+		if (backend.isConnected()) {
+			await backend.disconnect();
+		}
 	});
 
 	describe('Constructor', () => {
-		it('should initialize with correct configuration', () => {
-			expect(backend.getBackendType()).toBe('pinecone');
-			expect(backend.getDimension()).toBe(128);
+		it('should initialize with provided config', () => {
+			expect(backend.getDimension()).toBe(384);
 			expect(backend.getCollectionName()).toBe('test-index');
 			expect(backend.getNamespace()).toBe('test-namespace');
+			expect(backend.getBackendType()).toBe('pinecone');
+			expect(backend.isConnected()).toBe(false);
 		});
 
-		it('should use indexName over collectionName', () => {
-			const configWithBoth = {
-				...config,
-				indexName: 'index-name',
-				collectionName: 'collection-name',
-			};
-			const backendWithBoth = new PineconeBackend(configWithBoth);
-			expect(backendWithBoth.getCollectionName()).toBe('index-name');
-		});
+		it('should use default namespace if not provided', () => {
+			const configWithoutNamespace = { ...config };
+			delete configWithoutNamespace.namespace;
+			const backendWithoutNamespace = new PineconeBackend(configWithoutNamespace);
 
-		it('should use default namespace when not provided', () => {
-			const configNoNamespace = {
-				...config,
-				namespace: undefined,
-			};
-			const backendNoNamespace = new PineconeBackend(configNoNamespace);
-			expect(backendNoNamespace.getNamespace()).toBe(DEFAULTS.PINECONE_NAMESPACE);
+			expect(backendWithoutNamespace.getNamespace()).toBe('default');
 		});
 	});
 
 	describe('Connection Management', () => {
-		it('should connect successfully', async () => {
-			expect(backend.isConnected()).toBe(false);
+		it('should connect successfully when index exists', async () => {
+			mockPineconeClient.listIndexes.mockResolvedValue({
+				indexes: [{ name: 'test-index' }],
+			});
 
 			await backend.connect();
 
 			expect(backend.isConnected()).toBe(true);
-			expect(mockPineconeClient.Index).toHaveBeenCalledWith('test-index');
-			expect(mockIndex.describeIndexStats).toHaveBeenCalled();
+			expect(mockPineconeClient.listIndexes).toHaveBeenCalled();
+			expect(mockPineconeClient.index).toHaveBeenCalledWith('test-index');
 		});
 
-		it('should handle connection failure', async () => {
+		it('should create index if it does not exist', async () => {
+			mockPineconeClient.listIndexes.mockResolvedValue({
+				indexes: [],
+			});
+			mockPineconeClient.createIndex.mockResolvedValue(undefined);
+
+			await backend.connect();
+
+			expect(backend.isConnected()).toBe(true);
+			expect(mockPineconeClient.createIndex).toHaveBeenCalledWith({
+				name: 'test-index',
+				dimension: 384,
+				metric: 'cosine',
+				spec: {
+					serverless: {
+						cloud: 'aws',
+						region: 'us-east-1',
+					},
+				},
+			});
+		});
+
+		it('should handle connection errors gracefully', async () => {
 			const error = new Error('Connection failed');
-			mockIndex.describeIndexStats.mockRejectedValue(error);
+			mockPineconeClient.listIndexes.mockRejectedValue(error);
 
 			await expect(backend.connect()).rejects.toThrow(VectorStoreConnectionError);
-			expect(backend.isConnected()).toBe(false);
 		});
 
-		it('should not reconnect if already connected', async () => {
-			await backend.connect();
-			vi.clearAllMocks();
+		it('should handle 404 errors (index not found)', async () => {
+			const error = new Error('Index not found (404)');
+			mockPineconeClient.listIndexes.mockRejectedValue(error);
 
-			await backend.connect();
+			await expect(backend.connect()).rejects.toThrow(
+				/Pinecone index 'test-index' not found \(HTTP 404\)/
+			);
+		});
 
-			expect(mockPineconeClient.Index).not.toHaveBeenCalled();
-			expect(mockIndex.describeIndexStats).not.toHaveBeenCalled();
+		it('should handle authentication errors', async () => {
+			const error = new Error('Unauthorized (401)');
+			mockPineconeClient.listIndexes.mockRejectedValue(error);
+
+			await expect(backend.connect()).rejects.toThrow(/Pinecone authentication failed/);
+		});
+
+		it('should handle rate limiting errors', async () => {
+			const error = new Error('Rate limit exceeded (429)');
+			mockPineconeClient.listIndexes.mockRejectedValue(error);
+
+			await expect(backend.connect()).rejects.toThrow(/Pinecone rate limit exceeded/);
 		});
 
 		it('should disconnect successfully', async () => {
+			// First connect
+			mockPineconeClient.listIndexes.mockResolvedValue({
+				indexes: [{ name: 'test-index' }],
+			});
 			await backend.connect();
 			expect(backend.isConnected()).toBe(true);
 
+			// Then disconnect
 			await backend.disconnect();
-
 			expect(backend.isConnected()).toBe(false);
 		});
 
 		it('should handle disconnect when not connected', async () => {
 			expect(backend.isConnected()).toBe(false);
-
 			await expect(backend.disconnect()).resolves.not.toThrow();
 		});
-	});
 
-	describe('Insert Operations', () => {
-		beforeEach(async () => {
+		it('should not reconnect if already connected', async () => {
+			mockPineconeClient.listIndexes.mockResolvedValue({
+				indexes: [{ name: 'test-index' }],
+			});
+
 			await backend.connect();
-			mockIndex.upsert.mockResolvedValue({});
-		});
+			expect(mockPineconeClient.listIndexes).toHaveBeenCalledTimes(1);
 
-		it('should insert vectors successfully', async () => {
-			const vectors = [[1, 2, 3, ...Array(125).fill(0)]];
-			const ids = [1];
-			const payloads = [{ title: 'Document 1' }];
-
-			await backend.insert(vectors, ids, payloads);
-
-			expect(mockIndex.upsert).toHaveBeenCalledWith({
-				vectors: [
-					{
-						id: '1',
-						values: vectors[0],
-						metadata: payloads[0],
-					},
-				],
-				namespace: 'test-namespace',
-			});
-		});
-
-		it('should insert multiple vectors', async () => {
-			const vectors = [
-				[1, 2, 3, ...Array(125).fill(0)],
-				[4, 5, 6, ...Array(125).fill(0)],
-			];
-			const ids = [1, 2];
-			const payloads = [{ title: 'Doc 1' }, { title: 'Doc 2' }];
-
-			await backend.insert(vectors, ids, payloads);
-
-			expect(mockIndex.upsert).toHaveBeenCalledWith({
-				vectors: [
-					{ id: '1', values: vectors[0], metadata: payloads[0] },
-					{ id: '2', values: vectors[1], metadata: payloads[1] },
-				],
-				namespace: 'test-namespace',
-			});
-		});
-
-		it('should use default namespace when configured', async () => {
-			const defaultConfig = { ...config, namespace: DEFAULTS.PINECONE_NAMESPACE };
-			const defaultBackend = new PineconeBackend(defaultConfig);
-			await defaultBackend.connect();
-
-			const vectors = [[1, 2, 3, ...Array(125).fill(0)]];
-			const ids = [1];
-			const payloads = [{ title: 'Document 1' }];
-
-			await defaultBackend.insert(vectors, ids, payloads);
-
-			expect(mockIndex.upsert).toHaveBeenCalledWith({
-				vectors: [
-					{
-						id: '1',
-						values: vectors[0],
-						metadata: payloads[0],
-					},
-				],
-			});
-		});
-
-		it('should throw error when not connected', async () => {
-			const disconnectedBackend = new PineconeBackend(config);
-			const vectors = [[1, 2, 3, ...Array(125).fill(0)]];
-			const ids = [1];
-			const payloads = [{ title: 'Document 1' }];
-
-			await expect(disconnectedBackend.insert(vectors, ids, payloads)).rejects.toThrow(
-				ERROR_MESSAGES.NOT_CONNECTED
-			);
-		});
-
-		it('should validate vector dimensions', async () => {
-			const vectors = [[1, 2, 3]]; // Wrong dimension
-			const ids = [1];
-			const payloads = [{ title: 'Document 1' }];
-
-			await expect(backend.insert(vectors, ids, payloads)).rejects.toThrow('expected 128, got 3');
-		});
-
-		it('should validate input array lengths', async () => {
-			const vectors = [[1, 2, 3, ...Array(125).fill(0)]];
-			const ids = [1, 2]; // Mismatched length
-			const payloads = [{ title: 'Document 1' }];
-
-			await expect(backend.insert(vectors, ids, payloads)).rejects.toThrow(
-				'Vectors, IDs, and payloads must have the same length'
-			);
-		});
-
-		it('should handle insert failure', async () => {
-			const error = new Error('Insert failed');
-			mockIndex.upsert.mockRejectedValue(error);
-
-			const vectors = [[1, 2, 3, ...Array(125).fill(0)]];
-			const ids = [1];
-			const payloads = [{ title: 'Document 1' }];
-
-			await expect(backend.insert(vectors, ids, payloads)).rejects.toThrow(VectorStoreError);
+			await backend.connect(); // Second call
+			expect(mockPineconeClient.listIndexes).toHaveBeenCalledTimes(1); // Should not be called again
 		});
 	});
 
-	describe('Search Operations', () => {
+	describe('Vector Operations', () => {
 		beforeEach(async () => {
+			mockPineconeClient.listIndexes.mockResolvedValue({
+				indexes: [{ name: 'test-index' }],
+			});
 			await backend.connect();
 		});
 
-		it('should search vectors successfully', async () => {
-			const query = [1, 2, 3, ...Array(125).fill(0)];
-			const mockResponse = {
-				matches: [
-					{
-						id: '1',
-						score: 0.95,
-						values: [1, 2, 3, ...Array(125).fill(0)],
-						metadata: { title: 'Document 1' },
+		describe('Insert', () => {
+			it('should insert vectors successfully', async () => {
+				// Create test vectors with correct dimension (384)
+				const testVector1 = new Array(384).fill(0);
+				testVector1[0] = 1; // [1, 0, 0, ...]
+				const testVector2 = new Array(384).fill(0);
+				testVector2[1] = 1; // [0, 1, 0, ...]
+
+				const vectors = [testVector1, testVector2];
+				const ids = [1, 2];
+				const payloads = [{ label: 'A' }, { label: 'B' }];
+
+				mockIndex.upsert.mockResolvedValue(undefined);
+
+				await backend.insert(vectors, ids, payloads);
+
+				expect(mockIndex.upsert).toHaveBeenCalledWith({
+					vectors: [
+						{ id: '1', values: testVector1, metadata: { label: 'A' } },
+						{ id: '2', values: testVector2, metadata: { label: 'B' } },
+					],
+					namespace: 'test-namespace',
+				});
+			});
+
+			it('should handle insert with default namespace', async () => {
+				const configWithDefaultNamespace = { ...config, namespace: 'default' };
+				const testBackend = new PineconeBackend(configWithDefaultNamespace);
+				mockPineconeClient.listIndexes.mockResolvedValue({
+					indexes: [{ name: 'test-index' }],
+				});
+				await testBackend.connect();
+
+				const testVector = new Array(384).fill(0);
+				testVector[0] = 1;
+				const vectors = [testVector];
+				const ids = [1];
+				const payloads = [{}];
+
+				mockIndex.upsert.mockResolvedValue(undefined);
+
+				await testBackend.insert(vectors, ids, payloads);
+
+				expect(mockIndex.upsert).toHaveBeenCalledWith({
+					vectors: [{ id: '1', values: testVector, metadata: {} }],
+					// No namespace property for default namespace
+				});
+			});
+
+			it('should validate input dimensions', async () => {
+				const invalidVectors = [[1, 0, 0]]; // Wrong dimension (3 instead of 384)
+				const ids = [1];
+				const payloads = [{}];
+
+				await expect(backend.insert(invalidVectors, ids, payloads)).rejects.toThrow(
+					VectorDimensionError
+				);
+			});
+
+			it('should validate input array lengths', async () => {
+				const testVector = new Array(384).fill(0);
+				const vectors = [testVector];
+				const ids = [1, 2]; // Different length
+				const payloads = [{}];
+
+				await expect(backend.insert(vectors, ids, payloads)).rejects.toThrow(
+					/must have the same length/
+				);
+			});
+
+			it('should handle empty input arrays', async () => {
+				await expect(backend.insert([], [], [])).resolves.not.toThrow();
+				expect(mockIndex.upsert).not.toHaveBeenCalled();
+			});
+
+			it('should handle insert errors', async () => {
+				const testVector = new Array(384).fill(0);
+				const vectors = [testVector];
+				const ids = [1];
+				const payloads = [{}];
+
+				mockIndex.upsert.mockRejectedValue(new Error('Insert failed'));
+
+				await expect(backend.insert(vectors, ids, payloads)).rejects.toThrow(VectorStoreError);
+			});
+
+			it('should throw error when not connected', async () => {
+				const disconnectedBackend = new PineconeBackend(config);
+				const testVector = new Array(384).fill(0);
+
+				await expect(disconnectedBackend.insert([testVector], [1], [{}])).rejects.toThrow(
+					/not connected/
+				);
+			});
+		});
+
+		describe('Search', () => {
+			it('should search vectors successfully', async () => {
+				const testQuery = new Array(384).fill(0);
+				testQuery[0] = 1; // [1, 0, 0, ...]
+
+				const testVector1 = new Array(384).fill(0);
+				testVector1[0] = 1;
+				const testVector2 = new Array(384).fill(0);
+				testVector2[0] = 0.9;
+				testVector2[1] = 0.1;
+
+				const limit = 5;
+
+				mockIndex.query.mockResolvedValue({
+					matches: [
+						{
+							id: '1',
+							score: 0.95,
+							metadata: { label: 'A' },
+							values: testVector1,
+						},
+						{
+							id: '2',
+							score: 0.85,
+							metadata: { label: 'B' },
+							values: testVector2,
+						},
+					],
+				});
+
+				const results = await backend.search(testQuery, limit);
+
+				expect(mockIndex.query).toHaveBeenCalledWith({
+					vector: testQuery,
+					topK: limit,
+					includeMetadata: true,
+					includeValues: false,
+					namespace: 'test-namespace',
+				});
+
+				expect(results).toHaveLength(2);
+				expect(results[0]).toEqual({
+					id: 1,
+					score: 0.95,
+					payload: { label: 'A' },
+					vector: testVector1,
+				});
+			});
+
+			it('should search with filters', async () => {
+				const testQuery = new Array(384).fill(0);
+				testQuery[0] = 1;
+				const filters: SearchFilters = { category: 'test' };
+
+				mockIndex.query.mockResolvedValue({ matches: [] });
+
+				await backend.search(testQuery, 5, filters);
+
+				expect(mockIndex.query).toHaveBeenCalledWith({
+					vector: testQuery,
+					topK: 5,
+					includeMetadata: true,
+					includeValues: false,
+					namespace: 'test-namespace',
+					filter: { category: { $eq: 'test' } },
+				});
+			});
+
+			it('should handle range filters', async () => {
+				const testQuery = new Array(384).fill(0);
+				testQuery[0] = 1;
+				const filters: SearchFilters = {
+					timestamp: { gte: 1000, lte: 2000 },
+				};
+
+				mockIndex.query.mockResolvedValue({ matches: [] });
+
+				await backend.search(testQuery, 5, filters);
+
+				expect(mockIndex.query).toHaveBeenCalledWith(
+					expect.objectContaining({
+						filter: {
+							timestamp: { $gte: 1000, $lte: 2000 },
+						},
+					})
+				);
+			});
+
+			it('should handle array filters', async () => {
+				const testQuery = new Array(384).fill(0);
+				testQuery[0] = 1;
+				const filters: SearchFilters = {
+					tags: { any: ['tag1', 'tag2'] },
+				};
+
+				mockIndex.query.mockResolvedValue({ matches: [] });
+
+				await backend.search(testQuery, 5, filters);
+
+				expect(mockIndex.query).toHaveBeenCalledWith(
+					expect.objectContaining({
+						filter: {
+							tags: { $in: ['tag1', 'tag2'] },
+						},
+					})
+				);
+			});
+
+			it('should validate search query dimension', async () => {
+				const invalidQuery = [1, 0, 0]; // Wrong dimension (3 instead of 384)
+
+				await expect(backend.search(invalidQuery, 5)).rejects.toThrow(VectorDimensionError);
+			});
+
+			it('should validate search limit', async () => {
+				const testQuery = new Array(384).fill(0);
+
+				await expect(backend.search(testQuery, 0)).rejects.toThrow(/Search limit must be positive/);
+			});
+
+			it('should limit search results to Pinecone maximum', async () => {
+				const testQuery = new Array(384).fill(0);
+				mockIndex.query.mockResolvedValue({ matches: [] });
+
+				await backend.search(testQuery, 20000); // Exceeds Pinecone limit
+
+				expect(mockIndex.query).toHaveBeenCalledWith(
+					expect.objectContaining({
+						topK: 10000, // Pinecone maximum
+					})
+				);
+			});
+
+			it('should handle search errors', async () => {
+				const testQuery = new Array(384).fill(0);
+				mockIndex.query.mockRejectedValue(new Error('Search failed'));
+
+				await expect(backend.search(testQuery, 5)).rejects.toThrow(VectorStoreError);
+			});
+		});
+
+		describe('Get', () => {
+			it('should get vector by ID successfully', async () => {
+				const vectorId = 1;
+				const testVector = new Array(384).fill(0);
+				testVector[0] = 1;
+
+				mockIndex.fetch.mockResolvedValue({
+					vectors: {
+						'1': {
+							values: testVector,
+							metadata: { label: 'A' },
+						},
 					},
-				],
-			};
-			mockIndex.query.mockResolvedValue(mockResponse);
+				});
 
-			const results = await backend.search(query, 5);
+				const result = await backend.get(vectorId);
 
-			expect(mockIndex.query).toHaveBeenCalledWith({
-				vector: query,
-				topK: 5,
-				includeMetadata: true,
-				includeValues: true,
-				namespace: 'test-namespace',
+				expect(mockIndex.fetch).toHaveBeenCalledWith({
+					ids: ['1'],
+					namespace: 'test-namespace',
+				});
+
+				expect(result).toEqual({
+					id: 1,
+					vector: testVector,
+					payload: { label: 'A' },
+					score: 1.0,
+				});
 			});
 
-			expect(results).toHaveLength(1);
-			expect(results[0]).toEqual({
-				id: 1,
-				score: 0.95,
-				payload: { title: 'Document 1' },
-				vector: mockResponse.matches[0].values,
+			it('should return null for non-existent vector', async () => {
+				mockIndex.fetch.mockResolvedValue({
+					vectors: {},
+				});
+
+				const result = await backend.get(999);
+
+				expect(result).toBeNull();
 			});
-		});
 
-		it('should search with filters', async () => {
-			const query = [1, 2, 3, ...Array(125).fill(0)];
-			const filters = { category: 'test', score: { gte: 0.5 } };
-			const mockResponse = { matches: [] };
-			mockIndex.query.mockResolvedValue(mockResponse);
+			it('should handle get errors', async () => {
+				mockIndex.fetch.mockRejectedValue(new Error('Fetch failed'));
 
-			await backend.search(query, 5, filters);
+				await expect(backend.get(1)).rejects.toThrow(VectorStoreError);
+			});
 
-			expect(mockIndex.query).toHaveBeenCalledWith({
-				vector: query,
-				topK: 5,
-				includeMetadata: true,
-				includeValues: true,
-				namespace: 'test-namespace',
-				filter: {
-					category: { $eq: 'test' },
-					score: { $gte: 0.5 },
-				},
+			it('should validate vector ID', async () => {
+				await expect(backend.get(null as any)).rejects.toThrow(VectorStoreError);
+				await expect(backend.get(undefined as any)).rejects.toThrow(VectorStoreError);
+				await expect(backend.get(1.5)).rejects.toThrow(VectorStoreError);
 			});
 		});
 
-		it('should handle search failure', async () => {
-			const error = new Error('Search failed');
-			mockIndex.query.mockRejectedValue(error);
+		describe('Update', () => {
+			it('should update vector successfully', async () => {
+				const vectorId = 1;
+				const testVector = new Array(384).fill(0);
+				testVector[0] = 1;
+				const payload = { label: 'Updated' };
 
-			const query = [1, 2, 3, ...Array(125).fill(0)];
+				mockIndex.upsert.mockResolvedValue(undefined);
 
-			await expect(backend.search(query, 5)).rejects.toThrow(VectorStoreError);
-		});
+				await backend.update(vectorId, testVector, payload);
 
-		it('should validate query dimension', async () => {
-			const query = [1, 2, 3]; // Wrong dimension
-
-			await expect(backend.search(query, 5)).rejects.toThrow('expected 128, got 3');
-		});
-	});
-
-	describe('Get Operations', () => {
-		beforeEach(async () => {
-			await backend.connect();
-		});
-
-		it('should get vector successfully', async () => {
-			const mockResponse = {
-				vectors: {
-					'1': {
-						values: [1, 2, 3, ...Array(125).fill(0)],
-						metadata: { title: 'Document 1' },
-					},
-				},
-			};
-			mockIndex.fetch.mockResolvedValue(mockResponse);
-
-			const result = await backend.get(1);
-
-			expect(mockIndex.fetch).toHaveBeenCalledWith({
-				ids: ['1'],
-				namespace: 'test-namespace',
+				expect(mockIndex.upsert).toHaveBeenCalledWith({
+					vectors: [
+						{
+							id: '1',
+							values: testVector,
+							metadata: payload,
+						},
+					],
+					namespace: 'test-namespace',
+				});
 			});
 
-			expect(result).toEqual({
-				id: 1,
-				vector: mockResponse.vectors['1'].values,
-				payload: { title: 'Document 1' },
-				score: 1.0,
+			it('should validate update vector dimension', async () => {
+				const invalidVector = [1, 0, 0]; // Wrong dimension (3 instead of 384)
+
+				await expect(backend.update(1, invalidVector, {})).rejects.toThrow(VectorDimensionError);
+			});
+
+			it('should handle update errors', async () => {
+				const testVector = new Array(384).fill(0);
+				mockIndex.upsert.mockRejectedValue(new Error('Update failed'));
+
+				await expect(backend.update(1, testVector, {})).rejects.toThrow(VectorStoreError);
 			});
 		});
 
-		it('should return null for non-existent vector', async () => {
-			const mockResponse = { vectors: {} };
-			mockIndex.fetch.mockResolvedValue(mockResponse);
+		describe('Delete', () => {
+			it('should delete vector successfully', async () => {
+				const vectorId = 1;
 
-			const result = await backend.get(999);
+				mockIndex.delete.mockResolvedValue(undefined);
 
-			expect(result).toBeNull();
-		});
+				await backend.delete(vectorId);
 
-		it('should handle get failure', async () => {
-			const error = new Error('Get failed');
-			mockIndex.fetch.mockRejectedValue(error);
+				expect(mockIndex.delete).toHaveBeenCalledWith({
+					ids: ['1'],
+					namespace: 'test-namespace',
+				});
+			});
 
-			await expect(backend.get(1)).rejects.toThrow(VectorStoreError);
-		});
-	});
+			it('should handle delete errors', async () => {
+				mockIndex.delete.mockRejectedValue(new Error('Delete failed'));
 
-	describe('Update Operations', () => {
-		beforeEach(async () => {
-			await backend.connect();
-			mockIndex.upsert.mockResolvedValue({});
-		});
+				await expect(backend.delete(1)).rejects.toThrow(VectorStoreError);
+			});
 
-		it('should update vector successfully', async () => {
-			const vector = [1, 2, 3, ...Array(125).fill(0)];
-			const payload = { title: 'Updated Document' };
-
-			await backend.update(1, vector, payload);
-
-			expect(mockIndex.upsert).toHaveBeenCalledWith({
-				vectors: [
-					{
-						id: '1',
-						values: vector,
-						metadata: payload,
-					},
-				],
-				namespace: 'test-namespace',
+			it('should validate delete vector ID', async () => {
+				await expect(backend.delete(null as any)).rejects.toThrow(VectorStoreError);
 			});
 		});
 
-		it('should validate vector dimension on update', async () => {
-			const vector = [1, 2, 3]; // Wrong dimension
-			const payload = { title: 'Updated Document' };
+		describe('Delete Collection', () => {
+			it('should delete all vectors in namespace', async () => {
+				mockIndex.delete.mockResolvedValue(undefined);
 
-			await expect(backend.update(1, vector, payload)).rejects.toThrow('expected 128, got 3');
-		});
+				await backend.deleteCollection();
 
-		it('should handle update failure', async () => {
-			const error = new Error('Update failed');
-			mockIndex.upsert.mockRejectedValue(error);
+				expect(mockIndex.delete).toHaveBeenCalledWith({
+					deleteAll: true,
+					namespace: 'test-namespace',
+				});
+			});
 
-			const vector = [1, 2, 3, ...Array(125).fill(0)];
-			const payload = { title: 'Updated Document' };
+			it('should handle delete collection errors', async () => {
+				mockIndex.delete.mockRejectedValue(new Error('Delete collection failed'));
 
-			await expect(backend.update(1, vector, payload)).rejects.toThrow(VectorStoreError);
-		});
-	});
-
-	describe('Delete Operations', () => {
-		beforeEach(async () => {
-			await backend.connect();
-			mockIndex.delete.mockResolvedValue({});
-		});
-
-		it('should delete vector successfully', async () => {
-			await backend.delete(1);
-
-			expect(mockIndex.delete).toHaveBeenCalledWith({
-				ids: ['1'],
-				namespace: 'test-namespace',
+				await expect(backend.deleteCollection()).rejects.toThrow(VectorStoreError);
 			});
 		});
 
-		it('should delete collection successfully', async () => {
-			await backend.deleteCollection();
-
-			expect(mockIndex.delete).toHaveBeenCalledWith({
-				deleteAll: true,
-				namespace: 'test-namespace',
-			});
-		});
-
-		it('should handle delete failure', async () => {
-			const error = new Error('Delete failed');
-			mockIndex.delete.mockRejectedValue(error);
-
-			await expect(backend.delete(1)).rejects.toThrow(VectorStoreError);
-		});
-
-		it('should handle delete collection failure', async () => {
-			const error = new Error('Delete collection failed');
-			mockIndex.delete.mockRejectedValue(error);
-
-			await expect(backend.deleteCollection()).rejects.toThrow(VectorStoreError);
-		});
-	});
-
-	describe('List Operations', () => {
-		beforeEach(async () => {
-			await backend.connect();
-		});
-
-		it('should throw error for list operation', async () => {
-			await expect(backend.list()).rejects.toThrow(
-				'Pinecone does not support listing all vectors directly'
-			);
-		});
-	});
-
-	describe('Filter Conversion', () => {
-		beforeEach(async () => {
-			await backend.connect();
-			mockIndex.query.mockResolvedValue({ matches: [] });
-		});
-
-		it('should convert range filters correctly', async () => {
-			const query = [1, 2, 3, ...Array(125).fill(0)];
-			const filters = {
-				score: { gte: 0.5, lte: 1.0 },
-				count: { gt: 10, lt: 100 },
-			};
-
-			await backend.search(query, 5, filters);
-
-			expect(mockIndex.query).toHaveBeenCalledWith(
-				expect.objectContaining({
-					filter: {
-						score: { $gte: 0.5, $lte: 1.0 },
-						count: { $gt: 10, $lt: 100 },
-					},
-				})
-			);
-		});
-
-		it('should convert array filters correctly', async () => {
-			const query = [1, 2, 3, ...Array(125).fill(0)];
-			const filters = {
-				category: { any: ['tech', 'science'] },
-				tags: { all: ['important'] },
-			};
-
-			await backend.search(query, 5, filters);
-
-			expect(mockIndex.query).toHaveBeenCalledWith(
-				expect.objectContaining({
-					filter: {
-						category: { $in: ['tech', 'science'] },
-						tags: 'important',
-					},
-				})
-			);
-		});
-
-		it('should convert exact match filters correctly', async () => {
-			const query = [1, 2, 3, ...Array(125).fill(0)];
-			const filters = {
-				status: 'active',
-				priority: 1,
-			};
-
-			await backend.search(query, 5, filters);
-
-			expect(mockIndex.query).toHaveBeenCalledWith(
-				expect.objectContaining({
-					filter: {
-						status: { $eq: 'active' },
-						priority: { $eq: 1 },
-					},
-				})
-			);
-		});
-
-		it('should handle empty filters', async () => {
-			const query = [1, 2, 3, ...Array(125).fill(0)];
-
-			await backend.search(query, 5, {});
-
-			expect(mockIndex.query).toHaveBeenCalledWith({
-				vector: query,
-				topK: 5,
-				includeMetadata: true,
-				includeValues: true,
-				namespace: 'test-namespace',
+		describe('List Operation', () => {
+			it('should throw error for list operation', async () => {
+				await expect(backend.list()).rejects.toThrow(
+					/Pinecone does not support listing all vectors directly/
+				);
 			});
 		});
 	});
 
 	describe('Error Handling', () => {
 		it('should throw error when operations called without connection', async () => {
-			const vector = [1, 2, 3, ...Array(125).fill(0)];
-			const payload = { title: 'Document' };
+			const disconnectedBackend = new PineconeBackend(config);
+			const testVector = new Array(384).fill(0);
 
-			await expect(backend.insert([vector], [1], [payload])).rejects.toThrow(
-				ERROR_MESSAGES.NOT_CONNECTED
-			);
-			await expect(backend.search(vector)).rejects.toThrow(ERROR_MESSAGES.NOT_CONNECTED);
-			await expect(backend.get(1)).rejects.toThrow(ERROR_MESSAGES.NOT_CONNECTED);
-			await expect(backend.update(1, vector, payload)).rejects.toThrow(
-				ERROR_MESSAGES.NOT_CONNECTED
-			);
-			await expect(backend.delete(1)).rejects.toThrow(ERROR_MESSAGES.NOT_CONNECTED);
-			await expect(backend.deleteCollection()).rejects.toThrow(ERROR_MESSAGES.NOT_CONNECTED);
-			await expect(backend.list()).rejects.toThrow(ERROR_MESSAGES.NOT_CONNECTED);
+			await expect(disconnectedBackend.search(testVector, 5)).rejects.toThrow(/not connected/);
+			await expect(disconnectedBackend.get(1)).rejects.toThrow(/not connected/);
+			await expect(disconnectedBackend.update(1, testVector, {})).rejects.toThrow(/not connected/);
+			await expect(disconnectedBackend.delete(1)).rejects.toThrow(/not connected/);
+			await expect(disconnectedBackend.deleteCollection()).rejects.toThrow(/not connected/);
+		});
+	});
+
+	describe('Filter Conversion', () => {
+		beforeEach(async () => {
+			mockPineconeClient.listIndexes.mockResolvedValue({
+				indexes: [{ name: 'test-index' }],
+			});
+			await backend.connect();
 		});
 
-		it('should validate IDs properly', async () => {
-			await backend.connect();
+		it('should handle empty filters', async () => {
+			const testQuery = new Array(384).fill(0);
+			mockIndex.query.mockResolvedValue({ matches: [] });
 
-			const vector = [1, 2, 3, ...Array(125).fill(0)];
-			const payload = { title: 'Document' };
+			await backend.search(testQuery, 5, {});
 
-			// Test with null/undefined IDs
-			await expect(backend.insert([vector], [null as any], [payload])).rejects.toThrow(
-				'ID missing at index 0'
+			expect(mockIndex.query).toHaveBeenCalledWith(
+				expect.not.objectContaining({
+					filter: expect.anything(),
+				})
 			);
-			await expect(backend.update(null as any, vector, payload)).rejects.toThrow(
-				'Pinecone point IDs must be valid'
+		});
+
+		it('should handle null and undefined filter values', async () => {
+			const testQuery = new Array(384).fill(0);
+			const filters = {
+				nullValue: null,
+				undefinedValue: undefined,
+				validValue: 'test',
+			};
+
+			mockIndex.query.mockResolvedValue({ matches: [] });
+
+			await backend.search(testQuery, 5, filters);
+
+			expect(mockIndex.query).toHaveBeenCalledWith(
+				expect.objectContaining({
+					filter: {
+						validValue: { $eq: 'test' },
+					},
+				})
 			);
-			await expect(backend.get(undefined as any)).rejects.toThrow(
-				'Pinecone point IDs must be valid'
+		});
+	});
+
+	describe('Namespace Handling', () => {
+		it('should use custom namespace in operations', async () => {
+			const customConfig = { ...config, namespace: 'custom-namespace' };
+			const customBackend = new PineconeBackend(customConfig);
+
+			mockPineconeClient.listIndexes.mockResolvedValue({
+				indexes: [{ name: 'test-index' }],
+			});
+			await customBackend.connect();
+
+			// Test different operations use custom namespace
+			const testQuery = new Array(384).fill(0); // Use correct dimension
+			mockIndex.query.mockResolvedValue({ matches: [] });
+			await customBackend.search(testQuery, 5);
+
+			expect(mockIndex.query).toHaveBeenCalledWith(
+				expect.objectContaining({
+					namespace: 'custom-namespace',
+				})
 			);
-			await expect(backend.delete(undefined as any)).rejects.toThrow(
-				'Pinecone point IDs must be valid'
+		});
+
+		it('should omit namespace for default namespace', async () => {
+			const defaultConfig = { ...config, namespace: 'default' };
+			const defaultBackend = new PineconeBackend(defaultConfig);
+
+			mockPineconeClient.listIndexes.mockResolvedValue({
+				indexes: [{ name: 'test-index' }],
+			});
+			await defaultBackend.connect();
+
+			const testQuery = new Array(384).fill(0); // Use correct dimension
+			mockIndex.query.mockResolvedValue({ matches: [] });
+			await defaultBackend.search(testQuery, 5);
+
+			expect(mockIndex.query).toHaveBeenCalledWith(
+				expect.not.objectContaining({
+					namespace: expect.anything(),
+				})
 			);
 		});
 	});
