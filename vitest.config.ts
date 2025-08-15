@@ -11,7 +11,7 @@ export default defineConfig({
 	test: {
 		globals: true,
 		environment: 'node',
-		include: process.env.INTEGRATION_TESTS_ONLY 
+		include: process.env.INTEGRATION_TESTS_ONLY
 			? ['src/**/*integration*.test.ts']
 			: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
 		exclude: [

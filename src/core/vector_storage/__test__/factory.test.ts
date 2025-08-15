@@ -251,7 +251,6 @@ describe('Vector Storage Factory', () => {
 			process.env.VECTOR_STORE_URL = 'http://test-qdrant:6333';
 			process.env.VECTOR_STORE_COLLECTION = 'url_collection';
 			process.env.VECTOR_STORE_DIMENSION = '384';
-
 			const result = await createVectorStoreFromEnv();
 
 			// Will fallback to in-memory due to connection failure

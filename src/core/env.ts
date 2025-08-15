@@ -57,7 +57,9 @@ const envSchema = z.object({
 	STORAGE_DATABASE_PASSWORD: z.string().optional(),
 	STORAGE_DATABASE_SSL: z.boolean().default(false),
 	// Vector Storage Configuration
-	VECTOR_STORE_TYPE: z.enum(['qdrant', 'milvus', 'in-memory']).default('in-memory'),
+	VECTOR_STORE_TYPE: z
+		.enum(['qdrant', 'milvus', 'chroma', 'pinecone', 'in-memory'])
+		.default('in-memory'),
 	VECTOR_STORE_HOST: z.string().optional(),
 	VECTOR_STORE_PORT: z.number().optional(),
 	VECTOR_STORE_URL: z.string().optional(),
@@ -69,6 +71,8 @@ const envSchema = z.object({
 	VECTOR_STORE_DISTANCE: z.enum(['Cosine', 'Euclidean', 'Dot', 'Manhattan']).default('Cosine'),
 	VECTOR_STORE_ON_DISK: z.boolean().default(false),
 	VECTOR_STORE_MAX_VECTORS: z.number().default(10000),
+	// Pinecone-specific Configuration
+	PINECONE_NAMESPACE: z.string().default('default'),
 	// Knowledge Graph Configuration
 	KNOWLEDGE_GRAPH_ENABLED: z.boolean().default(false),
 	KNOWLEDGE_GRAPH_TYPE: z.enum(['neo4j', 'in-memory']).default('in-memory'),
@@ -100,7 +104,9 @@ const envSchema = z.object({
 	USE_WORKSPACE_MEMORY: z.boolean().default(false),
 	WORKSPACE_SEARCH_THRESHOLD: z.number().default(0.4),
 	DISABLE_DEFAULT_MEMORY: z.boolean().default(false),
-	WORKSPACE_VECTOR_STORE_TYPE: z.enum(['qdrant', 'milvus', 'in-memory']).optional(),
+	WORKSPACE_VECTOR_STORE_TYPE: z
+		.enum(['qdrant', 'milvus', 'chroma', 'pinecone', 'in-memory'])
+		.optional(),
 	WORKSPACE_VECTOR_STORE_HOST: z.string().optional(),
 	WORKSPACE_VECTOR_STORE_PORT: z.number().optional(),
 	WORKSPACE_VECTOR_STORE_URL: z.string().optional(),
