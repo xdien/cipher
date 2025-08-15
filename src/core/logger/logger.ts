@@ -118,11 +118,11 @@ export class Logger {
 		const level = options.level || getDefaultLogLevel();
 		this.isSilent = options.silent || false;
 
-		const errorFormat = winston.format((info) => {
+		const errorFormat = winston.format(info => {
 			if (info instanceof Error) {
 				return Object.assign({}, info, {
-				message: info.message,
-				stack: info.stack
+					message: info.message,
+					stack: info.stack,
 				});
 			}
 			if (info.error instanceof Error) {
