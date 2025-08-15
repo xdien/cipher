@@ -84,7 +84,7 @@ export class VectorStoreManager {
 	private static qdrantModule?: any;
 	private static inMemoryModule?: any;
 	private static milvusModule?: any;
-	private static chromaModule?: any;	
+	private static chromaModule?: any;
 	private static pineconeModule?: any;
 
 	// In VectorStoreManager, track if in-memory is used as fallback or primary
