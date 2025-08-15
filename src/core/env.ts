@@ -104,9 +104,7 @@ const envSchema = z.object({
 	USE_WORKSPACE_MEMORY: z.boolean().default(false),
 	WORKSPACE_SEARCH_THRESHOLD: z.number().default(0.4),
 	DISABLE_DEFAULT_MEMORY: z.boolean().default(false),
-	WORKSPACE_VECTOR_STORE_TYPE: z
-		.enum(['qdrant', 'milvus', 'chroma', 'pinecone', 'in-memory'])
-		.optional(),
+	WORKSPACE_VECTOR_STORE_TYPE: z.enum(['qdrant', 'milvus', 'pgvector', 'in-memory']).optional(),
 	WORKSPACE_VECTOR_STORE_HOST: z.string().optional(),
 	WORKSPACE_VECTOR_STORE_PORT: z.number().optional(),
 	WORKSPACE_VECTOR_STORE_URL: z.string().optional(),

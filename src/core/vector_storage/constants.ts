@@ -98,7 +98,6 @@ export const DEFAULTS = {
 	// ChromaDB defaults
 	CHROMA_PORT: 8000,
 	CHROMA_DISTANCE: 'cosine' as const,
-
 	// Pinecone defaults
 	PINECONE_NAMESPACE: 'default',
 	PINECONE_DISTANCE: 'cosine' as const,

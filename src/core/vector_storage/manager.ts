@@ -84,7 +84,7 @@ export class VectorStoreManager {
 	private static qdrantModule?: any;
 	private static inMemoryModule?: any;
 	private static milvusModule?: any;
-	private static chromaModule?: any;
+	private static chromaModule?: any;	
 	private static pineconeModule?: any;
 
 	// In VectorStoreManager, track if in-memory is used as fallback or primary
@@ -514,7 +514,6 @@ export class VectorStoreManager {
 					throw error; // Let connection handler deal with fallback
 				}
 			}
-
 			case BACKEND_TYPES.PINECONE: {
 				try {
 					// Lazy load Pinecone module (shared across all instances)
@@ -536,7 +535,6 @@ export class VectorStoreManager {
 					throw error; // Let connection handler deal with fallback
 				}
 			}
-
 			case BACKEND_TYPES.IN_MEMORY:
 			default: {
 				// Use in-memory backend
