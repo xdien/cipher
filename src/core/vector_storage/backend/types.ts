@@ -21,6 +21,7 @@ export type {
 	MilvusBackendConfig,
 	ChromaBackendConfig,
 	PgVectorBackendConfig,
+	PineconeBackendConfig,
 } from '../config.js';
 
 /**

@@ -70,10 +70,27 @@ export class PgVectorBackend implements VectorStore {
 			level: process.env.LOG_LEVEL || 'info',
 		});
 
-		this.pool = new Pool({
-			connectionString: this.config.url,
-			max: this.config.poolSize, // Configurable pool size for concurrent access
-		});
+		const Poolconfig: any = {
+			max: config.poolSize || 10,
+		};
+		if (config.url) {
+			Poolconfig.url = config.url;
+			Poolconfig.ssl = config.ssl || false;
+		} else if (config.host) {
+			Poolconfig.host = config.host;
+			Poolconfig.port = config.port || 5432;
+			Poolconfig.username = config.username;
+			Poolconfig.password = config.password;
+			Poolconfig.database = config.database;
+			Poolconfig.ssl = config.ssl || false;
+		} else {
+			throw new VectorStoreError(
+				'Missing connection configuration for PgVectorBackend',
+				'initialization'
+			);
+		}
+
+		this.pool = new Pool(Poolconfig);
 
 		this.logger.debug(`${LOG_PREFIXES.PGVECTOR} Initialized`, {
 			collection: this.collectionName,

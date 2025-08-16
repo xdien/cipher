@@ -463,10 +463,80 @@ export function getVectorStoreConfigFromEnv(agentConfig?: any): VectorStoreConfi
 			headers,
 			distance,
 		};
-	} else if (storeType === 'pgvector') {
-		const url = env.VECTOR_STORE_URL;
+	} else if ((storeType as string) === 'pinecone') {
+		const apiKey = env.VECTOR_STORE_API_KEY;
+		const collectionName = env.VECTOR_STORE_COLLECTION || 'default';
+		const provider = env.PINECONE_PROVIDER || 'aws';
+		const region = env.PINECONE_REGION || 'us-east-1';
+		const namespace = env.PINECONE_NAMESPACE || 'default';
+		const envmetric = env.VECTOR_STORE_DISTANCE || 'cosine';
+		const dimension = env.VECTOR_STORE_DIMENSION || 1536;
 
-		if (!url) {
+		let metric: 'cosine' | 'euclidean' | 'dotproduct' = 'cosine';
+		switch (envmetric) {
+			case 'Cosine':
+				metric = 'cosine';
+				break;
+			case 'Euclidean':
+				metric = 'euclidean';
+				break;
+			case 'Dot':
+				metric = 'dotproduct';
+				break;
+			default:
+				metric = 'cosine';
+				break;
+		}
+		if (!apiKey) {
+			// Return in-memory config with fallback marker
+			return {
+				type: 'in-memory',
+				collectionName,
+				dimension,
+				maxVectors,
+				// Add a special property to indicate this is a fallback from PgVector
+				_fallbackFrom: 'pgvector',
+			} as any;
+		}
+
+		return {
+			type: 'pinecone',
+			apiKey,
+			collectionName,
+			provider,
+			region,
+			namespace,
+			metric,
+			dimension,
+		};
+	} else if ((storeType as string) === 'pgvector') {
+		const url = env.VECTOR_STORE_URL;
+		const host = env.VECTOR_STORE_HOST;
+		const port = Number.isNaN(env.VECTOR_STORE_PORT) ? undefined : env.VECTOR_STORE_PORT;
+		const username = env.VECTOR_STORE_USERNAME;
+		const password = env.VECTOR_STORE_PASSWORD;
+		const indexType = env.PGVECTOR_INDEXTYPE || 'hnsw';
+		const indexMetric = env.PGVECTOR_INDEXMETRIC || 'vector_l2_ops';
+		const database = env.PGVECTOR_DATABASE_NAME || 'cipher_memory';
+		const collectionName = env.VECTOR_STORE_COLLECTION || 'pgvector_memory';
+		const dimension = env.VECTOR_STORE_DIMENSION || 1536;
+		const envdistance = env.VECTOR_STORE_DISTANCE || 'cosine';
+
+		let distance: 'cosine' | 'l2' | 'inner_product' = 'cosine';
+		switch (envdistance) {
+			case 'Cosine':
+				distance = 'cosine';
+				break;
+			case 'Euclidean':
+				distance = 'l2';
+				break;
+			case 'Dot':
+				distance = 'inner_product';
+				break;
+			default:
+				distance = 'cosine';
+		}
+		if (!url && !host) {
 			// Return in-memory config with fallback marker
 			return {
 				type: 'in-memory',
@@ -480,9 +550,17 @@ export function getVectorStoreConfigFromEnv(agentConfig?: any): VectorStoreConfi
 
 		return {
 			type: 'pgvector',
+			url,
+			host,
+			port,
+			username,
+			password,
+			database,
+			indexType,
+			indexMetric,
 			collectionName,
 			dimension,
-			url,
+			distance,
 		};
 	} else {
 		return {
@@ -681,10 +759,31 @@ export function getWorkspaceVectorStoreConfigFromEnv(agentConfig?: any): VectorS
 			headers,
 			distance,
 		};
-	} else if (storeType === 'pgvector') {
-		const url = env.WORKSPACE_VECTOR_STORE_URL || env.VECTOR_STORE_URL;
+	} else if ((storeType as string) === 'pinecone') {
+		const apiKey = env.VECTOR_STORE_API_KEY;
+		const collectionName = env.VECTOR_STORE_COLLECTION || 'default';
+		const provider = env.PINECONE_PROVIDER || 'aws';
+		const region = env.PINECONE_REGION || 'us-east-1';
+		const namespace = env.PINECONE_NAMESPACE || 'default';
+		const envmetric = env.VECTOR_STORE_DISTANCE || 'cosine';
+		const dimension = env.VECTOR_STORE_DIMENSION || 1536;
 
-		if (!url) {
+		let metric: 'cosine' | 'euclidean' | 'dotproduct' = 'cosine';
+		switch (envmetric) {
+			case 'Cosine':
+				metric = 'cosine';
+				break;
+			case 'Euclidean':
+				metric = 'euclidean';
+				break;
+			case 'Dot':
+				metric = 'dotproduct';
+				break;
+			default:
+				metric = 'cosine';
+				break;
+		}
+		if (!apiKey) {
 			// Return in-memory config with fallback marker
 			return {
 				type: 'in-memory',
@@ -692,15 +791,55 @@ export function getWorkspaceVectorStoreConfigFromEnv(agentConfig?: any): VectorS
 				dimension,
 				maxVectors,
 				// Add a special property to indicate this is a fallback from PgVector
-				_fallbackFrom: 'pgvector-workspace',
+				_fallbackFrom: 'pgvector',
+			} as any;
+		}
+
+		return {
+			type: 'pinecone',
+			apiKey,
+			collectionName,
+			provider,
+			region,
+			namespace,
+			metric,
+			dimension,
+		};
+	} else if ((storeType as string) === 'pgvector') {
+		const url = env.VECTOR_STORE_URL;
+		const host = env.VECTOR_STORE_HOST;
+		const port = Number.isNaN(env.VECTOR_STORE_PORT) ? undefined : env.VECTOR_STORE_PORT;
+		const username = env.VECTOR_STORE_USERNAME;
+		const password = env.VECTOR_STORE_PASSWORD;
+		const indexType = env.PGVECTOR_INDEXTYPE || 'hnsw';
+		const indexMetric = env.PGVECTOR_INDEXMETRIC || 'vector_l2_ops';
+		const database = env.PGVECTOR_DATABASE_NAME || 'cipher_memory';
+		const collectionName = env.VECTOR_STORE_COLLECTION || 'pgvector_memory';
+		const dimension = env.VECTOR_STORE_DIMENSION || 1536;
+		if (!url && !host) {
+			// Return in-memory config with fallback marker
+			return {
+				type: 'in-memory',
+				collectionName,
+				dimension,
+				maxVectors,
+				// Add a special property to indicate this is a fallback from PgVector
+				_fallbackFrom: 'pgvector',
 			} as any;
 		}
 
 		return {
 			type: 'pgvector',
+			url,
+			host,
+			port,
+			username,
+			password,
+			database,
+			indexType,
+			indexMetric,
 			collectionName,
 			dimension,
-			url,
 		};
 	} else {
 		return {
@@ -708,7 +847,7 @@ export function getWorkspaceVectorStoreConfigFromEnv(agentConfig?: any): VectorS
 			collectionName,
 			dimension,
 			maxVectors,
-		};
+		} as any;
 	}
 }
 

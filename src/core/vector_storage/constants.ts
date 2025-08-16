@@ -19,6 +19,7 @@ export const LOG_PREFIXES = {
 	QDRANT: '[VectorStore:Qdrant]',
 	MILVUS: '[VectorStore:Milvus]',
 	CHROMA: '[VectorStore:Chroma]',
+	PINECONE: '[VectorStore:Pinecone]',
 	PGVECTOR: '[VectorStore:PgVector]',
 	MEMORY: '[VectorStore:Memory]',
 } as const;
@@ -100,8 +101,14 @@ export const DEFAULTS = {
 	CHROMA_PORT: 8000,
 	CHROMA_DISTANCE: 'cosine' as const,
 
-	// PgVector defaults
-	PGVECTOR_DISTANCE: 'Cosine' as const,
+	// Pinecone defaults
+	PINECONE_REGION: 'us-east-1',
+	PINECONE_PROVIDER: 'aws',
+	PINECONE_NAMESPACE: 'default',
+
+	// PGVector defaults
+	PGVECTOR_INDEXTYPE: 'hnsw',
+	PGVECTOR_INDEXMETRIC: 'vector_l2_ops' as const,
 } as const;
 
 /**
