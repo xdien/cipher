@@ -104,7 +104,6 @@ export const DEFAULTS = {
 	// Pinecone defaults
 	PINECONE_REGION: 'us-east-1',
 	PINECONE_PROVIDER: 'aws',
-	PINECONE_NAMESPACE: 'default',
 
 	// PGVector defaults
 	PGVECTOR_INDEXTYPE: 'hnsw',

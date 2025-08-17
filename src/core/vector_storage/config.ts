@@ -259,9 +259,6 @@ const PineconeBackendSchema = BaseVectorStoreSchema.extend({
 	/** Pinecone API key for authentication */
 	apiKey: z.string().min(1).describe('Pinecone API key'),
 
-	/** Pinecone namespace for multi-tenancy (optional) */
-	namespace: z.string().optional().describe('Pinecone namespace'),
-
 	/** Pinecone provider (optional) */
 	provider: z.string().optional().describe('Pinecone provider'),
 
@@ -301,19 +298,6 @@ export type PineconeBackendConfig = z.infer<typeof PineconeBackendSchema>;
  *   url: 'postgresql://user:pass@localhost:5432/vectordb',
  *   collectionName: 'embeddings',
  *   dimension: 1536
- * };
- *
- * // Using individual parameters
- * const config: PgVectorBackendConfig = {
- *   type: 'pgvector',
- *   host: 'localhost',
- *   port: 5432,
- *   database: 'vectordb',
- *   username: 'user',
- *   password: 'password',
- *   collectionName: 'embeddings',
- *   dimension: 1536,
- *   ssl: true
  * };
  * ```
  */

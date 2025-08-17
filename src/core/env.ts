@@ -74,7 +74,6 @@ const envSchema = z.object({
 	// Pinecone-specific Configuration
 	PINECONE_PROVIDER: z.string().default('aws'),
 	PINECONE_REGION: z.string().default('us-east-1'),
-	PINECONE_NAMESPACE: z.string().default('default'),
 	// PGVECTOR -specific Configuration
 	PGVECTOR_INDEXTYPE: z.enum(['hnsw', 'ivfflat']).default('hnsw'),
 	PGVECTOR_INDEXMETRIC: z.enum(['vector_l2_ops', 'vector_ip_ops']).default('vector_l2_ops'),

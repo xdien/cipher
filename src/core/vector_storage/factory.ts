@@ -252,7 +252,7 @@ async function createDualCollectionVectorStoreInternal(
 			}
 		);
 		const manager = new DualCollectionVectorManager(config);
-		
+
 		try {
 			await manager.connect();
 			const knowledgeStore = manager.getStore('knowledge');
@@ -551,7 +551,6 @@ export function getVectorStoreConfigFromEnv(agentConfig?: any): VectorStoreConfi
 		const collectionName = env.VECTOR_STORE_COLLECTION || 'default';
 		const provider = env.PINECONE_PROVIDER || 'aws';
 		const region = env.PINECONE_REGION || 'us-east-1';
-		const namespace = env.PINECONE_NAMESPACE || 'default';
 		const envmetric = env.VECTOR_STORE_DISTANCE || 'cosine';
 		const dimension = env.VECTOR_STORE_DIMENSION || 1536;
 
@@ -581,23 +580,12 @@ export function getVectorStoreConfigFromEnv(agentConfig?: any): VectorStoreConfi
 				_fallbackFrom: 'pinecone',
 			} as any;
 		}
-		console.log('Pinecone config', {
-			type: 'pinecone',
-			apiKey,
-			collectionName,
-			provider,
-			region,
-			namespace,
-			metric,
-			dimension,
-		})
 		return {
 			type: 'pinecone',
 			apiKey,
 			collectionName,
 			provider,
 			region,
-			namespace,
 			metric,
 			dimension,
 		};
@@ -842,7 +830,6 @@ export function getWorkspaceVectorStoreConfigFromEnv(agentConfig?: any): VectorS
 		const collectionName = env.WORKSPACE_VECTOR_STORE_COLLECTION || 'default';
 		const provider = env.WORKSPACE_PINECONE_PROVIDER || 'aws';
 		const region = env.WORKSPACE_PINECONE_REGION || 'us-east-1';
-		const namespace = env.WORKSPACE_PINECONE_NAMESPACE || 'default';
 		const envmetric = env.WORKSPACE_VECTOR_STORE_DISTANCE || 'cosine';
 		const dimension = env.WORKSPACE_VECTOR_STORE_DIMENSION || 1536;
 
@@ -879,7 +866,6 @@ export function getWorkspaceVectorStoreConfigFromEnv(agentConfig?: any): VectorS
 			collectionName,
 			provider,
 			region,
-			namespace,
 			metric,
 			dimension,
 		};
@@ -1003,7 +989,7 @@ async function createMultiCollectionVectorStoreInternal(
 			knowledge: knowledgeStore,
 			reflection: reflectionStore,
 			workspace: workspaceStore,
-		})
+		});
 		if (!knowledgeStore) {
 			throw new Error('Failed to get knowledge store from multi collection manager');
 		}

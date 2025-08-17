@@ -87,7 +87,7 @@ export class VectorStoreManager {
 	private static chromaModule?: any;
 	private static pgVectorModule?: any;
 	private static pineconeModule?: any;
-	
+
 	// In VectorStoreManager, track if in-memory is used as fallback or primary
 	private usedFallback = false;
 	private factoryFallback = false;

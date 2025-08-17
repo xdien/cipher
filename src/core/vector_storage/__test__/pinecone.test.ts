@@ -36,7 +36,6 @@ describe('PineconeBackend', () => {
 			apiKey: 'test-api-key',
 			collectionName: 'test-index',
 			dimension: 384,
-			namespace: 'test-namespace',
 			metric: 'cosine',
 		};
 
@@ -53,17 +52,8 @@ describe('PineconeBackend', () => {
 		it('should initialize with provided config', () => {
 			expect(backend.getDimension()).toBe(384);
 			expect(backend.getCollectionName()).toBe('test-index');
-			expect(backend.getNamespace()).toBe('test-namespace');
 			expect(backend.getBackendType()).toBe('pinecone');
 			expect(backend.isConnected()).toBe(false);
-		});
-
-		it('should use default namespace if not provided', () => {
-			const configWithoutNamespace = { ...config };
-			delete configWithoutNamespace.namespace;
-			const backendWithoutNamespace = new PineconeBackend(configWithoutNamespace);
-
-			expect(backendWithoutNamespace.getNamespace()).toBe('default');
 		});
 	});
 
@@ -187,37 +177,10 @@ describe('PineconeBackend', () => {
 
 				await backend.insert(vectors, ids, payloads);
 
-				expect(mockIndex.upsert).toHaveBeenCalledWith({
-					vectors: [
-						{ id: '1', values: testVector1, metadata: { label: 'A' } },
-						{ id: '2', values: testVector2, metadata: { label: 'B' } },
-					],
-					namespace: 'test-namespace',
-				});
-			});
-
-			it('should handle insert with default namespace', async () => {
-				const configWithDefaultNamespace = { ...config, namespace: 'default' };
-				const testBackend = new PineconeBackend(configWithDefaultNamespace);
-				mockPineconeClient.listIndexes.mockResolvedValue({
-					indexes: [{ name: 'test-index' }],
-				});
-				await testBackend.connect();
-
-				const testVector = new Array(384).fill(0);
-				testVector[0] = 1;
-				const vectors = [testVector];
-				const ids = [1];
-				const payloads = [{}];
-
-				mockIndex.upsert.mockResolvedValue(undefined);
-
-				await testBackend.insert(vectors, ids, payloads);
-
-				expect(mockIndex.upsert).toHaveBeenCalledWith({
-					vectors: [{ id: '1', values: testVector, metadata: {} }],
-					// No namespace property for default namespace
-				});
+				expect(mockIndex.upsert).toHaveBeenCalledWith([
+					{ id: '1', values: testVector1, metadata: { label: 'A' } },
+					{ id: '2', values: testVector2, metadata: { label: 'B' } },
+				]);
 			});
 
 			it('should validate input dimensions', async () => {
@@ -304,7 +267,6 @@ describe('PineconeBackend', () => {
 					topK: limit,
 					includeMetadata: true,
 					includeValues: false,
-					namespace: 'test-namespace',
 				});
 
 				expect(results).toHaveLength(2);
@@ -330,7 +292,6 @@ describe('PineconeBackend', () => {
 					topK: 5,
 					includeMetadata: true,
 					includeValues: false,
-					namespace: 'test-namespace',
 					filter: { category: { $eq: 'test' } },
 				});
 			});
@@ -425,10 +386,7 @@ describe('PineconeBackend', () => {
 
 				const result = await backend.get(vectorId);
 
-				expect(mockIndex.fetch).toHaveBeenCalledWith({
-					ids: ['1'],
-					namespace: 'test-namespace',
-				});
+				expect(mockIndex.fetch).toHaveBeenCalledWith({ ids: ['1'] });
 
 				expect(result).toEqual({
 					id: 1,
@@ -472,16 +430,13 @@ describe('PineconeBackend', () => {
 
 				await backend.update(vectorId, testVector, payload);
 
-				expect(mockIndex.upsert).toHaveBeenCalledWith({
-					vectors: [
-						{
-							id: '1',
-							values: testVector,
-							metadata: payload,
-						},
-					],
-					namespace: 'test-namespace',
-				});
+				expect(mockIndex.upsert).toHaveBeenCalledWith([
+					{
+						id: '1',
+						values: testVector,
+						metadata: payload,
+					},
+				]);
 			});
 
 			it('should validate update vector dimension', async () => {
@@ -506,10 +461,7 @@ describe('PineconeBackend', () => {
 
 				await backend.delete(vectorId);
 
-				expect(mockIndex.delete).toHaveBeenCalledWith({
-					ids: ['1'],
-					namespace: 'test-namespace',
-				});
+				expect(mockIndex.delete).toHaveBeenCalledWith({ ids: ['1'] });
 			});
 
 			it('should handle delete errors', async () => {
@@ -524,14 +476,13 @@ describe('PineconeBackend', () => {
 		});
 
 		describe('Delete Collection', () => {
-			it('should delete all vectors in namespace', async () => {
+			it('should delete all vectors', async () => {
 				mockIndex.delete.mockResolvedValue(undefined);
 
 				await backend.deleteCollection();
 
 				expect(mockIndex.delete).toHaveBeenCalledWith({
 					deleteAll: true,
-					namespace: 'test-namespace',
 				});
 			});
 
@@ -602,49 +553,6 @@ describe('PineconeBackend', () => {
 					filter: {
 						validValue: { $eq: 'test' },
 					},
-				})
-			);
-		});
-	});
-
-	describe('Namespace Handling', () => {
-		it('should use custom namespace in operations', async () => {
-			const customConfig = { ...config, namespace: 'custom-namespace' };
-			const customBackend = new PineconeBackend(customConfig);
-
-			mockPineconeClient.listIndexes.mockResolvedValue({
-				indexes: [{ name: 'test-index' }],
-			});
-			await customBackend.connect();
-
-			// Test different operations use custom namespace
-			const testQuery = new Array(384).fill(0); // Use correct dimension
-			mockIndex.query.mockResolvedValue({ matches: [] });
-			await customBackend.search(testQuery, 5);
-
-			expect(mockIndex.query).toHaveBeenCalledWith(
-				expect.objectContaining({
-					namespace: 'custom-namespace',
-				})
-			);
-		});
-
-		it('should omit namespace for default namespace', async () => {
-			const defaultConfig = { ...config, namespace: 'default' };
-			const defaultBackend = new PineconeBackend(defaultConfig);
-
-			mockPineconeClient.listIndexes.mockResolvedValue({
-				indexes: [{ name: 'test-index' }],
-			});
-			await defaultBackend.connect();
-
-			const testQuery = new Array(384).fill(0); // Use correct dimension
-			mockIndex.query.mockResolvedValue({ matches: [] });
-			await defaultBackend.search(testQuery, 5);
-
-			expect(mockIndex.query).toHaveBeenCalledWith(
-				expect.not.objectContaining({
-					namespace: expect.anything(),
 				})
 			);
 		});
