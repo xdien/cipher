@@ -737,7 +737,6 @@ export async function createAgentServices(
 			logger.debug('Initializing LLM service...');
 		}
 		const llmConfig = stateManager.getLLMConfig();
-
 		// Use ServiceCache for ContextManager to prevent duplicate creation
 		const serviceCache = getServiceCache();
 		const contextManagerKey = createServiceKey('contextManager', {
@@ -751,9 +750,7 @@ export async function createAgentServices(
 		contextManager = await serviceCache.getOrCreate(contextManagerKey, async () => {
 			return createContextManager(llmConfig, promptManager, undefined, undefined);
 		});
-
 		llmService = createLLMService(llmConfig, mcpManager, contextManager);
-
 		if (appMode !== 'cli') {
 			logger.info('LLM service initialized successfully', {
 				provider: llmConfig.provider,
