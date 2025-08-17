@@ -60,6 +60,7 @@ export class PgVectorBackend implements VectorStore {
 	private vectorOid: number | undefined;
 
 	constructor(config: BackendConfig) {
+		console.log('Initializing PgVectorBackend with config', config);
 		if (config.type !== 'pgvector') {
 			throw new VectorStoreError('Invalid config type for PgVectorBackend', 'initialization');
 		}
@@ -267,7 +268,6 @@ export class PgVectorBackend implements VectorStore {
 		const queryParams = [`[${query.join(',')}]`, limit];
 
 		try {
-			console.log('trying to query');
 			const result = await this.pool.query(queryString, queryParams);
 			return result.rows.map(row => ({
 				id: parseInt(row.id, 10),
@@ -370,13 +370,13 @@ export class PgVectorBackend implements VectorStore {
 
 	private resolveDistanceOp(distance: string): string {
 		switch (distance) {
-			case DISTANCE_METRICS.EUCLIDEAN.toLowerCase():
+			case DISTANCE_METRICS.EUCLIDEAN:
 				return '<->';
-			case DISTANCE_METRICS.COSINE.toLowerCase():
+			case DISTANCE_METRICS.COSINE:
 				return '<=>';
-			case DISTANCE_METRICS.DOT_PRODUCT.toLowerCase():
+			case DISTANCE_METRICS.DOT_PRODUCT:
 				return '<#>';
-			case DISTANCE_METRICS.MANHATTAN.toLowerCase():
+			case DISTANCE_METRICS.MANHATTAN:
 				return '<+>';
 			default:
 				throw new Error(`Unknown distance metric: ${distance}`);

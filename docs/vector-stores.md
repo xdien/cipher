@@ -257,7 +257,7 @@ Pinecone automatically creates indexes with these settings:
 ```bash
 VECTOR_STORE_TYPE=pinecone
 VECTOR_STORE_API_KEY=your-pinecone-api-key
-VECTOR_STORE_COLLECTION=your-index-name
+
 PINECONE_NAMESPACE=production   
 PINECONE_PROVIDER=aws
 PINECONE_REGION=us-east-1
@@ -267,11 +267,6 @@ PINECONE_REGION=us-east-1
 - **Serverless deployment** with automatic scaling
 - **Cloud provider**: AWS (default)
 - **Region**: us-east-1 (default, configurable)
-- **Distance metrics**:
-  - Cipher automatically converts user-friendly terms: 
-    - `Euclidean` → `euclidean`
-    - `Dot` → `dotproduct` 
-    - `Cosine` → `cosine`
 - **Automatic index creation** if not exists
 </details>
 
@@ -282,36 +277,21 @@ PINECONE_REGION=us-east-1
 
 ### ☁️ Managed PostgreSQL Services
 
-Most cloud PostgreSQL services support pgvector extension:
-
+#### ⚙️ PgVector Configuration
+Build a PostgreSQL docker with pgvector from local 
 ```bash
 # Connection URL format
 VECTOR_STORE_TYPE=pgvector
-VECTOR_STORE_URL=postgresql://user:pass@host:5432/database
+VECTOR_STORE_URL=postgresql://<username>:<password>@localhost:<port>/<database_name>
 
-# Or individual parameters 
-VECTOR_STORE_TYPE=pgvector
-VECTOR_STORE_HOST=your-postgres-host.com
-VECTOR_STORE_PORT=5432
-PGVECTOR_DATABASE_NAME=vectordb
-VECTOR_STORE_USERNAME=your-username
-VECTOR_STORE_PASSWORD=your-password
 ```
 
-### ⚙️ PgVector Configuration
+Most cloud PostgreSQL services support pgvector extension:
 
 ```bash
 VECTOR_STORE_TYPE=pgvector
-VECTOR_STORE_URL=postgresql://vector_user:vector_pass@localhost:5432/vectordb
-VECTOR_STORE_HOST=your-postgres-host.com
-VECTOR_STORE_PORT=5432
-PGVECTOR_DATABASE_NAME=vectordb
-VECTOR_STORE_USERNAME=your-username
-VECTOR_STORE_PASSWORD=your-password
-VECTOR_STORE_COLLECTION=embeddings  # Used as table name
-PGVECTOR_INDEXTYPE=hnsw             # or ivfflat
-PGVECTOR_INDEXMETRIC=vector_l2_ops  # vector_ip_ops
-VECTOR_STORE_DISTANCE=cosine        # cosine, l2, inner_product
+VECTOR_STORE_URL=postgresql://<service-endpoint>
+
 ```
 
 **Index Specifications:**
@@ -326,7 +306,6 @@ VECTOR_STORE_DISTANCE=cosine        # cosine, l2, inner_product
 2. Create database and user with appropriate permissions
 3. Add configuration to your `.env` file or `json` mcp config
 4. Tables and indexes are created automatically on first use
-
 </details>
 
 <details>
@@ -419,8 +398,6 @@ WORKSPACE_VECTOR_STORE_MAX_VECTORS=10000
 ```
 
 </details>
-
-
 ## Troubleshooting
 
 <details>
@@ -462,3 +439,5 @@ Error: Vector dimension mismatch
 - [Configuration](./configuration.md) - Main configuration guide
 - [Embedding Configuration](./embedding-configuration.md) - Embedding setup
 - [Workspace Memory](./workspace-memory.md) - Team-aware memory system
+
+

@@ -329,8 +329,8 @@ const PgVectorBackendSchema = BaseVectorStoreSchema.extend({
 
 	/** Distance metric for similarity search */
 	distance: z
-		.enum(['cosine', 'l2', 'inner_product'])
-		.default('cosine')
+		.enum(['Cosine', 'Euclidean', 'Dot', 'Manhattan'])
+		.default('Cosine')
 		.optional()
 		.describe('Distance metric for pgvector'),
 

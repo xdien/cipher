@@ -494,7 +494,7 @@ export function getVectorStoreConfigFromEnv(agentConfig?: any): VectorStoreConfi
 				collectionName,
 				dimension,
 				maxVectors,
-				// Add a special property to indicate this is a fallback from PgVector
+				// Add a special property to indicate this is a fallback from Pinecone
 				_fallbackFrom: 'pinecone',
 			} as any;
 		}
@@ -513,21 +513,21 @@ export function getVectorStoreConfigFromEnv(agentConfig?: any): VectorStoreConfi
 		const url = env.VECTOR_STORE_URL;
 		const collectionName = env.VECTOR_STORE_COLLECTION || 'pgvector_memory';
 		const dimension = env.VECTOR_STORE_DIMENSION || 1536;
-		const envdistance = env.VECTOR_STORE_DISTANCE || DISTANCE_METRICS.COSINE;
+		const envdistance = env.VECTOR_STORE_DISTANCE;
 
-		let distance: 'cosine' | 'l2' | 'inner_product' = 'cosine';
+		let distance: 'Cosine' | 'Euclidean' | 'Dot' | 'Manhattan' = 'Cosine';
 		switch (envdistance) {
 			case 'Cosine':
-				distance = 'cosine';
+				distance = 'Cosine';
 				break;
 			case 'Euclidean':
-				distance = 'l2';
+				distance = 'Euclidean';
 				break;
 			case 'Dot':
-				distance = 'inner_product';
+				distance = 'Dot';
 				break;
 			default:
-				distance = 'cosine';
+				distance = 'Cosine';
 		}
 		if (!url) {
 			// Return in-memory config with fallback marker
@@ -746,13 +746,13 @@ export function getWorkspaceVectorStoreConfigFromEnv(agentConfig?: any): VectorS
 			distance,
 		};
 	} else if ((storeType as string) === 'pinecone') {
-		const apiKey = env.VECTOR_STORE_API_KEY;
-		const collectionName = env.VECTOR_STORE_COLLECTION || 'default';
-		const provider = env.PINECONE_PROVIDER || 'aws';
-		const region = env.PINECONE_REGION || 'us-east-1';
-		const namespace = env.PINECONE_NAMESPACE || 'default';
-		const envmetric = env.VECTOR_STORE_DISTANCE || 'cosine';
-		const dimension = env.VECTOR_STORE_DIMENSION || 1536;
+		const apiKey = env.WORKSPACE_VECTOR_STORE_API_KEY;
+		const collectionName = env.WORKSPACE_VECTOR_STORE_COLLECTION || 'default';
+		const provider = env.WORKSPACE_PINECONE_PROVIDER || 'aws';
+		const region = env.WORKSPACE_PINECONE_REGION || 'us-east-1';
+		const namespace = env.WORKSPACE_PINECONE_NAMESPACE || 'default';
+		const envmetric = env.WORKSPACE_VECTOR_STORE_DISTANCE || 'cosine';
+		const dimension = env.WORKSPACE_VECTOR_STORE_DIMENSION || 1536;
 
 		let metric: 'cosine' | 'euclidean' | 'dotproduct' = 'cosine';
 		switch (envmetric) {
@@ -793,9 +793,9 @@ export function getWorkspaceVectorStoreConfigFromEnv(agentConfig?: any): VectorS
 		};
 	} else if ((storeType as string) === 'pgvector') {
 		const url = env.WORKSPACE_VECTOR_STORE_URL;
-		const collectionName = env.VECTOR_STORE_COLLECTION || 'pgvector_memory';
-		const dimension = env.VECTOR_STORE_DIMENSION || 1536;
-		const distance = 'cosine';
+		const collectionName = env.WORKSPACE_VECTOR_STORE_COLLECTION || 'pgvector_memory';
+		const dimension = env.WORKSPACE_VECTOR_STORE_DIMENSION || 1536;
+		const distance = env.WORKSPACE_VECTOR_STORE_DISTANCE || 'Cosine';
 		if (!url) {
 			// Return in-memory config with fallback marker
 			return {
