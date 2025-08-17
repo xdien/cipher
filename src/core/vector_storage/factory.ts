@@ -12,7 +12,7 @@ import { DualCollectionVectorManager } from './dual-collection-manager.js';
 import type { VectorStoreConfig } from './types.js';
 import { VectorStore } from './backend/vector-store.js';
 import { createLogger } from '../logger/index.js';
-import { LOG_PREFIXES, DISTANCE_METRICS } from './constants.js';
+import { LOG_PREFIXES } from './constants.js';
 import { env } from '../env.js';
 import { getServiceCache, createServiceKey } from '../brain/memory/service-cache.js';
 
@@ -220,7 +220,7 @@ export async function createDualCollectionVectorStoreFromEnv(
 
 	// Get base configuration from environment variables
 	const config = getVectorStoreConfigFromEnv(agentConfig);
-
+	// console.log('createDualCollectionVectorStoreFromEnv config', config)
 	// Use ServiceCache to prevent duplicate dual collection vector store creation
 	const serviceCache = getServiceCache();
 	const cacheKey = createServiceKey('dualCollectionVectorStore', {
@@ -252,16 +252,57 @@ async function createDualCollectionVectorStoreInternal(
 			}
 		);
 		const manager = new DualCollectionVectorManager(config);
-		await manager.connect();
-		const knowledgeStore = manager.getStore('knowledge');
-		if (!knowledgeStore) {
-			throw new Error('Failed to get knowledge store from dual collection manager');
+		
+		try {
+			await manager.connect();
+			const knowledgeStore = manager.getStore('knowledge');
+			if (!knowledgeStore) {
+				throw new Error('Failed to get knowledge store from dual collection manager');
+			}
+			return {
+				manager,
+				knowledgeStore,
+				reflectionStore: null,
+			};
+		} catch (error) {
+			logger.warn(
+				`${LOG_PREFIXES.FACTORY} Primary vector store connection failed, using fallback`,
+				{
+					originalType: config.type,
+					error: error instanceof Error ? error.message : String(error),
+				}
+			);
+
+			// Cleanup failed manager
+			await manager.disconnect().catch(() => {});
+
+			// Create fallback in-memory configuration
+			const fallbackConfig = {
+				type: 'in-memory' as const,
+				collectionName: config.collectionName,
+				dimension: config.dimension,
+				maxVectors: 10000,
+			};
+
+			const fallbackManager = new DualCollectionVectorManager(fallbackConfig);
+			await fallbackManager.connect();
+
+			const knowledgeStore = fallbackManager.getStore('knowledge');
+			if (!knowledgeStore) {
+				throw new Error('Failed to get knowledge store from fallback dual collection manager');
+			}
+
+			logger.info(`${LOG_PREFIXES.FACTORY} Successfully created fallback in-memory store`, {
+				fallbackType: 'in-memory',
+				originalType: config.type,
+			});
+
+			return {
+				manager: fallbackManager,
+				knowledgeStore,
+				reflectionStore: null,
+			};
 		}
-		return {
-			manager,
-			knowledgeStore,
-			reflectionStore: null,
-		};
 	}
 
 	logger.info(`${LOG_PREFIXES.FACTORY} Creating dual collection vector storage from environment`, {
@@ -294,12 +335,54 @@ async function createDualCollectionVectorStoreInternal(
 		await manager.disconnect().catch(() => {
 			// Ignore disconnect errors during cleanup
 		});
+		const fallbackConfig = {
+			type: 'in-memory' as const,
+			collectionName: config.collectionName,
+			dimension: config.dimension,
+			maxVectors: 10000,
+		};
 
-		logger.error(`${LOG_PREFIXES.FACTORY} Failed to create dual collection vector storage system`, {
-			error: error instanceof Error ? error.message : String(error),
-		});
+		try {
+			const fallbackManager = new DualCollectionVectorManager(fallbackConfig);
+			await fallbackManager.connect();
 
-		throw error;
+			const knowledgeStore = fallbackManager.getStore('knowledge');
+			const reflectionStore = fallbackManager.getStore('reflection');
+
+			if (!knowledgeStore) {
+				throw new Error('Failed to get knowledge store from fallback dual collection manager');
+			}
+
+			logger.info(
+				`${LOG_PREFIXES.FACTORY} Successfully created fallback in-memory dual collection`,
+				{
+					knowledge: !!knowledgeStore,
+					reflection: !!reflectionStore,
+					originalType: config.type,
+				}
+			);
+
+			return {
+				manager: fallbackManager,
+				knowledgeStore,
+				reflectionStore,
+			};
+		} catch (fallbackError) {
+			logger.error(
+				`${LOG_PREFIXES.FACTORY} Failed to create fallback dual collection vector storage`,
+				{
+					originalError: error instanceof Error ? error.message : String(error),
+					fallbackError:
+						fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+				}
+			);
+
+			throw new Error(
+				`Failed to create both primary and fallback dual collection vector storage: ${
+					error instanceof Error ? error.message : String(error)
+				}`
+			);
+		}
 	}
 }
 
@@ -498,7 +581,16 @@ export function getVectorStoreConfigFromEnv(agentConfig?: any): VectorStoreConfi
 				_fallbackFrom: 'pinecone',
 			} as any;
 		}
-
+		console.log('Pinecone config', {
+			type: 'pinecone',
+			apiKey,
+			collectionName,
+			provider,
+			region,
+			namespace,
+			metric,
+			dimension,
+		})
 		return {
 			type: 'pinecone',
 			apiKey,
@@ -907,7 +999,11 @@ async function createMultiCollectionVectorStoreInternal(
 		const knowledgeStore = manager.getStore('knowledge');
 		const reflectionStore = manager.getStore('reflection');
 		const workspaceStore = manager.getStore('workspace');
-
+		console.log('Multi collection vector storage created successfully', {
+			knowledge: knowledgeStore,
+			reflection: reflectionStore,
+			workspace: workspaceStore,
+		})
 		if (!knowledgeStore) {
 			throw new Error('Failed to get knowledge store from multi collection manager');
 		}
@@ -925,22 +1021,74 @@ async function createMultiCollectionVectorStoreInternal(
 			workspaceStore,
 		};
 	} catch (error) {
+		logger.warn(`${LOG_PREFIXES.FACTORY} Multi collection connection failed, attempting fallback`, {
+			originalType: config.type,
+			error: error instanceof Error ? error.message : String(error),
+		});
+
 		// If connection fails, ensure cleanup
 		await manager.disconnect().catch(() => {
 			// Ignore disconnect errors during cleanup
 		});
 
-		logger.error(
-			`${LOG_PREFIXES.FACTORY} Failed to create multi collection vector storage system`,
-			{
-				error: error instanceof Error ? error.message : String(error),
-			}
-		);
+		// Create fallback in-memory configuration for multi collection
+		const fallbackConfig = {
+			type: 'in-memory' as const,
+			collectionName: config.collectionName,
+			dimension: config.dimension,
+			maxVectors: 10000,
+		};
 
-		throw error;
+		try {
+			const fallbackManager = new MultiCollectionVectorManager(fallbackConfig);
+			const connected = await fallbackManager.connect();
+
+			if (!connected) {
+				throw new Error('Failed to connect fallback multi collection vector manager');
+			}
+
+			const knowledgeStore = fallbackManager.getStore('knowledge');
+			const reflectionStore = fallbackManager.getStore('reflection');
+			const workspaceStore = fallbackManager.getStore('workspace');
+
+			if (!knowledgeStore) {
+				throw new Error('Failed to get knowledge store from fallback multi collection manager');
+			}
+
+			logger.info(
+				`${LOG_PREFIXES.FACTORY} Successfully created fallback in-memory multi collection`,
+				{
+					knowledge: !!knowledgeStore,
+					reflection: !!reflectionStore,
+					workspace: !!workspaceStore,
+					originalType: config.type,
+				}
+			);
+
+			return {
+				manager: fallbackManager,
+				knowledgeStore,
+				reflectionStore,
+				workspaceStore,
+			};
+		} catch (fallbackError) {
+			logger.error(
+				`${LOG_PREFIXES.FACTORY} Failed to create fallback multi collection vector storage`,
+				{
+					originalError: error instanceof Error ? error.message : String(error),
+					fallbackError:
+						fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+				}
+			);
+
+			throw new Error(
+				`Failed to create both primary and fallback multi collection vector storage: ${
+					error instanceof Error ? error.message : String(error)
+				}`
+			);
+		}
 	}
 }
-
 /**
  * Creates workspace memory vector storage from environment variables
  *

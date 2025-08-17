@@ -86,7 +86,8 @@ export class VectorStoreManager {
 	private static milvusModule?: any;
 	private static chromaModule?: any;
 	private static pgVectorModule?: any;
-
+	private static pineconeModule?: any;
+	
 	// In VectorStoreManager, track if in-memory is used as fallback or primary
 	private usedFallback = false;
 	private factoryFallback = false;
@@ -509,6 +510,28 @@ export class VectorStoreManager {
 					return new ChromaBackend(config);
 				} catch (error) {
 					this.logger.info(`${LOG_PREFIXES.MANAGER} Failed to create ChromaDB backend: ${error}`, {
+						error: error instanceof Error ? error.message : String(error),
+					});
+					throw error; // Let connection handler deal with fallback
+				}
+			}
+
+			case BACKEND_TYPES.PINECONE: {
+				try {
+					// Lazy load Pinecone module (shared across all instances)
+					if (!VectorStoreManager.pineconeModule) {
+						this.logger.debug(`${LOG_PREFIXES.MANAGER} Lazy loading Pinecone module`);
+						const { PineconeBackend } = await import('./backend/pinecone.js');
+						VectorStoreManager.pineconeModule = PineconeBackend;
+					}
+
+					const PineconeBackend = VectorStoreManager.pineconeModule;
+					this.backendMetadata.type = BACKEND_TYPES.PINECONE;
+					this.backendMetadata.isFallback = false;
+
+					return new PineconeBackend(config);
+				} catch (error) {
+					this.logger.info(`${LOG_PREFIXES.MANAGER} Failed to create Pinecone backend: ${error}`, {
 						error: error instanceof Error ? error.message : String(error),
 					});
 					throw error; // Let connection handler deal with fallback
