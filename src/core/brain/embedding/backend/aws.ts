@@ -64,19 +64,40 @@ export class AWSBedrockEmbedder implements Embedder {
 
 	async embed(text: string): Promise<number[]> {
 		try {
+			console.log('aws bedrock embedder received: ',text)
 			const body = this.buildRequestBody(text);
+			// Logging to debug
+			console.log('aws bedrock embedder body: ', JSON.stringify(body, null, 2))
 			const command = new InvokeModelCommand({
 				modelId: this.model,
 				body: JSON.stringify(body),
 				contentType: 'application/json',
 				accept: 'application/json',
 			});
-
+			console.log('aws bedrock embedder calling: ',command)
+			console.log('aws bedrock embedder model: ', this.model)
+			console.log('aws bedrock embedder region: ', this.config.region)
+			console.log('aws bedrock embedder client config: ', JSON.stringify({
+				region: this.config.region,
+				credentials: {
+					accessKeyId: this.config.accessKeyId ? 'SET' : 'NOT SET',
+					secretAccessKey: this.config.secretAccessKey ? 'SET' : 'NOT SET'
+				}
+			}, null, 2))
+			
 			const response = await this.client.send(command);
 			const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-
+			console.log('aws bedrock embedder responsed: ',responseBody)
 			return this.extractEmbedding(responseBody);
 		} catch (error) {
+			console.error('AWS Bedrock embedding error details:', {
+				error: error.message,
+				code: error.code,
+				statusCode: error.statusCode,
+				requestId: error.requestId,
+				model: this.model,
+				region: this.config.region
+			});
 			if (error instanceof EmbeddingError) {
 				throw error;
 			}

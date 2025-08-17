@@ -147,8 +147,11 @@ async function createEmbeddingFromLLMProvider(
 
 			case 'aws': {
 				// AWS Bedrock has native embeddings via Amazon Titan and Cohere
+				// Here we are 
 				const accessKeyId = llmConfig.accessKeyId || process.env.AWS_ACCESS_KEY_ID;
 				const secretAccessKey = llmConfig.secretAccessKey || process.env.AWS_SECRET_ACCESS_KEY;
+				console.log('AWS access key',accessKeyId)
+				console.log('AWS service',accessKeyId)
 				if (
 					!accessKeyId ||
 					accessKeyId.trim() === '' ||
@@ -409,11 +412,13 @@ export async function createAgentServices(
 
 				// Validate API key for explicit embedding config
 				const embeddingConfig = config.embedding as any;
+				console.log('embeddingConfig',embeddingConfig)
 				const needsApiKey = ['openai', 'gemini', 'anthropic', 'voyage', 'qwen'].includes(
 					embeddingConfig.type
 				);
 				const needsAwsCredentials = embeddingConfig.type === 'aws-bedrock';
-
+				console.log('needsApiKey',needsApiKey)
+				console.log('needsAwsCredentials',needsAwsCredentials)
 				if (needsApiKey) {
 					const apiKey =
 						embeddingConfig.apiKey || process.env[`${embeddingConfig.type.toUpperCase()}_API_KEY`];
@@ -441,9 +446,12 @@ export async function createAgentServices(
 						);
 					}
 				} else if (needsAwsCredentials) {
+					
 					const accessKeyId = embeddingConfig.accessKeyId || process.env.AWS_ACCESS_KEY_ID;
 					const secretAccessKey =
 						embeddingConfig.secretAccessKey || process.env.AWS_SECRET_ACCESS_KEY;
+					console.log('accessKeyId',accessKeyId)
+					console.log('secretAccessKey',secretAccessKey)
 					if (
 						!accessKeyId ||
 						accessKeyId.trim() === '' ||
@@ -469,7 +477,7 @@ export async function createAgentServices(
 					);
 				}
 			}
-
+			console.log('embeddingResult',embeddingResult)
 			// Priority 2: If no explicit embedding config (undefined) or disabled:false, fallback to LLM provider's embedding
 			if (!embeddingResult) {
 				if (config.llm?.provider) {

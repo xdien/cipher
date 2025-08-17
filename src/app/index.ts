@@ -191,17 +191,30 @@ program
 			!env.OPENROUTER_API_KEY &&
 			!env.OLLAMA_BASE_URL
 		) {
-			// Use MCP-safe error reporting
-			const errorMsg =
-				'No API key or Ollama configuration found, please set at least one of OPENAI_API_KEY, ANTHROPIC_API_KEY, OPENROUTER_API_KEY, or OLLAMA_BASE_URL in your environment variables \nAvailable providers: OpenAI, Anthropic, OpenRouter, Ollama, Qwen, Gemini, Azure, AWS, LM Studio';
+			// Not good, need to check if AWS or Azure is configured 
+			console.log('AWS access key',process.env.AWS_ACCESS_KEY_ID)
+			console.log('AWS secret access key',process.env.AWS_SECRET_ACCESS_KEY)
+			console.log('AWS region',process.env.AWS_REGION)
+			console.log('AWS inference profile ARN',process.env.AWS_INFERENCE_PROFILE_ARN)
+			if (
+				!process.env.AWS_ACCESS_KEY_ID || 
+				!process.env.AWS_SECRET_ACCESS_KEY ||
+				!process.env.AWS_REGION ||
+				!process.env.AWS_INFERENCE_PROFILE_ARN
+			) {
+				// Use MCP-safe error reporting
+				const errorMsg =
+					'No API key or Ollama configuration found, please set at least one of OPENAI_API_KEY, ANTHROPIC_API_KEY, OPENROUTER_API_KEY, OLLAMA_BASE_URL, or AWS credentials (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION) in your environment variables \nAvailable providers: OpenAI, Anthropic, OpenRouter, Ollama, Qwen, Gemini, Azure, AWS, LM Studio';
 
-			if (opts.mode === 'mcp') {
-				process.stderr.write(`[CIPHER-MCP] ERROR: ${errorMsg}\n`);
-			} else {
-				logger.error(errorMsg);
+				if (opts.mode === 'mcp') {
+					process.stderr.write(`[CIPHER-MCP] ERROR: ${errorMsg}\n`);
+				} else {
+					logger.error(errorMsg);
+				}
+				process.exit(1);
 			}
-			process.exit(1);
 		}
+		// Passed AWS credentials check, need to initialize AWS service to make it works.
 
 		// validate cli options
 		try {
@@ -244,7 +257,7 @@ program
 					serverConfig.connectionMode = 'strict';
 				}
 			}
-
+			// console.log('Agent config',cfg)
 			agent = new MemAgent(cfg, opts.mode);
 
 			// Start the agent (initialize async services)
