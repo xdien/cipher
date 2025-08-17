@@ -90,7 +90,7 @@ export class MemAgent {
 				appMode: this.appMode || undefined,
 			});
 			let services: AgentServices | LazyAgentServices;
-			
+
 			// console.log('this.config',this.config)
 			// console.log('useLazyLoading',useLazyLoading)
 

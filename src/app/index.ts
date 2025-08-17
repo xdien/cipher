@@ -191,13 +191,13 @@ program
 			!env.OPENROUTER_API_KEY &&
 			!env.OLLAMA_BASE_URL
 		) {
-			// Not good, need to check if AWS or Azure is configured 
-			console.log('AWS access key',process.env.AWS_ACCESS_KEY_ID)
-			console.log('AWS secret access key',process.env.AWS_SECRET_ACCESS_KEY)
-			console.log('AWS region',process.env.AWS_REGION)
-			console.log('AWS inference profile ARN',process.env.AWS_INFERENCE_PROFILE_ARN)
+			// Not good, need to check if AWS or Azure is configured
+			console.log('AWS access key', process.env.AWS_ACCESS_KEY_ID);
+			console.log('AWS secret access key', process.env.AWS_SECRET_ACCESS_KEY);
+			console.log('AWS region', process.env.AWS_REGION);
+			console.log('AWS inference profile ARN', process.env.AWS_INFERENCE_PROFILE_ARN);
 			if (
-				!process.env.AWS_ACCESS_KEY_ID || 
+				!process.env.AWS_ACCESS_KEY_ID ||
 				!process.env.AWS_SECRET_ACCESS_KEY ||
 				!process.env.AWS_REGION ||
 				!process.env.AWS_INFERENCE_PROFILE_ARN
