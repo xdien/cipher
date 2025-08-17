@@ -28,10 +28,10 @@ export interface AWSBedrockEmbeddingConfig extends EmbeddingConfig {
 }
 
 interface BedrockError {
-  message: string;
-  code?: string;
-  statusCode?: number;
-  requestId?: string;
+	message: string;
+	code?: string;
+	statusCode?: number;
+	requestId?: string;
 }
 
 /**
@@ -136,7 +136,9 @@ export class AWSBedrockEmbedder implements Embedder {
 			if (error instanceof EmbeddingError) {
 				throw error;
 			}
-			throw new EmbeddingError(`Failed to generate AWS Bedrock batch embeddings: ${bedrockError.message}`);
+			throw new EmbeddingError(
+				`Failed to generate AWS Bedrock batch embeddings: ${bedrockError.message}`
+			);
 		}
 	}
 
