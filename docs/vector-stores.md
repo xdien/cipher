@@ -296,8 +296,6 @@ VECTOR_STORE_URL=postgresql://<service-endpoint>
 
 **Index Specifications:**
 - **Index types**: HNSW (default) for better recall, IVFFlat for speed
-- **Distance metrics**: 
-  - Cipher automatically converts: `Cosine` → `cosine`, `Euclidean` → `l2`, `Dot` → `inner_product`
 - **ACID compliance**: Full PostgreSQL transaction support
 - **Automatic table/index creation** if not exists
 

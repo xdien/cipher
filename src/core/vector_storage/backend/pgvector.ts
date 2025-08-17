@@ -60,7 +60,6 @@ export class PgVectorBackend implements VectorStore {
 	private vectorOid: number | undefined;
 
 	constructor(config: BackendConfig) {
-		console.log('Initializing PgVectorBackend with config', config);
 		if (config.type !== 'pgvector') {
 			throw new VectorStoreError('Invalid config type for PgVectorBackend', 'initialization');
 		}
