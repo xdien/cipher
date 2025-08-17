@@ -211,7 +211,6 @@ export class AwsService implements ILLMService {
 		try {
 			while (iterationCount < this.maxIterations) {
 				iterationCount++;
-
 				// Get AI response
 				const response = await this.getAIResponse(formattedTools);
 				const { textContent, toolCalls } = this.parseResponse(response);

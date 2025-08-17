@@ -91,6 +91,9 @@ export class MemAgent {
 			});
 			let services: AgentServices | LazyAgentServices;
 
+			// console.log('this.config',this.config)
+			// console.log('useLazyLoading',useLazyLoading)
+
 			if (useLazyLoading) {
 				logger.debug('MemAgent: Using enhanced services with lazy loading');
 				services = await createEnhancedAgentServices(this.config, {
