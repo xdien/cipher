@@ -12,7 +12,7 @@ import { DualCollectionVectorManager } from './dual-collection-manager.js';
 import type { VectorStoreConfig } from './types.js';
 import { VectorStore } from './backend/vector-store.js';
 import { createLogger } from '../logger/index.js';
-import { LOG_PREFIXES } from './constants.js';
+import { LOG_PREFIXES, DISTANCE_METRICS } from './constants.js';
 import { env } from '../env.js';
 import { getServiceCache, createServiceKey } from '../brain/memory/service-cache.js';
 
@@ -495,7 +495,7 @@ export function getVectorStoreConfigFromEnv(agentConfig?: any): VectorStoreConfi
 				dimension,
 				maxVectors,
 				// Add a special property to indicate this is a fallback from PgVector
-				_fallbackFrom: 'pgvector',
+				_fallbackFrom: 'pinecone',
 			} as any;
 		}
 
@@ -511,16 +511,9 @@ export function getVectorStoreConfigFromEnv(agentConfig?: any): VectorStoreConfi
 		};
 	} else if ((storeType as string) === 'pgvector') {
 		const url = env.VECTOR_STORE_URL;
-		const host = env.VECTOR_STORE_HOST;
-		const port = Number.isNaN(env.VECTOR_STORE_PORT) ? undefined : env.VECTOR_STORE_PORT;
-		const username = env.VECTOR_STORE_USERNAME;
-		const password = env.VECTOR_STORE_PASSWORD;
-		const indexType = env.PGVECTOR_INDEXTYPE || 'hnsw';
-		const indexMetric = env.PGVECTOR_INDEXMETRIC || 'vector_l2_ops';
-		const database = env.PGVECTOR_DATABASE_NAME || 'cipher_memory';
 		const collectionName = env.VECTOR_STORE_COLLECTION || 'pgvector_memory';
 		const dimension = env.VECTOR_STORE_DIMENSION || 1536;
-		const envdistance = env.VECTOR_STORE_DISTANCE || 'cosine';
+		const envdistance = env.VECTOR_STORE_DISTANCE || DISTANCE_METRICS.COSINE;
 
 		let distance: 'cosine' | 'l2' | 'inner_product' = 'cosine';
 		switch (envdistance) {
@@ -536,7 +529,7 @@ export function getVectorStoreConfigFromEnv(agentConfig?: any): VectorStoreConfi
 			default:
 				distance = 'cosine';
 		}
-		if (!url && !host) {
+		if (!url) {
 			// Return in-memory config with fallback marker
 			return {
 				type: 'in-memory',
@@ -551,13 +544,6 @@ export function getVectorStoreConfigFromEnv(agentConfig?: any): VectorStoreConfi
 		return {
 			type: 'pgvector',
 			url,
-			host,
-			port,
-			username,
-			password,
-			database,
-			indexType,
-			indexMetric,
 			collectionName,
 			dimension,
 			distance,
@@ -791,7 +777,7 @@ export function getWorkspaceVectorStoreConfigFromEnv(agentConfig?: any): VectorS
 				dimension,
 				maxVectors,
 				// Add a special property to indicate this is a fallback from PgVector
-				_fallbackFrom: 'pgvector',
+				_fallbackFrom: 'pinecone',
 			} as any;
 		}
 
@@ -806,17 +792,11 @@ export function getWorkspaceVectorStoreConfigFromEnv(agentConfig?: any): VectorS
 			dimension,
 		};
 	} else if ((storeType as string) === 'pgvector') {
-		const url = env.VECTOR_STORE_URL;
-		const host = env.VECTOR_STORE_HOST;
-		const port = Number.isNaN(env.VECTOR_STORE_PORT) ? undefined : env.VECTOR_STORE_PORT;
-		const username = env.VECTOR_STORE_USERNAME;
-		const password = env.VECTOR_STORE_PASSWORD;
-		const indexType = env.PGVECTOR_INDEXTYPE || 'hnsw';
-		const indexMetric = env.PGVECTOR_INDEXMETRIC || 'vector_l2_ops';
-		const database = env.PGVECTOR_DATABASE_NAME || 'cipher_memory';
+		const url = env.WORKSPACE_VECTOR_STORE_URL;
 		const collectionName = env.VECTOR_STORE_COLLECTION || 'pgvector_memory';
 		const dimension = env.VECTOR_STORE_DIMENSION || 1536;
-		if (!url && !host) {
+		const distance = 'cosine';
+		if (!url) {
 			// Return in-memory config with fallback marker
 			return {
 				type: 'in-memory',
@@ -831,15 +811,9 @@ export function getWorkspaceVectorStoreConfigFromEnv(agentConfig?: any): VectorS
 		return {
 			type: 'pgvector',
 			url,
-			host,
-			port,
-			username,
-			password,
-			database,
-			indexType,
-			indexMetric,
 			collectionName,
 			dimension,
+			distance,
 		};
 	} else {
 		return {

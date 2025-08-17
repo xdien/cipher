@@ -74,14 +74,7 @@ export class PgVectorBackend implements VectorStore {
 			max: config.poolSize || 10,
 		};
 		if (config.url) {
-			Poolconfig.url = config.url;
-			Poolconfig.ssl = config.ssl || false;
-		} else if (config.host) {
-			Poolconfig.host = config.host;
-			Poolconfig.port = config.port || 5432;
-			Poolconfig.username = config.username;
-			Poolconfig.password = config.password;
-			Poolconfig.database = config.database;
+			Poolconfig.connectionString = config.url;
 			Poolconfig.ssl = config.ssl || false;
 		} else {
 			throw new VectorStoreError(
@@ -263,9 +256,7 @@ export class PgVectorBackend implements VectorStore {
 		this.validateDimension(query, 'search');
 		// Configurable distance metric
 		const metricOp = this.resolveDistanceOp(this.config.distance || 'Cosine');
-
 		const filterClauses = filters ? this.buildFilterClauses(filters) : '';
-
 		const queryString = `
       SELECT id, payload, vector ${metricOp} $1 AS score
       FROM ${this.collectionName}
@@ -276,6 +267,7 @@ export class PgVectorBackend implements VectorStore {
 		const queryParams = [`[${query.join(',')}]`, limit];
 
 		try {
+			console.log('trying to query');
 			const result = await this.pool.query(queryString, queryParams);
 			return result.rows.map(row => ({
 				id: parseInt(row.id, 10),
@@ -378,13 +370,13 @@ export class PgVectorBackend implements VectorStore {
 
 	private resolveDistanceOp(distance: string): string {
 		switch (distance) {
-			case DISTANCE_METRICS.EUCLIDEAN:
+			case DISTANCE_METRICS.EUCLIDEAN.toLowerCase():
 				return '<->';
-			case DISTANCE_METRICS.COSINE:
+			case DISTANCE_METRICS.COSINE.toLowerCase():
 				return '<=>';
-			case DISTANCE_METRICS.DOT_PRODUCT:
+			case DISTANCE_METRICS.DOT_PRODUCT.toLowerCase():
 				return '<#>';
-			case DISTANCE_METRICS.MANHATTAN:
+			case DISTANCE_METRICS.MANHATTAN.toLowerCase():
 				return '<+>';
 			default:
 				throw new Error(`Unknown distance metric: ${distance}`);

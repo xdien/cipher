@@ -324,27 +324,12 @@ const PgVectorBackendSchema = BaseVectorStoreSchema.extend({
 	/** PostgreSQL connection URL (postgresql://...) - overrides individual params if provided */
 	url: z.string().url().optional().describe('PostgreSQL connection URL'),
 
-	/** PostgreSQL server hostname */
-	host: z.string().optional().describe('PostgreSQL host'),
-
-	/** PostgreSQL server port (default: 5432) */
-	port: z.number().int().positive().default(5432).optional().describe('PostgreSQL port'),
-
-	/** Database name */
-	database: z.string().optional().describe('Database name'),
-
-	/** Username for authentication */
-	username: z.string().optional().describe('PostgreSQL username'),
-
-	/** Password for authentication */
-	password: z.string().optional().describe('PostgreSQL password'),
-
 	/** Use SSL/TLS for connection (default: false) */
 	ssl: z.boolean().default(false).optional().describe('Use SSL/TLS for connection'),
 
 	/** Distance metric for similarity search */
 	distance: z
-		.enum(['cosine', 'l2', 'inner_product'] as const)
+		.enum(['cosine', 'l2', 'inner_product'])
 		.default('cosine')
 		.optional()
 		.describe('Distance metric for pgvector'),
@@ -447,7 +432,7 @@ const BackendConfigSchema = z
 		// Validate PgVector backend requirements
 		if (data.type === 'pgvector') {
 			// PgVector requires either a connection URL or host and database
-			if (!data.url && (!data.host || !data.database)) {
+			if (!data.url) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
 					message:
