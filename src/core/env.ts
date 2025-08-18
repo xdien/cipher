@@ -72,7 +72,11 @@ const envSchema = z.object({
 	VECTOR_STORE_ON_DISK: z.boolean().default(false),
 	VECTOR_STORE_MAX_VECTORS: z.number().default(10000),
 	// Pinecone-specific Configuration
-	PINECONE_NAMESPACE: z.string().default('default'),
+	PINECONE_PROVIDER: z.string().default('aws'),
+	PINECONE_REGION: z.string().default('us-east-1'),
+	// PGVECTOR -specific Configuration
+	PGVECTOR_INDEXTYPE: z.enum(['hnsw', 'ivfflat']).default('hnsw'),
+	PGVECTOR_INDEXMETRIC: z.enum(['vector_l2_ops', 'vector_ip_ops']).default('vector_l2_ops'),
 	// Knowledge Graph Configuration
 	KNOWLEDGE_GRAPH_ENABLED: z.boolean().default(false),
 	KNOWLEDGE_GRAPH_TYPE: z.enum(['neo4j', 'in-memory']).default('in-memory'),
@@ -105,7 +109,7 @@ const envSchema = z.object({
 	WORKSPACE_SEARCH_THRESHOLD: z.number().default(0.4),
 	DISABLE_DEFAULT_MEMORY: z.boolean().default(false),
 	WORKSPACE_VECTOR_STORE_TYPE: z
-		.enum(['qdrant', 'milvus', 'chroma', 'pinecone', 'in-memory'])
+		.enum(['qdrant', 'milvus', 'chroma', 'pinecone', 'pgvector', 'in-memory'])
 		.optional(),
 	WORKSPACE_VECTOR_STORE_HOST: z.string().optional(),
 	WORKSPACE_VECTOR_STORE_PORT: z.number().optional(),
@@ -118,6 +122,10 @@ const envSchema = z.object({
 	WORKSPACE_VECTOR_STORE_DISTANCE: z.enum(['Cosine', 'Euclidean', 'Dot', 'Manhattan']).optional(),
 	WORKSPACE_VECTOR_STORE_ON_DISK: z.boolean().optional(),
 	WORKSPACE_VECTOR_STORE_MAX_VECTORS: z.number().optional(),
+	// Pinecone-specific Configuration
+	WORKSPACE_PINECONE_PROVIDER: z.string().optional(),
+	WORKSPACE_PINECONE_REGION: z.string().optional(),
+	WORKSPACE_PINECONE_NAMESPACE: z.string().optional(),
 	// Query Refinement Configuration
 	ENABLE_QUERY_REFINEMENT: z.boolean().default(true),
 	// Cross-Tool Memory Sharing Configuration
@@ -355,6 +363,13 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 					: process.env.VECTOR_STORE_MAX_VECTORS
 						? parseInt(process.env.VECTOR_STORE_MAX_VECTORS, 10)
 						: 10000;
+			// Pinecone-specific Configuration
+			case 'WORKSPACE_PINECONE_PROVIDER':
+				return process.env.WORKSPACE_PINECONE_PROVIDER;
+			case 'WORKSPACE_PINECONE_REGION':
+				return process.env.WORKSPACE_PINECONE_REGION;
+			case 'WORKSPACE_PINECONE_NAMESPACE':
+				return process.env.WORKSPACE_PINECONE_NAMESPACE;
 			// Cross-Tool Memory Sharing Configuration
 			case 'CIPHER_USER_ID':
 				return process.env.CIPHER_USER_ID;

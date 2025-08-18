@@ -38,7 +38,8 @@ export class PineconeBackend implements VectorStore {
 	private readonly config: PineconeBackendConfig;
 	private readonly indexName: string;
 	private readonly dimension: number;
-	private readonly namespace: string;
+	private readonly provider: string;
+	private readonly region: string;
 	private readonly logger: Logger;
 	private connected = false;
 
@@ -46,7 +47,9 @@ export class PineconeBackend implements VectorStore {
 		this.config = config;
 		this.indexName = config.collectionName;
 		this.dimension = config.dimension;
-		this.namespace = config.namespace || DEFAULTS.PINECONE_NAMESPACE;
+		this.provider = config.provider || DEFAULTS.PINECONE_PROVIDER;
+		this.region = config.region || DEFAULTS.PINECONE_REGION;
+
 		this.logger = createLogger({
 			level: process.env.CIPHER_LOG_LEVEL || 'info',
 		});
@@ -57,7 +60,10 @@ export class PineconeBackend implements VectorStore {
 		this.logger.debug(`${LOG_PREFIXES.PINECONE} Initialized`, {
 			indexName: this.indexName,
 			dimension: this.dimension,
-			namespace: this.namespace,
+		});
+		console.log('PineconeBackend initialized', {
+			indexName: this.indexName,
+			dimension: this.dimension,
 		});
 	}
 
@@ -132,6 +138,29 @@ export class PineconeBackend implements VectorStore {
 	}
 
 	/**
+	 * Map provider string to valid Pinecone cloud values
+	 */
+	private getCloudprovider(provider: string): 'aws' | 'gcp' | 'azure' {
+		switch (provider.toLowerCase()) {
+			case 'aws':
+			case 'amazon':
+				return 'aws';
+			case 'gcp':
+			case 'google':
+			case 'gcloud':
+				return 'gcp';
+			case 'azure':
+			case 'microsoft':
+				return 'azure';
+			default:
+				// Default to AWS if provider not recognized
+				this.logger.warn(
+					`${LOG_PREFIXES.PINECONE} Unknown provider '${provider}', defaulting to 'aws'`
+				);
+				return 'aws';
+		}
+	}
+	/**
 	 * Create index in Pinecone
 	 */
 	private async createIndex(): Promise<void> {
@@ -140,14 +169,15 @@ export class PineconeBackend implements VectorStore {
 				dimension: this.dimension,
 				metric: this.config.metric || 'cosine',
 			});
+			const Cloudprovider = this.getCloudprovider(this.provider);
 			const result = await this.client.createIndex({
 				name: this.indexName,
 				dimension: this.dimension,
 				metric: (this.config.metric || 'cosine') as 'cosine' | 'euclidean' | 'dotproduct',
 				spec: {
 					serverless: {
-						cloud: 'aws',
-						region: 'us-east-1',
+						cloud: Cloudprovider,
+						region: this.region,
 					},
 				},
 			});
@@ -166,6 +196,7 @@ export class PineconeBackend implements VectorStore {
 	}
 
 	async connect(): Promise<void> {
+		// console.log('PineconeBackend connecting to Pinecone', this.config)
 		if (this.connected) {
 			this.logger.debug(`${LOG_PREFIXES.PINECONE} Already connected`);
 			return;
@@ -174,9 +205,10 @@ export class PineconeBackend implements VectorStore {
 		this.logger.info(`${LOG_PREFIXES.PINECONE} Connecting to Pinecone`);
 
 		try {
+			console.log('Trying to list indexes');
 			const indexList = await this.client.listIndexes();
 			const indexExists = indexList.indexes?.some(index => index.name === this.indexName);
-
+			console.log('indexExists', indexExists);
 			if (!indexExists) {
 				this.logger.info(
 					`${LOG_PREFIXES.PINECONE} Index '${this.indexName}' does not exist, creating...`
@@ -190,7 +222,6 @@ export class PineconeBackend implements VectorStore {
 			this.connected = true;
 			this.logger.info(`${LOG_PREFIXES.PINECONE} Successfully connected`, {
 				indexName: this.indexName,
-				namespace: this.namespace,
 				dimension: this.dimension,
 			});
 		} catch (error) {
@@ -312,15 +343,7 @@ export class PineconeBackend implements VectorStore {
 				};
 			});
 
-			const upsertRequest: any = {
-				vectors: upsertData,
-			};
-
-			if (this.namespace !== DEFAULTS.PINECONE_NAMESPACE) {
-				upsertRequest.namespace = this.namespace;
-			}
-
-			await this.index.upsert(upsertRequest);
+			await this.index.upsert(upsertData);
 
 			this.logger.debug(`${LOG_PREFIXES.PINECONE} Successfully inserted ${vectors.length} vectors`);
 		} catch (error) {
@@ -328,6 +351,7 @@ export class PineconeBackend implements VectorStore {
 				error: error instanceof Error ? error.message : String(error),
 				vectorCount: vectors.length,
 			});
+			console.log(error);
 			throw new VectorStoreError('Failed to insert vectors', 'insert', error as Error);
 		}
 	}
@@ -360,10 +384,6 @@ export class PineconeBackend implements VectorStore {
 				includeMetadata: true,
 				includeValues: false, // Usually not needed for search results
 			};
-
-			if (this.namespace !== DEFAULTS.PINECONE_NAMESPACE) {
-				queryRequest.namespace = this.namespace;
-			}
 
 			if (pineconeFilter) {
 				queryRequest.filter = pineconeFilter;
@@ -407,10 +427,6 @@ export class PineconeBackend implements VectorStore {
 				ids: [vectorId.toString()],
 			};
 
-			if (this.namespace !== DEFAULTS.PINECONE_NAMESPACE) {
-				fetchRequest.namespace = this.namespace;
-			}
-
 			const response = await this.index.fetch(fetchRequest);
 
 			if (!response.vectors || !response.vectors[vectorId.toString()]) {
@@ -444,20 +460,13 @@ export class PineconeBackend implements VectorStore {
 		this.logger.debug(`${LOG_PREFIXES.PINECONE} Updating vector ${vectorId}`);
 
 		try {
-			const upsertRequest: any = {
-				vectors: [
-					{
-						id: vectorId.toString(),
-						values: vector,
-						metadata: payload || {},
-					},
-				],
-			};
-
-			if (this.namespace !== DEFAULTS.PINECONE_NAMESPACE) {
-				upsertRequest.namespace = this.namespace;
-			}
-
+			const upsertRequest = [
+				{
+					id: vectorId.toString(),
+					values: vector,
+					metadata: payload || {},
+				},
+			];
 			await this.index.upsert(upsertRequest);
 
 			this.logger.debug(`${LOG_PREFIXES.PINECONE} Successfully updated vector ${vectorId}`);
@@ -483,10 +492,6 @@ export class PineconeBackend implements VectorStore {
 				ids: [vectorId.toString()],
 			};
 
-			if (this.namespace !== DEFAULTS.PINECONE_NAMESPACE) {
-				deleteRequest.namespace = this.namespace;
-			}
-
 			await this.index.delete(deleteRequest);
 
 			this.logger.debug(`${LOG_PREFIXES.PINECONE} Successfully deleted vector ${vectorId}`);
@@ -503,25 +508,12 @@ export class PineconeBackend implements VectorStore {
 		if (!this.connected || !this.index) {
 			throw new VectorStoreError(ERROR_MESSAGES.NOT_CONNECTED, 'deleteCollection');
 		}
-
-		this.logger.warn(
-			`${LOG_PREFIXES.PINECONE} Deleting all vectors in namespace '${this.namespace}' from index '${this.indexName}'`
-		);
-
 		try {
 			const deleteRequest: any = {
 				deleteAll: true,
 			};
 
-			if (this.namespace !== DEFAULTS.PINECONE_NAMESPACE) {
-				deleteRequest.namespace = this.namespace;
-			}
-
 			await this.index.delete(deleteRequest);
-
-			this.logger.info(
-				`${LOG_PREFIXES.PINECONE} Successfully deleted all vectors in namespace '${this.namespace}'`
-			);
 		} catch (error) {
 			this.logger.error(`${LOG_PREFIXES.PINECONE} Delete collection failed`, {
 				error: error instanceof Error ? error.message : String(error),
@@ -557,9 +549,5 @@ export class PineconeBackend implements VectorStore {
 
 	getCollectionName(): string {
 		return this.indexName;
-	}
-
-	getNamespace(): string {
-		return this.namespace;
 	}
 }
