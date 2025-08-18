@@ -92,7 +92,7 @@ export async function createVectorStore(config: VectorStoreConfig): Promise<Vect
 	const manager = new VectorStoreManager(config);
 
 	try {
-		// Connect to backend for other types
+		// Connect to backend
 		const store = await manager.connect();
 
 		logger.info(`${LOG_PREFIXES.FACTORY} Vector storage system created successfully`, {
@@ -220,7 +220,7 @@ export async function createDualCollectionVectorStoreFromEnv(
 
 	// Get base configuration from environment variables
 	const config = getVectorStoreConfigFromEnv(agentConfig);
-
+	// console.log('createDualCollectionVectorStoreFromEnv config', config)
 	// Use ServiceCache to prevent duplicate dual collection vector store creation
 	const serviceCache = getServiceCache();
 	const cacheKey = createServiceKey('dualCollectionVectorStore', {
@@ -251,7 +251,6 @@ async function createDualCollectionVectorStoreInternal(
 				knowledgeCollection: config.collectionName,
 			}
 		);
-
 		const manager = new DualCollectionVectorManager(config);
 
 		try {
@@ -310,7 +309,7 @@ async function createDualCollectionVectorStoreInternal(
 		type: config.type,
 		knowledgeCollection: config.collectionName,
 		reflectionCollection,
-		reflectionEnabled: true,
+		refectionEnabled: true,
 	});
 
 	// Create dual collection manager
@@ -326,28 +325,16 @@ async function createDualCollectionVectorStoreInternal(
 			throw new Error('Failed to get knowledge store from dual collection manager');
 		}
 
-		logger.info(`${LOG_PREFIXES.FACTORY} Dual collection vector storage created successfully`, {
-			knowledge: !!knowledgeStore,
-			reflection: !!reflectionStore,
-		});
-
 		return {
 			manager,
 			knowledgeStore,
 			reflectionStore,
 		};
 	} catch (error) {
-		logger.warn(`${LOG_PREFIXES.FACTORY} Dual collection connection failed, attempting fallback`, {
-			originalType: config.type,
-			error: error instanceof Error ? error.message : String(error),
-		});
-
 		// If connection fails, ensure cleanup
 		await manager.disconnect().catch(() => {
 			// Ignore disconnect errors during cleanup
 		});
-
-		// Create fallback in-memory configuration for dual collection
 		const fallbackConfig = {
 			type: 'in-memory' as const,
 			collectionName: config.collectionName,
@@ -561,53 +548,85 @@ export function getVectorStoreConfigFromEnv(agentConfig?: any): VectorStoreConfi
 		};
 	} else if ((storeType as string) === 'pinecone') {
 		const apiKey = env.VECTOR_STORE_API_KEY;
-		const namespace = env.PINECONE_NAMESPACE;
-		const envmetric = env.VECTOR_STORE_DISTANCE;
-		// Use the collection name as index name for Pinecone
-		const indexName = collectionName;
+		const collectionName = env.VECTOR_STORE_COLLECTION || 'default';
+		const provider = env.PINECONE_PROVIDER || 'aws';
+		const region = env.PINECONE_REGION || 'us-east-1';
+		const envmetric = env.VECTOR_STORE_DISTANCE || 'cosine';
+		const dimension = env.VECTOR_STORE_DIMENSION || 1536;
+
 		let metric: 'cosine' | 'euclidean' | 'dotproduct' = 'cosine';
-		if (envmetric) {
-			switch (envmetric.toLowerCase()) {
-				case 'cosine':
-					metric = 'cosine';
-					break;
-				case 'euclidean':
-					metric = 'euclidean';
-					break;
-				case 'dotproduct':
-					metric = 'dotproduct';
-					break;
-				default:
-					metric = 'cosine';
-			}
+		switch (envmetric) {
+			case 'Cosine':
+				metric = 'cosine';
+				break;
+			case 'Euclidean':
+				metric = 'euclidean';
+				break;
+			case 'Dot':
+				metric = 'dotproduct';
+				break;
+			default:
+				metric = 'cosine';
+				break;
 		}
 		if (!apiKey) {
-			logger.warn('Pinecone API key not provided, falling back to in-memory storage', {
-				hasApiKey: !!apiKey,
-			});
+			// Return in-memory config with fallback marker
 			return {
 				type: 'in-memory',
 				collectionName,
 				dimension,
 				maxVectors,
+				// Add a special property to indicate this is a fallback from Pinecone
 				_fallbackFrom: 'pinecone',
 			} as any;
 		}
-
-		logger.debug('Creating Pinecone configuration', {
-			indexName,
-			namespace,
-			dimension,
-			metric,
-		});
-
 		return {
 			type: 'pinecone',
-			collectionName: indexName,
-			dimension,
 			apiKey,
-			namespace,
-			metric: metric as 'cosine' | 'euclidean' | 'dotproduct',
+			collectionName,
+			provider,
+			region,
+			metric,
+			dimension,
+		};
+	} else if ((storeType as string) === 'pgvector') {
+		const url = env.VECTOR_STORE_URL;
+		const collectionName = env.VECTOR_STORE_COLLECTION || 'pgvector_memory';
+		const dimension = env.VECTOR_STORE_DIMENSION || 1536;
+		const envdistance = env.VECTOR_STORE_DISTANCE;
+
+		let distance: 'Cosine' | 'Euclidean' | 'Dot' | 'Manhattan' = 'Cosine';
+		switch (envdistance) {
+			case 'Cosine':
+				distance = 'Cosine';
+				break;
+			case 'Euclidean':
+				distance = 'Euclidean';
+				break;
+			case 'Dot':
+				distance = 'Dot';
+				break;
+			default:
+				distance = 'Cosine';
+		}
+		if (!url) {
+			// Return in-memory config with fallback marker
+			return {
+				type: 'in-memory',
+				collectionName,
+				dimension,
+				maxVectors,
+				// Add a special property to indicate this is a fallback from PgVector
+				_fallbackFrom: 'pgvector',
+			} as any;
+		}
+
+		return {
+			type: 'pgvector',
+			url,
+			collectionName,
+			dimension,
+			distance,
 		};
 	} else {
 		return {
@@ -807,42 +826,72 @@ export function getWorkspaceVectorStoreConfigFromEnv(agentConfig?: any): VectorS
 			distance,
 		};
 	} else if ((storeType as string) === 'pinecone') {
-		const apiKey = env.WORKSPACE_VECTOR_STORE_API_KEY || env.VECTOR_STORE_API_KEY;
-		const namespace = env.PINECONE_NAMESPACE;
-		const metric = env.WORKSPACE_VECTOR_STORE_DISTANCE || env.VECTOR_STORE_DISTANCE;
-		// Use workspace collection name as index name for Pinecone
-		const indexName = collectionName;
+		const apiKey = env.WORKSPACE_VECTOR_STORE_API_KEY;
+		const collectionName = env.WORKSPACE_VECTOR_STORE_COLLECTION || 'default';
+		const provider = env.WORKSPACE_PINECONE_PROVIDER || 'aws';
+		const region = env.WORKSPACE_PINECONE_REGION || 'us-east-1';
+		const envmetric = env.WORKSPACE_VECTOR_STORE_DISTANCE || 'cosine';
+		const dimension = env.WORKSPACE_VECTOR_STORE_DIMENSION || 1536;
 
+		let metric: 'cosine' | 'euclidean' | 'dotproduct' = 'cosine';
+		switch (envmetric) {
+			case 'Cosine':
+				metric = 'cosine';
+				break;
+			case 'Euclidean':
+				metric = 'euclidean';
+				break;
+			case 'Dot':
+				metric = 'dotproduct';
+				break;
+			default:
+				metric = 'cosine';
+				break;
+		}
 		if (!apiKey) {
-			logger.warn(
-				'Pinecone API key not provided for workspace store, falling back to in-memory storage',
-				{
-					hasApiKey: !!apiKey,
-				}
-			);
+			// Return in-memory config with fallback marker
 			return {
 				type: 'in-memory',
 				collectionName,
 				dimension,
 				maxVectors,
-				_fallbackFrom: 'pinecone-workspace',
+				// Add a special property to indicate this is a fallback from PgVector
+				_fallbackFrom: 'pinecone',
 			} as any;
 		}
 
-		logger.debug('Creating workspace Pinecone configuration', {
-			indexName,
-			namespace: namespace ? `${namespace}-workspace` : 'workspace',
-			dimension,
-			metric,
-		});
-
 		return {
 			type: 'pinecone',
-			collectionName: indexName,
-			dimension,
 			apiKey,
-			namespace: namespace ? `${namespace}-workspace` : 'workspace',
-			metric: metric as 'cosine' | 'euclidean' | 'dotproduct',
+			collectionName,
+			provider,
+			region,
+			metric,
+			dimension,
+		};
+	} else if ((storeType as string) === 'pgvector') {
+		const url = env.WORKSPACE_VECTOR_STORE_URL;
+		const collectionName = env.WORKSPACE_VECTOR_STORE_COLLECTION || 'pgvector_memory';
+		const dimension = env.WORKSPACE_VECTOR_STORE_DIMENSION || 1536;
+		const distance = env.WORKSPACE_VECTOR_STORE_DISTANCE || 'Cosine';
+		if (!url) {
+			// Return in-memory config with fallback marker
+			return {
+				type: 'in-memory',
+				collectionName,
+				dimension,
+				maxVectors,
+				// Add a special property to indicate this is a fallback from PgVector
+				_fallbackFrom: 'pgvector',
+			} as any;
+		}
+
+		return {
+			type: 'pgvector',
+			url,
+			collectionName,
+			dimension,
+			distance,
 		};
 	} else {
 		return {
@@ -850,7 +899,7 @@ export function getWorkspaceVectorStoreConfigFromEnv(agentConfig?: any): VectorS
 			collectionName,
 			dimension,
 			maxVectors,
-		};
+		} as any;
 	}
 }
 
@@ -936,7 +985,11 @@ async function createMultiCollectionVectorStoreInternal(
 		const knowledgeStore = manager.getStore('knowledge');
 		const reflectionStore = manager.getStore('reflection');
 		const workspaceStore = manager.getStore('workspace');
-
+		console.log('Multi collection vector storage created successfully', {
+			knowledge: knowledgeStore,
+			reflection: reflectionStore,
+			workspace: workspaceStore,
+		});
 		if (!knowledgeStore) {
 			throw new Error('Failed to get knowledge store from multi collection manager');
 		}
@@ -1022,7 +1075,6 @@ async function createMultiCollectionVectorStoreInternal(
 		}
 	}
 }
-
 /**
  * Creates workspace memory vector storage from environment variables
  *

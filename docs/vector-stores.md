@@ -4,10 +4,12 @@ Vector stores are databases optimized for storing and searching high-dimensional
 
 ## Supported Vector Stores
 
-Cipher supports four vector database types:
+Cipher supports six vector database types:
 - **Qdrant** - High-performance vector search engine
 - **Milvus** - Open-source vector database with cloud options
 - **ChromaDB** - Developer-friendly open-source embedding database
+- **Pinecone** - Managed vector database service
+- **Pgvector** - PostgreSQL extension with ACID compliance and enterprise features
 - **In-Memory** - Built-in solution for development/testing
 
 ## Vector Store Configurations
@@ -227,6 +229,82 @@ VECTOR_STORE_SSL=true
 **Compatibility:** Use ChromaDB 1.10.5 for best results. Array fields in metadata are automatically converted to strings.
 
 </details>
+<details>
+<summary><strong>🔧 Pinecone Configuration</strong></summary>
+
+[Pinecone](https://www.pinecone.io/) is a fully managed vector database service optimized for machine learning applications with excellent performance and scalability.
+
+### ☁️ Pinecone Cloud (Managed)
+
+Pinecone is a cloud-native service that provides serverless vector search:
+
+```bash
+# Basic configuration
+VECTOR_STORE_TYPE=pinecone
+VECTOR_STORE_API_KEY=your-pinecone-api-key
+VECTOR_STORE_COLLECTION=your-index-name # Collection names are used as indexes in Pinecone
+```
+
+**Setup Steps:**
+1. Create account at [Pinecone](https://app.pinecone.io/)
+2. Generate an API key from your project settings
+3. Choose your preferred region (us-east-1, us-west-2, etc.)
+4. Add configuration to your `.env` file or your `json` mcp config
+
+### ⚙️ Pinecone Configuration
+Pinecone automatically creates indexes with these settings:
+
+```bash
+VECTOR_STORE_TYPE=pinecone
+VECTOR_STORE_API_KEY=your-pinecone-api-key
+
+PINECONE_NAMESPACE=production   
+PINECONE_PROVIDER=aws
+PINECONE_REGION=us-east-1
+```
+
+**Index Specifications:**
+- **Serverless deployment** with automatic scaling
+- **Cloud provider**: AWS (default)
+- **Region**: us-east-1 (default, configurable)
+- **Automatic index creation** if not exists
+</details>
+
+<details>
+<summary><strong>🔧 PgVector Configuration</strong></summary>
+
+[PgVector](https://github.com/pgvector/pgvector) is a PostgreSQL extension for vector similarity search, combining the reliability of PostgreSQL with vector search capabilities.
+
+### ☁️ Managed PostgreSQL Services
+
+#### ⚙️ PgVector Configuration
+Build a PostgreSQL docker with pgvector from local 
+```bash
+# Connection URL format
+VECTOR_STORE_TYPE=pgvector
+VECTOR_STORE_URL=postgresql://<username>:<password>@localhost:<port>/<database_name>
+
+```
+
+Most cloud PostgreSQL services support pgvector extension:
+
+```bash
+VECTOR_STORE_TYPE=pgvector
+VECTOR_STORE_URL=postgresql://<service-endpoint>
+
+```
+
+**Index Specifications:**
+- **Index types**: HNSW (default) for better recall, IVFFlat for speed
+- **ACID compliance**: Full PostgreSQL transaction support
+- **Automatic table/index creation** if not exists
+
+**Setup Steps:**
+1. Install PostgreSQL with pgvector extension
+2. Create database and user with appropriate permissions
+3. Add configuration to your `.env` file or `json` mcp config
+4. Tables and indexes are created automatically on first use
+</details>
 
 <details>
 <summary><strong>🔧 In-Memory Vector Store</strong></summary>
@@ -318,8 +396,6 @@ WORKSPACE_VECTOR_STORE_MAX_VECTORS=10000
 ```
 
 </details>
-
-
 ## Troubleshooting
 
 <details>
@@ -361,3 +437,5 @@ Error: Vector dimension mismatch
 - [Configuration](./configuration.md) - Main configuration guide
 - [Embedding Configuration](./embedding-configuration.md) - Embedding setup
 - [Workspace Memory](./workspace-memory.md) - Team-aware memory system
+
+
