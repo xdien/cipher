@@ -546,6 +546,7 @@ export class FaissBackend implements VectorStore {
 						error: error,
 					}
 				);
+				throw error; // Re-throw other errors
 			}
 		}
 	}
