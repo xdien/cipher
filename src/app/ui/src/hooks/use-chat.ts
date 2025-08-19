@@ -307,26 +307,17 @@ export function useChat(wsUrl: string, options: UseChatOptions = {}) {
 		const uri = result ? extractImageFromToolResult(result) : null;
 		lastImageUriRef.current = uri;
 
-		// Add a formatted tool result message similar to terminal output
-		const resultMessage: ChatMessage = {
-			id: generateUniqueId(),
-			role: 'system',
-			content: `📋 Tool Result:\n${typeof result === 'string' ? result : JSON.stringify(result, null, 2)}`,
-			createdAt: Date.now(),
-			toolExecutionId: payload.callId || payload.executionId,
-		};
-
-		// Merge toolResult into the existing toolCall message AND add result message
+		// Update the existing tool message with the result
 		setMessages(ms => {
 			const idx = ms.findIndex(
 				m => m.role === 'tool' && m.toolName === name && m.toolResult === undefined
 			);
 			if (idx !== -1) {
 				const updatedMsg: ChatMessage = { ...ms[idx], toolResult: result };
-				return [...ms.slice(0, idx), updatedMsg, ...ms.slice(idx + 1), resultMessage];
+				return [...ms.slice(0, idx), updatedMsg, ...ms.slice(idx + 1)];
 			}
 			console.warn(`No matching tool call found for result of ${name}`);
-			return [...ms, resultMessage];
+			return ms;
 		});
 	}, []);
 
@@ -336,13 +327,21 @@ export function useChat(wsUrl: string, options: UseChatOptions = {}) {
 		const name = payload.toolName;
 		const callId = payload.callId || payload.executionId;
 
+		console.log('Frontend: Received toolExecutionStarted WebSocket event', {
+			toolName: name,
+			callId,
+			argsKeys: payload.args ? Object.keys(payload.args) : [],
+			args: payload.args,
+			payload,
+		});
+
 		// Add a tool message to show tool execution started
 		const startMessage: ChatMessage = {
 			id: generateUniqueId(),
 			role: 'tool',
-			content: `🔧 Using tool: ${name}`,
+			content: null,
 			toolName: name,
-			toolArgs: payload.args || {},
+			toolArgs: payload.args || {}, // Now includes actual tool arguments from backend
 			createdAt: Date.now(),
 			toolExecutionId: callId,
 		};
@@ -356,26 +355,18 @@ export function useChat(wsUrl: string, options: UseChatOptions = {}) {
 		const callId = payload.callId || payload.executionId;
 
 		if (progress) {
-			// Update or add progress message
+			// Update the existing tool message with progress
 			setMessages(ms => {
-				const progressMessageId = `progress-${callId}`;
-				const existingIdx = ms.findIndex(m => m.id === progressMessageId);
-
-				const progressMessage: ChatMessage = {
-					id: progressMessageId,
-					role: 'system',
-					content: `⏳ ${progress}`,
-					createdAt: Date.now(),
-					toolExecutionId: callId,
-				};
-
-				if (existingIdx !== -1) {
-					// Update existing progress message
-					return [...ms.slice(0, existingIdx), progressMessage, ...ms.slice(existingIdx + 1)];
-				} else {
-					// Add new progress message
-					return [...ms, progressMessage];
+				const idx = ms.findIndex(m => m.toolExecutionId === callId && m.role === 'tool');
+				if (idx !== -1) {
+					const updatedMsg: ChatMessage = { 
+						...ms[idx], 
+						content: `⏳ ${progress}`,
+						createdAt: Date.now()
+					};
+					return [...ms.slice(0, idx), updatedMsg, ...ms.slice(idx + 1)];
 				}
+				return ms;
 			});
 		}
 	}, []);
@@ -387,15 +378,14 @@ export function useChat(wsUrl: string, options: UseChatOptions = {}) {
 		const callId = payload.callId || payload.executionId;
 
 		setMessages(ms => {
-			// Remove any progress messages for this execution
-			const withoutProgress = ms.filter(m => !m.id?.startsWith(`progress-${callId}`));
-
-			// Update the existing tool message with the result
-			const updatedMessages = withoutProgress.map(msg => {
+			// Update the existing tool message with the result and clear progress content
+			const updatedMessages = ms.map(msg => {
 				if (msg.toolExecutionId === callId && msg.role === 'tool') {
 					return {
 						...msg,
+						content: null, // Clear progress content
 						toolResult: result,
+						createdAt: Date.now()
 					};
 				}
 				return msg;

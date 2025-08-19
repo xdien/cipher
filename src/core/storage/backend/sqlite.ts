@@ -7,7 +7,7 @@
  * @module storage/backend/sqlite
  */
 
-import * as Database from 'better-sqlite3';
+import Database from 'better-sqlite3';
 import { mkdir } from 'fs/promises';
 import { dirname, join } from 'path';
 import { existsSync } from 'fs';
@@ -80,32 +80,54 @@ export class SqliteBackend implements DatabaseBackend {
 		try {
 			// Ensure directory exists
 			const dir = dirname(this.dbPath);
+			this.logger.debug('Ensuring database directory exists', { dir, dbPath: this.dbPath });
+			
 			if (!existsSync(dir)) {
 				await mkdir(dir, { recursive: true });
 				this.logger.debug('Created database directory', { dir });
 			}
-			// Open database
-			this.db = new (Database as any).default(this.dbPath);
+
+			// Open database with enhanced error handling
+			this.logger.debug('Opening SQLite database', { path: this.dbPath });
+			this.db = new Database(this.dbPath);
+			
 			if (!this.db) {
-				throw new Error('Failed to create SQLite database connection');
+				throw new Error('Failed to create SQLite database connection - database instance is null');
 			}
+
+			// Test basic database functionality
+			this.logger.debug('Testing database connection');
 			this.db.pragma('journal_mode = WAL'); // Enable WAL mode for better performance
 			this.db.pragma('synchronous = NORMAL'); // Balanced performance/durability
 			this.db.pragma('foreign_keys = ON'); // Enable foreign keys
 
 			// Create tables
+			this.logger.debug('Creating database tables');
 			this.createTables();
 
 			// Prepare statements
+			this.logger.debug('Preparing SQL statements');
 			this.prepareStatements();
 
 			this.connected = true;
-			this.logger.info('SQLite backend connected', { path: this.dbPath });
-		} catch (error) {
-			this.logger.error('Failed to connect to SQLite database', {
+			this.logger.info('SQLite backend connected successfully', { 
 				path: this.dbPath,
-				error: error instanceof Error ? error.message : String(error),
+				dbSize: this.getDbInfo()
 			});
+		} catch (error) {
+			const errorDetails = {
+				path: this.dbPath,
+				directory: dirname(this.dbPath),
+				directoryExists: existsSync(dirname(this.dbPath)),
+				error: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+				nodeVersion: process.version,
+				platform: process.platform,
+				arch: process.arch
+			};
+
+			this.logger.error('Failed to connect to SQLite database', errorDetails);
+			
 			throw new StorageConnectionError(
 				`Failed to connect to SQLite database: ${error instanceof Error ? error.message : String(error)}`,
 				BACKEND_TYPES.SQLITE,
