@@ -478,7 +478,7 @@ export function getVectorStoreConfigFromEnv(agentConfig?: any): VectorStoreConfi
 
 		if (!url && !host) {
 			// Return in-memory config with fallback marker
-			
+
 			return {
 				type: 'in-memory',
 				collectionName,
@@ -576,25 +576,6 @@ export function getVectorStoreConfigFromEnv(agentConfig?: any): VectorStoreConfi
 			default:
 				metric = 'cosine';
 				break;
-		const namespace = env.PINECONE_NAMESPACE;
-		const envmetric = env.VECTOR_STORE_DISTANCE;
-		// Use the collection name as index name for Pinecone
-		const indexName = collectionName;
-		let distance: 'cosine' | 'euclidean' | 'dotproduct' = 'cosine';
-		if (envmetric) {
-			switch (envmetric.toLowerCase()) {
-				case 'cosine':
-					distance = 'cosine';
-					break;
-				case 'euclidean':
-					distance = 'euclidean';
-					break;
-				case 'dotproduct':
-					distance = 'dotproduct';
-					break;
-				default:
-					distance = 'cosine';
-			}
 		}
 		if (!apiKey) {
 			// Return in-memory config with fallback marker
@@ -648,27 +629,17 @@ export function getVectorStoreConfigFromEnv(agentConfig?: any): VectorStoreConfi
 			} as any;
 		}
 
-		logger.debug('Creating Pinecone configuration', {
-			indexName,
-			namespace,
-			dimension,
-			distance,
-		});
-
 		return {
 			type: 'pgvector',
 			url,
 			collectionName,
 			dimension,
 			distance,
-			apiKey,
-			namespace,
-			metric: distance as 'cosine' | 'euclidean' | 'dotproduct',
 		};
 	} else if ((storeType as string) === 'faiss') {
 		const baseStoragePath = env.FAISS_BASE_STORAGE_PATH;
 		const envmetric = env.VECTOR_STORE_DISTANCE;
-		
+
 		let distance: 'Euclidean' | 'Cosine' | 'IP' = 'Cosine';
 		if (distance) {
 			switch (distance.toLowerCase()) {
@@ -1017,7 +988,7 @@ export async function createMultiCollectionVectorStoreFromEnv(
 	// Import MultiCollectionVectorManager dynamically to avoid circular dependencies
 	// const { MultiCollectionVectorManager } = await import('./multi-collection-manager.js'); // Not used in this scope
 
-	// Get base configuration from environment 
+	// Get base configuration from environment
 	const config = getVectorStoreConfigFromEnv(agentConfig);
 
 	// Use ServiceCache to prevent duplicate multi collection vector store creation

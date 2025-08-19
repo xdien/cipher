@@ -196,11 +196,7 @@ export const FaissBackendSchema = BaseVectorStoreSchema.extend({
 	type: z.literal('faiss'),
 	/** Distance metric for similarity search */
 	distance: z
-		.enum([
-			'Cosine',
-			'Euclidean',
-			'IP',
-		] as const)
+		.enum(['Cosine', 'Euclidean', 'IP'] as const)
 		.default('Cosine')
 		.optional()
 		.describe('Distance metric'),

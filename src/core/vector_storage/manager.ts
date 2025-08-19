@@ -566,8 +566,8 @@ export class VectorStoreManager {
 				this.backendMetadata.isFallback = false;
 
 				return new FaissBackend(config);
-			}			
-			
+			}
+
 			case BACKEND_TYPES.IN_MEMORY:
 			default: {
 				// Use in-memory backend
@@ -583,7 +583,6 @@ export class VectorStoreManager {
 
 				return new InMemoryBackend(config);
 			}
-
 		}
 	}
 }
