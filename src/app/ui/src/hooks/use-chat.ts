@@ -359,10 +359,10 @@ export function useChat(wsUrl: string, options: UseChatOptions = {}) {
 			setMessages(ms => {
 				const idx = ms.findIndex(m => m.toolExecutionId === callId && m.role === 'tool');
 				if (idx !== -1) {
-					const updatedMsg: ChatMessage = { 
-						...ms[idx], 
+					const updatedMsg: ChatMessage = {
+						...ms[idx],
 						content: `⏳ ${progress}`,
-						createdAt: Date.now()
+						createdAt: Date.now(),
 					};
 					return [...ms.slice(0, idx), updatedMsg, ...ms.slice(idx + 1)];
 				}
@@ -385,7 +385,7 @@ export function useChat(wsUrl: string, options: UseChatOptions = {}) {
 						...msg,
 						content: null, // Clear progress content
 						toolResult: result,
-						createdAt: Date.now()
+						createdAt: Date.now(),
 					};
 				}
 				return msg;

@@ -89,6 +89,7 @@ export interface WebSocketEventData {
 		sessionId: string;
 		callId?: string;
 		executionId?: string;
+		args?: Record<string, any>;
 	};
 	toolExecutionProgress: {
 		toolName: string;
@@ -110,6 +111,7 @@ export interface WebSocketEventData {
 		sessionId: string;
 		callId?: string;
 		executionId?: string;
+		result?: any;
 	};
 	toolExecutionFailed: {
 		toolName: string;

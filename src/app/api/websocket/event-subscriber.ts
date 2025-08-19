@@ -177,7 +177,7 @@ export class WebSocketEventSubscriber {
 				// Create session-specific abort controller for existing sessions too
 				const sessionAbortController = new AbortController();
 				this.sessionAbortControllers.set(sessionId, sessionAbortController);
-				
+
 				this.subscribeToSingleSessionEvents(sessionId, sessionAbortController.signal);
 				this.subscribedSessions.add(sessionId);
 			}
@@ -195,11 +195,11 @@ export class WebSocketEventSubscriber {
 	public subscribeToSession(sessionId: string): void {
 		if (this.abortController && !this.subscribedSessions.has(sessionId)) {
 			logger.debug('Dynamically subscribing to session events', { sessionId });
-			
+
 			// Create session-specific abort controller to prevent memory leaks
 			const sessionAbortController = new AbortController();
 			this.sessionAbortControllers.set(sessionId, sessionAbortController);
-			
+
 			this.subscribeToSingleSessionEvents(sessionId, sessionAbortController.signal);
 			this.subscribedSessions.add(sessionId);
 		} else if (this.subscribedSessions.has(sessionId)) {
@@ -218,9 +218,11 @@ export class WebSocketEventSubscriber {
 				sessionAbortController.abort();
 				this.sessionAbortControllers.delete(sessionId);
 			}
-			
+
 			this.subscribedSessions.delete(sessionId);
-			logger.debug('Session removed from subscription tracking and listeners cleaned up', { sessionId });
+			logger.debug('Session removed from subscription tracking and listeners cleaned up', {
+				sessionId,
+			});
 		}
 	}
 
@@ -563,14 +565,14 @@ export class WebSocketEventSubscriber {
 			this.abortController.abort();
 			this.abortController = null;
 		}
-		
+
 		// Clean up all session-specific abort controllers
 		this.sessionAbortControllers.forEach((controller, sessionId) => {
 			controller.abort();
 		});
 		this.sessionAbortControllers.clear();
 		this.subscribedSessions.clear();
-		
+
 		logger.info('WebSocket event subscriptions terminated and all session controllers cleaned up');
 	}
 

@@ -331,7 +331,7 @@ export class UnifiedToolManager {
 				argsKeys: args ? Object.keys(args) : [],
 				args: args,
 			});
-			
+
 			this.eventManager.emitSessionEvent(sessionId, SessionEvents.TOOL_EXECUTION_STARTED, {
 				toolName,
 				toolType,
@@ -446,7 +446,7 @@ export class UnifiedToolManager {
 				argsKeys: args ? Object.keys(args) : [],
 				args: args,
 			});
-			
+
 			this.eventManager.emitSessionEvent(sessionId, SessionEvents.TOOL_EXECUTION_STARTED, {
 				toolName,
 				toolType,

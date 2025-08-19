@@ -81,7 +81,7 @@ export class SqliteBackend implements DatabaseBackend {
 			// Ensure directory exists
 			const dir = dirname(this.dbPath);
 			this.logger.debug('Ensuring database directory exists', { dir, dbPath: this.dbPath });
-			
+
 			if (!existsSync(dir)) {
 				await mkdir(dir, { recursive: true });
 				this.logger.debug('Created database directory', { dir });
@@ -90,7 +90,7 @@ export class SqliteBackend implements DatabaseBackend {
 			// Open database with enhanced error handling
 			this.logger.debug('Opening SQLite database', { path: this.dbPath });
 			this.db = new Database(this.dbPath);
-			
+
 			if (!this.db) {
 				throw new Error('Failed to create SQLite database connection - database instance is null');
 			}
@@ -110,9 +110,9 @@ export class SqliteBackend implements DatabaseBackend {
 			this.prepareStatements();
 
 			this.connected = true;
-			this.logger.info('SQLite backend connected successfully', { 
+			this.logger.info('SQLite backend connected successfully', {
 				path: this.dbPath,
-				dbSize: this.getDbInfo()
+				dbSize: this.getDbInfo(),
 			});
 		} catch (error) {
 			const errorDetails = {
@@ -123,11 +123,11 @@ export class SqliteBackend implements DatabaseBackend {
 				stack: error instanceof Error ? error.stack : undefined,
 				nodeVersion: process.version,
 				platform: process.platform,
-				arch: process.arch
+				arch: process.arch,
 			};
 
 			this.logger.error('Failed to connect to SQLite database', errorDetails);
-			
+
 			throw new StorageConnectionError(
 				`Failed to connect to SQLite database: ${error instanceof Error ? error.message : String(error)}`,
 				BACKEND_TYPES.SQLITE,
