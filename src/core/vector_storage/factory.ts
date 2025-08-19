@@ -89,6 +89,7 @@ export async function createVectorStore(config: VectorStoreConfig): Promise<Vect
 	});
 
 	// Create manager
+	// console.log('creating vector store manager', config);
 	const manager = new VectorStoreManager(config);
 
 	try {
@@ -183,7 +184,7 @@ export async function createVectorStoreFromEnv(agentConfig?: any): Promise<Vecto
 
 	// Get configuration from environment variables
 	const config = getVectorStoreConfigFromEnv(agentConfig);
-
+	// console.log('config', config);
 	logger.info(`${LOG_PREFIXES.FACTORY} Creating vector storage from environment`, {
 		type: config.type,
 		collection: config.collectionName,
@@ -477,6 +478,7 @@ export function getVectorStoreConfigFromEnv(agentConfig?: any): VectorStoreConfi
 
 		if (!url && !host) {
 			// Return in-memory config with fallback marker
+			
 			return {
 				type: 'in-memory',
 				collectionName,
@@ -486,7 +488,13 @@ export function getVectorStoreConfigFromEnv(agentConfig?: any): VectorStoreConfi
 				_fallbackFrom: 'milvus',
 			} as any;
 		}
-
+		console.log('building milvus backend', {
+			collectionName,
+			dimension,
+			url,
+			host,
+			port,
+		});
 		return {
 			type: 'milvus',
 			collectionName,
@@ -568,6 +576,25 @@ export function getVectorStoreConfigFromEnv(agentConfig?: any): VectorStoreConfi
 			default:
 				metric = 'cosine';
 				break;
+		const namespace = env.PINECONE_NAMESPACE;
+		const envmetric = env.VECTOR_STORE_DISTANCE;
+		// Use the collection name as index name for Pinecone
+		const indexName = collectionName;
+		let distance: 'cosine' | 'euclidean' | 'dotproduct' = 'cosine';
+		if (envmetric) {
+			switch (envmetric.toLowerCase()) {
+				case 'cosine':
+					distance = 'cosine';
+					break;
+				case 'euclidean':
+					distance = 'euclidean';
+					break;
+				case 'dotproduct':
+					distance = 'dotproduct';
+					break;
+				default:
+					distance = 'cosine';
+			}
 		}
 		if (!apiKey) {
 			// Return in-memory config with fallback marker
@@ -621,11 +648,67 @@ export function getVectorStoreConfigFromEnv(agentConfig?: any): VectorStoreConfi
 			} as any;
 		}
 
+		logger.debug('Creating Pinecone configuration', {
+			indexName,
+			namespace,
+			dimension,
+			distance,
+		});
+
 		return {
 			type: 'pgvector',
 			url,
 			collectionName,
 			dimension,
+			distance,
+			apiKey,
+			namespace,
+			metric: distance as 'cosine' | 'euclidean' | 'dotproduct',
+		};
+	} else if ((storeType as string) === 'faiss') {
+		const baseStoragePath = env.FAISS_BASE_STORAGE_PATH;
+		const envmetric = env.VECTOR_STORE_DISTANCE;
+		
+		let distance: 'Euclidean' | 'Cosine' | 'IP' = 'Cosine';
+		if (distance) {
+			switch (distance.toLowerCase()) {
+				case 'Cosine':
+					distance = 'Cosine';
+					break;
+				case 'L2':
+					distance = 'Euclidean';
+					break;
+				case 'IP':
+					distance = 'IP';
+					break;
+				default:
+					distance = 'Cosine';
+			}
+		}
+		if (!baseStoragePath) {
+			logger.warn('Faiss base storage path not provided, falling back to in-memory storage', {
+				hasBaseStoragePath: !!baseStoragePath,
+			});
+			return {
+				type: 'in-memory',
+				collectionName,
+				dimension,
+				maxVectors,
+				_fallbackFrom: 'faiss',
+			} as any;
+		}
+
+		logger.debug('Creating FAISS configuration', {
+			baseStoragePath,
+			dimension,
+			distance,
+		});
+
+		return {
+			type: 'faiss',
+			collectionName,
+			dimension,
+			baseStoragePath,
 			distance,
 		};
 	} else {
@@ -702,7 +785,7 @@ export function getWorkspaceVectorStoreConfigFromEnv(agentConfig?: any): VectorS
 		usingWorkspaceSpecificType: !!env.WORKSPACE_VECTOR_STORE_TYPE,
 		usingWorkspaceSpecificCollection: !!env.WORKSPACE_VECTOR_STORE_COLLECTION,
 	});
-
+	console.log('storeType', storeType);
 	if (storeType === 'qdrant') {
 		const host = env.WORKSPACE_VECTOR_STORE_HOST || env.VECTOR_STORE_HOST;
 		const url = env.WORKSPACE_VECTOR_STORE_URL || env.VECTOR_STORE_URL;
@@ -752,6 +835,7 @@ export function getWorkspaceVectorStoreConfigFromEnv(agentConfig?: any): VectorS
 
 		if (!url && !host) {
 			// Return in-memory config with fallback marker
+			console.log('Milvus backend not initialzed, returning in-memory config with fallback marker');
 			return {
 				type: 'in-memory',
 				collectionName,
@@ -761,7 +845,6 @@ export function getWorkspaceVectorStoreConfigFromEnv(agentConfig?: any): VectorS
 				_fallbackFrom: 'milvus-workspace',
 			} as any;
 		}
-
 		return {
 			type: 'milvus',
 			collectionName,
@@ -934,7 +1017,7 @@ export async function createMultiCollectionVectorStoreFromEnv(
 	// Import MultiCollectionVectorManager dynamically to avoid circular dependencies
 	// const { MultiCollectionVectorManager } = await import('./multi-collection-manager.js'); // Not used in this scope
 
-	// Get base configuration from environment variables
+	// Get base configuration from environment 
 	const config = getVectorStoreConfigFromEnv(agentConfig);
 
 	// Use ServiceCache to prevent duplicate multi collection vector store creation

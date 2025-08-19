@@ -66,4 +66,6 @@ env.example.txt
 .claude/
 chroma-data/
 qdrant-data/
+faiss-data/
+
 volumes/

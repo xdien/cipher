@@ -11,6 +11,7 @@ import type { VectorStoreConfig } from './types.js';
 import { Logger, createLogger } from '../logger/index.js';
 import { env } from '../env.js';
 import { EventManager } from '../events/event-manager.js';
+import { getWorkspaceVectorStoreConfigFromEnv } from './factory.js';
 
 /**
  * Collection type identifier
@@ -104,57 +105,8 @@ export class MultiCollectionVectorManager {
 
 		// Create workspace manager only if workspace memory is enabled
 		if (this.workspaceEnabled) {
-			// Create workspace config with proper type handling
-			const workspaceConfig = {
-				...baseConfig,
-				// Override collection name and dimension
-				collectionName: env.WORKSPACE_VECTOR_STORE_COLLECTION,
-				dimension: env.WORKSPACE_VECTOR_STORE_DIMENSION || baseConfig.dimension,
-			} as VectorStoreConfig;
-
-			// Override type if specified
-			if (env.WORKSPACE_VECTOR_STORE_TYPE) {
-				workspaceConfig.type = env.WORKSPACE_VECTOR_STORE_TYPE;
-			}
-
-			// Only add type-specific properties if they exist in the base config and environment
-			if ('host' in baseConfig && env.WORKSPACE_VECTOR_STORE_HOST) {
-				(workspaceConfig as any).host = env.WORKSPACE_VECTOR_STORE_HOST;
-			}
-			if ('port' in baseConfig && env.WORKSPACE_VECTOR_STORE_PORT) {
-				(workspaceConfig as any).port = env.WORKSPACE_VECTOR_STORE_PORT;
-			}
-			if ('url' in baseConfig && env.WORKSPACE_VECTOR_STORE_URL) {
-				(workspaceConfig as any).url = env.WORKSPACE_VECTOR_STORE_URL;
-			}
-			if ('apiKey' in baseConfig && env.WORKSPACE_VECTOR_STORE_API_KEY) {
-				(workspaceConfig as any).apiKey = env.WORKSPACE_VECTOR_STORE_API_KEY;
-			}
-			if ('username' in baseConfig && env.WORKSPACE_VECTOR_STORE_USERNAME) {
-				(workspaceConfig as any).username = env.WORKSPACE_VECTOR_STORE_USERNAME;
-			}
-			if ('password' in baseConfig && env.WORKSPACE_VECTOR_STORE_PASSWORD) {
-				(workspaceConfig as any).password = env.WORKSPACE_VECTOR_STORE_PASSWORD;
-			}
-			if ('distance' in baseConfig && env.WORKSPACE_VECTOR_STORE_DISTANCE) {
-				// Normalize distance per backend requirements
-				let wsDistance: any = env.WORKSPACE_VECTOR_STORE_DISTANCE;
-				const wsType = (workspaceConfig as any).type || baseConfig.type;
-				if (wsType === 'chroma') {
-					const d = String(wsDistance).toLowerCase();
-					if (d === 'cosine') wsDistance = 'cosine';
-					else if (d === 'euclidean' || d === 'l2') wsDistance = 'l2';
-					else if (d === 'dot' || d === 'ip') wsDistance = 'ip';
-					else wsDistance = 'cosine';
-				}
-				(workspaceConfig as any).distance = wsDistance;
-			}
-			if ('onDisk' in baseConfig && env.WORKSPACE_VECTOR_STORE_ON_DISK !== undefined) {
-				(workspaceConfig as any).onDisk = env.WORKSPACE_VECTOR_STORE_ON_DISK;
-			}
-			if ('maxVectors' in baseConfig && env.WORKSPACE_VECTOR_STORE_MAX_VECTORS) {
-				(workspaceConfig as any).maxVectors = env.WORKSPACE_VECTOR_STORE_MAX_VECTORS;
-			}
+			// Get workspace-specific configuration directly
+			const workspaceConfig = getWorkspaceVectorStoreConfigFromEnv();
 			this.workspaceManager = new VectorStoreManager(workspaceConfig);
 
 			this.logger.info('MultiCollectionVectorManager: Initialized with multiple collections', {
@@ -164,7 +116,7 @@ export class MultiCollectionVectorManager {
 					? env.REFLECTION_VECTOR_STORE_COLLECTION
 					: 'disabled',
 				workspaceCollection: env.WORKSPACE_VECTOR_STORE_COLLECTION,
-				dimension: baseConfig.dimension,
+				dimension: workspaceConfig.dimension, // Use dimension from workspaceConfig
 			});
 		} else {
 			this.workspaceManager = null;

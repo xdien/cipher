@@ -179,6 +179,38 @@ const MilvusBackendSchema = BaseVectorStoreSchema.extend({
 export type MilvusBackendConfig = z.infer<typeof MilvusBackendSchema>;
 
 /**
+ * Faiss Backend Configuration
+ *
+ * Configuration for Faiss vector database backend.
+ *
+ * @example
+ * ```typescript
+ * const config: FaissBackendConfig = {
+ *   type: 'faiss',
+ *   collectionName: 'documents',
+ *   dimension: 1536
+ * };
+ * ```
+ */
+export const FaissBackendSchema = BaseVectorStoreSchema.extend({
+	type: z.literal('faiss'),
+	/** Distance metric for similarity search */
+	distance: z
+		.enum([
+			'Cosine',
+			'Euclidean',
+			'IP',
+		] as const)
+		.default('Cosine')
+		.optional()
+		.describe('Distance metric'),
+	/** Path to store the FAISS index file (for persistence) */
+	baseStoragePath: z.string().optional().describe('Base directory for FAISS collection data'),
+}).strict();
+
+export type FaissBackendConfig = z.infer<typeof FaissBackendSchema>;
+
+/**
  * ChromaDB Backend Configuration
  *
  * Configuration for ChromaDB vector database backend.
@@ -356,6 +388,7 @@ const BackendConfigSchema = z
 			ChromaBackendSchema,
 			PineconeBackendSchema,
 			PgVectorBackendSchema,
+			FaissBackendSchema,
 		],
 		{
 			errorMap: (issue, ctx) => {
@@ -422,6 +455,17 @@ const BackendConfigSchema = z
 					message:
 						"PgVector backend requires either 'url' or both 'host' and 'database' to be specified",
 					path: ['url'],
+				});
+			}
+		}
+		// Validate Faiss backend requirements
+		if (data.type === 'faiss') {
+			if (!data.baseStoragePath) {
+				console.log('Faiss backend requires baseStoragePath');
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: "Faiss backend requires 'baseStoragePath' to be specified",
+					path: ['baseStoragePath'],
 				});
 			}
 		}
