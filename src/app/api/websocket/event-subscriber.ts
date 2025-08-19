@@ -5,6 +5,7 @@ import { WebSocketResponse, WebSocketEventType, WebSocketEventData } from './typ
 
 export class WebSocketEventSubscriber {
 	private abortController: AbortController | null = null;
+	private sessionAbortControllers = new Map<string, AbortController>();
 	private subscribedSessions = new Set<string>();
 	private subscriptionStats = {
 		totalEventsReceived: 0,
@@ -173,7 +174,11 @@ export class WebSocketEventSubscriber {
 
 		activeSessions.forEach(sessionId => {
 			if (!this.subscribedSessions.has(sessionId)) {
-				this.subscribeToSingleSessionEvents(sessionId, signal);
+				// Create session-specific abort controller for existing sessions too
+				const sessionAbortController = new AbortController();
+				this.sessionAbortControllers.set(sessionId, sessionAbortController);
+
+				this.subscribeToSingleSessionEvents(sessionId, sessionAbortController.signal);
 				this.subscribedSessions.add(sessionId);
 			}
 		});
@@ -190,7 +195,12 @@ export class WebSocketEventSubscriber {
 	public subscribeToSession(sessionId: string): void {
 		if (this.abortController && !this.subscribedSessions.has(sessionId)) {
 			logger.debug('Dynamically subscribing to session events', { sessionId });
-			this.subscribeToSingleSessionEvents(sessionId, this.abortController.signal);
+
+			// Create session-specific abort controller to prevent memory leaks
+			const sessionAbortController = new AbortController();
+			this.sessionAbortControllers.set(sessionId, sessionAbortController);
+
+			this.subscribeToSingleSessionEvents(sessionId, sessionAbortController.signal);
 			this.subscribedSessions.add(sessionId);
 		} else if (this.subscribedSessions.has(sessionId)) {
 			logger.debug('Session already subscribed, skipping', { sessionId });
@@ -202,8 +212,17 @@ export class WebSocketEventSubscriber {
 	 */
 	public unsubscribeFromSession(sessionId: string): void {
 		if (this.subscribedSessions.has(sessionId)) {
+			// Abort session-specific events to clean up listeners
+			const sessionAbortController = this.sessionAbortControllers.get(sessionId);
+			if (sessionAbortController) {
+				sessionAbortController.abort();
+				this.sessionAbortControllers.delete(sessionId);
+			}
+
 			this.subscribedSessions.delete(sessionId);
-			logger.debug('Session removed from subscription tracking', { sessionId });
+			logger.debug('Session removed from subscription tracking and listeners cleaned up', {
+				sessionId,
+			});
 		}
 	}
 
@@ -332,6 +351,8 @@ export class WebSocketEventSubscriber {
 					toolName: data.toolName,
 					sessionId: data.sessionId,
 					executionId: data.executionId,
+					argsKeys: data.args ? Object.keys(data.args) : [],
+					args: data.args,
 				});
 
 				// Send the specific tool execution started event
@@ -342,6 +363,7 @@ export class WebSocketEventSubscriber {
 						sessionId: data.sessionId,
 						callId: data.executionId,
 						executionId: data.executionId,
+						args: data.args || {},
 					},
 					signal
 				);
@@ -361,6 +383,7 @@ export class WebSocketEventSubscriber {
 						sessionId: data.sessionId,
 						callId: data.executionId,
 						executionId: data.executionId,
+						result: data.result,
 					},
 					signal
 				);
@@ -541,9 +564,16 @@ export class WebSocketEventSubscriber {
 		if (this.abortController) {
 			this.abortController.abort();
 			this.abortController = null;
-			this.subscribedSessions.clear();
-			logger.info('WebSocket event subscriptions terminated');
 		}
+
+		// Clean up all session-specific abort controllers
+		this.sessionAbortControllers.forEach((controller, sessionId) => {
+			controller.abort();
+		});
+		this.sessionAbortControllers.clear();
+		this.subscribedSessions.clear();
+
+		logger.info('WebSocket event subscriptions terminated and all session controllers cleaned up');
 	}
 
 	/**

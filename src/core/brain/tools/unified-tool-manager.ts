@@ -323,12 +323,22 @@ export class UnifiedToolManager {
 
 		// Emit tool execution started event
 		if (this.eventManager && sessionId) {
+			logger.debug('UnifiedToolManager: Emitting tool execution started event', {
+				toolName,
+				toolType,
+				sessionId,
+				executionId,
+				argsKeys: args ? Object.keys(args) : [],
+				args: args,
+			});
+
 			this.eventManager.emitSessionEvent(sessionId, SessionEvents.TOOL_EXECUTION_STARTED, {
 				toolName,
 				toolType,
 				sessionId,
 				executionId,
 				timestamp: startTime,
+				args: args, // Include tool arguments
 			});
 		}
 
@@ -378,6 +388,7 @@ export class UnifiedToolManager {
 					executionId,
 					duration: Date.now() - startTime,
 					success: true,
+					result: result,
 					timestamp: Date.now(),
 				});
 			}
@@ -427,12 +438,22 @@ export class UnifiedToolManager {
 
 		// Emit tool execution started event
 		if (this.eventManager && sessionId) {
+			logger.debug('UnifiedToolManager: Emitting tool execution started event', {
+				toolName,
+				toolType,
+				sessionId,
+				executionId,
+				argsKeys: args ? Object.keys(args) : [],
+				args: args,
+			});
+
 			this.eventManager.emitSessionEvent(sessionId, SessionEvents.TOOL_EXECUTION_STARTED, {
 				toolName,
 				toolType,
 				sessionId,
 				executionId,
 				timestamp: startTime,
+				args: args, // Include tool arguments
 			});
 		}
 
