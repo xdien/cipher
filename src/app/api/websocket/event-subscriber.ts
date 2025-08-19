@@ -363,7 +363,7 @@ export class WebSocketEventSubscriber {
 						sessionId: data.sessionId,
 						callId: data.executionId,
 						executionId: data.executionId,
-						args: data.args || {}, // Pass through tool arguments
+						args: data.args || {},
 					},
 					signal
 				);
@@ -383,7 +383,7 @@ export class WebSocketEventSubscriber {
 						sessionId: data.sessionId,
 						callId: data.executionId,
 						executionId: data.executionId,
-						result: data.result, // Include tool result in WebSocket event
+						result: data.result,
 					},
 					signal
 				);

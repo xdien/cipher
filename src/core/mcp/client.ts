@@ -244,8 +244,8 @@ export class MCPClient implements IMCPClient {
 			? { requestInit: { headers: config.headers } }
 			: undefined;
 		const transport = new StreamableHTTPClientTransport(new URL(config.url), transportOptions);
-		// Satisfy Transport typing (sessionId is optional in SDK transport); no runtime change
-		return transport as unknown as Transport;
+		// Fix type compatibility with exact optional property types
+		return transport as Transport;
 	}
 
 	/**

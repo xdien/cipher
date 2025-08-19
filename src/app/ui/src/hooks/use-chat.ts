@@ -327,13 +327,6 @@ export function useChat(wsUrl: string, options: UseChatOptions = {}) {
 		const name = payload.toolName;
 		const callId = payload.callId || payload.executionId;
 
-		console.log('Frontend: Received toolExecutionStarted WebSocket event', {
-			toolName: name,
-			callId,
-			argsKeys: payload.args ? Object.keys(payload.args) : [],
-			args: payload.args,
-			payload,
-		});
 
 		// Add a tool message to show tool execution started
 		const startMessage: ChatMessage = {

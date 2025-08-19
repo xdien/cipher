@@ -388,7 +388,7 @@ export class UnifiedToolManager {
 					executionId,
 					duration: Date.now() - startTime,
 					success: true,
-					result: result, // Include the actual tool result
+					result: result,
 					timestamp: Date.now(),
 				});
 			}
