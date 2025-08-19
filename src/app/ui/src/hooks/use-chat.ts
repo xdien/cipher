@@ -327,7 +327,6 @@ export function useChat(wsUrl: string, options: UseChatOptions = {}) {
 		const name = payload.toolName;
 		const callId = payload.callId || payload.executionId;
 
-
 		// Add a tool message to show tool execution started
 		const startMessage: ChatMessage = {
 			id: generateUniqueId(),
