@@ -21,6 +21,7 @@
 
 import { z } from 'zod';
 import { DEFAULTS, DISTANCE_METRICS } from './constants.js';
+import { context } from '@pinecone-database/pinecone/dist/assistant/data/context.js';
 
 /**
  * Base Vector Store Configuration Schema
@@ -364,8 +365,44 @@ const PgVectorBackendSchema = BaseVectorStoreSchema.extend({
 	/** Schema name (default: 'public') */
 	schema: z.string().default('public').optional().describe('PostgreSQL schema name'),
 }).strict();
-
 export type PgVectorBackendConfig = z.infer<typeof PgVectorBackendSchema>;
+
+/**
+ * Redis Vector Store Configuration
+ *
+ * @example
+ * const localConfig: RedisBackendConfig = {
+ *   type: 'redis',
+ *   url: 'redis://localhost:6379/0', // redis[s]://[[username][:password]@]host[:port][/db-number]
+ *   // Alternatively, you can specify connection parameters separately:
+ *   host: 'localhost',
+ *   port: 6379,
+ *   username: 'default', // optional if ACL is not enabled
+ *   password: '',        // empty if no password is set
+ *   database: 0,
+ *   distance: 'COSINE',
+ * };
+ * // If using Redis Cloud, url must be: rediss://
+ */
+
+export const RedisBackendSchema = BaseVectorStoreSchema.extend({
+	type: z.literal('redis'),
+	url: z.string().url().describe('Redis connection URL (redis://...)'),
+	host: z.string().optional().describe('Redis host'),
+	port: z.number().int().positive().default(6379).optional().describe('Redis port'),
+	username: z.string().optional().describe('Redis username'),
+	password: z.string().optional().describe('Redis password'),
+	database: z.number().int().positive().default(0).optional().describe('Redis database index'),
+
+	distance: z
+		.enum(['COSINE', 'L2', 'IP'])
+		.default('COSINE')
+		.optional()
+		.describe('Distance metric for Redis vector similarity search'),
+}).strict();
+
+export type RedisBackendConfig = z.infer<typeof RedisBackendSchema>;
+
 /**
  * Backend Configuration Union Schema
  *
@@ -385,12 +422,13 @@ const BackendConfigSchema = z
 			PineconeBackendSchema,
 			PgVectorBackendSchema,
 			FaissBackendSchema,
+			RedisBackendSchema,
 		],
 		{
 			errorMap: (issue, ctx) => {
 				if (issue.code === z.ZodIssueCode.invalid_union_discriminator) {
 					return {
-						message: `Invalid backend type. Expected 'in-memory', 'qdrant', 'milvus', 'chroma', or 'pinecone'.`,
+						message: `Invalid backend type. Expected 'in-memory', 'qdrant', 'milvus', 'chroma', 'pinecone', 'pgvector', or 'redis'.`,
 					};
 				}
 				return { message: ctx.defaultError };
@@ -462,6 +500,17 @@ const BackendConfigSchema = z
 					code: z.ZodIssueCode.custom,
 					message: "Faiss backend requires 'baseStoragePath' to be specified",
 					path: ['baseStoragePath'],
+				});
+			}
+		}
+		// Validate Redis backend requirements
+		if (data.type === 'redis') {
+			// Redis requires either a connection URL or host and port
+			if (!data.url && (!data.host || !data.port)) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: "Redis backend requires either 'url' or both 'host' and 'port' to be specified",
+					path: ['url'],
 				});
 			}
 		}

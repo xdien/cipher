@@ -682,6 +682,50 @@ export function getVectorStoreConfigFromEnv(agentConfig?: any): VectorStoreConfi
 			baseStoragePath,
 			distance,
 		};
+	} else if ((storeType as string) === 'redis') {
+		const url = env.VECTOR_STORE_URL;
+		const host = env.VECTOR_STORE_HOST;
+		const port = env.VECTOR_STORE_PORT;
+		const username = env.VECTOR_STORE_USERNAME;
+		const password = env.VECTOR_STORE_PASSWORD;
+		const envdistance = env.WORKSPACE_VECTOR_STORE_DISTANCE || 'Cosine';
+		let distance: 'L2' | 'IP' | 'COSINE' = 'COSINE';
+		switch (envdistance) {
+			case 'Euclidean':
+				distance = 'L2';
+				break;
+			case 'Dot':
+				distance = 'IP';
+				break;
+			case 'Cosine':
+				distance = 'COSINE';
+				break;
+			default:
+				distance = 'COSINE';
+		}
+
+		if (!url && !host) {
+			// Return in-memory config with fallback marker
+			return {
+				type: 'in-memory',
+				collectionName,
+				dimension,
+				maxVectors,
+				// Add a special property to indicate this is a fallback from Redis
+				_fallbackFrom: 'redis',
+			} as any;
+		}
+		return {
+			type: 'redis',
+			url: url || '',
+			host,
+			port,
+			username,
+			password,
+			collectionName,
+			dimension,
+			distance,
+		};
 	} else {
 		return {
 			type: 'in-memory',
@@ -947,6 +991,52 @@ export function getWorkspaceVectorStoreConfigFromEnv(agentConfig?: any): VectorS
 			dimension,
 			distance,
 		};
+	} else if ((storeType as string) === 'redis') {
+		const url = env.WORKSPACE_VECTOR_STORE_URL;
+		const host = env.WORKSPACE_VECTOR_STORE_HOST;
+		const port = env.WORKSPACE_VECTOR_STORE_PORT;
+		const username = env.WORKSPACE_VECTOR_STORE_USERNAME;
+		const password = env.WORKSPACE_VECTOR_STORE_PASSWORD;
+		const database = env.REDIS_DATABASE !== undefined ? Number(env.REDIS_DATABASE) : 0;
+		const envdistance = env.WORKSPACE_VECTOR_STORE_DISTANCE || 'Cosine';
+		let distance: 'L2' | 'IP' | 'COSINE' = 'COSINE';
+		switch (envdistance) {
+			case 'Euclidean':
+				distance = 'L2';
+				break;
+			case 'Dot':
+				distance = 'IP';
+				break;
+			case 'Cosine':
+				distance = 'COSINE';
+				break;
+			default:
+				distance = 'COSINE';
+		}
+
+		if (!url && !host) {
+			// Return in-memory config with fallback marker
+			return {
+				type: 'in-memory',
+				collectionName,
+				dimension,
+				maxVectors,
+				// Add a special property to indicate this is a fallback from Redis
+				_fallbackFrom: 'redis',
+			} as any;
+		}
+		return {
+			type: 'redis',
+			url: url || '',
+			host,
+			port,
+			username,
+			password,
+			database,
+			collectionName,
+			dimension,
+			distance,
+		};
 	} else {
 		return {
 			type: 'in-memory',
@@ -1039,11 +1129,6 @@ async function createMultiCollectionVectorStoreInternal(
 		const knowledgeStore = manager.getStore('knowledge');
 		const reflectionStore = manager.getStore('reflection');
 		const workspaceStore = manager.getStore('workspace');
-		console.log('Multi collection vector storage created successfully', {
-			knowledge: knowledgeStore,
-			reflection: reflectionStore,
-			workspace: workspaceStore,
-		});
 		if (!knowledgeStore) {
 			throw new Error('Failed to get knowledge store from multi collection manager');
 		}

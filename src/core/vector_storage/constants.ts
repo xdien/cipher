@@ -22,6 +22,7 @@ export const LOG_PREFIXES = {
 	PINECONE: '[VectorStore:Pinecone]',
 	PGVECTOR: '[VectorStore:PgVector]',
 	FAISS: '[VectorStore:Faiss]',
+	REDIS: '[VectorStore:Redis]',
 	MEMORY: '[VectorStore:Memory]',
 } as const;
 
@@ -74,6 +75,7 @@ export const BACKEND_TYPES = {
 	MILVUS: 'milvus',
 	PGVECTOR: 'pgvector',
 	FAISS: 'faiss',
+	REDIS: 'redis',
 } as const;
 
 /**
