@@ -28,6 +28,7 @@ out/
 .DS_Store
 
 data/
+
 # Logs
 logs/
 *.log
@@ -66,4 +67,5 @@ env.example.txt
 .claude/
 chroma-data/
 qdrant-data/
+faiss-data/
 volumes/
