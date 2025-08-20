@@ -77,6 +77,8 @@ const envSchema = z.object({
 	// PGVECTOR -specific Configuration
 	PGVECTOR_INDEXTYPE: z.enum(['hnsw', 'ivfflat']).default('hnsw'),
 	PGVECTOR_INDEXMETRIC: z.enum(['vector_l2_ops', 'vector_ip_ops']).default('vector_l2_ops'),
+	// REDIS -specifi Configuration
+	REDIS_DATABASE: z.number().int().positive().default(1),
 	// Knowledge Graph Configuration
 	KNOWLEDGE_GRAPH_ENABLED: z.boolean().default(false),
 	KNOWLEDGE_GRAPH_TYPE: z.enum(['neo4j', 'in-memory']).default('in-memory'),

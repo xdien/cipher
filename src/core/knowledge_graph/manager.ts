@@ -506,7 +506,6 @@ export class KnowledgeGraphManager {
 				this.stats.connectionUptime = Date.now() - this.connectionStartTime;
 			}
 		} catch (error) {
-			console.log(error);
 			this.logger.warn(`${LOG_PREFIXES.MANAGER} Failed to update statistics:`, error);
 		}
 	}
