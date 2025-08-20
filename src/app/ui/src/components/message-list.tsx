@@ -110,7 +110,7 @@ export function MessageList({ messages, className, maxHeight = "h-full" }: Messa
   }
 
   const isToolPanelExpanded = (messageId: string) => {
-    return toolPanelsExpanded[messageId] ?? false // Default to expanded
+    return toolPanelsExpanded[messageId] ?? false // Default to collapsed for tool panels
   }
 
   // Dynamic styling logic
@@ -334,25 +334,18 @@ export function MessageList({ messages, className, maxHeight = "h-full" }: Messa
   const renderContent = (msg: Message, isToolProgress?: boolean) => {
     // Handle null/undefined content for tool messages
     if (msg.content === null || msg.content === undefined) {
-      // For tool messages with results, show the result or a summary
-      if (msg.role === 'tool' && msg.toolResult) {
-        const resultText = typeof msg.toolResult === 'string' 
-          ? msg.toolResult 
-          : JSON.stringify(msg.toolResult, null, 2);
-        
-        return (
-          <div className="text-sm text-muted-foreground">
-            {resultText.length > 100 
-              ? `${resultText.substring(0, 100)}... (Click to view full details)`
-              : resultText}
-          </div>
-        );
-      }
-      // For tool messages without results, show a placeholder
+      // For tool messages, show a summary of the tool call
       if (msg.role === 'tool') {
         return (
-          <div className="text-sm text-muted-foreground italic">
-            Tool execution in progress...
+          <div className="text-sm text-muted-foreground">
+            <div className="font-medium mb-1">
+              {msg.toolResult ? '✅ Tool execution completed' : '⏳ Tool execution in progress...'}
+            </div>
+            {msg.toolResult && (
+              <div className="text-xs">
+                Click to view arguments and results
+              </div>
+            )}
           </div>
         );
       }
@@ -503,7 +496,7 @@ export function MessageList({ messages, className, maxHeight = "h-full" }: Messa
               <div className={msg.role === 'tool' || isSystemToolMessage ? "flex flex-col w-full" : "flex flex-col max-w-[75%]"}>
                 <div className={getBubbleClass(msg.role, isUser, isAi, isSystem, isToolProgress, isSystemToolMessage)}>
                   {/* Tool header */}
-                  {(isToolRelated || (msg.role === 'system' && msg.content !== null && msg.content !== undefined && (
+                  {(msg.role === 'tool' || isToolRelated || (msg.role === 'system' && msg.content !== null && msg.content !== undefined && (
                     String(msg.content).includes('🔧 Using tool:') || 
                     String(msg.content).includes('📋 Tool Result:')
                   ))) && (
@@ -548,15 +541,21 @@ export function MessageList({ messages, className, maxHeight = "h-full" }: Messa
 
 
                       {/* Tool details (expanded) */}
-                      {isToolRelated && isExpanded && isToolPanelExpanded(msg.id) && (
+                      {(msg.role === 'tool' || isToolRelated) && isToolPanelExpanded(msg.id) && (
                         <div className="mt-3 space-y-2 border-t pt-2">
                           {/* Tool arguments */}
-                          {msg.toolArgs && (
+                          {msg.role === 'tool' && (
                             <div>
                               <div className="text-xs font-medium mb-1">Arguments:</div>
-                              <pre className="whitespace-pre-wrap overflow-auto bg-muted/50 p-2 rounded text-xs">
-                                {JSON.stringify(msg.toolArgs, null, 2)}
-                              </pre>
+                              {msg.toolArgs && typeof msg.toolArgs === 'object' && Object.keys(msg.toolArgs).length > 0 ? (
+                                <pre className="whitespace-pre-wrap overflow-auto bg-muted/50 p-2 rounded text-xs">
+                                  {JSON.stringify(msg.toolArgs, null, 2)}
+                                </pre>
+                              ) : (
+                                <div className="text-xs text-muted-foreground italic bg-muted/30 p-2 rounded">
+                                  No arguments provided
+                                </div>
+                              )}
                             </div>
                           )}
 
@@ -565,6 +564,16 @@ export function MessageList({ messages, className, maxHeight = "h-full" }: Messa
                             <div>
                               <div className="text-xs font-medium mb-1">Result:</div>
                               {renderToolResult(msg.toolResult)}
+                            </div>
+                          )}
+
+                          {/* Show pending result message if no result yet */}
+                          {msg.role === 'tool' && !msg.toolResult && (
+                            <div>
+                              <div className="text-xs font-medium mb-1">Result:</div>
+                              <div className="text-xs text-muted-foreground italic bg-muted/30 p-2 rounded">
+                                ⏳ Waiting for tool execution to complete...
+                              </div>
                             </div>
                           )}
                           

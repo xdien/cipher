@@ -78,6 +78,7 @@ export interface SessionEventMap {
 		sessionId: string;
 		executionId: string;
 		timestamp: number;
+		args?: any; // Tool arguments
 	};
 	'tool:executionCompleted': {
 		toolName: string;
