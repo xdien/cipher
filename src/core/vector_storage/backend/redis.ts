@@ -54,7 +54,6 @@ export class RedisBackend implements VectorStore {
 				port: this.config.port ?? 6379,
 				password: this.config.password || '',
 				username: this.config.username || '',
-				db: this.config.database ?? 0,
 				enableOfflineQueue: false,
 				maxRetriesPerRequest: 3,
 			});

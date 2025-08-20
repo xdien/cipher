@@ -364,8 +364,6 @@ export const RedisBackendSchema = BaseVectorStoreSchema.extend({
 	port: z.number().int().positive().default(6379).optional().describe('Redis port'),
 	username: z.string().optional().describe('Redis username'),
 	password: z.string().optional().describe('Redis password'),
-	database: z.number().int().positive().default(0).optional().describe('Redis database index'),
-
 	distance: z
 		.enum(['COSINE', 'L2', 'IP'])
 		.default('COSINE')

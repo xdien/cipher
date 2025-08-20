@@ -53,7 +53,6 @@ describe('RedisBackend Vector Storage', () => {
 			port: 6379,
 			password: 'testpass',
 			username: 'testuser',
-			database: 1,
 			dimension: 384,
 			collectionName: 'test_vectors',
 			distance: 'COSINE',
@@ -103,7 +102,6 @@ describe('RedisBackend Vector Storage', () => {
 				port: 6379,
 				password: 'testpass',
 				username: 'testuser',
-				db: 1,
 				enableOfflineQueue: false,
 				maxRetriesPerRequest: 3,
 			});
