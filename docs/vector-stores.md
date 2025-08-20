@@ -24,8 +24,7 @@ Cipher supports six vector database types:
 
 The easiest way to get started with Qdrant:
 
-```bash
-# .env configuration
+```env
 VECTOR_STORE_TYPE=qdrant
 VECTOR_STORE_URL=https://your-cluster.qdrant.io
 VECTOR_STORE_API_KEY=your-qdrant-api-key
