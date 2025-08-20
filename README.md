@@ -314,7 +314,7 @@ We welcome contributions! Refer to our [Contributing Guide](./CONTRIBUTING.md) f
 
 Thanks to all these amazing people for contributing to cipher!
 
-[Contributors](https://github.com/campfirein/cipher/graphs/contributors)
+[![Contributors](https://contrib.rocks/image?repo=campfirein/cipher&max=40&columns=10)](https://github.com/campfirein/cipher/graphs/contributors)
 
 ## MseeP.ai Security Assessment Badge
 
