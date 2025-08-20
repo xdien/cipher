@@ -997,7 +997,12 @@ export function getWorkspaceVectorStoreConfigFromEnv(agentConfig?: any): VectorS
 		const port = env.WORKSPACE_VECTOR_STORE_PORT;
 		const username = env.WORKSPACE_VECTOR_STORE_USERNAME;
 		const password = env.WORKSPACE_VECTOR_STORE_PASSWORD;
-		const database = env.REDIS_DATABASE !== undefined ? Number(env.REDIS_DATABASE) : 0;
+		const database =
+			env.WORKSPACE_REDIS_DATABASE !== undefined
+				? env.WORKSPACE_REDIS_DATABASE
+				: env.REDIS_DATABASE !== undefined
+					? Number(env.REDIS_DATABASE)
+					: 0;
 		const envdistance = env.WORKSPACE_VECTOR_STORE_DISTANCE || 'Cosine';
 		let distance: 'L2' | 'IP' | 'COSINE' = 'COSINE';
 		switch (envdistance) {

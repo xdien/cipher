@@ -12,7 +12,6 @@ import { Logger, createLogger } from '../logger/index.js';
 import { env } from '../env.js';
 import { EventManager } from '../events/event-manager.js';
 import { getWorkspaceVectorStoreConfigFromEnv } from './factory.js';
-
 /**
  * Collection type identifier
  */
@@ -105,8 +104,9 @@ export class MultiCollectionVectorManager {
 
 		// Create workspace manager only if workspace memory is enabled
 		if (this.workspaceEnabled) {
-			// Get workspace-specific configuration directly
-			const workspaceConfig = getWorkspaceVectorStoreConfigFromEnv();
+			// Create workspace manager only if workspace memory is enabled
+			const workspaceConfig = getWorkspaceVectorStoreConfigFromEnv(baseConfig);
+
 			this.workspaceManager = new VectorStoreManager(workspaceConfig);
 
 			this.logger.info('MultiCollectionVectorManager: Initialized with multiple collections', {

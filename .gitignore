@@ -28,6 +28,7 @@ out/
 .DS_Store
 
 data/
+
 # Logs
 logs/
 *.log

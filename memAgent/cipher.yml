@@ -74,7 +74,7 @@ llm:
   # baseURL: $LMSTUDIO_BASE_URL
 
 # Embedding configuration: ONLY ONE of the following
-# OpenAI:
+OpenAI:
 
 embedding:
   type: openai
