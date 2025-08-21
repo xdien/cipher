@@ -636,7 +636,7 @@ export function getVectorStoreConfigFromEnv(agentConfig?: any): VectorStoreConfi
 			dimension,
 			distance,
 		};
-	}else if ((storeType as string) === 'redis') {
+	} else if ((storeType as string) === 'redis') {
 		const url = env.VECTOR_STORE_URL;
 		const host = env.VECTOR_STORE_HOST;
 		const port = env.VECTOR_STORE_PORT;

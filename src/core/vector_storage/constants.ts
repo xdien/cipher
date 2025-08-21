@@ -23,7 +23,6 @@ export const LOG_PREFIXES = {
 	PGVECTOR: '[VectorStore:PgVector]',
 	FAISS: '[VectorStore:Faiss]',
 	REDIS: '[VectorStore:Redis]',
-	FAISS: '[VectorStore:Faiss]',
 	MEMORY: '[VectorStore:Memory]',
 } as const;
 
@@ -77,7 +76,6 @@ export const BACKEND_TYPES = {
 	PGVECTOR: 'pgvector',
 	FAISS: 'faiss',
 	REDIS: 'redis',
-	FAISS: 'faiss',
 } as const;
 
 /**

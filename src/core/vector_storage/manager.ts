@@ -89,7 +89,6 @@ export class VectorStoreManager {
 	private static pineconeModule?: any;
 	private static faissModule?: any;
 	private static redisModule?: any;
-	private static faissModule?: any;
 
 	// In VectorStoreManager, track if in-memory is used as fallback or primary
 	private usedFallback = false;

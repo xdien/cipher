@@ -22,7 +22,6 @@ export type {
 	ChromaBackendConfig,
 	PgVectorBackendConfig,
 	PineconeBackendConfig,
-	FaissBackendConfig,
 	RedisBackendConfig,
 	FaissBackendConfig,
 } from '../config.js';
