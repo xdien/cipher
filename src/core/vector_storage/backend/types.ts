@@ -22,6 +22,7 @@ export type {
 	ChromaBackendConfig,
 	PgVectorBackendConfig,
 	PineconeBackendConfig,
+	RedisBackendConfig,
 } from '../config.js';
 
 /**

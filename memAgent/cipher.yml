@@ -74,18 +74,18 @@ llm:
   # baseURL: $LMSTUDIO_BASE_URL
 
 # Embedding configuration: ONLY ONE of the following
-# OpenAI:
+OpenAI:
 
-# embedding:
-#   type: openai
-#   model: text-embedding-3-small
-#   apiKey: $OPENAI_API_KEY
-
-Gemini:
 embedding:
-  type: gemini
-  model: gemini-embedding-001
-  apiKey: $GEMINI_API_KEY
+  type: openai
+  model: text-embedding-3-small
+  apiKey: $OPENAI_API_KEY
+
+# Gemini:
+# embedding:
+#   type: gemini
+#   model: gemini-embedding-001
+#   apiKey: $GEMINI_API_KEY
 
 # Ollama:
 # embedding:

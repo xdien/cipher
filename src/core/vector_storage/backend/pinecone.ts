@@ -351,7 +351,6 @@ export class PineconeBackend implements VectorStore {
 				error: error instanceof Error ? error.message : String(error),
 				vectorCount: vectors.length,
 			});
-			console.log(error);
 			throw new VectorStoreError('Failed to insert vectors', 'insert', error as Error);
 		}
 	}

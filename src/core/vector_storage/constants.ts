@@ -21,6 +21,7 @@ export const LOG_PREFIXES = {
 	CHROMA: '[VectorStore:Chroma]',
 	PINECONE: '[VectorStore:Pinecone]',
 	PGVECTOR: '[VectorStore:PgVector]',
+	REDIS: '[VectorStore:Redis]',
 	MEMORY: '[VectorStore:Memory]',
 } as const;
 
@@ -72,6 +73,7 @@ export const BACKEND_TYPES = {
 	IN_MEMORY: 'in-memory',
 	MILVUS: 'milvus',
 	PGVECTOR: 'pgvector',
+	REDIS: 'redis',
 } as const;
 
 /**

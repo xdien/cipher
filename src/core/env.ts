@@ -122,6 +122,8 @@ const envSchema = z.object({
 	WORKSPACE_VECTOR_STORE_DISTANCE: z.enum(['Cosine', 'Euclidean', 'Dot', 'Manhattan']).optional(),
 	WORKSPACE_VECTOR_STORE_ON_DISK: z.boolean().optional(),
 	WORKSPACE_VECTOR_STORE_MAX_VECTORS: z.number().optional(),
+	// Redis-specific Configuration
+	WORKSPACE_REDIS_DATABASE: z.number().optional(),
 	// Pinecone-specific Configuration
 	WORKSPACE_PINECONE_PROVIDER: z.string().optional(),
 	WORKSPACE_PINECONE_REGION: z.string().optional(),
