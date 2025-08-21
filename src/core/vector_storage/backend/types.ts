@@ -24,6 +24,7 @@ export type {
 	PineconeBackendConfig,
 	FaissBackendConfig,
 	RedisBackendConfig,
+	FaissBackendConfig,
 } from '../config.js';
 
 /**

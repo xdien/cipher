@@ -421,6 +421,7 @@ const BackendConfigSchema = z
 			PgVectorBackendSchema,
 			FaissBackendSchema,
 			RedisBackendSchema,
+			FaissBackendSchema,
 		],
 		{
 			errorMap: (issue, ctx) => {
@@ -509,6 +510,17 @@ const BackendConfigSchema = z
 					code: z.ZodIssueCode.custom,
 					message: "Redis backend requires either 'url' or both 'host' and 'port' to be specified",
 					path: ['url'],
+				});
+			}
+		}
+		// Validate Faiss backend requirements
+		if (data.type === 'faiss') {
+			if (!data.baseStoragePath) {
+				console.log('Faiss backend requires baseStoragePath');
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: "Faiss backend requires 'baseStoragePath' to be specified",
+					path: ['baseStoragePath'],
 				});
 			}
 		}

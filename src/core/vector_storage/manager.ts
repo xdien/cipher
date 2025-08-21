@@ -89,6 +89,7 @@ export class VectorStoreManager {
 	private static pineconeModule?: any;
 	private static faissModule?: any;
 	private static redisModule?: any;
+	private static faissModule?: any;
 
 	// In VectorStoreManager, track if in-memory is used as fallback or primary
 	private usedFallback = false;
@@ -583,6 +584,22 @@ export class VectorStoreManager {
 
 				return new RedisBackend(config);
 			}
+
+			case BACKEND_TYPES.FAISS: {
+				// Use faiss backend
+				if (!VectorStoreManager.faissModule) {
+					this.logger.debug(`${LOG_PREFIXES.MANAGER} Lazy loading in-memory module`);
+					const { FaissBackend } = await import('./backend/faiss.js');
+					VectorStoreManager.faissModule = FaissBackend;
+				}
+
+				const FaissBackend = VectorStoreManager.faissModule;
+				this.backendMetadata.type = BACKEND_TYPES.FAISS;
+				this.backendMetadata.isFallback = false;
+
+				return new FaissBackend(config);
+			}
+
 			case BACKEND_TYPES.IN_MEMORY:
 			default: {
 				// Use in-memory backend
