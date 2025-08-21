@@ -538,7 +538,6 @@ export class VectorStoreManager {
 					throw error; // Let connection handler deal with fallback
 				}
 			}
-
 			case BACKEND_TYPES.PGVECTOR: {
 				// Lazy load PgVector module
 				if (!VectorStoreManager.pgVectorModule) {
@@ -553,7 +552,6 @@ export class VectorStoreManager {
 
 				return new PgVectorBackend(config);
 			}
-
 			case BACKEND_TYPES.FAISS: {
 				// Use faiss backend
 				if (!VectorStoreManager.faissModule) {
@@ -568,7 +566,6 @@ export class VectorStoreManager {
 
 				return new FaissBackend(config);
 			}
-
 			case BACKEND_TYPES.REDIS: {
 				// Lazy load Redis module
 				if (!VectorStoreManager.redisModule) {
@@ -583,22 +580,6 @@ export class VectorStoreManager {
 
 				return new RedisBackend(config);
 			}
-
-			case BACKEND_TYPES.FAISS: {
-				// Use faiss backend
-				if (!VectorStoreManager.faissModule) {
-					this.logger.debug(`${LOG_PREFIXES.MANAGER} Lazy loading in-memory module`);
-					const { FaissBackend } = await import('./backend/faiss.js');
-					VectorStoreManager.faissModule = FaissBackend;
-				}
-
-				const FaissBackend = VectorStoreManager.faissModule;
-				this.backendMetadata.type = BACKEND_TYPES.FAISS;
-				this.backendMetadata.isFallback = false;
-
-				return new FaissBackend(config);
-			}
-
 			case BACKEND_TYPES.IN_MEMORY:
 			default: {
 				// Use in-memory backend

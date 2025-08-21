@@ -68,5 +68,4 @@ env.example.txt
 chroma-data/
 qdrant-data/
 faiss-data/
-
 volumes/

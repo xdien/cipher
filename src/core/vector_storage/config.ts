@@ -501,6 +501,7 @@ const BackendConfigSchema = z
 				});
 			}
 		}
+
 		// Validate Redis backend requirements
 		if (data.type === 'redis') {
 			// Redis requires either a connection URL or host and port
@@ -512,17 +513,7 @@ const BackendConfigSchema = z
 				});
 			}
 		}
-		// Validate Faiss backend requirements
-		if (data.type === 'faiss') {
-			if (!data.baseStoragePath) {
-				console.log('Faiss backend requires baseStoragePath');
-				ctx.addIssue({
-					code: z.ZodIssueCode.custom,
-					message: "Faiss backend requires 'baseStoragePath' to be specified",
-					path: ['baseStoragePath'],
-				});
-			}
-		}
+
 		// Validate collection name format
 		if (!/^[a-zA-Z0-9_-]+$/.test(data.collectionName)) {
 			ctx.addIssue({
