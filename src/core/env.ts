@@ -58,7 +58,7 @@ const envSchema = z.object({
 	STORAGE_DATABASE_SSL: z.boolean().default(false),
 	// Vector Storage Configuration
 	VECTOR_STORE_TYPE: z
-		.enum(['qdrant', 'milvus', 'chroma', 'pinecone', 'in-memory'])
+		.enum(['qdrant', 'milvus', 'chroma', 'pinecone', 'in-memory', 'faiss'])
 		.default('in-memory'),
 	VECTOR_STORE_HOST: z.string().optional(),
 	VECTOR_STORE_PORT: z.number().optional(),
@@ -77,6 +77,9 @@ const envSchema = z.object({
 	// PGVECTOR -specific Configuration
 	PGVECTOR_INDEXTYPE: z.enum(['hnsw', 'ivfflat']).default('hnsw'),
 	PGVECTOR_INDEXMETRIC: z.enum(['vector_l2_ops', 'vector_ip_ops']).default('vector_l2_ops'),
+	PINECONE_NAMESPACE: z.string().default('default'),
+	// Faiss-specific Configuration
+	FAISS_BASE_STORAGE_PATH: z.string().optional(),
 	// Knowledge Graph Configuration
 	KNOWLEDGE_GRAPH_ENABLED: z.boolean().default(false),
 	KNOWLEDGE_GRAPH_TYPE: z.enum(['neo4j', 'in-memory']).default('in-memory'),
@@ -258,6 +261,9 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 				return process.env.VECTOR_STORE_MAX_VECTORS
 					? parseInt(process.env.VECTOR_STORE_MAX_VECTORS, 10)
 					: 10000;
+			// Faiss-specific Configuration
+			case 'FAISS_BASE_STORAGE_PATH':
+				return process.env.FAISS_BASE_STORAGE_PATH;
 			// Knowledge Graph Configuration
 			case 'KNOWLEDGE_GRAPH_ENABLED':
 				return process.env.KNOWLEDGE_GRAPH_ENABLED === 'true';
@@ -491,6 +497,8 @@ export const validateEnv = () => {
 		VECTOR_STORE_MAX_VECTORS: process.env.VECTOR_STORE_MAX_VECTORS
 			? parseInt(process.env.VECTOR_STORE_MAX_VECTORS, 10)
 			: 10000,
+		// Faiss-specific Configuration
+		FAISS_BASE_STORAGE_PATH: process.env.FAISS_BASE_STORAGE_PATH,
 		// Knowledge Graph Configuration
 		KNOWLEDGE_GRAPH_ENABLED: process.env.KNOWLEDGE_GRAPH_ENABLED === 'true',
 		KNOWLEDGE_GRAPH_TYPE: process.env.KNOWLEDGE_GRAPH_TYPE || 'in-memory',

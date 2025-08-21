@@ -116,7 +116,7 @@ export class MultiCollectionVectorManager {
 					? env.REFLECTION_VECTOR_STORE_COLLECTION
 					: 'disabled',
 				workspaceCollection: env.WORKSPACE_VECTOR_STORE_COLLECTION,
-				dimension: baseConfig.dimension,
+				dimension: workspaceConfig.dimension, // Use dimension from workspaceConfig
 			});
 		} else {
 			this.workspaceManager = null;

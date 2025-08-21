@@ -10,6 +10,7 @@ Cipher supports six vector database types:
 - **ChromaDB** - Developer-friendly open-source embedding database
 - **Pinecone** - Managed vector database service
 - **Pgvector** - PostgreSQL extension with ACID compliance and enterprise features
+- **Faiss** - FaissDB 
 - **In-Memory** - Built-in solution for development/testing
 
 ## Vector Store Configurations
@@ -23,8 +24,7 @@ Cipher supports six vector database types:
 
 The easiest way to get started with Qdrant:
 
-```bash
-# .env configuration
+```env
 VECTOR_STORE_TYPE=qdrant
 VECTOR_STORE_URL=https://your-cluster.qdrant.io
 VECTOR_STORE_API_KEY=your-qdrant-api-key
@@ -304,6 +304,25 @@ VECTOR_STORE_URL=postgresql://<service-endpoint>
 2. Create database and user with appropriate permissions
 3. Add configuration to your `.env` file or `json` mcp config
 4. Tables and indexes are created automatically on first use
+</details>
+
+<details>
+<summary><strong>🔧 FaissDB Configuration</strong></summary>
+
+#### ⚙️ FaissDB Configuration
+Build a PostgreSQL docker with pgvector from local 
+
+```bash
+# Connection  format
+VECTOR_STORE_TYPE=faiss
+FAISS_BASE_STORAGE_PATH=path/to/your/folder
+
+```
+
+**Specifications:**
+- **Index types**: Based on metric selection
+- **Automatic folder and index creation** if not exists
+
 </details>
 
 <details>

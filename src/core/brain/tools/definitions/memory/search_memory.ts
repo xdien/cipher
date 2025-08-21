@@ -324,25 +324,35 @@ export const searchMemoryTool: InternalTool = {
 			// Retrieve knowledge for each query embedding
 			for (const queryEmbedding of queryEmbeddings) {
 				// Search knowledge collection
-				const knowledgeResults = await knowledgeStore.search(queryEmbedding, topK * 2);
+				try {
+					const knowledgeResults = await knowledgeStore.search(queryEmbedding, topK * 2);
 
-				// Mark results with source and add to allResults
-				const markedResults = knowledgeResults.map((result: any) => ({
-					...result,
-					payload: {
-						...result.payload,
-						source: 'knowledge',
-						memoryType: 'knowledge',
-					},
-				}));
+					// Mark results with source and add to allResults
+					const markedResults = knowledgeResults.map((result: any) => ({
+						...result,
+						payload: {
+							...result.payload,
+							source: 'knowledge',
+							memoryType: 'knowledge',
+						},
+					}));
 
-				// Accumulate results instead of overwriting
-				allResults.push(...markedResults);
+					// Accumulate results instead of overwriting
+					allResults.push(...markedResults);
 
-				logger.debug('MemorySearch: Knowledge collection search completed for query embedding', {
-					resultsFound: knowledgeResults.length,
-					totalAccumulatedResults: allResults.length,
-				});
+					logger.debug('MemorySearch: Knowledge collection search completed for query embedding', {
+						resultsFound: knowledgeResults.length,
+						totalAccumulatedResults: allResults.length,
+					});
+				} catch (searchError) {
+					console.log('MemorySearch: Knowledge store search failed', {
+						error: searchError instanceof Error ? searchError.message : String(searchError),
+						query: originalQuery.substring(0, 50),
+					});
+					// Depending on whether we want to fail fast or continue with partial results:
+					// For now, re-throw to stop the current search process entirely if one query fails
+					throw searchError;
+				}
 			}
 
 			const searchTime = Date.now() - searchStartTime;
@@ -400,10 +410,10 @@ export const searchMemoryTool: InternalTool = {
 				.slice(0, topK) // Take top K results overall
 				.map(result => {
 					const rawPayload = result.payload || {};
-
+					console.log('search rawPayload', rawPayload);
 					// All data is V2 format after collection cleanup - no migration needed
 					const payload = rawPayload as KnowledgePayload;
-
+					console.log('search payload', payload);
 					// Return unified result format with V2 payload data
 					const baseResult = {
 						id: result.id || payload.id || 'unknown',
@@ -415,7 +425,7 @@ export const searchMemoryTool: InternalTool = {
 						source: 'knowledge' as const,
 						memoryType: 'knowledge' as const,
 					};
-
+					console.log('search baseResult', baseResult);
 					// Add knowledge-specific fields
 					const knowledgePayload = payload as KnowledgePayload;
 					return {

@@ -23,6 +23,7 @@ export type {
 	PgVectorBackendConfig,
 	PineconeBackendConfig,
 	RedisBackendConfig,
+	FaissBackendConfig,
 } from '../config.js';
 
 /**
