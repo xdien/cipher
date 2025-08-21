@@ -421,7 +421,6 @@ const BackendConfigSchema = z
 			PgVectorBackendSchema,
 			FaissBackendSchema,
 			RedisBackendSchema,
-			FaissBackendSchema,
 		],
 		{
 			errorMap: (issue, ctx) => {
