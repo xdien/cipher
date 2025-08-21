@@ -278,12 +278,20 @@ PINECONE_REGION=us-east-1
 ### ☁️ Managed PostgreSQL Services
 
 #### ⚙️ PgVector Configuration
+Build a PgVector Docker container in local 
+```bash
+docker run --name pgvector \
+  -e POSTGRES_PASSWORD=password \
+  -e POSTGRES_USER=user \
+  -e POSTGRES_DB=cipherDB \
+  -p 5432:5432 \
+  pgvector/pgvector:pg16
+```
 Build a PostgreSQL docker with pgvector from local 
 ```bash
 # Connection URL format
 VECTOR_STORE_TYPE=pgvector
-VECTOR_STORE_URL=postgresql://<username>:<password>@localhost:<port>/<database_name>
-
+VECTOR_STORE_URL=postgresql://user:password@localhost:5432/cipherDB
 ```
 
 Most cloud PostgreSQL services support pgvector extension:
