@@ -636,6 +636,50 @@ export function getVectorStoreConfigFromEnv(agentConfig?: any): VectorStoreConfi
 			dimension,
 			distance,
 		};
+	}else if ((storeType as string) === 'redis') {
+		const url = env.VECTOR_STORE_URL;
+		const host = env.VECTOR_STORE_HOST;
+		const port = env.VECTOR_STORE_PORT;
+		const username = env.VECTOR_STORE_USERNAME;
+		const password = env.VECTOR_STORE_PASSWORD;
+		const envdistance = env.WORKSPACE_VECTOR_STORE_DISTANCE || 'Cosine';
+		let distance: 'L2' | 'IP' | 'COSINE' = 'COSINE';
+		switch (envdistance) {
+			case 'Euclidean':
+				distance = 'L2';
+				break;
+			case 'Dot':
+				distance = 'IP';
+				break;
+			case 'Cosine':
+				distance = 'COSINE';
+				break;
+			default:
+				distance = 'COSINE';
+		}
+
+		if (!url && !host) {
+			// Return in-memory config with fallback marker
+			return {
+				type: 'in-memory',
+				collectionName,
+				dimension,
+				maxVectors,
+				// Add a special property to indicate this is a fallback from Redis
+				_fallbackFrom: 'redis',
+			} as any;
+		}
+		return {
+			type: 'redis',
+			url: url || '',
+			host,
+			port,
+			username,
+			password,
+			collectionName,
+			dimension,
+			distance,
+		};
 	} else if ((storeType as string) === 'faiss') {
 		const baseStoragePath = env.FAISS_BASE_STORAGE_PATH;
 		const envmetric = env.VECTOR_STORE_DISTANCE;
@@ -680,50 +724,6 @@ export function getVectorStoreConfigFromEnv(agentConfig?: any): VectorStoreConfi
 			collectionName,
 			dimension,
 			baseStoragePath,
-			distance,
-		};
-	} else if ((storeType as string) === 'redis') {
-		const url = env.VECTOR_STORE_URL;
-		const host = env.VECTOR_STORE_HOST;
-		const port = env.VECTOR_STORE_PORT;
-		const username = env.VECTOR_STORE_USERNAME;
-		const password = env.VECTOR_STORE_PASSWORD;
-		const envdistance = env.WORKSPACE_VECTOR_STORE_DISTANCE || 'Cosine';
-		let distance: 'L2' | 'IP' | 'COSINE' = 'COSINE';
-		switch (envdistance) {
-			case 'Euclidean':
-				distance = 'L2';
-				break;
-			case 'Dot':
-				distance = 'IP';
-				break;
-			case 'Cosine':
-				distance = 'COSINE';
-				break;
-			default:
-				distance = 'COSINE';
-		}
-
-		if (!url && !host) {
-			// Return in-memory config with fallback marker
-			return {
-				type: 'in-memory',
-				collectionName,
-				dimension,
-				maxVectors,
-				// Add a special property to indicate this is a fallback from Redis
-				_fallbackFrom: 'redis',
-			} as any;
-		}
-		return {
-			type: 'redis',
-			url: url || '',
-			host,
-			port,
-			username,
-			password,
-			collectionName,
-			dimension,
 			distance,
 		};
 	} else {
