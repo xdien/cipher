@@ -10,7 +10,8 @@ Cipher supports six vector database types:
 - **ChromaDB** - Developer-friendly open-source embedding database
 - **Pinecone** - Managed vector database service
 - **Pgvector** - PostgreSQL extension with ACID compliance and enterprise features
-- **Faiss** - FaissDB 
+- **Faiss** - FaissDB
+- **Redis** - Redis 
 - **In-Memory** - Built-in solution for development/testing
 
 ## Vector Store Configurations
@@ -332,7 +333,62 @@ FAISS_BASE_STORAGE_PATH=path/to/your/folder
 - **Automatic folder and index creation** if not exists
 
 </details>
+<details>
+<summary><strong>🔧 Redis Vector Store </strong></summary>
 
+Redis Stack is supported as a vector storage backend in Cipher, using RediSearch for fast similarity search and metadata filtering. This backend is ideal for scalable deployments and supports multiple distance metrics.
+
+### 🐳 Redis Local (Docker)
+Run Redis Stack with Docker:
+```sh
+docker run -d --name redis-stack -p 6379:6379 redis/redis-stack:latest
+```
+---
+### ⚙️ Configuration (for local and cloud)
+
+Add to your `.env` file:
+
+```bash
+VECTOR_STORE_TYPE=redis
+
+#connect using host and port 
+VECTOR_STORE_HOST=localhost
+VECTOR_STORE_PORT=6379
+VECTOR_STORE_USERNAME=<your-username> # optional
+VECTOR_STORE_PASSWORD=<your-password> # optional
+
+#connect if using url
+VECTOR_STORE_URL=redis://localhost:6379
+
+VECTOR_STORE_DISTANCE=COSINE   # Options: COSINE, L2, IP
+```
+
+For workspace-specific configuration: 
+```bash
+WORKSPACE_VECTOR_STORE_TYPE=redis
+
+# Connect using host and port 
+WORKSPACE_VECTOR_STORE_HOST=localhost
+WORKSPACE_VECTOR_STORE_PORT=6379
+WORKSPACE_VECTOR_STORE_USERNAME=<your-username> # optional
+WORKSPACE_VECTOR_STORE_PASSWORD=<your-password> # optional
+
+# Connect using url
+WORKSPACE_VECTOR_STORE_URL=redis://localhost:6379
+
+WORKSPACE_VECTOR_STORE_DISTANCE=COSINE   # Options: COSINE, L2, IP
+```
+
+---
+
+### 🧩 Supported Features
+
+- **Distance Metrics:** COSINE, L2 (Euclidean), IP (Inner Product)
+- **Vector Operations:** insert, update, search, delete, list
+- **Metadata Filtering:** range queries, any filters
+- **Pagination & Sorting:** via RediSearch
+
+</details>
 <details>
 <summary><strong>🔧 In-Memory Vector Store</strong></summary>
 
