@@ -14,6 +14,7 @@ import { AwsService } from './aws.js';
 import { AzureService } from './azure.js';
 import { GeminiService } from './gemini.js';
 import { LMStudioService } from './lmstudio.js';
+import { DeepseekService } from './deepseek.js';
 
 function extractApiKey(config: LLMConfig): string {
 	const provider = config.provider.toLowerCase();
@@ -81,6 +82,11 @@ function getOpenAICompatibleBaseURL(llmConfig: LLMConfig): string {
 	// Check for environment variable as fallback for OpenAI
 	if (provider === 'openai' && env.OPENAI_BASE_URL) {
 		return env.OPENAI_BASE_URL.replace(/\/$/, '');
+	}
+
+	// TODO: Consider if this is necessary
+	if (provider === 'deepseek') {
+		return 'https://api.deepseek.com';
 	}
 
 	return '';
