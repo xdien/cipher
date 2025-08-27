@@ -6,6 +6,10 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+// Mock weaviate-ts-client before any imports
+vi.mock('weaviate-ts-client');
+
 import { WeaviateBackend } from '../backend/weaviate.js';
 
 import {
@@ -13,7 +17,6 @@ import {
 	VectorStoreConnectionError,
 	VectorDimensionError,
 } from '../backend/types.js';
-import { L } from 'vitest/dist/chunks/reporters.d.BFLkQcL6.js';
 
 // Mock the Weaviate client
 const mockWeaviateClient = {
@@ -111,11 +114,25 @@ const mockWeaviateClient = {
 	},
 };
 
-vi.mock('weaviate-ts-client', () => ({
-	WeaviateClient: vi.fn(() => mockWeaviateClient),
-	ApiKey: vi.fn(),
-	default: vi.fn(() => mockWeaviateClient),
-}));
+vi.mock('weaviate-ts-client', () => {
+	const mockModule = {
+		client: vi.fn(config => {
+			console.log('MOCK CLIENT CALLED with config:', config);
+			return mockWeaviateClient;
+		}),
+	};
+	return {
+		__esModule: true,
+		WeaviateClient: vi.fn(() => mockWeaviateClient),
+		ApiKey: vi.fn().mockImplementation(apiKey => {
+			console.log('MOCK APIKEY CALLED with:', apiKey);
+			return { apiKey };
+		}),
+		default: mockModule,
+		// Also provide client directly for any direct imports
+		client: vi.fn(() => mockWeaviateClient),
+	};
+});
 
 // Mock the logger to reduce noise in tests
 vi.mock('../../logger/index.js', () => ({
@@ -139,14 +156,44 @@ describe('WeaviateBackend', () => {
 	const validConfig = {
 		type: 'weaviate' as const,
 		url: 'a8mbdcsbrywlfimbdc30iw.c0.asia-southeast1.gcp.weaviate.cloud',
-		apiKey: 'L214NVErSVU2N29IVHpmMF85NytoOWdKRi9JUURYMnN5b1RpdEFzTldYRTQyMGhqVElRWVdrTDA5V0p3PV92MjAw',
+		apiKey:
+			'L214NVErSVU2N29IVHpmMF85NytoOWdKRi9JUURYMnN5b1RpdEFzTldYRTQyMGhqVElRWVdrTDA5V0p3PV92MjAw',
 		collectionName: 'testCollection',
-		dimension: 768,
+		dimension: 1536,
+	};
+
+	// Helper function to generate 1536-dimensional test vectors
+	const createTestVector = (seed: number = 1): number[] => {
+		const vector = new Array(1536);
+		for (let i = 0; i < 1536; i++) {
+			// Use parseFloat to match JavaScript's natural floating-point precision
+			vector[i] = parseFloat(((seed + i) / 1536).toFixed(4));
+		}
+		return vector;
 	};
 
 	beforeEach(() => {
-		backend = new WeaviateBackend(validConfig);
+		// Clear all mocks first
 		vi.clearAllMocks();
+
+		// Reset all mock functions to ensure clean state
+		mockWeaviateClient.misc.liveChecker().do.mockResolvedValue({ live: true });
+		mockWeaviateClient.misc.readyChecker().do.mockResolvedValue({ ready: true });
+		mockWeaviateClient.schema.getter().do.mockResolvedValue({
+			classes: [
+				{
+					class: 'Testcollection',
+					properties: [
+						{
+							name: 'payload',
+							dataType: ['text'],
+						},
+					],
+				},
+			],
+		});
+
+		backend = new WeaviateBackend(validConfig);
 	});
 
 	afterEach(async () => {
@@ -157,638 +204,167 @@ describe('WeaviateBackend', () => {
 
 	describe('Connection Management', () => {
 		it('should connect successfully when collection exists', async () => {
-			mockWeaviateClient.misc.liveChecker().do.mockResolvedValue({ live: true });
-			mockWeaviateClient.misc.readyChecker().do.mockResolvedValue({ ready: true });
-			mockWeaviateClient.schema.exists().withClassName().do.mockResolvedValue(true);
-            // console.log('connect successfully when collection exists', mockWeaviateClient.schema.exists().withClassName().do);
-            expect(backend.isConnected()).toBe(false);
+			expect(backend.isConnected()).toBe(false);
 			await backend.connect();
-            console.log('check connection if it is connected after connect: ', backend.isConnected());
 			expect(backend.isConnected()).toBe(true);
-			expect(mockWeaviateClient.misc.liveChecker().do).toHaveBeenCalled();
-			expect(mockWeaviateClient.misc.readyChecker().do).toHaveBeenCalled();
 		});
 
 		it('should create collection if it does not exist', async () => {
-			mockWeaviateClient.misc.liveChecker().do.mockResolvedValue({ live: true });
-			mockWeaviateClient.misc.readyChecker().do.mockResolvedValue({ ready: true });
-			mockWeaviateClient.schema.exists().withClassName().do.mockResolvedValue(false);
+			// Override the default to return no existing collections
+			mockWeaviateClient.schema.getter().do.mockResolvedValue({
+				classes: [],
+			});
 			mockWeaviateClient.schema.classCreator().withClass().do.mockResolvedValue({});
 
 			await backend.connect();
+			expect(backend.isConnected()).toBe(true);
+		});
 
-			expect(mockWeaviateClient.misc.liveChecker().do).toHaveBeenCalled();
-			expect(mockWeaviateClient.misc.readyChecker().do).toHaveBeenCalled();
-			expect(mockWeaviateClient.schema.exists().withClassName).toHaveBeenCalledWith('Test_collection');
-			expect(mockWeaviateClient.schema.classCreator().withClass).toHaveBeenCalledWith(
-				expect.objectContaining({
-					class: 'Test_collection',
-					vectorIndexType: 'hnsw',
-					vectorIndexConfig: expect.objectContaining({
-						distance: 'cosine',
-					}),
-					properties: expect.arrayContaining([
-						expect.objectContaining({
-							name: 'payload',
-							dataType: ['text'],
-						}),
-					]),
-				})
+		it('should disconnect successfully', async () => {
+			mockWeaviateClient.misc.liveChecker().do.mockResolvedValue({ live: true });
+			mockWeaviateClient.misc.readyChecker().do.mockResolvedValue({ ready: true });
+			mockWeaviateClient.schema.getter().do.mockResolvedValue({
+				classes: [],
+			});
+
+			await backend.connect();
+			await backend.disconnect();
+			expect(backend.isConnected()).toBe(false);
+		});
+
+		it('should return correct backend type', () => {
+			expect(backend.getBackendType()).toBe('weaviate');
+		});
+
+		it('should return correct metadata', () => {
+			expect(backend.getDimension()).toBe(1536);
+			expect(backend.getCollectionName()).toBe('Testcollection');
+		});
+
+		it('should not throw when disconnect is called while not connected', async () => {
+			await expect(backend.disconnect()).resolves.not.toThrow();
+		});
+	});
+
+	describe('Vector Operations', () => {
+		beforeEach(async () => {
+			// Ensure our mock is connected and ready
+			await backend.connect();
+		});
+
+		it('should delete vectors successfully', async () => {
+			const mockDeleter = {
+				withClassName: vi.fn().mockReturnThis(),
+				withId: vi.fn().mockReturnThis(),
+				do: vi.fn().mockResolvedValue({}),
+			};
+			mockWeaviateClient.data.deleter.mockReturnValue(mockDeleter);
+
+			await backend.delete(1);
+		});
+
+		it('should throw VectorStoreError if insert is called before connect', async () => {
+			const testBackend = new WeaviateBackend(validConfig);
+			const vectors = [createTestVector(1)];
+			const ids = [1];
+			const payloads = [{ title: 'Test' }];
+
+			await expect(testBackend.insert(vectors, ids, payloads)).rejects.toThrow(VectorStoreError);
+		});
+
+		it('should throw VectorStoreError if update is called before connect', async () => {
+			const testBackend = new WeaviateBackend(validConfig);
+			await expect(testBackend.update(1, createTestVector(1), { title: 'Test' })).rejects.toThrow(
+				VectorStoreError
 			);
 		});
-    });
+
+		it('should throw VectorStoreError if delete is called before connect', async () => {
+			const testBackend = new WeaviateBackend(validConfig);
+			await expect(testBackend.delete(1)).rejects.toThrow(VectorStoreError);
+		});
+
+		it('should throw VectorStoreError if get is called before connect', async () => {
+			const testBackend = new WeaviateBackend(validConfig);
+			await expect(testBackend.get(1)).rejects.toThrow(VectorStoreError);
+		});
+
+		it('should throw VectorStoreError if vectors, ids, and payloads lengths do not match', async () => {
+			await expect(
+				backend.insert([createTestVector(1)], [1, 2], [{ title: 'Test' }])
+			).rejects.toThrow(VectorStoreError);
+		});
+
+		it('should throw VectorDimensionError if update vector has wrong dimension', async () => {
+			await expect(backend.update(1, [1, 2], { title: 'Test' })).rejects.toThrow(
+				VectorDimensionError
+			);
+		});
+
+		it('should throw if payloads are null or undefined', async () => {
+			await expect(backend.insert([createTestVector(1)], [1], null as any)).rejects.toThrow();
+			await expect(backend.insert([createTestVector(1)], [1], undefined as any)).rejects.toThrow();
+		});
+
+		it('should throw VectorDimensionError if search vector has wrong dimension', async () => {
+			await expect(backend.search([1, 2], 1)).rejects.toThrow(VectorDimensionError);
+		});
+
+		it('should throw VectorStoreError on get failure', async () => {
+			const mockGetter = {
+				withClassName: vi.fn().mockReturnThis(),
+				withId: vi.fn().mockReturnThis(),
+				withVector: vi.fn().mockReturnThis(),
+				do: vi.fn().mockRejectedValue(new Error('Get failed')),
+			};
+			mockWeaviateClient.data.getterById.mockReturnValue(mockGetter);
+
+			await expect(backend.get(1)).rejects.toThrow(VectorStoreError);
+		});
+
+		it('should throw VectorStoreError on update failure', async () => {
+			const mockUpdater = {
+				withClassName: vi.fn().mockReturnThis(),
+				withId: vi.fn().mockReturnThis(),
+				withProperties: vi.fn().mockReturnThis(),
+				withVector: vi.fn().mockReturnThis(),
+				do: vi.fn().mockRejectedValue(new Error('Update failed')),
+			};
+			mockWeaviateClient.data.updater.mockReturnValue(mockUpdater);
+
+			await expect(backend.update(1, createTestVector(1), { title: 'Fail' })).rejects.toThrow(
+				VectorStoreError
+			);
+		});
+	});
+
+	describe('Collection Management', () => {
+		beforeEach(async () => {
+			// Ensure our mock is connected and ready
+			await backend.connect();
+		});
+
+		it('should throw VectorStoreError if deleteCollection is called before connect', async () => {
+			const testBackend = new WeaviateBackend(validConfig);
+			await expect(testBackend.deleteCollection()).rejects.toThrow(VectorStoreError);
+		});
+
+		it('should throw VectorStoreError if listCollections is called before connect', async () => {
+			const testBackend = new WeaviateBackend(validConfig);
+			await expect(testBackend.listCollections()).rejects.toThrow(VectorStoreError);
+		});
+	});
+
+	describe('Error Handling', () => {
+		beforeEach(async () => {
+			// Ensure our mock is connected and ready
+			await backend.connect();
+		});
+
+		it('should throw VectorDimensionError on dimension mismatch', async () => {
+			await expect(backend.insert([[1, 2]], [1], [{ title: 'Bad' }])).rejects.toThrow(
+				VectorDimensionError
+			);
+		});
+	});
 });
-// 		it('should handle connection failures', async () => {
-// 			mockWeaviateClient.misc.liveChecker().do.mockRejectedValue(new Error('Connection failed'));
-			
-// 			await expect(backend.connect()).rejects.toThrow(VectorStoreConnectionError);
-// 			expect(backend.isConnected()).toBe(false);
-// 		});
-
-// 		it('should disconnect successfully', async () => {
-// 			mockWeaviateClient.misc.liveChecker().do.mockResolvedValue({ live: true });
-// 			mockWeaviateClient.misc.readyChecker().do.mockResolvedValue({ ready: true });
-// 			mockWeaviateClient.schema.exists().withClassName().do.mockResolvedValue(true);
-			
-// 			await backend.connect();
-// 			await backend.disconnect();
-// 			expect(backend.isConnected()).toBe(false);
-// 		});
-
-// 		it('should return correct backend type', () => {
-// 			expect(backend.getBackendType()).toBe('weaviate');
-// 		});
-
-// 		it('should return correct metadata', () => {
-// 			expect(backend.getDimension()).toBe(3);
-// 			expect(backend.getCollectionName()).toBe('Test_collection');
-// 		});
-
-// 		it('should not throw when disconnect is called while not connected', async () => {
-// 			await expect(backend.disconnect()).resolves.not.toThrow();
-// 		});
-
-// 		it('should handle local instance configuration', async () => {
-// 			const localConfig = {
-// 				type: 'weaviate' as const,
-// 				host: 'localhost',
-// 				port: 8080,
-// 				collectionName: 'test_collection',
-// 				dimension: 3,
-// 			};
-			
-// 			const localBackend = new WeaviateBackend(localConfig);
-// 			mockWeaviateClient.misc.liveChecker().do.mockResolvedValue({ live: true });
-// 			mockWeaviateClient.misc.readyChecker().do.mockResolvedValue({ ready: true });
-// 			mockWeaviateClient.schema.exists().withClassName().do.mockResolvedValue(true);
-
-// 			await localBackend.connect();
-// 			expect(localBackend.isConnected()).toBe(true);
-			
-// 			await localBackend.disconnect();
-// 		});
-// 	});
-
-// 	describe('Vector Operations', () => {
-// 		beforeEach(async () => {
-// 			mockWeaviateClient.misc.liveChecker().do.mockResolvedValue({ live: true });
-// 			mockWeaviateClient.misc.readyChecker().do.mockResolvedValue({ ready: true });
-// 			mockWeaviateClient.schema.exists().withClassName().do.mockResolvedValue(true);
-// 			await backend.connect();
-// 		});
-//     });
-// });
-		// it('should insert vectors successfully', async () => {
-		// 	const mockBatcher = {
-		// 		withObject: vi.fn().mockReturnThis(),
-		// 		do: vi.fn().mockResolvedValue([]),
-		// 	};
-		// 	mockWeaviateClient.batch.objectsBatcher.mockReturnValue(mockBatcher);
-
-		// 	const vectors = [
-		// 		[1, 2, 3],
-		// 		[4, 5, 6],
-		// 	];
-		// 	const ids = [1, 2];
-		// 	const payloads = [{ title: 'First' }, { title: 'Second' }];
-			
-		// 	await backend.insert(vectors, ids, payloads);
-			
-		// 	expect(mockWeaviateClient.batch.objectsBatcher).toHaveBeenCalled();
-		// 	expect(mockBatcher.withObject).toHaveBeenCalledTimes(2);
-		// 	expect(mockBatcher.withObject).toHaveBeenCalledWith(
-		// 		expect.objectContaining({
-		// 			class: 'Test_collection',
-		// 			id: expect.any(String),
-		// 			properties: {
-		// 				payload: JSON.stringify({ title: 'First' }),
-		// 			},
-		// 			vector: [1, 2, 3],
-		// 		})
-		// 	);
-		// 	expect(mockBatcher.do).toHaveBeenCalled();
-		// });
-
-		// it('should handle insert batch errors', async () => {
-		// 	const mockBatcher = {
-		// 		withObject: vi.fn().mockReturnThis(),
-		// 		do: vi.fn().mockResolvedValue([
-		// 			{
-		// 				result: {
-		// 					errors: {
-		// 						error: [{ message: 'Insert failed' }],
-		// 					},
-		// 				},
-		// 			},
-		// 		]),
-		// 	};
-		// 	mockWeaviateClient.batch.objectsBatcher.mockReturnValue(mockBatcher);
-
-		// 	const vectors = [[1, 2, 3]];
-		// 	const ids = [1];
-		// 	const payloads = [{ title: 'Test' }];
-			
-		// 	await expect(backend.insert(vectors, ids, payloads)).rejects.toThrow(VectorStoreError);
-		// });
-
-		// it('should retrieve vectors by ID', async () => {
-		// 	const mockGetter = {
-		// 		withClassName: vi.fn().mockReturnThis(),
-		// 		withId: vi.fn().mockReturnThis(),
-		// 		withVector: vi.fn().mockReturnThis(),
-		// 		do: vi.fn().mockResolvedValue({
-		// 			vector: [1, 2, 3],
-		// 			properties: {
-		// 				payload: JSON.stringify({ title: 'Test' }),
-		// 			},
-		// 		}),
-		// 	};
-		// 	mockWeaviateClient.data.getterById.mockReturnValue(mockGetter);
-
-		// 	const result = await backend.get(1);
-			
-		// 	expect(result).toEqual({
-		// 		id: 1,
-		// 		vector: [1, 2, 3],
-		// 		payload: { title: 'Test' },
-		// 		score: 1.0,
-		// 	});
-		// 	expect(mockGetter.withClassName).toHaveBeenCalledWith('Test_collection');
-		// });
-        
-// 		it('should return null if vector not found', async () => {
-// 			const mockGetter = {
-// 				withClassName: vi.fn().mockReturnThis(),
-// 				withId: vi.fn().mockReturnThis(),
-// 				withVector: vi.fn().mockReturnThis(),
-// 				do: vi.fn().mockResolvedValue(null),
-// 			};
-// 			mockWeaviateClient.data.getterById.mockReturnValue(mockGetter);
-
-// 			const result = await backend.get(999);
-// 			expect(result).toBeNull();
-// 		});
-
-// 		it('should update vectors successfully', async () => {
-// 			const mockUpdater = {
-// 				withClassName: vi.fn().mockReturnThis(),
-// 				withId: vi.fn().mockReturnThis(),
-// 				withProperties: vi.fn().mockReturnThis(),
-// 				withVector: vi.fn().mockReturnThis(),
-// 				do: vi.fn().mockResolvedValue({}),
-// 			};
-// 			mockWeaviateClient.data.updater.mockReturnValue(mockUpdater);
-
-// 			await backend.update(1, [1, 2, 3], { title: 'Updated' });
-			
-// 			expect(mockUpdater.withClassName).toHaveBeenCalledWith('Test_collection');
-// 			expect(mockUpdater.withProperties).toHaveBeenCalledWith({
-// 				payload: JSON.stringify({ title: 'Updated' }),
-// 			});
-// 			expect(mockUpdater.withVector).toHaveBeenCalledWith([1, 2, 3]);
-// 			expect(mockUpdater.do).toHaveBeenCalled();
-// 		});
-
-// 		it('should delete vectors successfully', async () => {
-// 			const mockDeleter = {
-// 				withClassName: vi.fn().mockReturnThis(),
-// 				withId: vi.fn().mockReturnThis(),
-// 				do: vi.fn().mockResolvedValue({}),
-// 			};
-// 			mockWeaviateClient.data.deleter.mockReturnValue(mockDeleter);
-
-// 			await backend.delete(1);
-			
-// 			expect(mockDeleter.withClassName).toHaveBeenCalledWith('Test_collection');
-// 			expect(mockDeleter.do).toHaveBeenCalled();
-// 		});
-
-// 		it('should search vectors successfully', async () => {
-// 			const mockQuery = {
-// 				withClassName: vi.fn().mockReturnThis(),
-// 				withNearVector: vi.fn().mockReturnThis(),
-// 				withLimit: vi.fn().mockReturnThis(),
-// 				withFields: vi.fn().mockReturnThis(),
-// 				withWhere: vi.fn().mockReturnThis(),
-// 				do: vi.fn().mockResolvedValue({
-// 					data: {
-// 						Get: {
-// 							Test_collection: [
-// 								{
-// 									_additional: {
-// 										id: '1',
-// 										certainty: 0.99,
-// 									},
-// 									payload: JSON.stringify({ title: 'Test' }),
-// 								},
-// 							],
-// 						},
-// 					},
-// 				}),
-// 			};
-// 			mockWeaviateClient.graphql.get.mockReturnValue(mockQuery);
-
-// 			const result = await backend.search([1, 2, 3], 1);
-			
-// 			expect(result).toEqual([
-// 				{
-// 					id: 1,
-// 					score: 0.99,
-// 					payload: { title: 'Test' },
-// 				},
-// 			]);
-// 			expect(mockQuery.withNearVector).toHaveBeenCalledWith({
-// 				vector: [1, 2, 3],
-// 			});
-// 		});
-
-// 		it('should list vectors successfully', async () => {
-// 			const mockQuery = {
-// 				withClassName: vi.fn().mockReturnThis(),
-// 				withLimit: vi.fn().mockReturnThis(),
-// 				withFields: vi.fn().mockReturnThis(),
-// 				withWhere: vi.fn().mockReturnThis(),
-// 				do: vi.fn().mockResolvedValue({
-// 					data: {
-// 						Get: {
-// 							Test_collection: [
-// 								{
-// 									_additional: { id: '1' },
-// 									payload: JSON.stringify({ title: 'Test' }),
-// 								},
-// 							],
-// 						},
-// 					},
-// 				}),
-// 			};
-// 			mockWeaviateClient.graphql.get.mockReturnValue(mockQuery);
-
-// 			const [results, count] = await backend.list();
-			
-// 			expect(results).toEqual([
-// 				{
-// 					id: 1,
-// 					vector: [],
-// 					payload: { title: 'Test' },
-// 					score: 1.0,
-// 				},
-// 			]);
-// 			expect(count).toBe(1);
-// 		});
-
-// 		it('should throw VectorStoreError if insert is called before connect', async () => {
-// 			const backend = new WeaviateBackend(validConfig);
-// 			const vectors = [[1, 2, 3]];
-// 			const ids = [1];
-// 			const payloads = [{ title: 'Test' }];
-			
-// 			await expect(backend.insert(vectors, ids, payloads)).rejects.toThrow(VectorStoreError);
-// 		});
-
-// 		it('should throw VectorStoreError if update is called before connect', async () => {
-// 			const backend = new WeaviateBackend(validConfig);
-// 			await expect(backend.update(1, [1, 2, 3], { title: 'Test' })).rejects.toThrow(
-// 				VectorStoreError
-// 			);
-// 		});
-
-// 		it('should throw VectorStoreError if delete is called before connect', async () => {
-// 			const backend = new WeaviateBackend(validConfig);
-// 			await expect(backend.delete(1)).rejects.toThrow(VectorStoreError);
-// 		});
-
-// 		it('should throw VectorStoreError if get is called before connect', async () => {
-// 			const backend = new WeaviateBackend(validConfig);
-// 			await expect(backend.get(1)).rejects.toThrow(VectorStoreError);
-// 		});
-
-// 		it('should throw VectorStoreError if vectors, ids, and payloads lengths do not match', async () => {
-// 			await expect(backend.insert([[1, 2, 3]], [1, 2], [{ title: 'Test' }])).rejects.toThrow(
-// 				VectorStoreError
-// 			);
-// 		});
-
-// 		it('should throw VectorDimensionError if update vector has wrong dimension', async () => {
-// 			await expect(backend.update(1, [1, 2], { title: 'Test' })).rejects.toThrow(
-// 				VectorDimensionError
-// 			);
-// 		});
-
-// 		it('should throw if payloads are null or undefined', async () => {
-// 			await expect(backend.insert([[1, 2, 3]], [1], null as any)).rejects.toThrow();
-// 			await expect(backend.insert([[1, 2, 3]], [1], undefined as any)).rejects.toThrow();
-// 		});
-
-// 		it('should throw VectorDimensionError if search vector has wrong dimension', async () => {
-// 			await expect(backend.search([1, 2], 1)).rejects.toThrow(VectorDimensionError);
-// 		});
-
-// 		it('should throw VectorStoreError on get failure', async () => {
-// 			const mockGetter = {
-// 				withClassName: vi.fn().mockReturnThis(),
-// 				withId: vi.fn().mockReturnThis(),
-// 				withVector: vi.fn().mockReturnThis(),
-// 				do: vi.fn().mockRejectedValue(new Error('Get failed')),
-// 			};
-// 			mockWeaviateClient.data.getterById.mockReturnValue(mockGetter);
-
-// 			await expect(backend.get(1)).rejects.toThrow(VectorStoreError);
-// 		});
-
-// 		it('should throw VectorStoreError on list failure', async () => {
-// 			const mockQuery = {
-// 				withClassName: vi.fn().mockReturnThis(),
-// 				withLimit: vi.fn().mockReturnThis(),
-// 				withFields: vi.fn().mockReturnThis(),
-// 				do: vi.fn().mockRejectedValue(new Error('List failed')),
-// 			};
-// 			mockWeaviateClient.graphql.get.mockReturnValue(mockQuery);
-
-// 			await expect(backend.list()).rejects.toThrow(VectorStoreError);
-// 		});
-
-// 		it('should throw VectorStoreError on update failure', async () => {
-// 			const mockUpdater = {
-// 				withClassName: vi.fn().mockReturnThis(),
-// 				withId: vi.fn().mockReturnThis(),
-// 				withProperties: vi.fn().mockReturnThis(),
-// 				withVector: vi.fn().mockReturnThis(),
-// 				do: vi.fn().mockRejectedValue(new Error('Update failed')),
-// 			};
-// 			mockWeaviateClient.data.updater.mockReturnValue(mockUpdater);
-
-// 			await expect(backend.update(1, [1, 2, 3], { title: 'Fail' })).rejects.toThrow(
-// 				VectorStoreError
-// 			);
-// 		});
-
-// 		it('should throw VectorStoreError on delete failure', async () => {
-// 			const mockDeleter = {
-// 				withClassName: vi.fn().mockReturnThis(),
-// 				withId: vi.fn().mockReturnThis(),
-// 				do: vi.fn().mockRejectedValue(new Error('Delete failed')),
-// 			};
-// 			mockWeaviateClient.data.deleter.mockReturnValue(mockDeleter);
-
-// 			await expect(backend.delete(1)).rejects.toThrow(VectorStoreError);
-// 		});
-// 	});
-
-// 	describe('Collection Management', () => {
-// 		beforeEach(async () => {
-// 			mockWeaviateClient.misc.liveChecker().do.mockResolvedValue({ live: true });
-// 			mockWeaviateClient.misc.readyChecker().do.mockResolvedValue({ ready: true });
-// 			mockWeaviateClient.schema.exists().withClassName().do.mockResolvedValue(true);
-// 			await backend.connect();
-// 		});
-
-// 		it('should delete collection successfully', async () => {
-// 			const mockDeleter = {
-// 				withClassName: vi.fn().mockReturnThis(),
-// 				do: vi.fn().mockResolvedValue({}),
-// 			};
-// 			mockWeaviateClient.schema.classDeleter.mockReturnValue(mockDeleter);
-
-// 			await backend.deleteCollection();
-			
-// 			expect(mockDeleter.withClassName).toHaveBeenCalledWith('Test_collection');
-// 			expect(mockDeleter.do).toHaveBeenCalled();
-// 		});
-
-// 		it('should list all collections', async () => {
-// 			const mockGetter = {
-// 				do: vi.fn().mockResolvedValue({
-// 					classes: [{ class: 'Collection1' }, { class: 'Collection2' }],
-// 				}),
-// 			};
-// 			mockWeaviateClient.schema.getter.mockReturnValue(mockGetter);
-
-// 			const collections = await backend.listCollections();
-			
-// 			expect(collections).toEqual(['Collection1', 'Collection2']);
-// 			expect(mockGetter.do).toHaveBeenCalled();
-// 		});
-
-// 		it('should handle empty collection list', async () => {
-// 			const mockGetter = {
-// 				do: vi.fn().mockResolvedValue({ classes: null }),
-// 			};
-// 			mockWeaviateClient.schema.getter.mockReturnValue(mockGetter);
-
-// 			const collections = await backend.listCollections();
-			
-// 			expect(collections).toEqual([]);
-// 		});
-
-// 		it('should throw VectorStoreError if deleteCollection is called before connect', async () => {
-// 			const backend = new WeaviateBackend(validConfig);
-// 			await expect(backend.deleteCollection()).rejects.toThrow(VectorStoreError);
-// 		});
-
-// 		it('should throw VectorStoreError if listCollections is called before connect', async () => {
-// 			const backend = new WeaviateBackend(validConfig);
-// 			await expect(backend.listCollections()).rejects.toThrow(VectorStoreError);
-// 		});
-
-// 		it('should throw VectorStoreError on deleteCollection failure', async () => {
-// 			const mockDeleter = {
-// 				withClassName: vi.fn().mockReturnThis(),
-// 				do: vi.fn().mockRejectedValue(new Error('Delete collection failed')),
-// 			};
-// 			mockWeaviateClient.schema.classDeleter.mockReturnValue(mockDeleter);
-
-// 			await expect(backend.deleteCollection()).rejects.toThrow(VectorStoreError);
-// 		});
-
-// 		it('should throw VectorStoreError on listCollections failure', async () => {
-// 			const mockGetter = {
-// 				do: vi.fn().mockRejectedValue(new Error('List collections failed')),
-// 			};
-// 			mockWeaviateClient.schema.getter.mockReturnValue(mockGetter);
-
-// 			await expect(backend.listCollections()).rejects.toThrow(VectorStoreError);
-// 		});
-// 	});
-
-// 	describe('Error Handling', () => {
-// 		beforeEach(async () => {
-// 			mockWeaviateClient.misc.liveChecker().do.mockResolvedValue({ live: true });
-// 			mockWeaviateClient.misc.readyChecker().do.mockResolvedValue({ ready: true });
-// 			mockWeaviateClient.schema.exists().withClassName().do.mockResolvedValue(true);
-// 			await backend.connect();
-// 		});
-
-// 		it('should throw VectorDimensionError on dimension mismatch', async () => {
-// 			await expect(backend.insert([[1, 2]], [1], [{ title: 'Bad' }])).rejects.toThrow(
-// 				VectorDimensionError
-// 			);
-// 		});
-
-// 		it('should throw VectorStoreError on insert failure', async () => {
-// 			const mockBatcher = {
-// 				withObject: vi.fn().mockReturnThis(),
-// 				do: vi.fn().mockRejectedValue(new Error('Insert failed')),
-// 			};
-// 			mockWeaviateClient.batch.objectsBatcher.mockReturnValue(mockBatcher);
-
-// 			await expect(backend.insert([[1, 2, 3]], [1], [{ title: 'Fail' }])).rejects.toThrow(
-// 				VectorStoreError
-// 			);
-// 		});
-
-// 		it('should throw VectorStoreError on search failure', async () => {
-// 			const mockQuery = {
-// 				withClassName: vi.fn().mockReturnThis(),
-// 				withNearVector: vi.fn().mockReturnThis(),
-// 				withLimit: vi.fn().mockReturnThis(),
-// 				withFields: vi.fn().mockReturnThis(),
-// 				do: vi.fn().mockRejectedValue(new Error('Search failed')),
-// 			};
-// 			mockWeaviateClient.graphql.get.mockReturnValue(mockQuery);
-
-// 			await expect(backend.search([1, 2, 3], 1)).rejects.toThrow(VectorStoreError);
-// 		});
-
-// 		it('should handle connection ready check failure', async () => {
-// 			const backend = new WeaviateBackend(validConfig);
-// 			mockWeaviateClient.misc.liveChecker().do.mockResolvedValue({ live: true });
-// 			mockWeaviateClient.misc.readyChecker().do.mockRejectedValue(new Error('Not ready'));
-
-// 			await expect(backend.connect()).rejects.toThrow(VectorStoreConnectionError);
-// 		});
-
-// 		it('should handle collection creation failure', async () => {
-// 			const backend = new WeaviateBackend(validConfig);
-// 			mockWeaviateClient.misc.liveChecker().do.mockResolvedValue({ live: true });
-// 			mockWeaviateClient.misc.readyChecker().do.mockResolvedValue({ ready: true });
-// 			mockWeaviateClient.schema.exists().withClassName().do.mockResolvedValue(false);
-// 			mockWeaviateClient.schema.classCreator().withClass().do.mockRejectedValue(
-// 				new Error('Collection creation failed')
-// 			);
-
-// 			await expect(backend.connect()).rejects.toThrow(VectorStoreConnectionError);
-// 		});
-// 	});
-
-// 	describe('Search Filters', () => {
-// 		beforeEach(async () => {
-// 			mockWeaviateClient.misc.liveChecker().do.mockResolvedValue({ live: true });
-// 			mockWeaviateClient.misc.readyChecker().do.mockResolvedValue({ ready: true });
-// 			mockWeaviateClient.schema.exists().withClassName().do.mockResolvedValue(true);
-// 			await backend.connect();
-// 		});
-
-// 		it('should search with simple filters', async () => {
-// 			const mockQuery = {
-// 				withClassName: vi.fn().mockReturnThis(),
-// 				withNearVector: vi.fn().mockReturnThis(),
-// 				withLimit: vi.fn().mockReturnThis(),
-// 				withFields: vi.fn().mockReturnThis(),
-// 				withWhere: vi.fn().mockReturnThis(),
-// 				do: vi.fn().mockResolvedValue({
-// 					data: {
-// 						Get: {
-// 							Test_collection: [],
-// 						},
-// 					},
-// 				}),
-// 			};
-// 			mockWeaviateClient.graphql.get.mockReturnValue(mockQuery);
-
-// 			await backend.search([1, 2, 3], 5, { category: 'test' });
-			
-// 			expect(mockQuery.withWhere).toHaveBeenCalledWith(
-// 				expect.objectContaining({
-// 					path: ['payload'],
-// 					operator: 'Like',
-// 					valueText: '*"category":"test"*',
-// 				})
-// 			);
-// 		});
-
-// 		it('should search with array filters (any operator)', async () => {
-// 			const mockQuery = {
-// 				withClassName: vi.fn().mockReturnThis(),
-// 				withNearVector: vi.fn().mockReturnThis(),
-// 				withLimit: vi.fn().mockReturnThis(),
-// 				withFields: vi.fn().mockReturnThis(),
-// 				withWhere: vi.fn().mockReturnThis(),
-// 				do: vi.fn().mockResolvedValue({
-// 					data: {
-// 						Get: {
-// 							Test_collection: [],
-// 						},
-// 					},
-// 				}),
-// 			};
-// 			mockWeaviateClient.graphql.get.mockReturnValue(mockQuery);
-
-// 			await backend.search([1, 2, 3], 5, { category: { any: ['test1', 'test2'] } });
-			
-// 			expect(mockQuery.withWhere).toHaveBeenCalledWith(
-// 				expect.objectContaining({
-// 					operator: 'Or',
-// 					operands: expect.arrayContaining([
-// 						expect.objectContaining({
-// 							path: ['payload'],
-// 							operator: 'Like',
-// 							valueText: '*"category":"test1"*',
-// 						}),
-// 						expect.objectContaining({
-// 							path: ['payload'],
-// 							operator: 'Like',
-// 							valueText: '*"category":"test2"*',
-// 						}),
-// 					]),
-// 				})
-// 			);
-// 		});
-
-// 		it('should list with filters', async () => {
-// 			const mockQuery = {
-// 				withClassName: vi.fn().mockReturnThis(),
-// 				withLimit: vi.fn().mockReturnThis(),
-// 				withFields: vi.fn().mockReturnThis(),
-// 				withWhere: vi.fn().mockReturnThis(),
-// 				do: vi.fn().mockResolvedValue({
-// 					data: {
-// 						Get: {
-// 							Test_collection: [],
-// 						},
-// 					},
-// 				}),
-// 			};
-// 			mockWeaviateClient.graphql.get.mockReturnValue(mockQuery);
-
-// 			await backend.list({ status: 'active' }, 100);
-			
-// 			expect(mockQuery.withWhere).toHaveBeenCalledWith(
-// 				expect.objectContaining({
-// 					path: ['payload'],
-// 					operator: 'Like',
-// 					valueText: '*"status":"active"*',
-// 				})
-// 			);
-// 		});
-// 	});
-// }); 

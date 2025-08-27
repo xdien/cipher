@@ -113,7 +113,6 @@ export class SqliteBackend implements DatabaseBackend {
 				path: this.dbPath,
 				dbSize: this.getDbInfo(),
 			});
-
 		} catch (error) {
 			const errorDetails = {
 				path: this.dbPath,

@@ -786,8 +786,7 @@ export function getVectorStoreConfigFromEnv(agentConfig?: any): VectorStoreConfi
 			apiKey,
 			distance,
 		};
-	}
-	 else {
+	} else {
 		return {
 			type: 'in-memory',
 			collectionName,
@@ -1096,10 +1095,12 @@ export function getWorkspaceVectorStoreConfigFromEnv(agentConfig?: any): VectorS
 			dimension,
 			distance,
 		};
-	}else if ((storeType as string) === 'weaviate') {
+	} else if ((storeType as string) === 'weaviate') {
 		const host = env.WORKSPACE_VECTOR_STORE_HOST;
 		const url = env.WORKSPACE_VECTOR_STORE_URL;
-		const port = Number.isNaN(env.WORKSPACE_VECTOR_STORE_PORT) ? undefined : env.WORKSPACE_VECTOR_STORE_PORT;
+		const port = Number.isNaN(env.WORKSPACE_VECTOR_STORE_PORT)
+			? undefined
+			: env.WORKSPACE_VECTOR_STORE_PORT;
 		const username = env.WORKSPACE_VECTOR_STORE_USERNAME;
 		const password = env.WORKSPACE_VECTOR_STORE_PASSWORD;
 		const apiKey = env.WORKSPACE_VECTOR_STORE_API_KEY;
@@ -1157,8 +1158,7 @@ export function getWorkspaceVectorStoreConfigFromEnv(agentConfig?: any): VectorS
 			apiKey,
 			distance,
 		};
-	}
-	 else {
+	} else {
 		return {
 			type: 'in-memory',
 			collectionName,

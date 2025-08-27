@@ -44,7 +44,6 @@ export class OpenAIService implements ILLMService {
 	}
 
 	async generate(userInput: string, imageData?: ImageData): Promise<string> {
-		console.log("Calling LLM with userInput: ", userInput);
 		await this.contextManager.addUserMessage(userInput, imageData);
 
 		const messageId = uuidv4();

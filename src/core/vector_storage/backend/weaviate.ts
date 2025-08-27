@@ -8,8 +8,9 @@ import { Logger, createLogger } from '../../logger/index.js';
 import { LOG_PREFIXES, ERROR_MESSAGES } from '../constants.js';
 import { env } from '../../env.js';
 import { v5 as uuidv5 } from 'uuid';
+import { string } from 'zod';
 
-const weaviate = require("weaviate-ts-client").default;
+const weaviate = require('weaviate-ts-client').default;
 
 // UUID v5 namespace for generating deterministic UUIDs from numeric IDs
 const WEAVIATE_UUID_NAMESPACE = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
@@ -19,24 +20,25 @@ const WEAVIATE_UUID_NAMESPACE = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
  *
  * Implements the VectorStore interface for Weaviate vector database.
  * Supports both cloud and local Weaviate instances with authentication.
- * 
+ *
  * Note: This implementation uses the weaviate-ts-client v2.x API.
  * Make sure to install: npm install weaviate-ts-client
  */
 export class WeaviateBackend implements VectorStore {
-	private client: WeaviateClient | null = null;
+	private client: WeaviateClient | undefined = undefined;
 	private readonly config: WeaviateBackendConfig;
 	private readonly dimension: number;
-	private readonly collectionName: string ;
-    private readonly logger: Logger;
+	private readonly collectionName: string;
+	private readonly logger: Logger;
 	private connected = false;
 
-    private connectionConfig: any = {};
+	private connectionConfig: any = {};
 	constructor(config: WeaviateBackendConfig) {
 		this.config = config;
 		// Sanitize collection name for Weaviate (capitalize first letter, remove hyphens)
-		this.collectionName = config.collectionName.toLocaleLowerCase()
-        this.collectionName = this.collectionName.charAt(0).toUpperCase() + this.collectionName.slice(1)
+		this.collectionName = config.collectionName.toLocaleLowerCase();
+		this.collectionName =
+			this.collectionName.charAt(0).toUpperCase() + this.collectionName.slice(1);
 		this.dimension = config.dimension;
 		this.logger = createLogger({
 			level: env.CIPHER_LOG_LEVEL || 'info',
@@ -86,59 +88,66 @@ export class WeaviateBackend implements VectorStore {
 
 		this.logger.debug(`${LOG_PREFIXES.WEAVIATE} Connecting to Weaviate`);
 
-		        try {
-            // Configure connection for Weaviate Cloud or local instance
-            if (this.config.url) {
-                // Weaviate Cloud connection - extract host from URL and use https scheme
-                console.log("Connecting to Weaviate Cloud with URL: ", this.config.url);
-                
-                // For Weaviate Cloud URLs, we need to extract the host and use https scheme
-                let host = this.config.url;
-                if (host.startsWith('https://')) {
-                    host = host.replace('https://', '');
-                } else if (host.startsWith('http://')) {
-                    host = host.replace('http://', '');
-                }
-                
-                this.connectionConfig = {
-                    scheme: 'https',
-                    host: host,
-                    apiKey: new ApiKey(this.config.apiKey || ''),
-                };
-            } else if (this.config.host) {
-                // Local or custom instance connection
-                console.log("Connecting to local/custom Weaviate instance: ", this.config.host);
-                let scheme = 'http';
-                let host = this.config.host;
-                
-                if (this.config.host.includes('https://')) {
-                    scheme = 'https';
-                    host = this.config.host.replace('https://', '');
-                } else if (this.config.host.includes('http://')) {
-                    scheme = 'http';
-                    host = this.config.host.replace('http://', '');
-                }
-                
-                this.connectionConfig = {
-                    scheme: scheme,
-                    host: host,
-                };
-                
-                // Add API key if provided for local instance
-                if (this.config.apiKey) {
-                    this.connectionConfig.apiKey = new ApiKey(this.config.apiKey);
-                }
-            } else {
-                throw new VectorStoreConnectionError(
-                    'Either url (for Weaviate Cloud) or host (for local instance) must be provided',
-                    'weaviate',
-                    new Error('Missing connection configuration')
-                );
-            }
-            
-            console.log("Connection config: ", this.connectionConfig);
-            this.client = weaviate.client(this.connectionConfig);
+		try {
+			// Configure connection for Weaviate Cloud or local instance
+			if (this.config.url) {
+				// Weaviate Cloud connection - extract host from URL and use https scheme
+				console.log('Connecting to Weaviate Cloud with URL: ', this.config.url);
+
+				// For Weaviate Cloud URLs, we need to extract the host and use https scheme
+				let host = this.config.url;
+				if (host.startsWith('https://')) {
+					host = host.replace('https://', '');
+				} else if (host.startsWith('http://')) {
+					host = host.replace('http://', '');
+				}
+
+				this.connectionConfig = {
+					scheme: 'https',
+					host: host,
+					apiKey: new ApiKey(this.config.apiKey || ''),
+				};
+			} else if (this.config.host) {
+				// Local or custom instance connection
+				console.log('Connecting to local/custom Weaviate instance: ', this.config.host);
+				let scheme = 'http';
+				let host = this.config.host;
+
+				if (this.config.host.includes('https://')) {
+					scheme = 'https';
+					host = this.config.host.replace('https://', '');
+				} else if (this.config.host.includes('http://')) {
+					scheme = 'http';
+					host = this.config.host.replace('http://', '');
+				}
+
+				this.connectionConfig = {
+					scheme: scheme,
+					host: host,
+				};
+
+				// Add API key if provided for local instance
+				if (this.config.apiKey) {
+					this.connectionConfig.apiKey = new ApiKey(this.config.apiKey);
+				}
+			} else {
+				throw new VectorStoreConnectionError(
+					'Either url (for Weaviate Cloud) or host (for local instance) must be provided',
+					'weaviate',
+					new Error('Missing connection configuration')
+				);
+			}
+
+			console.log('Connection config: ', this.connectionConfig);
+			this.client = weaviate.client(this.connectionConfig);
 			// Verify connection
+			if (!this.client) {
+				throw new VectorStoreConnectionError(
+					'Weaviate client not initialized',
+					'weaviate',
+					new Error('Connection check failed')
+				);
+			}
 			const isReady = await this.client.misc.liveChecker().do();
 			if (!isReady) {
 				throw new VectorStoreConnectionError(
@@ -175,15 +184,23 @@ export class WeaviateBackend implements VectorStore {
 		try {
 			// Check if class exists
 			const schema = await client.schema.getter().do();
+			if (!schema.classes) {
+				this.logger.error(`${LOG_PREFIXES.WEAVIATE} Schema has no classes`);
+				throw new VectorStoreError('Schema has no classes', 'ensureCollection');
+			}
 			let classExists: boolean = false;
-            for (const cls of schema.classes) {
-                if (cls.class === this.collectionName) {
-                    classExists = true;
-                    break;
-                }
-            }
+			for (const cls of schema.classes) {
+				if (!cls.class) {
+					this.logger.error(`${LOG_PREFIXES.WEAVIATE} Class has no class name`);
+					throw new VectorStoreError('Class has no class name', 'ensureCollection');
+				}
+				if (cls.class === this.collectionName) {
+					classExists = true;
+					break;
+				}
+			}
 
-            // Class exists, but the defined schema doesnt match
+			// Class exists, but the defined schema doesnt match
 			if (!classExists) {
 				this.logger.debug(`${LOG_PREFIXES.WEAVIATE} Creating class ${this.collectionName}`);
 
@@ -203,43 +220,64 @@ export class WeaviateBackend implements VectorStore {
 				await client.schema.classCreator().withClass(classObj).do();
 
 				this.logger.debug(`${LOG_PREFIXES.WEAVIATE} Class created: ${this.collectionName}`);
-			} 
-            else {
-                // Check if the class schema is matching the config, if not, delete the class and create a new one
-                const existingClass = schema.classes?.find((cls: any) => cls.class === this.collectionName);
-                const expectedPayloadProperty = existingClass?.properties?.find((prop: any) => prop.name === 'payload');
-                
-                const schemaMatches = expectedPayloadProperty && 
-                    expectedPayloadProperty.dataType.includes('text') &&
-                    existingClass.properties.length === 1; // Only payload property should exist
-                
-                if (!schemaMatches) {
-                    this.logger.warn(`${LOG_PREFIXES.WEAVIATE} Class ${this.collectionName} schema doesn't match expected structure. Recreating...`);
-                    
-                    // Delete the existing class
-                    await client.schema.classDeleter().withClassName(this.collectionName).do();
-                    this.logger.debug(`${LOG_PREFIXES.WEAVIATE} Deleted existing class: ${this.collectionName}`);
-                    
-                    // Create class schema - matching Milvus structure (id, vector, payload)
-                    const classObj = {
-                        class: this.collectionName,
-                        description: `Vector store collection for ${this.collectionName}`,
-                        properties: [
-                            {
-                                name: 'payload',
-                                dataType: ['text'],
-                                description: 'JSON string containing all metadata and content',
-                            },
-                        ],
-                        vectorizer: 'none', // We provide our own vectors
-                    };
-                    
-                    // Recreate the class with correct schema
-                    await client.schema.classCreator().withClass(classObj).do();
-                    this.logger.debug(`${LOG_PREFIXES.WEAVIATE} Recreated class with correct schema: ${this.collectionName}`);
-                } else {
-                    this.logger.debug(`${LOG_PREFIXES.WEAVIATE} Class already exists with correct schema: ${this.collectionName}`);
-                }
+			} else {
+				// Check if the class schema is matching the config, if not, delete the class and create a new one
+				const existingClass = schema.classes?.find((cls: any) => cls.class === this.collectionName);
+				const expectedPayloadProperty = existingClass?.properties?.find(
+					(prop: any) => prop.name === 'payload'
+				);
+				if (
+					!Array.isArray(expectedPayloadProperty?.dataType) ||
+					!existingClass ||
+					!existingClass?.properties ||
+					!(existingClass.properties.length === 1) ||
+					!expectedPayloadProperty.dataType.every(v => typeof v === 'string')
+				) {
+					this.logger.error(`${LOG_PREFIXES.WEAVIATE} Payload property is not a string[]`);
+					throw new VectorStoreError('Payload property is not a string[]', 'ensureCollection');
+				}
+
+				const schemaMatches =
+					expectedPayloadProperty &&
+					expectedPayloadProperty.dataType.includes('text') &&
+					existingClass.properties &&
+					existingClass.properties.length === 1; // Only payload property should exist
+
+				if (!schemaMatches) {
+					this.logger.warn(
+						`${LOG_PREFIXES.WEAVIATE} Class ${this.collectionName} schema doesn't match expected structure. Recreating...`
+					);
+
+					// Delete the existing class
+					await client.schema.classDeleter().withClassName(this.collectionName).do();
+					this.logger.debug(
+						`${LOG_PREFIXES.WEAVIATE} Deleted existing class: ${this.collectionName}`
+					);
+
+					// Create class schema - matching Milvus structure (id, vector, payload)
+					const classObj = {
+						class: this.collectionName,
+						description: `Vector store collection for ${this.collectionName}`,
+						properties: [
+							{
+								name: 'payload',
+								dataType: ['text'],
+								description: 'JSON string containing all metadata and content',
+							},
+						],
+						vectorizer: 'none', // We provide our own vectors
+					};
+
+					// Recreate the class with correct schema
+					await client.schema.classCreator().withClass(classObj).do();
+					this.logger.debug(
+						`${LOG_PREFIXES.WEAVIATE} Recreated class with correct schema: ${this.collectionName}`
+					);
+				} else {
+					this.logger.debug(
+						`${LOG_PREFIXES.WEAVIATE} Class already exists with correct schema: ${this.collectionName}`
+					);
+				}
 			}
 		} catch (error) {
 			this.logger.error(`${LOG_PREFIXES.WEAVIATE} Failed to ensure class`, { error });
@@ -268,15 +306,25 @@ export class WeaviateBackend implements VectorStore {
 
 			// Prepare objects for batch insertion - matching Milvus structure
 			const batcher = client.batch.objectsBatcher();
-			
+
 			for (let i = 0; i < vectors.length; i++) {
+				const id = ids[i];
+				const vector = vectors[i];
+				if (id === undefined) {
+					this.logger.error(`${LOG_PREFIXES.WEAVIATE} ID is undefined`);
+					throw new VectorStoreError('ID is undefined', 'insert');
+				}
+				if (!vector) {
+					this.logger.error(`${LOG_PREFIXES.WEAVIATE} Vector is undefined`);
+					throw new VectorStoreError('Vector is undefined', 'insert');
+				}
 				const obj = {
 					class: this.collectionName,
-					id: this.generateUuidFromId(ids[i]),
+					id: this.generateUuidFromId(id),
 					properties: {
 						payload: JSON.stringify(payloads[i] || {}),
 					},
-					vector: vectors[i],
+					vector: vector,
 				};
 
 				batcher.withObject(obj);
@@ -368,8 +416,10 @@ export class WeaviateBackend implements VectorStore {
 			return {
 				id: vectorId,
 				vector: response.vector || [],
-				payload: response.properties?.payload && typeof response.properties.payload === 'string' 
-					? JSON.parse(response.properties.payload) : {},
+				payload:
+					response.properties?.payload && typeof response.properties.payload === 'string'
+						? JSON.parse(response.properties.payload)
+						: {},
 				score: 1.0,
 			};
 		} catch (error) {
@@ -485,7 +535,7 @@ export class WeaviateBackend implements VectorStore {
 
 	async disconnect(): Promise<void> {
 		// weaviate-ts-client v2 doesn't have an explicit close method
-		this.client = null;
+		this.client = undefined;
 		this.connected = false;
 		this.logger.info(`${LOG_PREFIXES.WEAVIATE} Disconnected`);
 	}
@@ -590,4 +640,4 @@ export class WeaviateBackend implements VectorStore {
 			return { operator: 'And', operands: conditions };
 		}
 	}
-} 
+}
