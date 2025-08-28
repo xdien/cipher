@@ -266,6 +266,19 @@ function _createLLMService(
 				throw error;
 			}
 		}
+		case 'deepseek': {
+			const baseURL = getOpenAICompatibleBaseURL(config);
+			const OpenAIClass = require('openai');
+			const openai = new OpenAIClass({ apiKey, baseURL });
+			return new DeepseekService(
+				openai,
+				config.model,
+				mcpManager,
+				contextManager,
+				config.maxIterations,
+				unifiedToolManager
+			);
+		}
 		default:
 			throw new Error(`Unsupported LLM provider: ${config.provider}`);
 	}
@@ -368,6 +381,9 @@ function getDefaultContextWindow(provider: string, model?: string): number {
 			'gemini-2.5-flash': 1000000,
 			'gemini-2.5-flash-lite': 1000000,
 			default: 1000000,
+		},
+		deepseek: {
+			default: 128000,
 		},
 		ollama: {
 			default: 8192, // Conservative default for local models

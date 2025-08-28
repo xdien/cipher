@@ -71,6 +71,9 @@ importers:
       fs-extra:
         specifier: ^11.3.0
         version: 11.3.0
+      groq-sdk:
+        specifier: ^0.30.0
+        version: 0.30.0
       helmet:
         specifier: ^8.1.0
         version: 8.1.0
