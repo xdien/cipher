@@ -69,3 +69,4 @@ chroma-data/
 qdrant-data/
 faiss-data/
 volumes/
+.kiro/
