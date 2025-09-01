@@ -160,7 +160,7 @@ describe('SystemPromptConfigManager', () => {
 			const loadedConfig = configManager.getConfig();
 			const filePath = loadedConfig.providers[0]!.config!.filePath;
 			expect(path.isAbsolute(filePath)).toBe(true);
-			
+
 			// Check that the resolved path ends with the expected relative path components
 			// This works cross-platform by checking the actual path structure
 			const expectedPath = path.resolve(tempDir, 'relative', 'path.txt');
