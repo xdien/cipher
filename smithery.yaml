@@ -8,7 +8,7 @@ startCommand:
     [
       'sh',
       '-c',
-      'node dist/src/app/index.cjs --mode mcp --mcp-transport-type http --port $PORT --host 0.0.0.0 --agent ${CONFIG_FILE:-/app/memAgent/cipher.yml}',
+      'node dist/src/app/index.cjs --mode api --port $PORT --host 0.0.0.0 --agent ${CONFIG_FILE:-/app/memAgent/cipher.yml}',
     ]
   configSchema:
     type: object

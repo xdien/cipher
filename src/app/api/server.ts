@@ -532,6 +532,29 @@ export class ApiServer {
 	}
 
 	private setupRoutes(): void {
+		// Root endpoint for server discovery (Smithery scanning)
+		this.app.get('/', (_req: Request, res: Response) => {
+			res.json({
+				name: 'Cipher API Server',
+				description: 'Memory-powered AI agent framework with MCP integration',
+				version: process.env.npm_package_version || '0.3.0',
+				mode: 'api',
+				endpoints: {
+					health: '/health',
+					mcp: '/api/mcp',
+					mcpSse: '/api/mcp/sse',
+					websocket: '/ws',
+				},
+				capabilities: {
+					mcp: true,
+					websocket: this.config.enableWebSocket || false,
+					tools: true,
+					resources: true,
+					prompts: true,
+				},
+			});
+		});
+
 		// Health check endpoint
 		this.app.get('/health', (_req: Request, res: Response) => {
 			const healthData: any = {
