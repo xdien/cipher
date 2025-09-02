@@ -51,25 +51,26 @@ export class OllamaEmbedder implements Embedder {
 	private readonly dimension: number;
 	private readonly timeout: number;
 	private readonly maxRetries: number;
-
+	private readonly endpoint: string;
 	constructor(config: OllamaEmbeddingConfig) {
 		this.config = config;
 		this.model = config.model || 'nomic-embed-text';
 		this.timeout = config.timeout || 30000;
 		this.maxRetries = config.maxRetries || 3;
-
+		// Default endpoint is /api/embeddings
+		this.endpoint = '/api/embeddings';
 		// Normalize base URL for Ollama embedding service
 		// Embeddings use /api/embeddings endpoint, so we need to remove /v1 suffix if present
 		let baseUrl = config.baseUrl || 'http://localhost:11434';
 		baseUrl = baseUrl.replace(/\/$/, ''); // Remove trailing slash
 
-		// For Ollama embeddings, remove /v1 suffix if present since we use /api/embeddings endpoint
+		// If the endpoint is OpenAI compatible, use /v1/embeddings endpoint
 		if (baseUrl.endsWith('/v1')) {
 			baseUrl = baseUrl.replace(/\/v1$/, '');
+			this.endpoint = '/v1/embeddings';
 		}
 
 		this.baseUrl = baseUrl;
-
 		// Get dimension from model constants or use default
 		this.dimension =
 			config.dimensions || MODEL_DIMENSIONS[this.model as keyof typeof MODEL_DIMENSIONS] || 768;
@@ -99,8 +100,8 @@ export class OllamaEmbedder implements Embedder {
 				textLength: text.length,
 				model: this.model,
 			});
-
-			const response = await this.makeRequest('/api/embeddings', {
+			// Modify the endpoint to use both endpoints /v1/embeddings and /api/embeddings
+			const response = await this.makeRequest({
 				model: this.model,
 				prompt: text,
 			});
@@ -256,8 +257,8 @@ export class OllamaEmbedder implements Embedder {
 	/**
 	 * Make request to Ollama API
 	 */
-	private async makeRequest(endpoint: string, body: any): Promise<OllamaEmbeddingResponse> {
-		const url = `${this.baseUrl}${endpoint}`;
+	private async makeRequest(body: any): Promise<OllamaEmbeddingResponse> {
+		const url = `${this.baseUrl}${this.endpoint}`;
 
 		let lastError: Error | undefined;
 		let delay: number = RETRY_CONFIG.INITIAL_DELAY;
@@ -267,7 +268,7 @@ export class OllamaEmbedder implements Embedder {
 				logger.silly(`${LOG_PREFIXES.EMBEDDING} Making Ollama API request`, {
 					attempt: attempt + 1,
 					maxRetries: this.maxRetries + 1,
-					endpoint,
+					endpoint: this.endpoint,
 					baseUrl: this.baseUrl,
 				});
 
