@@ -244,40 +244,6 @@ export class McpStreamableHttpServer {
 		// Map to store transports by session ID (following MCP SDK example)
 		const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
 
-		// Health check endpoint for deployment platforms like Smithery
-		this.app.get('/health', (_req: Request, res: Response) => {
-			res.json({
-				status: 'healthy',
-				timestamp: new Date().toISOString(),
-				uptime: process.uptime(),
-				mode: 'mcp-http',
-				version: process.env.npm_package_version || 'unknown',
-				endpoints: {
-					mcp: '/http',
-				},
-			});
-		});
-
-		// Root endpoint to provide MCP server information for discovery
-		this.app.get('/', (_req: Request, res: Response) => {
-			res.json({
-				name: 'Cipher MCP Server',
-				description: 'Memory-powered AI agent framework with MCP integration',
-				version: process.env.npm_package_version || '0.3.0',
-				transport: 'streamable-http',
-				endpoints: {
-					mcp: '/http',
-					health: '/health',
-				},
-				capabilities: {
-					tools: true,
-					resources: true,
-					prompts: true,
-					logging: true,
-				},
-			});
-		});
-
 		// POST /http - Main endpoint for streamable-HTTP requests (initialization and messages)
 		this.app.post('/http', async (req: Request, res: Response) => {
 			logger.debug('[MCP Streamable-HTTP Server] POST request received');
