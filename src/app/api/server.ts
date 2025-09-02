@@ -532,7 +532,6 @@ export class ApiServer {
 	}
 
 	private setupRoutes(): void {
-
 		// Health check endpoint
 		this.app.get('/health', (_req: Request, res: Response) => {
 			const healthData: any = {
