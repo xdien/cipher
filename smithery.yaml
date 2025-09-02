@@ -1,0 +1,15 @@
+runtime: 'container'
+build:
+  dockerfile: 'Dockerfile'
+  dockerBuildPath: '.'
+startCommand:
+  type: 'http'
+  command:
+    [
+      'sh',
+      '-c',
+      'node dist/src/app/index.cjs --mode api --port $PORT --host 0.0.0.0 --agent $CONFIG_FILE',
+    ]
+http:
+  port: 3000
+  healthCheckPath: '/health'
