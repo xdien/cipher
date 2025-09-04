@@ -488,13 +488,6 @@ export function getVectorStoreConfigFromEnv(agentConfig?: any): VectorStoreConfi
 				_fallbackFrom: 'milvus',
 			} as any;
 		}
-		console.log('building milvus backend', {
-			collectionName,
-			dimension,
-			url,
-			host,
-			port,
-		});
 		return {
 			type: 'milvus',
 			collectionName,

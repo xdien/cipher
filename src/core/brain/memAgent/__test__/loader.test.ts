@@ -272,7 +272,7 @@ describe('Loader', () => {
 			mockParseYaml.mockReturnValue(mockConfig);
 
 			const result = (await loadAgentConfig('/path/to/config.yml')) as any;
-
+			console.log(result);
 			expect(result.systemPrompt).toBe('lowercase');
 			expect(result.llm.apiKey).toBe('uppercase');
 		});
