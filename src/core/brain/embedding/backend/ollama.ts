@@ -58,7 +58,7 @@ export class OllamaEmbedder implements Embedder {
 		this.timeout = config.timeout || 30000;
 		this.maxRetries = config.maxRetries || 3;
 		// Default endpoint is /api/embeddings
-		this.endpoint = '/api/embeddings';
+		this.endpoint = '/api/embed';
 		// Normalize base URL for Ollama embedding service
 		// Embeddings use /api/embeddings endpoint, so we need to remove /v1 suffix if present
 		let baseUrl = config.baseUrl || 'http://localhost:11434';
@@ -101,11 +101,11 @@ export class OllamaEmbedder implements Embedder {
 				model: this.model,
 			});
 			// Modify the endpoint to use both endpoints /v1/embeddings and /api/embeddings
+			// Change request data format to match OpenAI API
 			const response = await this.makeRequest({
 				model: this.model,
-				prompt: text,
+				input: [text],
 			});
-
 			const embedding = response.embedding;
 			const processingTime = Date.now() - startTime;
 
@@ -253,13 +253,28 @@ export class OllamaEmbedder implements Embedder {
 		// Ollama API is stateless, no cleanup needed
 		logger.debug(`${LOG_PREFIXES.EMBEDDING} Ollama embedder disconnected`);
 	}
+	/**
+	 * Extract output from Ollama API response, standardize the output
+	 * @param response - The response from the Ollama API
+	 * @returns The output from the Ollama API response
+	 */
+
+	private async extractOutput(response: any): Promise<OllamaEmbeddingResponse> {
+		const data = await response.json();
+		let vector: number[] = [];
+		if (this.endpoint.endsWith('/v1/embeddings')) {
+			vector = data.data[0].embedding;
+		} else {
+			vector = data.embeddings[0];
+		}
+		return { embedding: vector };
+	}
 
 	/**
 	 * Make request to Ollama API
 	 */
 	private async makeRequest(body: any): Promise<OllamaEmbeddingResponse> {
 		const url = `${this.baseUrl}${this.endpoint}`;
-
 		let lastError: Error | undefined;
 		let delay: number = RETRY_CONFIG.INITIAL_DELAY;
 
@@ -314,8 +329,8 @@ export class OllamaEmbedder implements Embedder {
 					}
 				}
 
-				const data = (await response.json()) as OllamaEmbeddingResponse;
-
+				// const data = (await response.json()) as OllamaEmbeddingResponse;
+				const data = await this.extractOutput(response);
 				if (!data.embedding) {
 					throw new EmbeddingError('Invalid response format from Ollama API', 'ollama');
 				}
