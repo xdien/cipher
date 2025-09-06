@@ -90,27 +90,26 @@ export class WeaviateBackend implements VectorStore {
 
 		try {
 			// Configure connection for Weaviate Cloud or local instance
+			let scheme: string = 'http';
 			if (this.config.url) {
 				// Weaviate Cloud connection - extract host from URL and use https scheme
-				console.log('Connecting to Weaviate Cloud with URL: ', this.config.url);
 
 				// For Weaviate Cloud URLs, we need to extract the host and use https scheme
 				let host = this.config.url;
 				if (host.startsWith('https://')) {
 					host = host.replace('https://', '');
-				} else if (host.startsWith('http://')) {
+					scheme = 'https';
+				} else {
 					host = host.replace('http://', '');
 				}
 
 				this.connectionConfig = {
-					scheme: 'https',
+					scheme: scheme,
 					host: host,
 					apiKey: new ApiKey(this.config.apiKey || ''),
 				};
 			} else if (this.config.host) {
 				// Local or custom instance connection
-				console.log('Connecting to local/custom Weaviate instance: ', this.config.host);
-				let scheme = 'http';
 				let host = this.config.host;
 
 				if (this.config.host.includes('https://')) {
@@ -118,18 +117,15 @@ export class WeaviateBackend implements VectorStore {
 					host = this.config.host.replace('https://', '');
 				} else if (this.config.host.includes('http://')) {
 					scheme = 'http';
+
 					host = this.config.host.replace('http://', '');
 				}
 
 				this.connectionConfig = {
 					scheme: scheme,
 					host: host,
+					apiKey: new ApiKey(this.config.apiKey || ''),
 				};
-
-				// Add API key if provided for local instance
-				if (this.config.apiKey) {
-					this.connectionConfig.apiKey = new ApiKey(this.config.apiKey);
-				}
 			} else {
 				throw new VectorStoreConnectionError(
 					'Either url (for Weaviate Cloud) or host (for local instance) must be provided',
@@ -137,8 +133,8 @@ export class WeaviateBackend implements VectorStore {
 					new Error('Missing connection configuration')
 				);
 			}
-
 			console.log('Connection config: ', this.connectionConfig);
+
 			this.client = weaviate.client(this.connectionConfig);
 			// Verify connection
 			if (!this.client) {

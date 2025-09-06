@@ -37,7 +37,7 @@ describe('WeaviateBackend', () => {
 	const validConfig = {
 		type: 'weaviate' as const,
 		url: 'http://localhost:8080',
-		apiKey:'weaviate-api-key',
+		apiKey: 'weaviate-api-key',
 		collectionName: 'test_collection',
 		dimension: 1536,
 	};
@@ -74,7 +74,7 @@ describe('WeaviateBackend', () => {
 			expect(backend.isConnected()).toBe(false);
 			await backend.connect();
 			expect(backend.isConnected()).toBe(true);
-			
+
 			connectSpy.mockRestore();
 		});
 
