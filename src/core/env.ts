@@ -80,6 +80,9 @@ const envSchema = z.object({
 	PINECONE_NAMESPACE: z.string().default('default'),
 	// Faiss-specific Configuration
 	FAISS_BASE_STORAGE_PATH: z.string().optional(),
+	// Web Search Configuration
+	WEB_SEARCH_ENGINE: z.enum(['duckduckgo']).default('duckduckgo'),
+	WEB_SEARCH_ENABLE: z.boolean().default(true),
 	// Knowledge Graph Configuration
 	KNOWLEDGE_GRAPH_ENABLED: z.boolean().default(false),
 	KNOWLEDGE_GRAPH_TYPE: z.enum(['neo4j', 'in-memory']).default('in-memory'),
@@ -264,6 +267,11 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 			// Faiss-specific Configuration
 			case 'FAISS_BASE_STORAGE_PATH':
 				return process.env.FAISS_BASE_STORAGE_PATH;
+			// Web Search Configuration
+			case 'WEB_SEARCH_ENGINE':
+				return process.env.WEB_SEARCH_ENGINE || 'duckduckgo';
+			case 'WEB_SEARCH_ENABLE':
+				return process.env.WEB_SEARCH_ENABLE === 'true';
 			// Knowledge Graph Configuration
 			case 'KNOWLEDGE_GRAPH_ENABLED':
 				return process.env.KNOWLEDGE_GRAPH_ENABLED === 'true';
