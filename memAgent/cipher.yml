@@ -164,3 +164,5 @@ systemPrompt:
     - Code review and optimization
     - Explaining complex technical concepts
     - Reasoning through programming challenges
+  
+    You should call each tool at most once per user request unless explicitly instructed otherwise.
