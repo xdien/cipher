@@ -42,4 +42,4 @@
 - 
 
 ### 📝 Documentation
-- Refactored README and provided full docs in [docs](./docs/)  [#193](https://github.com/campfirein/cipher/pull/193)
+- Refactored README and provided full docs in [docs](./docs/) [#193](https://github.com/campfirein/cipher/pull/193)

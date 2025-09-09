@@ -1,4 +1,4 @@
-# Cipher
+# Byterover Cipher
 
 <div align="center">
 
@@ -25,7 +25,7 @@
 
 ## Overview
 
-Cipher is an opensource memory layer specifically designed for coding agents. Compatible with **Cursor, Windsurf, Claude Desktop, Claude Code, Gemini CLI, AWS's Kiro, VS Code, Roo Code, Trae, and Warp** through MCP, and coding agents, such as **Kimi K2**. (see more on [examples](./examples))
+Byterover Cipher is an opensource memory layer specifically designed for coding agents. Compatible with **Cursor, Windsurf, Claude Code, Cline, Claude Desktop, Gemini CLI, AWS's Kiro, VS Code, Roo Code, Trae, Amp Code and Warp** through MCP, and coding agents, such as **Kimi K2**. (see more on [examples](./examples))
 
 Built by [Byterover team](https://byterover.dev/)
 
@@ -215,6 +215,14 @@ DISABLE_REFLECTION_MEMORY=true  # default: true
 ## MCP Server Usage
 
 Cipher can run as an MCP (Model Context Protocol) server, allowing integration with MCP-compatible clients like Claude Desktop, Cursor, Windsurf, and other AI coding assistants.
+
+### Installing via Smithery
+
+To install cipher for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@campfirein/cipher):
+
+```bash
+npx -y @smithery/cli install @campfirein/cipher --client claude
+```
 
 ### Quick Setup
 

@@ -1,13 +1,13 @@
 ################################################################################
 # Build stage - includes dev dependencies
-ARG NODE_VERSION=20.18.1
 
 ################################################################################
 # Build stage - optimized for smaller final image
-FROM node:${NODE_VERSION}-alpine AS builder
+FROM node:20.18.1-alpine AS builder
 
-# Build argument to control UI building (default: false)
+# Build arguments
 ARG BUILD_UI=false
+ARG NODE_VERSION=20.18.1
 
 # Install build dependencies for native modules
 RUN apk add --no-cache \
@@ -39,7 +39,7 @@ RUN pnpm prune --prod && \
 
 ################################################################################
 # Production stage - minimal Alpine
-FROM node:${NODE_VERSION}-alpine AS production
+FROM node:20.18.1-alpine AS production
 
 WORKDIR /app
 
