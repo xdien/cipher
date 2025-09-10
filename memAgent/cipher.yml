@@ -86,7 +86,7 @@ embedding:
   baseUrl: $OLLAMA_BASE_URL
   dimensions: 1024
 
-# Gemini:
+# # Gemini:
 # embedding:
 #   type: gemini
 #   model: gemini-embedding-001
@@ -155,12 +155,13 @@ embedding:
 
 # System prompt - User customizable
 # This prompt will be combined with built-in tool usage instructions
-systemPrompt:
-  enabled: true
-  content: |
-    You are an AI programming assistant focused on coding and reasoning tasks. You excel at:
-    - Writing clean, efficient code
-    - Debugging and problem-solving
-    - Code review and optimization
-    - Explaining complex technical concepts
-    - Reasoning through programming challenges
+# systemPrompt:
+#   enabled: true
+#   content: |
+#     You are an AI programming assistant focused on coding and reasoning tasks. You excel at:
+#     - Writing clean, efficient code
+#     - Debugging and problem-solving
+#     - Code review and optimization
+#     - Explaining complex technical concepts
+#     - Reasoning through programming challenges
+systemPrompt: 'You are a helpful AI assistant with memory capabilities.'

@@ -326,7 +326,10 @@ describe('UnifiedToolManager', () => {
 			}
 
 			// Add system tools to the expected count
-			const expectedSystemTools = 1; // bash tool
+			let expectedSystemTools = 1; // bash tool
+			if (env.WEB_SEARCH_ENABLE) {
+				expectedSystemTools += 1; // web_search tool
+			}
 			const expectedTotal = expectedMemoryTools + expectedSystemTools;
 
 			if (env.KNOWLEDGE_GRAPH_ENABLED) {

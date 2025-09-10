@@ -1,730 +1,557 @@
-// import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-// import { DuckDuckGoHtmlProvider } from '../duckduckgo.js';
-// import { SearchOptions, RawResult } from '../../types.js';
-
-// // Mock cheerio - create chainable jQuery-like elements without circular references
-// const createMockElement = (text = '', attr = '', length = 1) => {
-//   const element = {
-//     find: vi.fn(),
-//     first: vi.fn(),
-//     each: vi.fn(),
-//     text: vi.fn().mockReturnValue(text),
-//     attr: vi.fn().mockReturnValue(attr),
-//     length
-//   };
-  
-//   // Set up the chaining behavior after element is created
-//   element.find.mockReturnValue(element);
-//   element.first.mockReturnValue(element);
-  
-//   return element;
-// };
-
-// // Create the main mock element for cheerio function calls
-// const mockCheerioElement = createMockElement();
-
-// // Create a proper cheerio $ function mock
-// const mockCheerioFunction = vi.fn((selector: string | any) => {
-//   // When called with an element (like $(el)), return a jQuery-like object
-//   if (typeof selector !== 'string') {
-//     return createMockElement();
-//   }
-//   // When called with a selector string (like $('div.result')), return the main element
-//   return mockCheerioElement;
-// });
-
-// // Add properties that cheerio $ function should have
-// Object.assign(mockCheerioFunction, {
-//   find: vi.fn(() => mockCheerioElement),
-//   each: vi.fn(),
-//   text: vi.fn(),
-//   attr: vi.fn(),
-//   length: 1
-// });
-
-// vi.mock('cheerio', () => ({
-//   load: vi.fn(() => mockCheerioFunction)
-// }));
-
-// // Mock node:url
-// vi.mock('node:url', () => ({
-//   URLSearchParams: class MockURLSearchParams {
-//     private params: Record<string, string>;
-    
-//     constructor(params: Record<string, string>) {
-//       this.params = params;
-//     }
-    
-//     toString() {
-//       const pairs = Object.entries(this.params).map(([key, value]) => 
-//         value ? `${key}=${encodeURIComponent(String(value))}` : ''
-//       ).filter(Boolean);
-//       return pairs.join('&');
-//     }
-//   }
-// }));
-
-// describe('DuckDuckGoHtmlProvider', () => {
-//   let provider: DuckDuckGoHtmlProvider;
-//   let mockFetch: ReturnType<typeof vi.fn>;
-
-//   beforeEach(() => {
-//     // Reset all mocks
-//     vi.clearAllMocks();
-    
-//     // Create provider instance
-//     provider = new DuckDuckGoHtmlProvider();
-    
-//     // Mock fetch globally
-//     mockFetch = vi.fn();
-//     global.fetch = mockFetch;
-    
-//     // Reset the cheerio mock functions with default behavior
-//     mockCheerioElement.find.mockReturnValue(mockCheerioElement);
-//     mockCheerioElement.each.mockImplementation(() => {});
-//     mockCheerioElement.text.mockReturnValue('');
-//     mockCheerioElement.attr.mockReturnValue('');
-    
-//     // Reset the function to return default elements
-//     mockCheerioFunction.mockImplementation((selector: string | any) => {
-//       if (typeof selector !== 'string') {
-//         // When called with $(el), return an element that can find title links
-//         return createMockElement('', '', 0);
-//       }
-//       // When called with $('div.result'), return the main element for .each()
-//       return mockCheerioElement;
-//     });
-//   });
-
-//   afterEach(() => {
-//     vi.restoreAllMocks();
-//   });
-
-//   describe('Constructor and Basic Properties', () => {
-//     it('should initialize with correct name', () => {
-//       expect(provider.name).toBe('duckduckgo-html');
-//     });
-
-//     it('should be ready when enabled', () => {
-//       expect(provider.isReady()).toBe(true);
-//     });
-
-//     it('should validate config correctly', () => {
-//       expect(provider.validateConfig()).toBe(true);
-//     });
-
-//     it('should fail validation when disabled', () => {
-//       provider.updateConfig({ enabled: false });
-//       expect(provider.validateConfig()).toBe(false);
-//     });
-
-//     it('should fail validation with short user agent', () => {
-//       provider.updateConfig({ 
-//         headers: { 'User-Agent': 'short' }
-//       });
-//       expect(provider.validateConfig()).toBe(false);
-//     });
-//   });
-
-//   describe('URL Building', () => {
-//     it('should build basic search URL', async () => {
-//       const query = 'test query';
-//       const options: SearchOptions = {};
-      
-//       // Mock successful fetch
-//       mockFetch.mockResolvedValue({
-//         ok: true,
-//         headers: { get: () => 'text/html' },
-//         text: () => Promise.resolve('<html></html>')
-//       });
-
-//       // Mock empty results
-//       mockCheerioElement.each.mockImplementation((callback: any) => {
-//         // No results
-//       });
-
-//       await provider.search(query, options);
-//       expect(mockFetch).toHaveBeenCalledWith(
-//         expect.stringContaining('https://duckduckgo.com/html?q=test%20query'),
-//         expect.any(Object)
-//       );
-//     });
-
-//     it('should include search options in URL', async () => {
-//       const query = 'test';
-//       const options: SearchOptions = {
-//         country: 'us',
-//         safeMode: true
-//       };
-
-//       mockFetch.mockResolvedValue({
-//         ok: true,
-//         headers: { get: () => 'text/html' },
-//         text: () => Promise.resolve('<html></html>')
-//       });
-
-//       mockCheerioElement.each.mockImplementation((callback: any) => {});
-
-//       await provider.search(query, options);
-
-//       const fetchCall = mockFetch.mock.calls[0];
-//       const url = fetchCall[0];
-      
-//       expect(url).toContain('q=test');
-//       expect(url).toContain('kl=us');
-//       expect(url).toContain('kd=1');
-//       expect(url).toContain('safe=strict');
-//       expect(url).toContain('ia=web');
-//     });
-//   });
-
-//   describe('Query Sanitization', () => {
-//     it('should handle empty queries', async () => {
-//       const result = await provider.search('', {});
-//       expect(result).toEqual([]);
-//     });
-
-//     it('should handle null/undefined queries', async () => {
-//       const result1 = await provider.search(null as any, {});
-//       const result2 = await provider.search(undefined as any, {});
-//       expect(result1).toEqual([]);
-//       expect(result2).toEqual([]);
-//     });
-
-//     it('should sanitize whitespace in queries', async () => {
-//       mockFetch.mockResolvedValue({
-//         ok: true,
-//         headers: { get: () => 'text/html' },
-//         text: () => Promise.resolve('<html></html>')
-//       });
-
-//       mockCheerioElement.each.mockImplementation((callback: any) => {});
-
-//       await provider.search('  multiple   spaces  ', {});
-
-//       const fetchCall = mockFetch.mock.calls[0];
-//       const url = fetchCall[0];
-//       expect(url).toContain('multiple%20spaces');
-//     });
-
-//     it('should limit query length', async () => {
-//       const longQuery = 'a'.repeat(600);
-      
-//       mockFetch.mockResolvedValue({
-//         ok: true,
-//         headers: { get: () => 'text/html' },
-//         text: () => Promise.resolve('<html></html>')
-//       });
-
-//       mockCheerioElement.each.mockImplementation((callback: any) => {});
-
-//       await provider.search(longQuery, {});
-
-//       const fetchCall = mockFetch.mock.calls[0];
-//       const url = fetchCall[0];
-//       // Should be truncated to 500 characters
-//       expect(url.length).toBeLessThan(600);
-//     });
-//   });
-
-//   describe('HTML Parsing', () => {
-//     it('should parse search results correctly', async () => {
-//       const mockHtml = '<html><body></body></html>';
-      
-//       mockFetch.mockResolvedValue({
-//         ok: true,
-//         headers: { get: () => 'text/html' },
-//         text: () => Promise.resolve(mockHtml)
-//       });
-
-//       // Mock the cheerio function to return proper elements with data
-//       mockCheerioFunction.mockImplementation((selector: string | any) => {
-//         if (typeof selector !== 'string') {
-//           // When called with $(el), return an element that can find title links
-//           return createMockElement('Test Title', 'https://example.com', 1);
-//         }
-//         // When called with $('div.result'), return the main element for .each()
-//         return mockCheerioElement;
-//       });
-
-//       // Mock the each implementation to simulate finding one result
-//       mockCheerioElement.each.mockImplementation((callback: any) => {
-//         // Call the callback with a mock element
-//         callback(0, {});
-//       });
-
-//       const results = await provider.search('test', {});
-//       expect(results).toHaveLength(1);
-//       expect(results[0]).toMatchObject({
-//         provider: 'duckduckgo-html',
-//         rankOnPage: 1,
-//         url: 'https://example.com/',
-//         title: 'Test Title'
-//       });
-//     });
-
-//     it('should handle malformed HTML gracefully', async () => {
-//       const malformedHtml = '<html><body><div class="result">';
-      
-//       mockFetch.mockResolvedValue({
-//         ok: true,
-//         headers: { get: () => 'text/html' },
-//         text: () => Promise.resolve(malformedHtml)
-//       });
-
-//       mockCheerioElement.each.mockImplementation((callback: any) => {
-//         // Simulate parsing error
-//         throw new Error('Parsing error');
-//       });
-
-//       const results = await provider.search('test', {});
-//       expect(results).toEqual([]);
-//     });
-
-//          it('should try alternative selectors when main selector fails', async () => {
-//        mockFetch.mockResolvedValue({
-//          ok: true,
-//          headers: { get: () => 'text/html' },
-//          text: () => Promise.resolve('<html></html>')
-//        });
-
-//        // Mock the cheerio function to simulate alternative selector behavior
-//        let selectorCallCount = 0;
-//        mockCheerioFunction.mockImplementation((selector: string | any) => {
-//          if (typeof selector === 'string') {
-//            if (selector === 'div.result') {
-//              // First selector returns empty results
-//              return createMockElement('', '', 0);
-//            } else if (selector === 'div.web-result') {
-//              // Second selector has results
-//              const element = createMockElement();
-//              element.each.mockImplementation((callback: any) => {
-//                callback(0, {});
-//              });
-//              return element;
-//            }
-//          } else {
-//            // When called with $(el), return element with alternative data
-//            return createMockElement('Alternative Title', 'https://alt-example.com/', 1);
-//          }
-//          return mockCheerioElement;
-//        });
-
-//        const results = await provider.search('test', {});
-//        expect(results).toHaveLength(1);
-//        expect(results[0].title).toBe('Alternative Title');
-//        expect(results[0].url).toBe('https://alt-example.com/');
-//      });
-//   });
-
-//   describe('Result Validation and Filtering', () => {
-//     it('should filter out invalid results', async () => {
-//       mockFetch.mockResolvedValue({
-//         ok: true,
-//         headers: { get: () => 'text/html' },
-//         text: () => Promise.resolve('<html></html>')
-//       });
-
-//       const mockResults = [
-//         { title: '', url: 'https://example.com' }, // Empty title
-//         { title: 'Valid', url: '' }, // Empty URL
-//         { title: 'Short', url: 'invalid-url' }, // Invalid URL
-//         { title: 'DuckDuckGo Internal', url: 'https://duckduckgo.com/internal' }, // DuckDuckGo URL
-//         { title: 'Valid Result', url: 'https://example.com' } // Valid
-//       ];
-
-//              // Mock the cheerio function with result-specific behavior
-//        let currentResultIndex = 0;
-//        mockCheerioFunction.mockImplementation((selector: string | any) => {
-//          if (typeof selector === 'string') {
-//            // Return element that will iterate over results
-//            currentResultIndex = 0; // Reset for each new search
-//            const element = createMockElement();
-//            element.each.mockImplementation((callback: any) => {
-//              mockResults.forEach((result, index) => {
-//                currentResultIndex = index; // Set current index before callback
-//                callback(index, { resultData: result }); // Pass result data in element
-//              });
-//            });
-//            return element;
-//          } else {
-//            // When called with $(el), use the currentResultIndex to get the right data
-//            if (currentResultIndex < mockResults.length) {
-//              const result = mockResults[currentResultIndex];
-//              return createMockElement(result.title, result.url, result.title ? 1 : 0);
-//            }
-//            return createMockElement('', '', 0);
-//          }
-//        });
-
-//              const results = await provider.search('test', {});
-       
-//        // Should only have the valid result
-//        expect(results).toHaveLength(1);
-//        expect(results[0].title).toBe('Valid Result');
-//     });
-
-//     it('should remove duplicate URLs', async () => {
-//       mockFetch.mockResolvedValue({
-//         ok: true,
-//         headers: { get: () => 'text/html' },
-//         text: () => Promise.resolve('<html></html>')
-//       });
-
-//       const duplicateResults = [
-//         { title: 'First', url: 'https://example.com' },
-//         { title: 'Second', url: 'https://example.com/' }, // Same URL with trailing slash
-//         { title: 'Third', url: 'https://different.com' }
-//       ];
-
-//              // Mock the cheerio function for duplicate results test
-//        let currentDuplicateIndex = 0;
-//        mockCheerioFunction.mockImplementation((selector: string | any) => {
-//          if (typeof selector === 'string') {
-//            currentDuplicateIndex = 0; // Reset for each new search
-//            const element = createMockElement();
-//            element.each.mockImplementation((callback: any) => {
-//              duplicateResults.forEach((result, index) => {
-//                currentDuplicateIndex = index; // Set current index before callback
-//                callback(index, { resultData: result });
-//              });
-//            });
-//            return element;
-//          } else {
-//            // Return different elements based on current index
-//            if (currentDuplicateIndex < duplicateResults.length) {
-//              const result = duplicateResults[currentDuplicateIndex];
-//              return createMockElement(result.title, result.url, 1);
-//            }
-//            return createMockElement('', '', 0);
-//          }
-//        });
-
-//       const results = await provider.search('test', {});
-      
-//       // Should remove duplicate (trailing slash handled)
-//       expect(results).toHaveLength(2);
-//       expect(results.map(r => r.title)).toEqual(['First', 'Third']);
-//     });
-
-//     it('should respect maxResults option', async () => {
-//       mockFetch.mockResolvedValue({
-//         ok: true,
-//         headers: { get: () => 'text/html' },
-//         text: () => Promise.resolve('<html></html>')
-//       });
-
-//       const manyResults = Array.from({ length: 30 }, (_, i) => ({
-//         title: `Result ${i + 1}`,
-//         url: `https://example${i}.com`
-//       }));
-
-//              // Mock the cheerio function for maxResults test with proper call tracking
-//        let maxResultsCallIndex = 0;
-//        mockCheerioFunction.mockImplementation((selector: string | any) => {
-//          if (typeof selector === 'string') {
-//            maxResultsCallIndex = 0; // Reset for each new search
-//            const element = createMockElement();
-//            element.each.mockImplementation((callback: any) => {
-//              for (let index = 0; index < manyResults.length; index++) {
-//                const shouldContinue = callback(index, {});
-//                if (shouldContinue === false) {
-//                  break;
-//                }
-//              }
-//            });
-//            return element;
-//          } else {
-//            // Return different elements based on call order
-//            if (maxResultsCallIndex < manyResults.length) {
-//              const result = manyResults[maxResultsCallIndex];
-//              maxResultsCallIndex++;
-//              return createMockElement(result.title, result.url, 1);
-//            }
-//            return createMockElement('', '', 0);
-//          }
-//        });
-
-//       const results = await provider.search('test', { maxResults: 5 });
-      
-//       expect(results.length).toBeLessThanOrEqual(5);
-//     });
-//   });
-
-//   describe('Metadata Extraction', () => {
-//     it('should extract domain from URL', async () => {
-//       mockFetch.mockResolvedValue({
-//         ok: true,
-//         headers: { get: () => 'text/html' },
-//         text: () => Promise.resolve('<html></html>')
-//       });
-
-//              // Mock the cheerio function for domain extraction test
-//        mockCheerioFunction.mockImplementation((selector: string | any) => {
-//          if (typeof selector === 'string') {
-//            const element = createMockElement();
-//            element.each.mockImplementation((callback: any) => {
-//              callback(0, {});
-//            });
-//            return element;
-//          } else {
-//            // When called with $(el), return element with domain data
-//            return createMockElement('Test Title', 'https://example.com/path', 1);
-//          }
-//        });
-
-//       const results = await provider.search('test', {});
-      
-//       expect(results[0].metadata?.domain).toBe('example.com');
-//     });
-
-//     it('should detect PDF content type', async () => {
-//       mockFetch.mockResolvedValue({
-//         ok: true,
-//         headers: { get: () => 'text/html' },
-//         text: () => Promise.resolve('<html></html>')
-//       });
-
-//              // Mock the cheerio function for PDF content type test
-//        mockCheerioFunction.mockImplementation((selector: string | any) => {
-//          if (typeof selector === 'string') {
-//            const element = createMockElement();
-//            element.each.mockImplementation((callback: any) => {
-//              callback(0, {});
-//            });
-//            return element;
-//          } else {
-//            // When called with $(el), return element with PDF data
-//            return createMockElement('PDF Document', 'https://example.com/document.pdf', 1);
-//          }
-//        });
-
-//       const results = await provider.search('test', {});
-      
-//       expect(results[0].metadata?.contentType).toBe('application/pdf');
-//     });
-
-//     it('should extract published date when available', async () => {
-//       mockFetch.mockResolvedValue({
-//         ok: true,
-//         headers: { get: () => 'text/html' },
-//         text: () => Promise.resolve('<html></html>')
-//       });
-
-//              // Mock the cheerio function for published date test
-//        mockCheerioFunction.mockImplementation((selector: string | any) => {
-//          if (typeof selector === 'string') {
-//            const element = createMockElement();
-//            element.each.mockImplementation((callback: any) => {
-//              callback(0, {});
-//            });
-//            return element;
-//          } else {
-//            // When called with $(el), return element with timestamp handling
-//            const element = createMockElement('Test Title', 'https://example.com/', 1);
-//            element.find.mockImplementation((selector: string) => {
-//              if (selector.includes('timestamp')) {
-//                return {
-//                  length: 1,
-//                  text: vi.fn().mockReturnValue('2024-01-15')
-//                };
-//              }
-//              // Return the normal chainable element for other selectors
-//              return createMockElement('Test Title', 'https://example.com/', 1);
-//            });
-//            return element;
-//          }
-//        });
-
-//       const results = await provider.search('test', {});
-      
-//       expect(results[0].metadata?.publishedDate).toBe('2024-01-15');
-//     });
-//   });
-
-//      describe('Error Handling', () => {
-//      it('should handle fetch failures gracefully', async () => {
-//        // Create fresh provider with no retries for this test
-//        const testProvider = new DuckDuckGoHtmlProvider({ maxRetries: 0 });
-       
-//        // Create fresh mock for this test
-//        const testMockFetch = vi.fn();
-//        testMockFetch.mockRejectedValue(new Error('Network error'));
-//        global.fetch = testMockFetch;
-
-//        const results = await testProvider.search('test', {});
-//        expect(results).toEqual([]);
-//      }, 2000); // 2 second timeout
-
-//      it('should handle HTTP errors gracefully', async () => {
-//        // Create fresh provider with no retries for this test
-//        const testProvider = new DuckDuckGoHtmlProvider({ maxRetries: 0 });
-       
-//        // Create fresh mock for this test
-//        const testMockFetch = vi.fn();
-//        testMockFetch.mockResolvedValue({
-//          ok: false,
-//          status: 429,
-//          statusText: 'Too Many Requests'
-//        });
-//        global.fetch = testMockFetch;
-
-//        const results = await testProvider.search('test', {});
-//        expect(results).toEqual([]);
-//      }, 2000); // 2 second timeout
-
-//      it('should handle timeout errors', async () => {
-//        // Create fresh provider with no retries for this test
-//        const testProvider = new DuckDuckGoHtmlProvider({ maxRetries: 0 });
-       
-//        // Create fresh mock for this test
-//        const testMockFetch = vi.fn();
-//        testMockFetch.mockRejectedValue(new Error('timeout'));
-//        global.fetch = testMockFetch;
-
-//        const results = await testProvider.search('test', {});
-//        expect(results).toEqual([]);
-//      }, 2000); // 2 second timeout
-
-//      it('should handle unexpected content types', async () => {
-//        // Create fresh provider with no retries for this test
-//        const testProvider = new DuckDuckGoHtmlProvider({ maxRetries: 0 });
-       
-//        // Create fresh mock for this test
-//        const testMockFetch = vi.fn();
-//        testMockFetch.mockResolvedValue({
-//          ok: true,
-//          headers: { get: () => 'application/json' },
-//          text: () => Promise.resolve('{"error": "not html"}')
-//        });
-//        global.fetch = testMockFetch;
-
-//        const results = await testProvider.search('test', {});
-//        expect(results).toEqual([]);
-//      }, 2000); // 2 second timeout
-//    });
-
-//   describe('Configuration', () => {
-//     it('should provide recommended configuration', () => {
-//       const recommendations = provider.getConfigRecommendations();
-      
-//       expect(recommendations.timeout).toBe(15000);
-//       expect(recommendations.maxRetries).toBe(2);
-//       expect(recommendations.rateLimit?.requestsPerMinute).toBe(30);
-//       expect(recommendations.headers).toBeDefined();
-//       expect(recommendations.headers?.['User-Agent']).toContain('CipherBot');
-//     });
-
-//     it('should update configuration correctly', () => {
-//       const newConfig = {
-//         timeout: 20000,
-//         maxRetries: 5
-//       };
-
-//       provider.updateConfig(newConfig);
-//       const config = provider.getConfig();
-
-//       expect(config.timeout).toBe(20000);
-//       expect(config.maxRetries).toBe(5);
-//     });
-
-//     it('should maintain default headers when updating config', () => {
-//       provider.updateConfig({ timeout: 20000 });
-//       const config = provider.getConfig();
-
-//       expect(config.headers?.['User-Agent']).toBeDefined();
-//       expect(config.headers?.['Accept']).toBeDefined();
-//     });
-//   });
-
-//   describe('Statistics', () => {
-//     it('should track request statistics', async () => {
-//       mockFetch.mockResolvedValue({
-//         ok: true,
-//         headers: { get: () => 'text/html' },
-//         text: () => Promise.resolve('<html></html>')
-//       });
-
-//       mockCheerioElement.each.mockImplementation((callback: any) => {});
-
-//       const initialStats = provider.getStats();
-//       expect(initialStats.requestCount).toBe(0);
-
-//       await provider.search('test', {});
-
-//       const updatedStats = provider.getStats();
-//       expect(updatedStats.requestCount).toBe(1);
-//       expect(updatedStats.lastRequestTime).toBeGreaterThan(0);
-//     });
-
-//     it('should reset statistics correctly', async () => {
-//       mockFetch.mockResolvedValue({
-//         ok: true,
-//         headers: { get: () => 'text/html' },
-//         text: () => Promise.resolve('<html></html>')
-//       });
-
-//       mockCheerioElement.each.mockImplementation((callback: any) => {});
-
-//       await provider.search('test', {});
-      
-//       provider.resetStats();
-//       const stats = provider.getStats();
-      
-//       expect(stats.requestCount).toBe(0);
-//       expect(stats.lastRequestTime).toBe(0);
-//     });
-//   });
-// });
-
-// describe('DuckDuckGoHtmlProvider Integration Tests', () => {
-//   let provider: DuckDuckGoHtmlProvider;
-
-//   beforeEach(() => {
-//     provider = new DuckDuckGoHtmlProvider();
-//     // Skip integration tests in CI unless specifically enabled
-//     if (process.env.CI && !process.env.RUN_INTEGRATION_TESTS) {
-//       return;
-//     }
-//   });
-
-//   it.skipIf(process.env.CI && !process.env.RUN_INTEGRATION_TESTS)(
-//     'should perform real search against DuckDuckGo', 
-//     async () => {
-//       const results = await provider.search('TypeScript programming language', {
-//         maxResults: 3,
-//         safeMode: true
-//       });
-
-//       expect(results).toBeDefined();
-//       expect(Array.isArray(results)).toBe(true);
-      
-//       if (results.length > 0) {
-//         const firstResult = results[0];
-//         expect(firstResult.provider).toBe('duckduckgo-html');
-//         expect(firstResult.title).toBeTruthy();
-//         expect(firstResult.url).toMatch(/^https?:\/\//);
-//         expect(firstResult.rankOnPage).toBeGreaterThan(0);
-//         expect(firstResult.metadata?.domain).toBeTruthy();
-//       }
-//     }, 
-//     30000 // 30 second timeout for real network request
-//   );
-
-//   it.skipIf(process.env.CI && !process.env.RUN_INTEGRATION_TESTS)(
-//     'should handle rate limiting correctly',
-//     async () => {
-//       const promises = Array.from({ length: 5 }, () => 
-//         provider.search(`test query ${Math.random()}`, { maxResults: 1 })
-//       );
-
-//       const results = await Promise.all(promises);
-      
-//       // All requests should complete without errors
-//       results.forEach(result => {
-//         expect(Array.isArray(result)).toBe(true);
-//       });
-//     },
-//     60000 // 60 second timeout for multiple requests
-//   );
-// }); 
+/**
+ * Comprehensive Unit Tests for DuckDuckGo Puppeteer Search Provider
+ *
+ * Tests all functionality including search operations, content extraction,
+ * LLM optimization, error handling, and platform-specific configurations.
+ */
+
+import { describe, it, expect, beforeEach, afterEach, vi, type MockedFunction } from 'vitest';
+import { DuckDuckGoPuppeteerProvider } from '../duckduckgo.js';
+import { SearchOptions, InternalSearchResult, ExtractedContent } from '../../types.js';
+import * as os from 'os';
+import puppeteer from 'puppeteer';
+
+// Mock Puppeteer
+const mockPage = {
+	setViewport: vi.fn().mockResolvedValue(undefined),
+	setUserAgent: vi.fn().mockResolvedValue(undefined),
+	setExtraHTTPHeaders: vi.fn().mockResolvedValue(undefined),
+	goto: vi.fn().mockResolvedValue(undefined),
+	waitForSelector: vi.fn().mockResolvedValue(undefined),
+	waitForFunction: vi.fn().mockResolvedValue(undefined),
+	screenshot: vi.fn().mockResolvedValue(undefined),
+	content: vi.fn().mockResolvedValue('<html><body>test</body></html>'),
+	evaluate: vi.fn(),
+	close: vi.fn().mockResolvedValue(undefined),
+};
+
+const mockBrowser = {
+	newPage: vi.fn(() => Promise.resolve(mockPage)),
+	close: vi.fn(),
+};
+
+vi.mock('puppeteer', () => ({
+	default: {
+		launch: vi.fn(() => Promise.resolve(mockBrowser)),
+	},
+}));
+
+// Mock OS module
+vi.mock('os', () => ({
+	platform: vi.fn(() => 'darwin'),
+	arch: vi.fn(() => 'x64'),
+}));
+
+// Mock logger
+vi.mock('../../../../../logger/index.js', () => ({
+	logger: {
+		info: vi.fn(),
+		debug: vi.fn(),
+		warn: vi.fn(),
+		error: vi.fn(),
+	},
+}));
+
+describe('DuckDuckGoPuppeteerProvider', () => {
+	let provider: DuckDuckGoPuppeteerProvider;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		// Reset mock implementations
+		(puppeteer.launch as any).mockImplementation(() => Promise.resolve(mockBrowser));
+		mockBrowser.newPage.mockImplementation(() => Promise.resolve(mockPage));
+
+		// Reset all page mock functions to their default implementations
+		mockPage.setViewport.mockResolvedValue(undefined);
+		mockPage.setUserAgent.mockResolvedValue(undefined);
+		mockPage.setExtraHTTPHeaders.mockResolvedValue(undefined);
+		mockPage.goto.mockResolvedValue(undefined);
+		mockPage.waitForSelector.mockResolvedValue(undefined);
+		mockPage.waitForFunction.mockResolvedValue(undefined);
+		mockPage.screenshot.mockResolvedValue(undefined);
+		mockPage.content.mockResolvedValue('<html><body>test</body></html>');
+		mockPage.close.mockResolvedValue(undefined);
+
+		provider = new DuckDuckGoPuppeteerProvider();
+	});
+
+	afterEach(async () => {
+		await provider.cleanup();
+	});
+
+	describe('Initialization', () => {
+		it('should initialize with default configuration', () => {
+			expect(provider.name).toBe('duckduckgo-puppeteer');
+			expect(provider.isReady()).toBe(true);
+		});
+
+		it('should apply custom configuration', () => {
+			const customConfig = {
+				timeout: 20000,
+				maxRetries: 5,
+				headers: { 'Custom-Header': 'test-value' },
+			};
+
+			const customProvider = new DuckDuckGoPuppeteerProvider(customConfig);
+			const config = customProvider.getConfig();
+
+			expect(config.timeout).toBe(20000);
+			expect(config.maxRetries).toBe(5);
+			expect(config.headers?.['Custom-Header']).toBe('test-value');
+		});
+
+		it('should get platform-specific configuration recommendations', () => {
+			const recommendations = provider.getConfigRecommendations();
+
+			expect(recommendations.timeout).toBeDefined();
+			expect(recommendations.maxRetries).toBe(2);
+			expect(recommendations.rateLimit).toBeDefined();
+			expect(recommendations.headers).toBeDefined();
+		});
+	});
+
+	describe('Platform-specific Configuration', () => {
+		it('should return macOS configuration for darwin platform', () => {
+			(os.platform as MockedFunction<typeof os.platform>).mockReturnValue('darwin');
+
+			const provider = new DuckDuckGoPuppeteerProvider();
+			const recommendations = provider.getConfigRecommendations();
+
+			expect(recommendations.timeout).toBe(30000);
+			expect(recommendations.rateLimit?.requestsPerMinute).toBe(10);
+		});
+
+		it('should return Windows configuration for win32 platform', () => {
+			(os.platform as MockedFunction<typeof os.platform>).mockReturnValue('win32');
+
+			const provider = new DuckDuckGoPuppeteerProvider();
+			const recommendations = provider.getConfigRecommendations();
+
+			expect(recommendations.timeout).toBe(30000);
+			expect(recommendations.rateLimit?.requestsPerMinute).toBe(12);
+		});
+
+		it('should return Linux configuration for linux platform', () => {
+			(os.platform as MockedFunction<typeof os.platform>).mockReturnValue('linux');
+
+			const provider = new DuckDuckGoPuppeteerProvider();
+			const recommendations = provider.getConfigRecommendations();
+
+			expect(recommendations.timeout).toBe(45000);
+			expect(recommendations.rateLimit?.requestsPerMinute).toBe(10);
+		});
+	});
+
+	describe('Search Functionality', () => {
+		const mockSearchResults = [
+			{
+				provider: 'duckduckgo',
+				rankOnPage: 1,
+				url: 'https://example.com/article1',
+				title: 'Test Article 1',
+				snippet: 'This is a test article about TypeScript',
+				domain: 'example.com',
+				llmOptimized: {
+					keyFacts: ['TypeScript is a typed superset of JavaScript'],
+					summary: 'Article about TypeScript development',
+					relevanceScore: 0.8,
+					contentType: 'article' as const,
+				},
+			},
+		];
+
+		beforeEach(() => {
+			mockPage.evaluate.mockResolvedValue({
+				results: mockSearchResults,
+				debug: {
+					title: 'DuckDuckGo Search Results',
+					url: 'https://duckduckgo.com/?q=test',
+					hasAnomaly: false,
+					totalLinks: 10,
+					totalArticles: 5,
+				},
+			});
+		});
+
+		it('should perform successful search with basic query', async () => {
+			const options: SearchOptions = { maxResults: 3 };
+			const results = await provider.search('TypeScript tutorial', options);
+
+			expect(puppeteer.launch).toHaveBeenCalledWith({
+				headless: true,
+				args: expect.arrayContaining([
+					'--no-sandbox',
+					'--disable-setuid-sandbox',
+					'--disable-blink-features=AutomationControlled',
+				]),
+			});
+
+			expect(mockPage.setViewport).toHaveBeenCalledWith({ width: 1366, height: 768 });
+			expect(mockPage.setUserAgent).toHaveBeenCalled();
+			expect(mockPage.setExtraHTTPHeaders).toHaveBeenCalled();
+			expect(mockPage.goto).toHaveBeenCalledWith(
+				expect.stringContaining('https://duckduckgo.com/?q=TypeScript+tutorial'), // URLSearchParams uses + for spaces
+				{ waitUntil: 'networkidle0', timeout: 30000 }
+			);
+
+			expect(results).toBeDefined();
+			expect(Array.isArray(results)).toBe(true);
+		}, 10000); // Increase timeout to 10 seconds
+
+		it('should handle empty or invalid queries', async () => {
+			const results1 = await provider.search('', {});
+			const results2 = await provider.search('   ', {});
+
+			expect(results1).toEqual([]);
+			expect(results2).toEqual([]);
+		});
+
+		it('should handle CAPTCHA/anomaly detection', async () => {
+			mockPage.evaluate.mockResolvedValue({
+				results: [],
+				debug: {
+					hasAnomaly: true,
+					anomalyText: 'Please complete the CAPTCHA',
+				},
+			});
+
+			const results = await provider.search('test query', {});
+			expect(results).toEqual([]);
+		});
+
+		it('should sanitize query properly', async () => {
+			const longQuery = 'a'.repeat(600);
+			await provider.search(longQuery, {});
+
+			expect(mockPage.goto).toHaveBeenCalledWith(
+				expect.stringContaining('a'.repeat(500).replace(/ /g, '+')), // URLSearchParams encoding
+				expect.any(Object)
+			);
+		}, 10000); // Increase timeout
+
+		it('should build URL with search options', async () => {
+			const options: SearchOptions = {
+				country: 'us',
+				safeMode: true,
+				maxResults: 5,
+			};
+
+			await provider.search('test query', options);
+
+			expect(mockPage.goto).toHaveBeenCalledWith(
+				expect.stringMatching(/kl=us/),
+				expect.any(Object)
+			);
+			expect(mockPage.goto).toHaveBeenCalledWith(
+				expect.stringMatching(/safe=strict/),
+				expect.any(Object)
+			);
+		}, 10000); // Increase timeout
+	});
+
+	describe('Content Extraction', () => {
+		const mockExtractedContent: ExtractedContent = {
+			pageTitle: 'Test Article',
+			metaDescription: 'A test article about web development',
+			headings: [
+				{ level: 1, text: 'Introduction' },
+				{ level: 2, text: 'Getting Started' },
+			],
+			paragraphs: [
+				'This is the first paragraph with important information.',
+				'Second paragraph contains more details about the topic.',
+			],
+			mainText: 'Full article content with detailed information about web development...',
+			wordCount: 150,
+			listText: ['Item 1', 'Item 2', 'Item 3'],
+			tableText: ['Headers: Name | Age | City. Data: John | 25 | New York'],
+		};
+
+		beforeEach(() => {
+			// Set default mock for search results evaluation
+			mockPage.evaluate.mockResolvedValue({
+				results: [
+					{
+						provider: 'duckduckgo',
+						rankOnPage: 1,
+						url: 'https://example.com/test',
+						title: 'Test Page',
+						snippet: 'Test snippet',
+						domain: 'example.com',
+						llmOptimized: {
+							keyFacts: [],
+							summary: 'Test summary',
+							relevanceScore: 0.5,
+							contentType: 'other' as const,
+						},
+					},
+				],
+				debug: { hasAnomaly: false },
+			});
+		});
+
+		it('should extract structured content from page', async () => {
+			// Reset the mock to ensure clean state
+			mockPage.evaluate.mockReset();
+
+			// Mock the search results evaluation to return results that will trigger content fetching
+			mockPage.evaluate.mockResolvedValueOnce({
+				results: [
+					{
+						provider: 'duckduckgo',
+						rankOnPage: 1,
+						url: 'https://example.com/test',
+						title: 'Test Page',
+						snippet: 'Test snippet',
+						domain: 'example.com',
+						llmOptimized: {
+							keyFacts: [],
+							summary: 'Test summary',
+							relevanceScore: 0.5,
+							contentType: 'other' as const,
+						},
+					},
+				],
+				debug: { hasAnomaly: false },
+			});
+
+			// Mock the content extraction evaluation (will be called when fetching content)
+			mockPage.evaluate.mockResolvedValueOnce(mockExtractedContent);
+
+			const results = await provider.search('test query', { fetchContent: true });
+
+			// Should have called goto twice: once for search, once for content
+			expect(mockPage.goto).toHaveBeenCalledTimes(2);
+			expect(results).toBeDefined();
+			expect(Array.isArray(results)).toBe(true);
+		}, 10000); // Increase timeout
+
+		it('should generate LLM-optimized content', () => {
+			const provider = new DuckDuckGoPuppeteerProvider();
+			// Access private method for testing
+			const generateMethod = (provider as any).generateLLMOptimizedContent.bind(provider);
+
+			const optimized = generateMethod(mockExtractedContent, 'web development');
+
+			expect(optimized).toBeDefined();
+			expect(optimized.keyFacts).toBeInstanceOf(Array);
+			expect(optimized.summary).toContain('Topic: Test Article');
+			expect(optimized.relevanceScore).toBeGreaterThanOrEqual(0);
+			expect(optimized.relevanceScore).toBeLessThanOrEqual(1);
+			expect(optimized.contentType).toBe('article');
+		});
+
+		it('should extract key facts from content', () => {
+			const provider = new DuckDuckGoPuppeteerProvider();
+			const extractMethod = (provider as any).extractKeyFacts.bind(provider);
+
+			const facts = extractMethod({
+				paragraphs: [
+					'The API endpoint is https://api.example.com/v1',
+					'Default port is 8080 and requires authentication',
+					'This is just regular text without specific facts',
+				],
+				tableText: ['Configuration: timeout | 30s. retries | 3'],
+			});
+
+			expect(facts).toContain('The API endpoint is https://api.example.com/v1');
+			expect(facts).toContain('Default port is 8080 and requires authentication');
+			expect(facts).toContain('Configuration: timeout | 30s. retries | 3');
+			expect(facts).not.toContain('This is just regular text without specific facts');
+		});
+
+		it('should calculate relevance score correctly', () => {
+			const provider = new DuckDuckGoPuppeteerProvider();
+			const calculateMethod = (provider as any).calculateRelevanceScore.bind(provider);
+
+			const content = {
+				mainText: 'This article discusses TypeScript development and JavaScript programming',
+			};
+
+			const score1 = calculateMethod(content, 'TypeScript JavaScript');
+			const score2 = calculateMethod(content, 'Python Django');
+
+			expect(score1).toBeGreaterThan(score2);
+			expect(score1).toBeGreaterThan(0);
+			expect(score2).toBeGreaterThanOrEqual(0);
+		});
+
+		it('should classify content types correctly', () => {
+			const provider = new DuckDuckGoPuppeteerProvider();
+			const classifyMethod = (provider as any).classifyContentType.bind(provider);
+
+			expect(
+				classifyMethod({
+					pageTitle: 'API Documentation',
+					mainText: 'api reference documentation',
+				})
+			).toBe('documentation');
+
+			expect(
+				classifyMethod({
+					pageTitle: 'How to Tutorial',
+					mainText: 'step by step guide',
+				})
+			).toBe('tutorial');
+
+			expect(
+				classifyMethod({
+					pageTitle: 'Stack Overflow Question',
+					mainText: 'user asked about this problem',
+				})
+			).toBe('forum');
+
+			expect(
+				classifyMethod({
+					pageTitle: 'Breaking News',
+					mainText: 'published yesterday breaking news',
+				})
+			).toBe('news');
+
+			expect(
+				classifyMethod({
+					pageTitle: 'Regular Article',
+					mainText: 'general article content',
+				})
+			).toBe('article');
+		});
+	});
+
+	describe('Error Handling', () => {
+		it('should handle browser launch failure', async () => {
+			(puppeteer.launch as MockedFunction<any>).mockRejectedValue(
+				new Error('Failed to launch browser')
+			);
+
+			const results = await provider.search('test query', {});
+			expect(results).toEqual([]);
+		});
+
+		it('should handle page navigation failure', async () => {
+			mockPage.goto.mockRejectedValue(new Error('Navigation timeout'));
+
+			const results = await provider.search('test query', {});
+			expect(results).toEqual([]);
+		});
+
+		it('should handle page evaluation errors', async () => {
+			mockPage.evaluate.mockRejectedValue(new Error('Evaluation failed'));
+
+			const results = await provider.search('test query', {});
+			expect(results).toEqual([]);
+		});
+
+		it('should handle content fetching errors gracefully', async () => {
+			mockPage.evaluate.mockResolvedValueOnce({
+				results: [
+					{
+						provider: 'duckduckgo',
+						rankOnPage: 1,
+						url: 'https://example.com/test',
+						title: 'Test',
+						snippet: 'Test snippet',
+						domain: 'example.com',
+						llmOptimized: {
+							keyFacts: [],
+							summary: 'Test',
+							relevanceScore: 0.5,
+							contentType: 'other' as const,
+						},
+					},
+				],
+				debug: { hasAnomaly: false },
+			});
+
+			// Make content fetching fail
+			mockPage.goto.mockRejectedValueOnce(new Error('Content fetch failed'));
+
+			const results = await provider.search('test query', { fetchContent: true });
+			expect(results).toBeDefined();
+		});
+
+		it('should close page even if errors occur', async () => {
+			mockPage.evaluate.mockRejectedValue(new Error('Test error'));
+
+			await provider.search('test query', {});
+			expect(mockPage.close).toHaveBeenCalled();
+		}, 10000); // Increase timeout
+	});
+
+	describe('Browser Management', () => {
+		it('should reuse browser instance across searches', async () => {
+			await provider.search('query 1', {});
+			await provider.search('query 2', {});
+
+			expect(puppeteer.launch).toHaveBeenCalledTimes(1);
+			expect(mockBrowser.newPage).toHaveBeenCalledTimes(2);
+		}, 15000); // Increase timeout for this test as it runs 2 searches
+
+		it('should cleanup browser on cleanup call', async () => {
+			await provider.search('test query', {});
+			await provider.cleanup();
+
+			expect(mockBrowser.close).toHaveBeenCalled();
+		});
+
+		it('should handle cleanup when no browser exists', async () => {
+			await provider.cleanup();
+			expect(mockBrowser.close).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('Utility Methods', () => {
+		it('should sanitize queries correctly', () => {
+			const provider = new DuckDuckGoPuppeteerProvider();
+			const sanitizeMethod = (provider as any).sanitizeQuery.bind(provider);
+
+			expect(sanitizeMethod('  test query  ')).toBe('test query');
+			expect(sanitizeMethod('')).toBe('');
+			expect(sanitizeMethod(null)).toBe('');
+			expect(sanitizeMethod(undefined)).toBe('');
+			expect(sanitizeMethod('a'.repeat(600))).toBe('a'.repeat(500));
+		});
+
+		it('should build URLs correctly', () => {
+			const provider = new DuckDuckGoPuppeteerProvider();
+			const buildUrlMethod = (provider as any).buildUrl.bind(provider);
+
+			const url1 = buildUrlMethod('test query', {});
+			expect(url1).toContain('https://duckduckgo.com/?q=test+query'); // URLSearchParams uses + for spaces
+			expect(url1).toContain('ia=web');
+
+			const url2 = buildUrlMethod('test', { country: 'us', safeMode: true });
+			expect(url2).toContain('kl=us');
+			expect(url2).toContain('safe=strict');
+		});
+	});
+
+	describe('Configuration Updates', () => {
+		it('should allow configuration updates', () => {
+			const newConfig = {
+				timeout: 15000,
+				maxRetries: 2,
+				headers: { 'X-Custom': 'value' },
+			};
+
+			provider.updateConfig(newConfig);
+			const config = provider.getConfig();
+
+			expect(config.timeout).toBe(15000);
+			expect(config.maxRetries).toBe(2);
+			expect(config.headers?.['X-Custom']).toBe('value');
+		});
+
+		it('should provide statistics', () => {
+			const stats = provider.getStats();
+			expect(stats).toHaveProperty('requestCount');
+			expect(stats).toHaveProperty('lastRequestTime');
+		});
+
+		it('should reset statistics', () => {
+			provider.resetStats();
+			const stats = provider.getStats();
+			expect(stats.requestCount).toBe(0);
+			expect(stats.lastRequestTime).toBe(0);
+		});
+	});
+});

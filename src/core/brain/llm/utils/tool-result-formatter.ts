@@ -590,7 +590,6 @@ function formatGenericResult(result: GenericToolResult): string {
 
 	if (isExplicitSuccess || hasData) {
 		const output = [];
-		output.push(chalk.green(`✅ ${result.message || 'Operation completed successfully'}`));
 
 		if (result.data) {
 			// Try to format data in a readable way

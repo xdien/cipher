@@ -18,6 +18,12 @@ vi.mock('../../../logger/index.js', () => ({
 		error: vi.fn(),
 		debug: vi.fn(),
 	},
+	createLogger: vi.fn(() => ({
+		info: vi.fn(),
+		warn: vi.fn(),
+		error: vi.fn(),
+		debug: vi.fn(),
+	})),
 }));
 
 describe('Tool Definitions', () => {
@@ -167,7 +173,10 @@ describe('Tool Definitions', () => {
 			}
 
 			// Add system tools to the expected count
-			const expectedSystemTools = 1; // bash tool
+			let expectedSystemTools = 1; // bash tool
+			if (env.WEB_SEARCH_ENABLE) {
+				expectedSystemTools += 1; // web_search tool
+			}
 			const expectedTotal = expectedMemoryTools + expectedSystemTools;
 
 			if (env.KNOWLEDGE_GRAPH_ENABLED) {
@@ -218,7 +227,10 @@ describe('Tool Definitions', () => {
 			}
 
 			// Add system tools to the expected count
-			const expectedSystemTools = 1; // bash tool
+			let expectedSystemTools = 1; // bash tool
+			if (env.WEB_SEARCH_ENABLE) {
+				expectedSystemTools += 1; // web_search tool
+			}
 			const expectedTotal = expectedMemoryTools + expectedSystemTools;
 
 			if (env.KNOWLEDGE_GRAPH_ENABLED) {
@@ -283,7 +295,10 @@ describe('Tool Definitions', () => {
 			}
 
 			// Add system tools to the expected count
-			const expectedSystemTools = 1; // bash tool
+			let expectedSystemTools = 1; // bash tool
+			if (env.WEB_SEARCH_ENABLE) {
+				expectedSystemTools += 1; // web_search tool
+			}
 			const expectedTotal = expectedMemoryTools + expectedSystemTools;
 
 			const expectedTotalWithKG = env.KNOWLEDGE_GRAPH_ENABLED ? expectedTotal + 11 : expectedTotal;

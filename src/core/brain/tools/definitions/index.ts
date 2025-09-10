@@ -35,7 +35,7 @@ export async function getAllToolDefinitions(
 
 		if (env.WEB_SEARCH_ENABLE) {
 			webSearchTools = await import('./web-search/index.js').then(m => m.getWebSearchTools());
-			logger.debug('Web search tools loaded')
+			logger.debug('Web search tools loaded');
 			if (Object.keys(webSearchTools).length === 0) {
 				logger.warn('No web search tools loaded');
 			}
