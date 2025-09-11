@@ -27,10 +27,18 @@ const AwsConfigSchema = z.object({
 
 const AzureConfigSchema = z.object({
 	endpoint: z.string().url().describe('Azure OpenAI endpoint URL (required for Azure)'),
-	deploymentName: z
+	deployment: z
 		.string()
 		.optional()
 		.describe('Azure deployment name (defaults to model name if not provided)'),
+	apiVersion: z
+		.string()
+		.optional()
+		.describe('Azure OpenAI API version (defaults to 2023-05-15)'),
+	resourceName: z
+		.string()
+		.optional()
+		.describe('Azure resource name (optional, for reference)'),
 });
 
 export const LLMConfigSchema = z
@@ -39,7 +47,7 @@ export const LLMConfigSchema = z
 			.string()
 			.nonempty()
 			.describe(
-				"The LLM provider (e.g., 'openai', 'anthropic', 'openrouter', 'ollama', 'lmstudio', 'qwen', 'aws', 'azure', 'gemini')"
+				"The LLM provider (e.g., 'openai', 'anthropic', 'openrouter', 'ollama', 'lmstudio', 'qwen', 'aws', 'azure', 'gemini', 'groq')"
 			),
 		model: z.string().nonempty().describe('The specific model name for the selected provider'),
 		apiKey: z
@@ -89,6 +97,7 @@ export const LLMConfigSchema = z
 			'aws',
 			'azure',
 			'gemini',
+			'groq',
 		];
 		if (!supportedProvidersList.includes(providerLower)) {
 			ctx.addIssue({
