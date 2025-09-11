@@ -72,10 +72,10 @@ export abstract class BaseProvider {
 
 				// Don't retry on certain errors
 				if (
-					error instanceof Error && 
-					(error.message.includes('timeout') || 
-					 error.message.includes('net::ERR_') ||
-					 error.message.includes('Navigation timeout'))
+					error instanceof Error &&
+					(error.message.includes('timeout') ||
+						error.message.includes('net::ERR_') ||
+						error.message.includes('Navigation timeout'))
 				) {
 					// For navigation errors, log and continue with retry
 					console.debug(`Navigation error on attempt ${attempt + 1} for ${url}:`, error.message);
@@ -90,7 +90,10 @@ export abstract class BaseProvider {
 		}
 
 		// If we get here, all retries failed
-		console.warn(`Failed to navigate to ${url} after ${maxRetries + 1} attempts:`, lastError?.message);
+		console.warn(
+			`Failed to navigate to ${url} after ${maxRetries + 1} attempts:`,
+			lastError?.message
+		);
 		throw lastError || new Error(`Failed to navigate to ${url}`);
 	}
 

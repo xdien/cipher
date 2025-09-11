@@ -39,7 +39,7 @@ export async function getWebSearchConfigFromEnv(
 ): Promise<WebSearchConfig | null> {
 	// Start with default configuration
 	const defaultConfig = getDefaultWebSearchConfig();
-	
+
 	// Override with environment variables
 	const searchEngine = env.WEB_SEARCH_ENGINE;
 	const searchEngineConfig = agentConfig?.webSearch?.[searchEngine];
@@ -61,7 +61,7 @@ export async function getWebSearchConfigFromEnv(
 			},
 		};
 	}
-	
+
 	logger.warn('Unknown web search engine', { searchEngine });
 	return null;
 }

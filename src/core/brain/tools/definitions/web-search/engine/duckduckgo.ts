@@ -472,7 +472,7 @@ export class DuckDuckGoPuppeteerProvider extends BaseProvider {
 				logger.warn(`DuckDuckGo Puppeteer: No URL found for result ${i + 1}`);
 				continue;
 			}
-			
+
 			try {
 				logger.debug(
 					`DuckDuckGo Puppeteer: Fetching content for ${i + 1}/${results.length}: ${result.url}`
@@ -480,13 +480,13 @@ export class DuckDuckGoPuppeteerProvider extends BaseProvider {
 
 				// Use guarded approach for page navigation
 				await this.guardedPageGoto(page, result.url);
-				
+
 				// Wait a bit for content to load
 				await new Promise(resolve => setTimeout(resolve, 2000));
-				
+
 				// Extract structured content from the page
 				const extractedContent = await this.extractContentFromPage(page);
-				
+
 				// Generate LLM-optimized content
 				if (extractedContent && query) {
 					const llmOptimizedContent = this.generateLLMOptimizedContent(extractedContent, query);
@@ -505,10 +505,10 @@ export class DuckDuckGoPuppeteerProvider extends BaseProvider {
 		}
 
 		// Sort results by relevance score after processing all content
-		results.sort((a, b) => (b.llmOptimized?.relevanceScore || 0) - (a.llmOptimized?.relevanceScore || 0));
+		results.sort(
+			(a, b) => (b.llmOptimized?.relevanceScore || 0) - (a.llmOptimized?.relevanceScore || 0)
+		);
 	}
-
-
 
 	/**
 	 * Extract structured content from the current page
