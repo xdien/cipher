@@ -77,14 +77,14 @@ llm:
 OpenAI:
 
 embedding:
-  # type: openai
-  # model: text-embedding-3-small
-  # apiKey: $OPENAI_API_KEY
+  type: openai
+  model: text-embedding-3-small
+  apiKey: $OPENAI_API_KEY
 
-  type: ollama
-  model: mxbai-embed-large
-  baseUrl: $OLLAMA_BASE_URL
-  dimensions: 1024
+  # type: ollama
+  # model: mxbai-embed-large
+  # baseUrl: $OLLAMA_BASE_URL
+  # dimensions: 1024
 
 # # Gemini:
 # embedding:

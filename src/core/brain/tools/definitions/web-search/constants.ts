@@ -44,20 +44,6 @@ export const TIMEOUTS = {
 } as const;
 
 /**
- * Default configuration values
- */
-export const DEFAULTS = {
-	MAX_RESULTS: 10,
-	SAFE_MODE: true,
-	HEADLESS: true,
-	EXTRACT_CONTENT: true,
-	FETCH_CONTENT: false,
-	MAX_RETRIES: 3,
-	RATE_LIMIT_RPM: 60, // requests per minute
-	USER_AGENT: 'Mozilla/5.0 (compatible; CipherBot/1.0; +https://byterover.com)',
-} as const;
-
-/**
  * Content extraction limits
  */
 export const EXTRACTION_LIMITS = {

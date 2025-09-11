@@ -40,9 +40,10 @@ export abstract class BaseProvider {
 	abstract search(query: string, options: SearchOptions): Promise<InternalSearchResult[]>;
 
 	/**
-	 * Guarded fetch method with error handling, rate limiting, and retries
+	 * Guarded page navigation with retry logic and error handling
+	 * Can be used by providers that use Puppeteer or similar page-based navigation
 	 */
-	protected async guardedFetch(url: string, options: RequestInit = {}): Promise<string | null> {
+	protected async guardedPageGoto(page: any, url: string): Promise<void> {
 		if (!this.config.enabled) {
 			throw new Error(`Provider ${this.config.name} is disabled`);
 		}
@@ -50,45 +51,34 @@ export abstract class BaseProvider {
 		// Rate limiting check
 		await this.enforceRateLimit();
 
-		const fetchOptions: RequestInit = {
-			method: 'GET',
-			headers: {
-				...this.config.headers,
-				...options.headers,
-			},
-			signal: AbortSignal.timeout(this.config.timeout || 10000),
-			...options,
-		};
-
-		let lastError: Error | null = null;
 		const maxRetries = this.config.maxRetries ?? 3;
+		let lastError: Error | null = null;
 
 		for (let attempt = 0; attempt <= maxRetries; attempt++) {
 			try {
 				this.requestCount++;
 				this.lastRequestTime = Date.now();
 
-				const response = await fetch(url, fetchOptions);
+				// Navigate to the result URL with timeout
+				await page.goto(url, {
+					waitUntil: 'domcontentloaded',
+					timeout: this.config.timeout || 15000,
+				});
 
-				if (!response.ok) {
-					throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-				}
-
-				const contentType = response.headers.get('content-type') || '';
-				if (!contentType.includes('text/html') && !contentType.includes('text/plain')) {
-					throw new Error(`Unexpected content type: ${contentType}`);
-				}
-
-				return await response.text();
+				// Success - return without error
+				return;
 			} catch (error) {
 				lastError = error instanceof Error ? error : new Error(String(error));
 
 				// Don't retry on certain errors
 				if (
-					error instanceof TypeError ||
-					(error instanceof Error && error.message.includes('timeout'))
+					error instanceof Error && 
+					(error.message.includes('timeout') || 
+					 error.message.includes('net::ERR_') ||
+					 error.message.includes('Navigation timeout'))
 				) {
-					break;
+					// For navigation errors, log and continue with retry
+					console.debug(`Navigation error on attempt ${attempt + 1} for ${url}:`, error.message);
 				}
 
 				// Wait before retrying (exponential backoff)
@@ -99,8 +89,9 @@ export abstract class BaseProvider {
 			}
 		}
 
-		console.warn(`Failed to fetch ${url} after ${maxRetries + 1} attempts:`, lastError?.message);
-		return null;
+		// If we get here, all retries failed
+		console.warn(`Failed to navigate to ${url} after ${maxRetries + 1} attempts:`, lastError?.message);
+		throw lastError || new Error(`Failed to navigate to ${url}`);
 	}
 
 	/**

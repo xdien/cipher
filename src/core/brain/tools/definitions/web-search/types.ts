@@ -1,22 +1,12 @@
 export interface SearchOptions {
 	/** Search query string */
 	query?: string;
-	/** Country/region code for search localization */
-	country?: string;
-	/** Language code for search results */
-	language?: string;
 	/** Safe search mode */
 	safeMode?: boolean;
 	/** Maximum number of results to return */
 	maxResults?: number;
 	/** Timeout for search request in milliseconds */
 	timeout?: number;
-	/** User agent string for requests */
-	userAgent?: string;
-	/** Whether to fetch HTML content for each result */
-	fetchContent?: boolean;
-	/** Whether to extract structured content from each result */
-	extractContent?: boolean;
 	/** Additional custom headers */
 	headers?: Record<string, string>;
 }
@@ -32,8 +22,6 @@ export interface ExtractedContent {
 	paragraphs?: string[];
 	/** Main text content */
 	mainText?: string;
-	/** Word count of main text */
-	wordCount?: number;
 	/** Text content from lists */
 	listText?: string[];
 	/** Text content from tables (converted to readable format) */

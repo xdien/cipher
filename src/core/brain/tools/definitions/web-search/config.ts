@@ -8,9 +8,8 @@ const BaseWebSearchSchema = z.object({
 const DuckDuckGoSchema = BaseWebSearchSchema.extend({
 	engine: z.literal('duckduckgo'),
 	headless: z.boolean().default(true),
-	maxResults: z.number().default(10),
+	maxResults: z.number().default(3),
 	timeout: z.number().default(10000),
-	proxy: z.string().optional(),
 }).strict();
 
 export const WebSearchConfigSchema = z.discriminatedUnion('engine', [DuckDuckGoSchema]);
@@ -28,7 +27,7 @@ const WebSearchInputSchema = z.object({
 		.number()
 		.min(1)
 		.max(20)
-		.default(10)
+		.default(3)
 		.optional()
 		.describe('Maximum number of search results to return (1-20)'),
 	safe_mode: z

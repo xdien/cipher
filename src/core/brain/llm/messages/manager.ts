@@ -659,6 +659,7 @@ export class ContextManager {
 					} else {
 						// Orphaned tool message - skip silently
 						orphanedToolMessages++;
+						logger.debug(`[MessageManager] Orphaned tool message: ${message.content}`);
 					}
 					break;
 

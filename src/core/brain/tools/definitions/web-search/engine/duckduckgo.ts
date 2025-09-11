@@ -2,6 +2,8 @@ import { BaseProvider } from './base.js';
 import { SearchOptions, ProviderConfig, ExtractedContent, InternalSearchResult } from '../types.js';
 import puppeteer from 'puppeteer';
 import { logger } from '../../../../../logger/index.js';
+import { env } from '../../../../../env.js';
+import { URLSearchParams } from 'url';
 import * as os from 'os';
 
 /**
@@ -432,14 +434,24 @@ export class DuckDuckGoPuppeteerProvider extends BaseProvider {
 	}
 
 	private buildUrl(query: string, opts: SearchOptions): string {
+		// Determine safe search mode
+		let safeMode: string;
+		if (opts.safeMode !== undefined) {
+			// Use explicit option if provided
+			safeMode = opts.safeMode ? 'strict' : 'moderate';
+		} else {
+			// Use environment variable as default
+			safeMode = env.WEB_SEARCH_SAFETY_MODE === 'strict' ? 'strict' : 'moderate';
+		}
+
 		const params = new URLSearchParams({
 			q: query,
-			kl: opts.country ?? '',
-			safe: opts.safeMode ? 'strict' : 'moderate',
+			safe: safeMode,
 			ia: 'web',
 		});
 
 		// Use the regular DuckDuckGo search endpoint
+		console.log(`https://duckduckgo.com/?${params.toString()}`);
 		return `https://duckduckgo.com/?${params.toString()}`;
 	}
 
@@ -451,29 +463,30 @@ export class DuckDuckGoPuppeteerProvider extends BaseProvider {
 	}
 
 	/**
-	 * Fetch HTML content for each search result
+	 * Fetch HTML content for each search result using guarded page navigation
 	 */
 	private async fetchResultContent(results: any[], page: any, query: string = ''): Promise<void> {
 		for (let i = 0; i < results.length; i++) {
 			const result = results[i];
-			if (!result) {
+			if (!result || !result.url) {
 				logger.warn(`DuckDuckGo Puppeteer: No URL found for result ${i + 1}`);
 				continue;
 			}
+			
 			try {
 				logger.debug(
 					`DuckDuckGo Puppeteer: Fetching content for ${i + 1}/${results.length}: ${result.url}`
 				);
 
-				// Navigate to the result URL
-				await page.goto(result.url, {
-					waitUntil: 'domcontentloaded',
-					timeout: 15000,
-				});
+				// Use guarded approach for page navigation
+				await this.guardedPageGoto(page, result.url);
+				
 				// Wait a bit for content to load
 				await new Promise(resolve => setTimeout(resolve, 2000));
-				// Extract structured content if requested
+				
+				// Extract structured content from the page
 				const extractedContent = await this.extractContentFromPage(page);
+				
 				// Generate LLM-optimized content
 				if (extractedContent && query) {
 					const llmOptimizedContent = this.generateLLMOptimizedContent(extractedContent, query);
@@ -481,7 +494,6 @@ export class DuckDuckGoPuppeteerProvider extends BaseProvider {
 						// Update the llmOptimized field in the result to match InternalSearchResult interface
 						result.llmOptimized = llmOptimizedContent;
 					}
-					results.sort((a, b) => a.llmOptimized.relevanceScore - b.llmOptimized.relevanceScore);
 				}
 			} catch (error) {
 				const errorMessage = error instanceof Error ? error.message : String(error);
@@ -491,7 +503,12 @@ export class DuckDuckGoPuppeteerProvider extends BaseProvider {
 				);
 			}
 		}
+
+		// Sort results by relevance score after processing all content
+		results.sort((a, b) => (b.llmOptimized?.relevanceScore || 0) - (a.llmOptimized?.relevanceScore || 0));
 	}
+
+
 
 	/**
 	 * Extract structured content from the current page
@@ -560,8 +577,6 @@ export class DuckDuckGoPuppeteerProvider extends BaseProvider {
 			}
 
 			extractedContent.mainText = mainText;
-			extractedContent.wordCount = mainText.split(/\s+/).length;
-
 			// Extract text from lists
 			const listTexts: string[] = [];
 

@@ -1570,6 +1570,11 @@ packages:
     engines: {node: '>=20'}
     hasBin: true
 
+  chromium-bidi@8.0.0:
+    resolution: {integrity: sha512-d1VmE0FD7lxZQHzcDUCKZSNRtRwISXDsdg4HjdTR5+Ll5nQ/vzU12JeNmupD6VWffrPSlrnGhEWlLESKH3VO+g==}
+    peerDependencies:
+      devtools-protocol: '*'
+
   cli-boxes@3.0.0:
     resolution: {integrity: sha512-/lzGpEWL/8PfI0BmBOPRwp0c/wFNX1RdUML3jK/RcSBA9T8mZDdQpqYBKtCFTOfQbwPqWEOpjqW+Fnayc0969g==}
     engines: {node: '>=10'}
@@ -1918,6 +1923,11 @@ packages:
   extract-files@9.0.0:
     resolution: {integrity: sha512-CvdFfHkC95B4bBBk36hcEmvdR2awOdhhVUYH6S/zrVj3477zven/fJMYg7121h4T1xHZC+tetUpubpAhxwI7hQ==}
     engines: {node: ^10.17.0 || ^12.0.0 || >= 13.7.0}
+
+  extract-zip@2.0.1:
+    resolution: {integrity: sha512-GDhU9ntwuKyGXdZBUgTIe+vXnWj0fppUEtMDL0+idd5Sta8TGpHssn/eusA9mrPr9qNDym6SxAYZjNvCn/9RBg==}
+    engines: {node: '>= 10.17.0'}
+    hasBin: true
 
   faiss-node@0.5.1:
     resolution: {integrity: sha512-zD8wobJn8C6OLWo68Unho+Ih8l6nSRB2w3Amj01a+xc4bsEvd2mBDLklAn7VocA9XO3WDvQL/bLpi5flkCn/XQ==}
@@ -5211,6 +5221,12 @@ snapshots:
       chromadb-js-bindings-linux-x64-gnu: 1.0.5
       chromadb-js-bindings-win32-x64-msvc: 1.0.5
 
+  chromium-bidi@8.0.0(devtools-protocol@0.0.1495869):
+    dependencies:
+      devtools-protocol: 0.0.1495869
+      mitt: 3.0.1
+      zod: 3.25.76
+
   cli-boxes@3.0.0: {}
 
   cliui@8.0.1:
@@ -5581,6 +5597,16 @@ snapshots:
       - supports-color
 
   extract-files@9.0.0: {}
+
+  extract-zip@2.0.1:
+    dependencies:
+      debug: 4.4.1
+      get-stream: 5.2.0
+      yauzl: 2.10.0
+    optionalDependencies:
+      '@types/yauzl': 2.10.3
+    transitivePeerDependencies:
+      - supports-color
 
   faiss-node@0.5.1:
     dependencies:

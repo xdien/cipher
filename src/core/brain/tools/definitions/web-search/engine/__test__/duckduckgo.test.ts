@@ -231,17 +231,12 @@ describe('DuckDuckGoPuppeteerProvider', () => {
 
 		it('should build URL with search options', async () => {
 			const options: SearchOptions = {
-				country: 'us',
 				safeMode: true,
 				maxResults: 5,
 			};
 
 			await provider.search('test query', options);
 
-			expect(mockPage.goto).toHaveBeenCalledWith(
-				expect.stringMatching(/kl=us/),
-				expect.any(Object)
-			);
 			expect(mockPage.goto).toHaveBeenCalledWith(
 				expect.stringMatching(/safe=strict/),
 				expect.any(Object)
@@ -262,7 +257,6 @@ describe('DuckDuckGoPuppeteerProvider', () => {
 				'Second paragraph contains more details about the topic.',
 			],
 			mainText: 'Full article content with detailed information about web development...',
-			wordCount: 150,
 			listText: ['Item 1', 'Item 2', 'Item 3'],
 			tableText: ['Headers: Name | Age | City. Data: John | 25 | New York'],
 		};
@@ -318,7 +312,7 @@ describe('DuckDuckGoPuppeteerProvider', () => {
 			// Mock the content extraction evaluation (will be called when fetching content)
 			mockPage.evaluate.mockResolvedValueOnce(mockExtractedContent);
 
-			const results = await provider.search('test query', { fetchContent: true });
+			const results = await provider.search('test query', {});
 
 			// Should have called goto twice: once for search, once for content
 			expect(mockPage.goto).toHaveBeenCalledTimes(2);
@@ -465,7 +459,7 @@ describe('DuckDuckGoPuppeteerProvider', () => {
 			// Make content fetching fail
 			mockPage.goto.mockRejectedValueOnce(new Error('Content fetch failed'));
 
-			const results = await provider.search('test query', { fetchContent: true });
+			const results = await provider.search('test query', {});
 			expect(results).toBeDefined();
 		});
 
@@ -518,9 +512,9 @@ describe('DuckDuckGoPuppeteerProvider', () => {
 			const url1 = buildUrlMethod('test query', {});
 			expect(url1).toContain('https://duckduckgo.com/?q=test+query'); // URLSearchParams uses + for spaces
 			expect(url1).toContain('ia=web');
+			expect(url1).toContain('safe=moderate'); // Default when safeMode is not specified
 
-			const url2 = buildUrlMethod('test', { country: 'us', safeMode: true });
-			expect(url2).toContain('kl=us');
+			const url2 = buildUrlMethod('test', { safeMode: true });
 			expect(url2).toContain('safe=strict');
 		});
 	});

@@ -50,7 +50,7 @@ export class WebSocketEventSubscriber {
 		this.subscribeToServiceEvents(signal);
 
 		// Subscribe to Session Events (we'll handle session-specific events dynamically)
-		this.subscribeToSessionEvents(signal);
+		this.subscribeToSessionEvents();
 
 		logger.info('WebSocket event subscriptions established');
 	}
@@ -168,7 +168,7 @@ export class WebSocketEventSubscriber {
 	/**
 	 * Subscribe to session-specific events dynamically
 	 */
-	private subscribeToSessionEvents(signal: AbortSignal): void {
+	private subscribeToSessionEvents(): void {
 		// Listen for all active sessions and subscribe to their events
 		const activeSessions = this.eventManager.getActiveSessionIds();
 
