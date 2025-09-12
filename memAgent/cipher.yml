@@ -13,10 +13,10 @@ mcpServers: {}
 
 # Choose ONLY ONE of the following LLM providers
 llm:
-  provider: openai
-  model: gpt-4.1-mini
-  apiKey: $OPENAI_API_KEY
-  maxIterations: 50
+  # provider: openai
+  # model: gpt-4.1-mini
+  # apiKey: $OPENAI_API_KEY
+  # maxIterations: 50
 
   # provider: gemini
   # model: gemini-2.5-flash
@@ -39,6 +39,11 @@ llm:
   # maxIterations: 50
   # qwenOptions:
   #   enableThinking: false
+
+  provider: deepseek
+  model: deepseek-chat
+  apiKey: $DEEPSEEK_API_KEY
+  maxIterations: 50
   
 
 
@@ -155,13 +160,15 @@ embedding:
 
 # System prompt - User customizable
 # This prompt will be combined with built-in tool usage instructions
-# systemPrompt:
-#   enabled: true
-#   content: |
-#     You are an AI programming assistant focused on coding and reasoning tasks. You excel at:
-#     - Writing clean, efficient code
-#     - Debugging and problem-solving
-#     - Code review and optimization
-#     - Explaining complex technical concepts
-#     - Reasoning through programming challenges
-systemPrompt: 'You are a helpful AI assistant with memory capabilities.'
+
+systemPrompt:
+  enabled: true
+  content: |
+    You are an AI programming assistant focused on coding and reasoning tasks. You excel at:
+    - Writing clean, efficient code
+    - Debugging and problem-solving
+    - Code review and optimization
+    - Explaining complex technical concepts
+    - Reasoning through programming challenges
+  
+    You should call each tool at most once per user request unless explicitly instructed otherwise.
