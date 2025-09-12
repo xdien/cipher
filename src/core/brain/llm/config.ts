@@ -91,8 +91,8 @@ export const LLMConfigSchema = z
 			'aws',
 			'azure',
 			'gemini',
-			'deepseek', 
-			'groq'
+			'deepseek',
+			'groq',
 		];
 		if (!supportedProvidersList.includes(providerLower)) {
 			ctx.addIssue({

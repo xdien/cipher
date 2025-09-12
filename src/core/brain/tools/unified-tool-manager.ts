@@ -656,7 +656,16 @@ export class UnifiedToolManager {
 	 */
 
 	async getToolsForProvider(
-		provider: 'openai' | 'anthropic' | 'openrouter' | 'aws' | 'azure' | 'qwen' | 'gemini' | 'deepseek' | 'groq'
+		provider:
+			| 'openai'
+			| 'anthropic'
+			| 'openrouter'
+			| 'aws'
+			| 'azure'
+			| 'qwen'
+			| 'gemini'
+			| 'deepseek'
+			| 'groq'
 	): Promise<any[]> {
 		logger.info(`UnifiedToolManager: Getting tools for provider: ${provider}`);
 		const allTools = await this.getAllTools();
@@ -684,7 +693,7 @@ export class UnifiedToolManager {
 			case 'deepseek':
 				logger.info('UnifiedToolManager: Formatting tools for Deepseek');
 				return this.formatToolsForOpenAI(allTools); // Deepseek
-			
+
 			case 'groq':
 				logger.info('UnifiedToolManager: Formatting tools for Groq (OpenAI-compatible)');
 				return this.formatToolsForOpenAI(allTools); // Groq uses OpenAI-compatible format
