@@ -80,6 +80,12 @@ const envSchema = z.object({
 	PINECONE_NAMESPACE: z.string().default('default'),
 	// Faiss-specific Configuration
 	FAISS_BASE_STORAGE_PATH: z.string().optional(),
+	// Web Search Configuration
+	WEB_SEARCH_ENGINE: z.enum(['duckduckgo']).default('duckduckgo'),
+	WEB_SEARCH_ENABLE: z.boolean().default(true),
+	WEB_SEARCH_SAFETY_MODE: z.enum(['strict', 'moderate']).default('strict'),
+	WEB_SEARCH_MAX_RESULTS: z.number().min(1).max(20).default(3),
+	WEB_SEARCH_RATE_LIMIT: z.number().min(1).max(60).default(10),
 	// Knowledge Graph Configuration
 	KNOWLEDGE_GRAPH_ENABLED: z.boolean().default(false),
 	KNOWLEDGE_GRAPH_TYPE: z.enum(['neo4j', 'in-memory']).default('in-memory'),
@@ -264,6 +270,21 @@ export const env: EnvSchema = new Proxy({} as EnvSchema, {
 			// Faiss-specific Configuration
 			case 'FAISS_BASE_STORAGE_PATH':
 				return process.env.FAISS_BASE_STORAGE_PATH;
+			// Web Search Configuration
+			case 'WEB_SEARCH_ENGINE':
+				return process.env.WEB_SEARCH_ENGINE || 'duckduckgo';
+			case 'WEB_SEARCH_ENABLE':
+				return process.env.WEB_SEARCH_ENABLE === 'true';
+			case 'WEB_SEARCH_SAFETY_MODE':
+				return process.env.WEB_SEARCH_SAFETY_MODE || 'moderate';
+			case 'WEB_SEARCH_MAX_RESULTS':
+				return process.env.WEB_SEARCH_MAX_RESULTS
+					? parseInt(process.env.WEB_SEARCH_MAX_RESULTS, 10)
+					: 3;
+			case 'WEB_SEARCH_RATE_LIMIT':
+				return process.env.WEB_SEARCH_RATE_LIMIT
+					? parseInt(process.env.WEB_SEARCH_RATE_LIMIT, 10)
+					: 10;
 			// Knowledge Graph Configuration
 			case 'KNOWLEDGE_GRAPH_ENABLED':
 				return process.env.KNOWLEDGE_GRAPH_ENABLED === 'true';
@@ -499,6 +520,16 @@ export const validateEnv = () => {
 			: 10000,
 		// Faiss-specific Configuration
 		FAISS_BASE_STORAGE_PATH: process.env.FAISS_BASE_STORAGE_PATH,
+		// Web Search Configuration
+		WEB_SEARCH_ENGINE: process.env.WEB_SEARCH_ENGINE || 'duckduckgo',
+		WEB_SEARCH_ENABLE: process.env.WEB_SEARCH_ENABLE === 'true',
+		WEB_SEARCH_SAFETY_MODE: process.env.WEB_SEARCH_SAFETY_MODE || 'moderate',
+		WEB_SEARCH_MAX_RESULTS: process.env.WEB_SEARCH_MAX_RESULTS
+			? parseInt(process.env.WEB_SEARCH_MAX_RESULTS, 10)
+			: 3,
+		WEB_SEARCH_RATE_LIMIT: process.env.WEB_SEARCH_RATE_LIMIT
+			? parseInt(process.env.WEB_SEARCH_RATE_LIMIT, 10)
+			: 10,
 		// Knowledge Graph Configuration
 		KNOWLEDGE_GRAPH_ENABLED: process.env.KNOWLEDGE_GRAPH_ENABLED === 'true',
 		KNOWLEDGE_GRAPH_TYPE: process.env.KNOWLEDGE_GRAPH_TYPE || 'in-memory',

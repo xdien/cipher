@@ -120,6 +120,7 @@ export class OpenAIService implements ILLMService {
 
 				// Handle tool calls
 				for (const toolCall of message.tool_calls) {
+					// DEBUG
 					logger.debug(`Tool call initiated: ${JSON.stringify(toolCall, null, 2)}`);
 					logger.info(`🔧 Using tool: ${toolCall.function.name}`);
 					const toolName = toolCall.function.name;
@@ -143,7 +144,6 @@ export class OpenAIService implements ILLMService {
 						} else {
 							result = await this.mcpManager.executeTool(toolName, args);
 						}
-
 						// Display formatted tool result
 						const formattedResult = formatToolResult(toolName, result);
 						logger.info(`📋 Tool Result:\n${formattedResult}`);

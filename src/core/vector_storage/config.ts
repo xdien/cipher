@@ -21,7 +21,6 @@
 
 import { z } from 'zod';
 import { DEFAULTS, DISTANCE_METRICS } from './constants.js';
-import { context } from '@pinecone-database/pinecone/dist/assistant/data/context.js';
 
 /**
  * Base Vector Store Configuration Schema

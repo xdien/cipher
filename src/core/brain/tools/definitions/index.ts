@@ -30,6 +30,17 @@ export async function getAllToolDefinitions(
 		// Load system tools (always enabled)
 		const systemTools = await import('./system/index.js').then(m => m.getSystemTools());
 
+		// Load web search tools if enabled
+		let webSearchTools: InternalToolSet = {};
+
+		if (env.WEB_SEARCH_ENABLE) {
+			webSearchTools = await import('./web-search/index.js').then(m => m.getWebSearchTools());
+			logger.debug('Web search tools loaded');
+			if (Object.keys(webSearchTools).length === 0) {
+				logger.warn('No web search tools loaded');
+			}
+		}
+
 		// Conditionally load knowledge graph tools based on environment setting
 		let knowledgeGraphTools: InternalToolSet = {};
 		if (env.KNOWLEDGE_GRAPH_ENABLED) {
@@ -46,6 +57,7 @@ export async function getAllToolDefinitions(
 			...memoryTools,
 			...systemTools,
 			...knowledgeGraphTools,
+			...webSearchTools,
 		};
 
 		// Tool loading completion logging reduced for cleaner CLI experience
