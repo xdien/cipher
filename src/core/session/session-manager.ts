@@ -15,6 +15,7 @@ import type {
 	SessionRestorationStats,
 } from './persistence-types.js';
 import { SESSION_PERSISTENCE_CONSTANTS, SessionPersistenceError } from './persistence-types.js';
+import { env } from '../env.js';
 
 export interface SessionManagerConfig {
 	maxSessions?: number;
@@ -872,8 +873,9 @@ export class SessionManager {
 		const postgresUrl = process.env.CIPHER_PG_URL;
 		const postgresHost = process.env.STORAGE_DATABASE_HOST;
 		const postgresDatabase = process.env.STORAGE_DATABASE_NAME;
-
+		console.log('logging to check if it is initializing postgres');
 		if (postgresUrl || (postgresHost && postgresDatabase)) {
+			
 			try {
 				// Try PostgreSQL first if PostgreSQL environment variables are set
 				logger.debug('SessionManager: Attempting to initialize PostgreSQL storage...');
@@ -913,11 +915,12 @@ export class SessionManager {
 					'SessionManager: PostgreSQL failed, falling back to SQLite storage',
 					postgresError
 				);
-				await this.initializeSqliteStorage();
+				await this.initializeBasicStorage();
 			}
 		} else {
+			console.log('doesnt seem to be initializing postgres');
 			// No PostgreSQL configuration, try SQLite
-			await this.initializeSqliteStorage();
+			await this.initializeBasicStorage();
 		}
 
 		if (this.storageManager) {
@@ -931,34 +934,13 @@ export class SessionManager {
 	}
 
 	/**
-	 * Initialize SQLite storage as fallback
+	 * Initialize In-memory storage as fallback
 	 */
-	private async initializeSqliteStorage(): Promise<void> {
+	private async initializeBasicStorage(): Promise<void> {
 		try {
-			// Try SQLite as fallback
-			logger.debug('SessionManager: Attempting to initialize SQLite storage...');
-			this.storageManager = new StorageManager({
-				database: {
-					type: 'sqlite',
-					path: './data',
-					database: 'cipher-sessions.db',
-				},
-				cache: {
-					type: 'in-memory',
-				},
-			});
-
-			await this.storageManager.connect();
-			logger.info('SessionManager: SQLite persistence storage initialized successfully');
-		} catch (sqliteError) {
-			logger.warn(
-				'SessionManager: SQLite failed, falling back to in-memory storage for sessions',
-				sqliteError
-			);
-
-			try {
-				// Fallback to in-memory storage for session persistence
-				logger.debug('SessionManager: Attempting to initialize in-memory storage...');
+			// Check if we should use in-memory storage based on environment variable
+			if (env.STORAGE_DATABASE_TYPE === 'in-memory') {
+				logger.debug('SessionManager: Using in-memory storage as configured');
 				this.storageManager = new StorageManager({
 					database: {
 						type: 'in-memory',
@@ -967,22 +949,41 @@ export class SessionManager {
 						type: 'in-memory',
 					},
 				});
-
 				await this.storageManager.connect();
-				logger.warn(
-					'SessionManager: In-memory persistence storage initialized (sessions will not persist across restarts)'
-				);
-			} catch (fallbackError) {
-				logger.error(
-					'SessionManager: Failed to initialize any persistence storage, continuing without session persistence',
-					fallbackError
-				);
-				this.storageManager = undefined;
-				// Continue without persistence rather than failing
+				logger.info('SessionManager: In-memory storage initialized successfully');
+				return;
 			}
+	
+			// Use environment variables for SQLite configuration
+			const dbPath = env.STORAGE_DATABASE_PATH;
+			let sqlitePath = './data';
+			let sqliteDatabase = 'cipher-sessions.db';
+	
+			if (dbPath) {
+				const pathParts = dbPath.split('/');
+				sqliteDatabase = pathParts.pop() || 'cipher-sessions.db';
+				sqlitePath = pathParts.join('/') || './data';
+			}
+	
+			this.storageManager = new StorageManager({
+				database: {
+					type: 'sqlite',
+					path: sqlitePath,
+					database: sqliteDatabase,
+				},
+				cache: {
+					type: 'in-memory',
+				},
+			});
+		await this.storageManager.connect();
+		logger.info('SessionManager: In-memory storage initialized successfully');
+		return;
+			
+		} catch (error) {
+			logger.error('SessionManager: Failed to initialize basic storage:', error);
+			throw error;
 		}
 	}
-
 	/**
 	 * Save a single session to storage
 	 */
