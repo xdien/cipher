@@ -345,11 +345,32 @@ export class SessionManager {
 
 		// CRITICAL FIX: Check if session exists before deletion
 		const sessionMetadata = this.sessions.get(sessionId);
+		
+		// If session doesn't exist in memory and storage is not connected, definitely return false
 		if (!sessionMetadata && !this.storageManager?.isConnected()) {
 			logger.debug(
 				`SessionManager: Session ${sessionId} not found in memory and storage unavailable`
 			);
 			return false;
+		}
+		
+		// If session doesn't exist in memory and we need to check storage
+		if (!sessionMetadata && this.storageManager?.isConnected()) {
+			// Check if session exists in storage before proceeding
+			try {
+				const backends = this.storageManager.getBackends();
+				if (backends?.database) {
+					const sessionKey = this.getSessionStorageKey(sessionId);
+					const existsInStorage = await backends.database.get(sessionKey);
+					if (!existsInStorage) {
+						logger.debug(`SessionManager: Session ${sessionId} not found in memory or storage`);
+						return false;
+					}
+				}
+			} catch (error) {
+				logger.debug(`SessionManager: Error checking storage for session ${sessionId}:`, error);
+				return false;
+			}
 		}
 
 		// CRITICAL FIX: Use transaction-like approach for consistent deletion
@@ -875,7 +896,6 @@ export class SessionManager {
 		const postgresDatabase = process.env.STORAGE_DATABASE_NAME;
 		console.log('logging to check if it is initializing postgres');
 		if (postgresUrl || (postgresHost && postgresDatabase)) {
-			
 			try {
 				// Try PostgreSQL first if PostgreSQL environment variables are set
 				logger.debug('SessionManager: Attempting to initialize PostgreSQL storage...');
@@ -953,18 +973,18 @@ export class SessionManager {
 				logger.info('SessionManager: In-memory storage initialized successfully');
 				return;
 			}
-	
+
 			// Use environment variables for SQLite configuration
 			const dbPath = env.STORAGE_DATABASE_PATH;
 			let sqlitePath = './data';
 			let sqliteDatabase = 'cipher-sessions.db';
-	
+
 			if (dbPath) {
 				const pathParts = dbPath.split('/');
 				sqliteDatabase = pathParts.pop() || 'cipher-sessions.db';
 				sqlitePath = pathParts.join('/') || './data';
 			}
-	
+
 			this.storageManager = new StorageManager({
 				database: {
 					type: 'sqlite',
@@ -975,10 +995,9 @@ export class SessionManager {
 					type: 'in-memory',
 				},
 			});
-		await this.storageManager.connect();
-		logger.info('SessionManager: In-memory storage initialized successfully');
-		return;
-			
+			await this.storageManager.connect();
+			logger.info('SessionManager: SQLite storage initialized successfully');
+			return;
 		} catch (error) {
 			logger.error('SessionManager: Failed to initialize basic storage:', error);
 			throw error;
