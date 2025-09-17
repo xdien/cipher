@@ -345,7 +345,7 @@ export class SessionManager {
 
 		// CRITICAL FIX: Check if session exists before deletion
 		const sessionMetadata = this.sessions.get(sessionId);
-		
+
 		// If session doesn't exist in memory and storage is not connected, definitely return false
 		if (!sessionMetadata && !this.storageManager?.isConnected()) {
 			logger.debug(
@@ -353,7 +353,7 @@ export class SessionManager {
 			);
 			return false;
 		}
-		
+
 		// If session doesn't exist in memory and we need to check storage
 		if (!sessionMetadata && this.storageManager?.isConnected()) {
 			// Check if session exists in storage before proceeding
