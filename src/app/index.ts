@@ -189,7 +189,8 @@ program
 			!env.OPENAI_API_KEY &&
 			!env.ANTHROPIC_API_KEY &&
 			!env.OPENROUTER_API_KEY &&
-			!env.OLLAMA_BASE_URL
+			!env.OLLAMA_BASE_URL &&
+			!env.GEMINI_API_KEY
 		) {
 			if (
 				!process.env.AWS_ACCESS_KEY_ID ||
