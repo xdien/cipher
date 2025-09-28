@@ -18,10 +18,10 @@ llm:
   # apiKey: $OPENAI_API_KEY
   # maxIterations: 50
 
-  # provider: gemini
-  # model: gemini-2.5-flash
-  # apiKey: $GEMINI_API_KEY
-  # maxIterations: 50
+  provider: gemini
+  model: gemini-2.5-flash
+  apiKey: $GEMINI_API_KEY
+  maxIterations: 50
 
   # provider: anthropic
   # model: claude-3-5-haiku-20241022
@@ -40,10 +40,10 @@ llm:
   # qwenOptions:
   #   enableThinking: false
 
-  provider: deepseek
-  model: deepseek-chat
-  apiKey: $DEEPSEEK_API_KEY
-  maxIterations: 50
+  # provider: deepseek
+  # model: deepseek-chat
+  # apiKey: $DEEPSEEK_API_KEY
+  # maxIterations: 50
   
 
 
@@ -81,21 +81,21 @@ llm:
 # Embedding configuration: ONLY ONE of the following
 OpenAI:
 
-embedding:
-  type: openai
-  model: text-embedding-3-small
-  apiKey: $OPENAI_API_KEY
+# embedding:
+#   type: openai
+#   model: text-embedding-3-small
+#   apiKey: $OPENAI_API_KEY
 
   # type: ollama
   # model: mxbai-embed-large
   # baseUrl: $OLLAMA_BASE_URL
   # dimensions: 1024
 
-# # Gemini:
-# embedding:
-#   type: gemini
-#   model: gemini-embedding-001
-#   apiKey: $GEMINI_API_KEY
+# Gemini:
+embedding:
+  type: gemini
+  model: gemini-embedding-001
+  apiKey: $GEMINI_API_KEY
 
 # Ollama:
 # embedding:
