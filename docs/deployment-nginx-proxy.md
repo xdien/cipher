@@ -453,19 +453,92 @@ server {
 
 ## Security Considerations
 
-1. **Always use HTTPS** in production
-2. **Enable rate limiting** to prevent abuse:
-   ```nginx
-   limit_req_zone $binary_remote_addr zone=mcp_limit:10m rate=10r/s;
+### 1. Always Use HTTPS in Production
 
-   location /agent/mcp {
-       limit_req zone=mcp_limit burst=20 nodelay;
-       # ... rest of configuration
-   }
-   ```
-3. **Implement authentication** at nginx or application level
-4. **Monitor logs** for suspicious activity
-5. **Keep timeouts reasonable** to prevent resource exhaustion
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name tools.dev-bg.in;
+
+    ssl_certificate /etc/nginx/ssl/cert.pem;
+    ssl_certificate_key /etc/nginx/ssl/key.pem;
+    # ... rest of config
+}
+```
+
+### 2. Configure CORS Properly
+
+**IMPORTANT**: Cipher's CORS configuration requires explicit origin whitelisting for security.
+
+When running behind a reverse proxy, you must configure allowed origins in your environment:
+
+```yaml
+# docker-compose.yml or environment variables
+environment:
+  - CIPHER_CORS_ORIGINS=https://your-domain.com,https://app.your-domain.com
+```
+
+Or via CLI:
+```bash
+cipher --mode api --cors-origins "https://your-domain.com,https://app.your-domain.com"
+```
+
+**Default Behavior**:
+- **Production** (`NODE_ENV=production`): Only explicitly allowed origins are accepted
+- **Development** (`NODE_ENV=development`): Localhost origins are automatically allowed for convenience
+- **No origin header**: Always allowed (for non-browser clients like curl, Postman, mobile apps)
+
+**Security Note**: Setting `trust proxy` does NOT bypass CORS. The `trust proxy` setting only affects how Express reads X-Forwarded headers to determine the client's real IP and protocol.
+
+### 3. Enable Rate Limiting
+
+```nginx
+limit_req_zone $binary_remote_addr zone=mcp_limit:10m rate=10r/s;
+
+location /agent/mcp {
+    limit_req zone=mcp_limit burst=20 nodelay;
+    # ... rest of configuration
+}
+```
+
+### 4. Implement Authentication
+
+Consider adding authentication at the nginx level or application level:
+
+```nginx
+location /agent/ {
+    # Basic auth
+    auth_basic "Restricted Access";
+    auth_basic_user_file /etc/nginx/.htpasswd;
+
+    # Or use API key validation
+    if ($http_x_api_key != "your-secret-key") {
+        return 401;
+    }
+
+    proxy_pass http://cipher/;
+    # ... rest of config
+}
+```
+
+### 5. Monitor Logs
+
+```bash
+# Watch for suspicious activity
+tail -f /var/log/nginx/cipher-access.log | grep "mcp/sse"
+
+# Monitor Cipher application logs
+docker logs -f cipher-api | grep "SSE"
+```
+
+### 6. Keep Timeouts Reasonable
+
+```nginx
+# Balance between long-lived connections and resource exhaustion
+proxy_read_timeout 300s;  # 5 minutes
+proxy_connect_timeout 75s;
+proxy_send_timeout 300s;
+```
 
 ## Monitoring
 

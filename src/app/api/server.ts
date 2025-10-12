@@ -250,7 +250,9 @@ export class ApiServer {
 				logger.info(
 					`[API Server] MCP SSE client connected with session ID: ${sseTransport.sessionId}`
 				);
-				logger.debug(`[API Server] Active SSE transports count: ${this.activeMcpSseTransports.size}`);
+				logger.debug(
+					`[API Server] Active SSE transports count: ${this.activeMcpSseTransports.size}`
+				);
 
 				// Handle client disconnect
 				req.on('close', () => {
@@ -304,7 +306,10 @@ export class ApiServer {
 				logger.error('[API Server] MCP POST request received without session ID.');
 				logger.debug('[API Server] Available query parameters:', Object.keys(req.query));
 				logger.debug('[API Server] Available headers:', Object.keys(req.headers));
-				logger.debug('[API Server] Active sessions:', Array.from(this.activeMcpSseTransports.keys()));
+				logger.debug(
+					'[API Server] Active sessions:',
+					Array.from(this.activeMcpSseTransports.keys())
+				);
 
 				// Fallback: if only one active session, use it
 				if (this.activeMcpSseTransports.size === 1) {
@@ -587,15 +592,36 @@ export class ApiServer {
 		this.app.use(
 			cors({
 				origin: (origin, callback) => {
-					// Allow configured origins plus any origin when behind proxy
 					const allowedOrigins = this.config.corsOrigins || ['http://localhost:3000'];
-					const trustProxy = this.app.get('trust proxy');
 
-					if (!origin || allowedOrigins.includes(origin) || trustProxy) {
+					// Allow requests with no origin (e.g., mobile apps, curl, Postman)
+					if (!origin) {
 						callback(null, true);
-					} else {
-						callback(new Error('Not allowed by CORS'));
+						return;
 					}
+
+					// Check if origin is in the allowed list
+					if (allowedOrigins.includes(origin)) {
+						callback(null, true);
+						return;
+					}
+
+					// Additional lenient check for development environments only
+					// Allow localhost and 127.0.0.1 with any port in development
+					if (process.env.NODE_ENV !== 'production') {
+						const originUrl = new URL(origin);
+						if (
+							originUrl.hostname === 'localhost' ||
+							originUrl.hostname === '127.0.0.1' ||
+							originUrl.hostname === '::1'
+						) {
+							callback(null, true);
+							return;
+						}
+					}
+
+					// Reject all other origins
+					callback(new Error('Not allowed by CORS'));
 				},
 				methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 				allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID', 'X-Session-ID'],
