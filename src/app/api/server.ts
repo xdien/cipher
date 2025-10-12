@@ -311,29 +311,10 @@ export class ApiServer {
 					Array.from(this.activeMcpSseTransports.keys())
 				);
 
-				// Fallback: if only one active session, use it
-				if (this.activeMcpSseTransports.size === 1) {
-					const fallbackSessionId = Array.from(this.activeMcpSseTransports.keys())[0];
-					if (fallbackSessionId) {
-						logger.warn(`[API Server] Using fallback session ID: ${fallbackSessionId}`);
-						const sseTransport = this.activeMcpSseTransports.get(fallbackSessionId)!;
-
-						try {
-							await sseTransport.handlePostMessage(req, res, req.body);
-							logger.debug(
-								`[API Server] POST message handled successfully using fallback session: ${fallbackSessionId}`
-							);
-							return;
-						} catch (error) {
-							logger.error(`[API Server] Fallback session handling failed:`, error);
-						}
-					}
-				}
-
 				return errorResponse(
 					res,
 					ERROR_CODES.BAD_REQUEST,
-					'Missing sessionId in query parameters, headers, or body',
+					'Missing sessionId in query parameters, headers, or body. Session ID is required for security.',
 					400
 				);
 			}
