@@ -86,11 +86,11 @@ describe('UnifiedToolManager', () => {
 	});
 
 	describe('Tool Loading and Management', () => {
-		it('should load internal tools when enabled', async () => {
-			const tools = await unifiedManager.getAllTools();
+                it('should load internal tools when enabled', async () => {
+                        const tools = await unifiedManager.getAllTools();
 
-			// In default mode, only ask_cipher should be available
-			expect(tools['ask_cipher']).toBeDefined();
+                        // In default mode, only ask_cipher should be available
+                        expect(tools['ask_cipher']).toBeDefined();
 
 			// Internal-only tools should not be accessible to agents in default mode
 			expect(tools['cipher_store_reasoning_memory']).toBeUndefined();
@@ -102,10 +102,22 @@ describe('UnifiedToolManager', () => {
 			expect(Object.keys(tools)).toHaveLength(1);
 
 			// All accessible tools should be marked as internal
-			for (const tool of Object.values(tools)) {
-				expect(tool.source).toBe('internal');
-			}
-		});
+                        for (const tool of Object.values(tools)) {
+                                expect(tool.source).toBe('internal');
+                        }
+                });
+
+                it('should expose memory write tools to the agent in MCP mode', async () => {
+                        const manager = new UnifiedToolManager(mcpManager, internalToolManager, {
+                                mode: 'mcp',
+                        });
+                        manager.setEmbeddingManager(mockEmbeddingManager);
+
+                        const tools = await manager.getAllTools();
+
+                        expect(tools['cipher_extract_and_operate_memory']).toBeDefined();
+                        expect(tools['cipher_extract_and_operate_memory']?.source).toBe('internal');
+                });
 
 		it('should handle disabled internal tools', async () => {
 			const manager = new UnifiedToolManager(mcpManager, internalToolManager, {
@@ -203,21 +215,31 @@ describe('UnifiedToolManager', () => {
 			await expect(unifiedManager.executeTool('nonexistent_tool', {})).rejects.toThrow();
 		});
 
-		it('should check tool availability correctly', async () => {
-			// Agent-accessible tools should be available
-			const isAvailable = await unifiedManager.isToolAvailable('ask_cipher');
-			expect(isAvailable).toBe(true);
+                it('should check tool availability correctly', async () => {
+                        // Agent-accessible tools should be available
+                        const isAvailable = await unifiedManager.isToolAvailable('ask_cipher');
+                        expect(isAvailable).toBe(true);
 
-			// Internal-only tools should not be available to agents
-			const notAvailable = await unifiedManager.isToolAvailable(
-				'cipher_extract_and_operate_memory'
-			);
-			expect(notAvailable).toBe(false);
+                        // Internal-only tools should not be available to agents
+                        const notAvailable = await unifiedManager.isToolAvailable(
+                                'cipher_extract_and_operate_memory'
+                        );
+                        expect(notAvailable).toBe(false);
 
-			const notAvailable2 = await unifiedManager.isToolAvailable('nonexistent_tool');
-			expect(notAvailable2).toBe(false);
-		});
-	});
+                        const notAvailable2 = await unifiedManager.isToolAvailable('nonexistent_tool');
+                        expect(notAvailable2).toBe(false);
+                });
+
+                it('should report memory write tools as available in MCP mode', async () => {
+                        const manager = new UnifiedToolManager(mcpManager, internalToolManager, {
+                                mode: 'mcp',
+                        });
+                        manager.setEmbeddingManager(mockEmbeddingManager);
+
+                        const available = await manager.isToolAvailable('cipher_extract_and_operate_memory');
+                        expect(available).toBe(true);
+                });
+        });
 
 	describe('Provider-Specific Tool Formatting', () => {
 		it('should format tools for OpenAI', async () => {

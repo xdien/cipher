@@ -14,6 +14,13 @@ import { EventManager } from '../../events/event-manager.js';
 import { SessionEvents } from '../../events/event-types.js';
 import { v4 as uuidv4 } from 'uuid';
 
+const MCP_MEMORY_WRITE_TOOLS = new Set([
+        'extract_and_operate_memory',
+        'cipher_extract_and_operate_memory',
+        'workspace_store',
+        'cipher_workspace_store',
+]);
+
 /**
  * Configuration for the unified tool manager
  */
@@ -50,7 +57,7 @@ export interface UnifiedToolManagerConfig {
 	 * - 'api': Similar to CLI mode
 	 * @default 'default'
 	 */
-	mode?: 'cli' | 'default' | 'aggregator' | 'api';
+        mode?: 'cli' | 'default' | 'aggregator' | 'api' | 'mcp';
 }
 
 /**
@@ -187,12 +194,13 @@ export class UnifiedToolManager {
 			}
 
 			// Get MCP tools if enabled (for CLI and aggregator modes)
-			if (
-				this.config.enableMcpTools &&
-				(this.config.mode === 'cli' ||
-					this.config.mode === 'aggregator' ||
-					this.config.mode === 'api')
-			) {
+                        if (
+                                this.config.enableMcpTools &&
+                                (this.config.mode === 'cli' ||
+                                        this.config.mode === 'aggregator' ||
+                                        this.config.mode === 'api' ||
+                                        this.config.mode === 'mcp')
+                        ) {
 				if (!this.toolsAlreadyLogged && this.config.mode !== 'aggregator') {
 					logger.debug('UnifiedToolManager: Loading MCP tools');
 				}
@@ -239,22 +247,29 @@ export class UnifiedToolManager {
 						}
 
 						// Mode-specific tool filtering
-						if (this.config.mode === 'cli') {
-							// In CLI mode, only search-related tools are exposed to the agent.
-							// Background tools are executed after the AI response and are not directly callable.
-							const isAgentAccessible =
-								(tool.agentAccessible ?? true) && // Default to true if not specified
-								!toolName.includes('extract_and_operate_memory') &&
-								!toolName.includes('store_reasoning');
+                                                if (this.config.mode === 'cli') {
+                                                        // In CLI mode, only search-related tools are exposed to the agent.
+                                                        // Background tools are executed after the AI response and are not directly callable.
+                                                        const isAgentAccessible =
+                                                                (tool.agentAccessible ?? true) && // Default to true if not specified
+                                                                !toolName.includes('extract_and_operate_memory') &&
+                                                                !toolName.includes('store_reasoning');
 
-							if (!isAgentAccessible) {
-								continue;
-							}
-						} else if (this.config.mode === 'aggregator') {
-							// Aggregator mode: Expose ALL tools (no filtering)
-						} else {
-							// Default/API modes: Skip background tools that are not agent-accessible
-							if (tool.agentAccessible === false) {
+                                                        if (!isAgentAccessible) {
+                                                                continue;
+                                                        }
+                                                } else if (this.config.mode === 'mcp') {
+                                                        const isMemoryWriteTool = MCP_MEMORY_WRITE_TOOLS.has(toolName);
+                                                        const isAgentAccessible = (tool.agentAccessible ?? true) || isMemoryWriteTool;
+
+                                                        if (!isAgentAccessible) {
+                                                                continue;
+                                                        }
+                                                } else if (this.config.mode === 'aggregator') {
+                                                        // Aggregator mode: Expose ALL tools (no filtering)
+                                                } else {
+                                                        // Default/API modes: Skip background tools that are not agent-accessible
+                                                        if (tool.agentAccessible === false) {
 								logger.debug(
 									`UnifiedToolManager: Skipping internal-only tool '${toolName}' in ${
 										this.config.mode
@@ -563,32 +578,36 @@ export class UnifiedToolManager {
 				if (!tool) return false;
 
 				// Mode-specific availability
-				if (this.config.mode === 'cli') {
-					// CLI mode: Only search tools accessible to LLM
-					const isSearchTool =
-						toolName.includes('search') ||
-						toolName.includes('memory_') ||
-						toolName.includes('knowledge_') ||
-						toolName.includes('vector_') ||
-						toolName === 'extract_and_operate_memory' ||
-						toolName === 'cipher_extract_and_operate_memory';
+                                if (this.config.mode === 'cli') {
+                                        // CLI mode: Only search tools accessible to LLM
+                                        const isSearchTool =
+                                                toolName.includes('search') ||
+                                                toolName.includes('memory_') ||
+                                                toolName.includes('knowledge_') ||
+                                                toolName.includes('vector_') ||
+                                                toolName === 'extract_and_operate_memory' ||
+                                                toolName === 'cipher_extract_and_operate_memory';
 
-					return isSearchTool && tool.agentAccessible !== false;
-				} else if (this.config.mode === 'aggregator') {
-					// Aggregator mode: All tools available
-					return true;
-				} else {
-					// API mode: Only agent-accessible tools
-					return tool.agentAccessible !== false;
-				}
-			} else if (
-				this.config.enableMcpTools &&
-				(this.config.mode === 'cli' ||
-					this.config.mode === 'aggregator' ||
-					this.config.mode === 'api')
-			) {
-				const mcpTools = await this.mcpManager.getAllTools();
-				return toolName in mcpTools;
+                                        return isSearchTool && tool.agentAccessible !== false;
+                                } else if (this.config.mode === 'aggregator') {
+                                        // Aggregator mode: All tools available
+                                        return true;
+                                } else if (this.config.mode === 'mcp') {
+                                        const isMemoryWriteTool = MCP_MEMORY_WRITE_TOOLS.has(toolName);
+                                        return (tool.agentAccessible !== false) || isMemoryWriteTool;
+                                } else {
+                                        // API mode: Only agent-accessible tools
+                                        return tool.agentAccessible !== false;
+                                }
+                        } else if (
+                                this.config.enableMcpTools &&
+                                (this.config.mode === 'cli' ||
+                                        this.config.mode === 'aggregator' ||
+                                        this.config.mode === 'api' ||
+                                        this.config.mode === 'mcp')
+                        ) {
+                                const mcpTools = await this.mcpManager.getAllTools();
+                                return toolName in mcpTools;
 			}
 			return false;
 		} catch (error) {
@@ -615,32 +634,36 @@ export class UnifiedToolManager {
 				if (!tool) return null;
 
 				// Mode-specific source determination
-				if (this.config.mode === 'cli') {
-					// CLI mode: Only search tools accessible
-					const isSearchTool =
-						toolName.includes('search') ||
-						toolName.includes('memory_') ||
-						toolName.includes('knowledge_') ||
-						toolName.includes('vector_') ||
-						toolName === 'extract_and_operate_memory' ||
-						toolName === 'cipher_extract_and_operate_memory';
+                                if (this.config.mode === 'cli') {
+                                        // CLI mode: Only search tools accessible
+                                        const isSearchTool =
+                                                toolName.includes('search') ||
+                                                toolName.includes('memory_') ||
+                                                toolName.includes('knowledge_') ||
+                                                toolName.includes('vector_') ||
+                                                toolName === 'extract_and_operate_memory' ||
+                                                toolName === 'cipher_extract_and_operate_memory';
 
-					return isSearchTool && tool.agentAccessible !== false ? 'internal' : null;
-				} else if (this.config.mode === 'aggregator') {
-					// Aggregator mode: All tools available
-					return 'internal';
-				} else {
-					// API mode: Only agent-accessible tools
-					return tool.agentAccessible !== false ? 'internal' : null;
-				}
-			} else if (
-				this.config.enableMcpTools &&
-				(this.config.mode === 'cli' ||
-					this.config.mode === 'aggregator' ||
-					this.config.mode === 'api')
-			) {
-				const mcpTools = await this.mcpManager.getAllTools();
-				return toolName in mcpTools ? 'mcp' : null;
+                                        return isSearchTool && tool.agentAccessible !== false ? 'internal' : null;
+                                } else if (this.config.mode === 'aggregator') {
+                                        // Aggregator mode: All tools available
+                                        return 'internal';
+                                } else if (this.config.mode === 'mcp') {
+                                        const isMemoryWriteTool = MCP_MEMORY_WRITE_TOOLS.has(toolName);
+                                        return (tool.agentAccessible !== false || isMemoryWriteTool) ? 'internal' : null;
+                                } else {
+                                        // API mode: Only agent-accessible tools
+                                        return tool.agentAccessible !== false ? 'internal' : null;
+                                }
+                        } else if (
+                                this.config.enableMcpTools &&
+                                (this.config.mode === 'cli' ||
+                                        this.config.mode === 'aggregator' ||
+                                        this.config.mode === 'api' ||
+                                        this.config.mode === 'mcp')
+                        ) {
+                                const mcpTools = await this.mcpManager.getAllTools();
+                                return toolName in mcpTools ? 'mcp' : null;
 			}
 			return null;
 		} catch (error) {

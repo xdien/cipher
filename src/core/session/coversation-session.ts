@@ -17,6 +17,7 @@ import { StorageManager } from '../storage/manager.js';
 import type { ZodSchema } from 'zod';
 import { setImmediate } from 'timers';
 import { IConversationHistoryProvider } from '../brain/llm/messages/history/types.js';
+import type { InternalMessage } from '../brain/llm/messages/types.js';
 import type { SerializedSession } from './persistence-types.js';
 import { SESSION_PERSISTENCE_CONSTANTS, SessionPersistenceError } from './persistence-types.js';
 import { IMessageFormatter } from '../brain/llm/messages/formatters/types.js';
@@ -57,6 +58,12 @@ function extractReasoningContentBlocks(aiResponse: any): string {
 	return '';
 }
 import { EnhancedPromptManager } from '../brain/systemPrompt/enhanced-manager.js';
+const MEMORY_WRITE_TOOL_NAMES = new Set([
+        'cipher_extract_and_operate_memory',
+        'extract_and_operate_memory',
+        'cipher_workspace_store',
+        'workspace_store',
+]);
 export class ConversationSession {
 	private contextManager!: ContextManager;
 	private _llmService?: ILLMService; // Changed to lazy-loaded
@@ -514,14 +521,16 @@ export class ConversationSession {
 			`Running session ${this.id} with input: ${input} and imageDataInput: ${imageDataInput} and stream: ${stream}`
 		);
 
-		// Initialize reasoning detector and search context manager if not already done
-		await this.initializeReasoningServices();
+                // Initialize reasoning detector and search context manager if not already done
+                await this.initializeReasoningServices();
 
-		// Restore history if enabled (lazy-loaded)
-		await this.restoreHistoryLazy();
+                // Restore history if enabled (lazy-loaded)
+                await this.restoreHistoryLazy();
 
-		// Lazy initialize LLM service when first needed
-		const llmService = await this.getLLMServiceLazy();
+                // Lazy initialize LLM service when first needed
+                const llmService = await this.getLLMServiceLazy();
+
+                const messagesBeforeRun = this.contextManager.getRawMessagesSync().length;
 
 		// Emit thinking event before starting generation
 		if (this.services.eventManager) {
@@ -540,8 +549,10 @@ export class ConversationSession {
 			}
 		}
 
-		// Generate response
-		const response = await llmService.generate(input, imageDataInput, stream);
+                // Generate response
+                const response = await llmService.generate(input, imageDataInput, stream);
+
+                const memoryToolUsedInForeground = this.wasMemoryWriteToolUsedSince(messagesBeforeRun);
 
 		// PROGRAMMATIC ENFORCEMENT: Run memory extraction asynchronously in background AFTER response is returned
 		// This ensures users see the response immediately without waiting for memory operations
@@ -580,10 +591,18 @@ export class ConversationSession {
 					}
 				}
 
-				if (embeddingsDisabled || embeddingManagerDisabled) {
-					logger.debug('Skipping all background memory operations - embeddings disabled', {
-						sessionId: this.id,
-						envDisabled: embeddingsDisabled,
+                                if (memoryToolUsedInForeground) {
+                                        logger.debug('Skipping background memory operations - handled during foreground run', {
+                                                sessionId: this.id,
+                                        });
+                                        resolve();
+                                        return;
+                                }
+
+                                if (embeddingsDisabled || embeddingManagerDisabled) {
+                                        logger.debug('Skipping all background memory operations - embeddings disabled', {
+                                                sessionId: this.id,
+                                                envDisabled: embeddingsDisabled,
 						managerDisabled: embeddingManagerDisabled,
 					});
 					resolve();
@@ -615,15 +634,15 @@ export class ConversationSession {
 	 * This ensures the extract_and_operate_memory tool is always called, regardless of AI decisions
 	 * NOTE: This method runs asynchronously in the background to avoid delaying the user response
 	 */
-	private async enforceMemoryExtraction(
-		userInput: string,
-		aiResponse: string,
-		options?: {
-			memoryMetadata?: Record<string, any>;
-			contextOverrides?: Record<string, any>;
-			historyTracking?: boolean;
-		}
-	): Promise<void> {
+        private async enforceMemoryExtraction(
+                userInput: string,
+                aiResponse: string,
+                options?: {
+                        memoryMetadata?: Record<string, any>;
+                        contextOverrides?: Record<string, any>;
+                        historyTracking?: boolean;
+                }
+        ): Promise<void> {
 		logger.debug('ConversationSession.enforceMemoryExtraction called');
 		logger.debug('enforceMemoryExtraction: unifiedToolManager at entry', {
 			unifiedToolManager: this.services.unifiedToolManager,
@@ -1119,17 +1138,64 @@ export class ConversationSession {
 			});
 			// Continue execution even if reflection processing fails
 		}
-	}
+        }
 
-	/**
-	 * Extract comprehensive interaction data including tool calls and results
-	 * This captures the complete technical workflow, not just user input and final response
-	 */
-	private async extractComprehensiveInteractionData(
-		userInput: string,
-		aiResponse: string
-	): Promise<string[]> {
-		const interactionData: string[] = [];
+        /**
+         * Extract comprehensive interaction data including tool calls and results
+         * This captures the complete technical workflow, not just user input and final response
+         */
+        private wasMemoryWriteToolUsedSince(startIndex: number): boolean {
+                try {
+                        const messages: InternalMessage[] = this.contextManager.getRawMessagesSync();
+
+                        for (let i = startIndex; i < messages.length; i++) {
+                                const message = messages[i];
+                                if (!message) continue;
+
+                                if (message.role === 'tool') {
+                                        const toolName = (message as any).name;
+                                        if (typeof toolName === 'string' && this.isMemoryWriteTool(toolName)) {
+                                                return true;
+                                        }
+                                }
+
+                                if (message.role === 'assistant' && Array.isArray(message.toolCalls)) {
+                                        for (const call of message.toolCalls) {
+                                                const callName = call?.function?.name;
+                                                if (typeof callName === 'string' && this.isMemoryWriteTool(callName)) {
+                                                        return true;
+                                                }
+                                        }
+                                }
+                        }
+                } catch (error) {
+                        logger.debug('Unable to inspect messages for memory tool usage', {
+                                sessionId: this.id,
+                                error: error instanceof Error ? error.message : String(error),
+                        });
+                }
+
+                return false;
+        }
+
+        private isMemoryWriteTool(toolName: string): boolean {
+                if (MEMORY_WRITE_TOOL_NAMES.has(toolName)) {
+                        return true;
+                }
+
+                // Some internal messages might store names without the cipher_ prefix
+                if (toolName.startsWith('cipher_')) {
+                        return MEMORY_WRITE_TOOL_NAMES.has(toolName.replace('cipher_', ''));
+                }
+
+                return MEMORY_WRITE_TOOL_NAMES.has(`cipher_${toolName}`);
+        }
+
+        private async extractComprehensiveInteractionData(
+                userInput: string,
+                aiResponse: string
+        ): Promise<string[]> {
+                const interactionData: string[] = [];
 
 		// Start with the user input
 		interactionData.push(`User: ${userInput}`);

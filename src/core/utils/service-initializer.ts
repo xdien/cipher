@@ -825,28 +825,28 @@ export async function createAgentServices(
 			conflictResolution: 'prefix-internal',
 			mode: 'cli', // Special CLI mode
 		};
-	} else if (appMode === 'mcp') {
-		// MCP Mode: Configure based on MCP_SERVER_MODE
-		const mcpServerMode = process.env.MCP_SERVER_MODE || 'default';
+        } else if (appMode === 'mcp') {
+                // MCP Mode: Configure based on MCP_SERVER_MODE
+                const mcpServerMode = process.env.MCP_SERVER_MODE || 'default';
 
-		if (mcpServerMode === 'aggregator') {
-			// Aggregator mode: Use aggregator mode for unified tool manager to expose all tools
-			unifiedToolManagerConfig = {
-				enableInternalTools: true,
-				enableMcpTools: true,
-				conflictResolution: 'prefix-internal',
-				mode: 'aggregator', // Aggregator mode exposes all tools without filtering
-			};
-		} else {
-			// Default MCP mode: Use cli mode internally for agent access to all tools
-			// External MCP exposure is controlled separately in mcp_handler.ts
-			unifiedToolManagerConfig = {
-				enableInternalTools: true,
-				enableMcpTools: true,
-				conflictResolution: 'prefix-internal',
-				mode: 'cli', // Internal agent needs access to all tools in default mode
-			};
-		}
+                if (mcpServerMode === 'aggregator') {
+                        // Aggregator mode: Use aggregator mode for unified tool manager to expose all tools
+                        unifiedToolManagerConfig = {
+                                enableInternalTools: true,
+                                enableMcpTools: true,
+                                conflictResolution: 'prefix-internal',
+                                mode: 'aggregator', // Aggregator mode exposes all tools without filtering
+                        };
+                } else {
+                        // Default MCP mode: Allow the agent to use memory write tools directly
+                        // External MCP exposure is controlled separately in mcp_handler.ts
+                        unifiedToolManagerConfig = {
+                                enableInternalTools: true,
+                                enableMcpTools: true,
+                                conflictResolution: 'prefix-internal',
+                                mode: 'mcp',
+                        };
+                }
 	} else {
 		// API Mode: Respect MCP_SERVER_MODE like MCP mode does
 		const mcpServerMode = process.env.MCP_SERVER_MODE || 'default';

@@ -140,11 +140,11 @@ describe('UnifiedToolManager - Aggregator Mode', () => {
 		});
 	});
 
-	describe('Aggregator Mode', () => {
-		it('should expose cipher_extract_and_operate_memory in aggregator mode', async () => {
-			const manager = new UnifiedToolManager(mockMcpManager, mockInternalToolManager, {
-				mode: 'aggregator',
-			});
+        describe('Aggregator Mode', () => {
+                it('should expose cipher_extract_and_operate_memory in aggregator mode', async () => {
+                        const manager = new UnifiedToolManager(mockMcpManager, mockInternalToolManager, {
+                                mode: 'aggregator',
+                        });
 			// Set up mock embedding manager
 			manager.setEmbeddingManager(mockEmbeddingManager);
 
@@ -182,8 +182,39 @@ describe('UnifiedToolManager - Aggregator Mode', () => {
 
 			const source = await manager.getToolSource('cipher_extract_and_operate_memory');
 			expect(source).toBe('internal');
-		});
-	});
+                });
+        });
+
+        describe('MCP Mode', () => {
+                it('should expose memory write tools for the agent in MCP mode', async () => {
+                        const manager = new UnifiedToolManager(mockMcpManager, mockInternalToolManager, {
+                                mode: 'mcp',
+                        });
+                        manager.setEmbeddingManager(mockEmbeddingManager);
+
+                        const allTools = await manager.getAllTools();
+
+                        expect(allTools).toHaveProperty('cipher_extract_and_operate_memory');
+                        expect(allTools['cipher_extract_and_operate_memory']).toEqual({
+                                description: 'Extract and operate memory tool',
+                                parameters: { type: 'object', properties: {} },
+                                source: 'internal',
+                        });
+                });
+
+                it('should report cipher_extract_and_operate_memory as available in MCP mode', async () => {
+                        const manager = new UnifiedToolManager(mockMcpManager, mockInternalToolManager, {
+                                mode: 'mcp',
+                        });
+                        manager.setEmbeddingManager(mockEmbeddingManager);
+
+                        const available = await manager.isToolAvailable('cipher_extract_and_operate_memory');
+                        expect(available).toBe(true);
+
+                        const source = await manager.getToolSource('cipher_extract_and_operate_memory');
+                        expect(source).toBe('internal');
+                });
+        });
 
 	describe('Explicit Configuration Override', () => {
 		it('should allow explicit mode override via config', async () => {
