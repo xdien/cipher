@@ -9,8 +9,8 @@
 
 import Database from 'better-sqlite3';
 import { mkdir } from 'fs/promises';
-import { dirname, join } from 'path';
-import { existsSync } from 'fs';
+import { dirname, join, resolve } from 'path';
+import { existsSync, statSync } from 'fs';
 import type { DatabaseBackend } from './database-backend.js';
 import type { SqliteBackendConfig } from '../config.js';
 import { StorageError, StorageConnectionError } from './types.js';
@@ -61,10 +61,27 @@ export class SqliteBackend implements DatabaseBackend {
 	constructor(private config: SqliteBackendConfig) {
 		this.logger = createLogger({ level: process.env.LOG_LEVEL || 'info' });
 
-		// Construct database path
+		// Construct initial database path (lightweight, no I/O)
+		// Final path resolution happens in connect() to avoid blocking constructor
 		const dbPath = config.path || './data';
 		const dbName = config.database || 'cipher.db';
-		this.dbPath = join(dbPath, dbName);
+
+		// If path has database extension, use it as-is
+		// Note: config.database is ignored in this case
+		const hasDbExtension = /\.(db|sqlite|sqlite3)$/i.test(dbPath);
+		if (hasDbExtension) {
+			if (config.database && config.database !== 'cipher.db') {
+				this.logger.warn('Database name in config is ignored when path includes file extension', {
+					path: dbPath,
+					ignoredDatabase: config.database,
+				});
+			}
+			this.dbPath = dbPath;
+		} else {
+			// Join path with database name
+			// If this turns out to be a directory, it will be resolved in connect()
+			this.dbPath = join(dbPath, dbName);
+		}
 
 		this.logger.debug('SQLite backend initialized', {
 			path: this.dbPath,
@@ -78,6 +95,54 @@ export class SqliteBackend implements DatabaseBackend {
 		}
 
 		try {
+			// Normalize and resolve the path to absolute form
+			const originalPath = this.dbPath;
+			this.dbPath = resolve(this.dbPath);
+
+			// Check if path looks like a file (has database extension)
+			const looksLikeFile = /\.(db|sqlite|sqlite3)$/i.test(this.dbPath);
+
+			// Check if user explicitly added a trailing separator (/ or \)
+			// This indicates intent to treat as directory, even if it doesn't exist yet
+			const explicitDirMarker = /[\\/]$/.test(this.config.path || '');
+
+			// Path resolution logic:
+			// 1. If user added trailing slash → treat as directory (preemptive)
+			// 2. If path doesn't look like file AND exists as directory → treat as directory
+			// 3. Otherwise → use as-is (will be created as file)
+
+			if (!looksLikeFile) {
+				if (explicitDirMarker) {
+					// User explicitly marked this as a directory with trailing separator
+					// Handle this case FIRST, before filesystem check
+					this.dbPath = join(this.dbPath, this.config.database || 'cipher.db');
+					this.logger.debug('Path has explicit directory marker, appending database name', {
+						originalPath,
+						finalPath: this.dbPath,
+						separator: this.config.path?.endsWith('/') ? '/' : '\\',
+					});
+				} else if (existsSync(this.dbPath)) {
+					// Path exists, check if it's a directory
+					try {
+						const stats = statSync(this.dbPath);
+						if (stats.isDirectory()) {
+							// Path is a directory (e.g., Docker volume mount)
+							this.dbPath = join(this.dbPath, this.config.database || 'cipher.db');
+							this.logger.debug('Resolved directory path to database file', {
+								originalPath,
+								finalPath: this.dbPath,
+							});
+						}
+					} catch (error) {
+						// If stat fails (permissions, broken symlink), use as-is
+						this.logger.debug('Unable to stat path, using as-is', {
+							path: this.dbPath,
+							error: error instanceof Error ? error.message : String(error),
+						});
+					}
+				}
+			}
+
 			// Ensure directory exists
 			const dir = dirname(this.dbPath);
 			this.logger.debug('Ensuring database directory exists', { dir, dbPath: this.dbPath });
