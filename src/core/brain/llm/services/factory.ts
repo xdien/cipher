@@ -138,7 +138,8 @@ function _createLLMService(
 				mcpManager,
 				contextManager,
 				config.maxIterations,
-				unifiedToolManager
+				unifiedToolManager,
+				config.models || []
 			);
 		}
 		case 'lmstudio': {

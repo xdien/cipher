@@ -42,6 +42,10 @@ export const LLMConfigSchema = z
 				"The LLM provider (e.g., 'openai', 'anthropic', 'openrouter', 'ollama', 'lmstudio', 'qwen', 'aws', 'azure', 'gemini', 'deepseek')"
 			),
 		model: z.string().nonempty().describe('The specific model name for the selected provider'),
+		models: z
+			.array(z.string().nonempty())
+			.optional()
+			.describe('Array of fallback models for the selected provider (used for fallback when primary model fails)'),
 		apiKey: z
 			.string()
 			.optional()

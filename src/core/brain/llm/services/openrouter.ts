@@ -14,6 +14,7 @@ import { v4 as uuidv4 } from 'uuid';
 export class OpenRouterService implements ILLMService {
 	private client: OpenAI;
 	private model: string;
+	private fallbackModels: string[];
 	private mcpManager: MCPManager;
 	private unifiedToolManager: UnifiedToolManager | undefined;
 	private contextManager: ContextManager;
@@ -26,10 +27,12 @@ export class OpenRouterService implements ILLMService {
 		mcpManager: MCPManager,
 		contextManager: ContextManager,
 		maxIterations: number = 5,
-		unifiedToolManager?: UnifiedToolManager
+		unifiedToolManager?: UnifiedToolManager,
+		fallbackModels: string[] = []
 	) {
 		this.client = client;
 		this.model = model;
+		this.fallbackModels = fallbackModels;
 		this.mcpManager = mcpManager;
 		this.unifiedToolManager = unifiedToolManager;
 		this.contextManager = contextManager;
@@ -204,17 +207,35 @@ export class OpenRouterService implements ILLMService {
 				content: userInput,
 			});
 
-			// Make direct API call without adding to conversation context
-			const response = await this.client.chat.completions.create({
+			// Use OpenRouter's native fallback with models parameter
+			const requestConfig: any = {
 				model: this.model,
 				messages: messages,
 				// No tools for direct calls - this is for simple text generation
-			});
+			};
+
+			// Add fallback models if available (OpenRouter native fallback)
+			if (this.fallbackModels.length > 0) {
+				requestConfig.models = this.fallbackModels;
+				logger.debug(`Direct generate using OpenRouter native fallback with models: ${this.fallbackModels.join(', ')}`);
+			}
+
+			// Make direct API call with native fallback support
+			const response = await this.client.chat.completions.create(requestConfig);
 
 			const responseText = response.choices[0]?.message?.content || '';
 
+			// Log which model was actually used (OpenRouter returns this in response)
+			const usedModel = response.model || this.model;
+			if (usedModel !== this.model) {
+				logger.info(`Direct generate used fallback model: ${usedModel}`);
+			} else {
+				logger.debug(`Direct generate used primary model: ${usedModel}`);
+			}
+
 			logger.debug('OpenRouterService: Direct generate completed', {
 				responseLength: responseText.length,
+				usedModel: usedModel,
 			});
 
 			return responseText;
@@ -252,23 +273,32 @@ export class OpenRouterService implements ILLMService {
 
 		// Add a log of the number of tools in response
 		logger.debug(`Tools in OpenRouter response: ${tools.length}`);
+		
+		// Use OpenRouter's native fallback with models parameter
+		const requestConfig: any = {
+			model: this.model,
+			messages: await this.contextManager.getFormattedMessage({
+				role: 'user',
+				content: userInput,
+			}),
+			tools: tools,
+			tool_choice: 'auto',
+		};
+
+		// Add fallback models if available (OpenRouter native fallback)
+		if (this.fallbackModels.length > 0) {
+			requestConfig.models = this.fallbackModels;
+			logger.debug(`Using OpenRouter native fallback with models: ${this.fallbackModels.join(', ')}`);
+		}
 
 		while (attempts < MAX_ATTEMPTS) {
 			attempts++;
+			
 			try {
-				// Use the new method that implements proper flow: get system prompt, compress history, format messages
-				const formattedMessages = await this.contextManager.getFormattedMessage({
-					role: 'user',
-					content: userInput,
-				});
-
-				// Call OpenRouter API via OpenAI SDK (OpenRouter is OpenAI-compatible)
-				const response = await this.client.chat.completions.create({
-					model: this.model,
-					messages: formattedMessages,
-					tools: attempts === 1 ? tools : [], // Only offer tools on first attempt
-					tool_choice: attempts === 1 ? 'auto' : 'none', // Disable tool choice on retry
-				});
+				logger.debug(`OpenRouter API call (attempt ${attempts}/${MAX_ATTEMPTS})`);
+				
+				// Call OpenRouter API with native fallback support
+				const response = await this.client.chat.completions.create(requestConfig);
 
 				logger.silly('OPENROUTER CHAT COMPLETION RESPONSE: ', JSON.stringify(response, null, 2));
 
@@ -276,6 +306,14 @@ export class OpenRouterService implements ILLMService {
 				const message = response.choices[0]?.message;
 				if (!message) {
 					throw new Error('Received empty message from OpenRouter API');
+				}
+
+				// Log which model was actually used (OpenRouter returns this in response)
+				const usedModel = response.model || this.model;
+				if (usedModel !== this.model) {
+					logger.info(`OpenRouter used fallback model: ${usedModel}`);
+				} else {
+					logger.debug(`OpenRouter used primary model: ${usedModel}`);
 				}
 
 				return { message };
@@ -297,6 +335,7 @@ export class OpenRouterService implements ILLMService {
 					throw error;
 				}
 
+				// Wait before retrying (OpenRouter handles model fallback, we only retry on network errors)
 				await new Promise(resolve => setTimeout(resolve, 500 * attempts));
 			}
 		}

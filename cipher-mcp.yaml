@@ -1,0 +1,117 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database for Cipher MCP
+  cipher-postgres:
+    image: postgres:16-alpine
+    container_name: cipher-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: cipherdb
+      POSTGRES_USER: cipheruser
+      POSTGRES_PASSWORD: cipherpass
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    ports:
+      - "${CIPHER_POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - cipher_postgres_data:/var/lib/postgresql/data
+      - ./docker/cipher/postgres/init:/docker-entrypoint-initdb.d
+    networks:
+      - cipher-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${CIPHER_POSTGRES_USER:-cipheruser} -d ${CIPHER_POSTGRES_DB:-cipherdb}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Qdrant Vector Database for Cipher MCP
+  cipher-qdrant:
+    image: qdrant/qdrant:v1.7.4
+    container_name: cipher-qdrant
+    restart: unless-stopped
+    ports:
+      - "${VECTOR_STORE_PORT:-6333}:6333"
+      - "${CIPHER_QDRANT_GRPC_PORT:-6334}:6334"
+    volumes:
+      - cipher_qdrant_data:/qdrant/storage
+    environment:
+      QDRANT__SERVICE__HTTP_PORT: 6333
+      QDRANT__SERVICE__GRPC_PORT: 6334
+      QDRANT__LOG_LEVEL: INFO
+    networks:
+      - cipher-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:6333/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache for Cipher MCP
+  cipher-redis:
+    image: redis:7.2-alpine
+    container_name: cipher-redis
+    restart: unless-stopped
+    ports:
+      - "${STORAGE_CACHE_PORT:-6379}:6379"
+    volumes:
+      - cipher_redis_data:/data
+    command: ["sh", "-c", "redis-server --appendonly yes --appendfsync everysec --maxmemory 256mb --maxmemory-policy allkeys-lru"]
+    networks:
+      - cipher-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Neo4j Graph Database for Cipher MCP
+  cipher-neo4j:
+    image: neo4j:5.15-community
+    container_name: cipher-neo4j
+    restart: unless-stopped
+    ports:
+      - "${CIPHER_NEO4J_HTTP_PORT:-7474}:7474"
+      - "${KNOWLEDGE_GRAPH_PORT:-7687}:7687"
+    volumes:
+      - cipher_neo4j_data:/data
+      - cipher_neo4j_logs:/logs
+      - cipher_neo4j_import:/var/lib/neo4j/import
+      - cipher_neo4j_plugins:/plugins
+    environment:
+      NEO4J_AUTH: ${KNOWLEDGE_GRAPH_USERNAME:-neo4j}/${KNOWLEDGE_GRAPH_PASSWORD:-neo4j}
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_dbms_security_procedures_unrestricted: apoc.*
+      NEO4J_dbms_security_procedures_allowlist: apoc.*
+      NEO4J_dbms_memory_heap_initial__size: 512m
+      NEO4J_dbms_memory_heap_max__size: 1G
+      NEO4J_dbms_memory_pagecache_size: 512m
+      NEO4J_dbms_connector_bolt_listen__address: 0.0.0.0:7687
+      NEO4J_dbms_connector_http_listen__address: 0.0.0.0:7474
+    networks:
+      - cipher-network
+    healthcheck:
+      test: ["CMD", "cypher-shell", "-u", "${KNOWLEDGE_GRAPH_USERNAME:-neo4j}", "-p", "${KNOWLEDGE_GRAPH_PASSWORD:-neo4j}", "RETURN 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+networks:
+  cipher-network:
+    driver: bridge
+    name: cipher-network
+
+volumes:
+  cipher_postgres_data:
+    name: cipher_postgres_data
+  cipher_qdrant_data:
+    name: cipher_qdrant_data
+  cipher_redis_data:
+    name: cipher_redis_data
+  cipher_neo4j_data:
+    name: cipher_neo4j_data
+  cipher_neo4j_logs:
+    name: cipher_neo4j_logs
+  cipher_neo4j_import:
+    name: cipher_neo4j_import
+  cipher_neo4j_plugins:
+    name: cipher_neo4j_plugins
