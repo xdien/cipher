@@ -227,6 +227,15 @@ export class ApiServer {
 			logger.debug('[API Server] SSE Request Original URL:', req.originalUrl);
 
 			try {
+				// Set SSE response headers
+				res.setHeader('Content-Type', 'text/event-stream');
+				res.setHeader('Cache-Control', 'no-cache');
+				res.setHeader('Connection', 'keep-alive');
+				res.setHeader('Access-Control-Allow-Origin', '*');
+
+				// Set high socket timeout for long-lived SSE connections
+				req.socket.setTimeout(10 * 60 * 1000); // 10 minutes
+
 				// Build the POST endpoint path including context path from proxy
 				const postEndpoint = this.buildFullPath(req, '/mcp');
 
@@ -254,23 +263,64 @@ export class ApiServer {
 					`[API Server] Active SSE transports count: ${this.activeMcpSseTransports.size}`
 				);
 
+				// Start heartbeat to keep connection alive (25 seconds interval)
+				const heartbeatInterval = setInterval(() => {
+					try {
+						if (res.writableEnded) {
+							logger.debug(
+								`[API Server] Response ended for session ${sseTransport.sessionId}, clearing heartbeat`
+							);
+							clearInterval(heartbeatInterval);
+							return;
+						}
+
+						// Send a comment line (colon prefix) as keepalive
+						// This is safe in SSE and doesn't affect client parsing
+						res.write(': keepalive\n\n');
+						logger.debug(`[API Server] Heartbeat sent for session ${sseTransport.sessionId}`);
+					} catch (error) {
+						logger.debug(
+							`[API Server] Error sending heartbeat for session ${sseTransport.sessionId}:`,
+							error
+						);
+						clearInterval(heartbeatInterval);
+					}
+				}, 25000); // 25 seconds - less than typical 30s timeout
+
 				// Handle client disconnect
-				req.on('close', () => {
+				const closeHandler = () => {
 					logger.info(
 						`[API Server] MCP SSE client with session ID ${sseTransport.sessionId} disconnected.`
 					);
 					logger.debug('[API Server] Cleaning up SSE transport and connection');
-					sseTransport.close(); // Close the transport when client disconnects
+					
+					// Clear heartbeat
+					clearInterval(heartbeatInterval);
+
+					try {
+						sseTransport.close(); // Close the transport when client disconnects
+					} catch (error) {
+						logger.error('[API Server] Error closing SSE transport:', error);
+					}
 					this.activeMcpSseTransports.delete(sseTransport.sessionId); // Remove from active transports
 					logger.debug(
 						`[API Server] Active SSE transports count after cleanup: ${this.activeMcpSseTransports.size}`
 					);
-				});
+					// Explicitly remove listener to prevent memory leak
+					req.removeListener('close', closeHandler);
+				};
+
+				// Use 'once' instead of 'on' to automatically remove listener
+				req.once('close', closeHandler);
 
 				// Handle transport errors
 				sseTransport.onerror = (error: unknown) => {
 					logger.error('[API Server] SSE transport error:', error);
+					// Clear heartbeat on error
+					clearInterval(heartbeatInterval);
 					this.activeMcpSseTransports.delete(sseTransport.sessionId);
+					// Also remove the close listener to prevent dangling listeners
+					req.removeListener('close', closeHandler);
 				};
 			} catch (error) {
 				logger.error('[API Server] Error setting up SSE transport:', error);

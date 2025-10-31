@@ -17,6 +17,10 @@ export class McpSseServer {
 	private port: number;
 	private host: string;
 	private sseOptions?: SSEServerTransportOptions;
+	private signalHandlers: Map<string, () => void> = new Map();
+	private isShuttingDown: boolean = false;
+	private heartbeatIntervals: Map<string, NodeJS.Timeout> = new Map();
+	private readonly HEARTBEAT_INTERVAL = 25000; // 25 seconds - less than typical 30s timeout
 
 	constructor(port: number, host: string = 'localhost', options?: SSEServerTransportOptions) {
 		this.port = port;
@@ -36,6 +40,15 @@ export class McpSseServer {
 		// Minimal JSON parsing middleware
 		this.app.use(express.json({ limit: '10mb' }));
 		this.app.use(express.urlencoded({ extended: true }));
+
+		// Set higher request timeout for SSE connections (SSE is long-lived)
+		// Default Express timeout is 2 minutes, we set it to 10 minutes
+		this.app.use((req: Request, res: Response, next) => {
+			// SSE connections should have longer timeout
+			req.socket.setTimeout(10 * 60 * 1000); // 10 minutes
+			res.setTimeout(10 * 60 * 1000); // 10 minutes
+			next();
+		});
 
 		// Basic error handling
 		this.app.use((err: Error, req: Request, res: Response, _next: any) => {
@@ -67,10 +80,19 @@ export class McpSseServer {
 		return new Promise((resolve, reject) => {
 			this.httpServer = http.createServer(this.app);
 
+			// Set higher timeout on the HTTP server
+			this.httpServer.setTimeout(10 * 60 * 1000); // 10 minutes
+			this.httpServer.keepAliveTimeout = 65 * 1000; // 65 seconds (>10 seconds keep-alive)
+
 			this.httpServer.listen(this.port, this.host, () => {
 				logger.info(`[MCP SSE Server] Started on ${this.host}:${this.port}`, null, 'green');
 				logger.info(
 					`[MCP SSE Server] SSE endpoint: http://${this.host}:${this.port}/sse`,
+					null,
+					'cyan'
+				);
+				logger.info(
+					`[MCP SSE Server] Heartbeat interval: ${this.HEARTBEAT_INTERVAL}ms to prevent timeout`,
 					null,
 					'cyan'
 				);
@@ -82,9 +104,25 @@ export class McpSseServer {
 				reject(err);
 			});
 
-			// Set up graceful shutdown handlers
-			process.on('SIGTERM', () => this.stop());
-			process.on('SIGINT', () => this.stop());
+			// Set up graceful shutdown handlers (prevent duplicate handlers)
+			const sigTermHandler = () => this.stop();
+			const sigIntHandler = () => this.stop();
+			
+			// Remove old handlers if they exist
+			if (this.signalHandlers.has('SIGTERM')) {
+				process.removeListener('SIGTERM', this.signalHandlers.get('SIGTERM')!);
+			}
+			if (this.signalHandlers.has('SIGINT')) {
+				process.removeListener('SIGINT', this.signalHandlers.get('SIGINT')!);
+			}
+			
+			// Add new handlers
+			process.on('SIGTERM', sigTermHandler);
+			process.on('SIGINT', sigIntHandler);
+			
+			// Store handlers for cleanup later
+			this.signalHandlers.set('SIGTERM', sigTermHandler);
+			this.signalHandlers.set('SIGINT', sigIntHandler);
 		});
 	}
 
@@ -92,7 +130,20 @@ export class McpSseServer {
 	 * Stop the SSE server and clean up resources
 	 */
 	async stop(): Promise<void> {
+		if (this.isShuttingDown) {
+			logger.debug('[MCP SSE Server] Shutdown already in progress');
+			return;
+		}
+		
+		this.isShuttingDown = true;
 		logger.info('[MCP SSE Server] Shutting down...');
+
+		// Clear all heartbeat intervals
+		for (const [sessionId, interval] of this.heartbeatIntervals) {
+			logger.debug(`[MCP SSE Server] Clearing heartbeat for session: ${sessionId}`);
+			clearInterval(interval);
+		}
+		this.heartbeatIntervals.clear();
 
 		// Close all active SSE transports
 		for (const [sessionId, transport] of this.activeSseTransports) {
@@ -105,15 +156,58 @@ export class McpSseServer {
 		}
 		this.activeSseTransports.clear();
 
+		// Remove signal handlers to prevent memory leak
+		for (const [signal, handler] of this.signalHandlers) {
+			process.removeListener(signal, handler);
+		}
+		this.signalHandlers.clear();
+
 		// Close HTTP server
 		if (this.httpServer) {
 			return new Promise(resolve => {
 				this.httpServer!.close(() => {
 					logger.info('[MCP SSE Server] Stopped');
+					this.isShuttingDown = false;
 					resolve();
 				});
 			});
 		}
+		
+		this.isShuttingDown = false;
+	}
+
+	/**
+	 * Start heartbeat for a specific SSE connection to prevent timeout
+	 */
+	private startHeartbeat(sessionId: string, res: Response): void {
+		// Clear any existing heartbeat for this session
+		if (this.heartbeatIntervals.has(sessionId)) {
+			clearInterval(this.heartbeatIntervals.get(sessionId));
+		}
+
+		const heartbeatInterval = setInterval(() => {
+			try {
+				if (res.writableEnded) {
+					logger.debug(`[MCP SSE Server] Response ended for session ${sessionId}, clearing heartbeat`);
+					clearInterval(heartbeatInterval);
+					this.heartbeatIntervals.delete(sessionId);
+					return;
+				}
+
+				// Send a comment line (colon prefix) as keepalive
+				// This is safe in SSE and doesn't affect client parsing
+				res.write(': keepalive\n\n');
+				logger.debug(`[MCP SSE Server] Heartbeat sent for session ${sessionId}`);
+			} catch (error) {
+				logger.debug(`[MCP SSE Server] Error sending heartbeat for session ${sessionId}:`, error);
+				clearInterval(heartbeatInterval);
+				this.heartbeatIntervals.delete(sessionId);
+			}
+		}, this.HEARTBEAT_INTERVAL);
+
+		// Store the interval for cleanup
+		this.heartbeatIntervals.set(sessionId, heartbeatInterval);
+		logger.debug(`[MCP SSE Server] Heartbeat started for session ${sessionId}`);
 	}
 
 	/**
@@ -131,6 +225,15 @@ export class McpSseServer {
 			logger.debug('[MCP SSE Server] SSE Request Headers:', req.headers);
 
 			try {
+				// Set SSE response headers
+				res.setHeader('Content-Type', 'text/event-stream');
+				res.setHeader('Cache-Control', 'no-cache');
+				res.setHeader('Connection', 'keep-alive');
+				res.setHeader('Access-Control-Allow-Origin', '*');
+
+				// Set high socket timeout for long-lived SSE connections
+				req.socket.setTimeout(10 * 60 * 1000); // 10 minutes
+
 				// Create SSE transport instance with proper endpoint
 				// The endpoint '/sse' is where clients will POST messages
 				const sseTransport = new SSEServerTransport('/sse', res, this.sseOptions);
@@ -149,12 +252,23 @@ export class McpSseServer {
 					`[MCP SSE Server] Active SSE transports count: ${this.activeSseTransports.size}`
 				);
 
-				// Handle client disconnect
-				req.on('close', () => {
+				// Start heartbeat to keep connection alive
+				this.startHeartbeat(sseTransport.sessionId, res);
+
+				// Handle client disconnect - use 'once' to automatically clean up listener
+				const closeHandler = () => {
 					logger.info(
 						`[MCP SSE Server] SSE client with session ID ${sseTransport.sessionId} disconnected.`
 					);
 					logger.debug('[MCP SSE Server] Cleaning up SSE transport and connection');
+					
+					// Clear heartbeat
+					const heartbeatInterval = this.heartbeatIntervals.get(sseTransport.sessionId);
+					if (heartbeatInterval) {
+						clearInterval(heartbeatInterval);
+						this.heartbeatIntervals.delete(sseTransport.sessionId);
+					}
+
 					try {
 						sseTransport.close();
 					} catch (error) {
@@ -164,12 +278,27 @@ export class McpSseServer {
 					logger.debug(
 						`[MCP SSE Server] Active SSE transports count after cleanup: ${this.activeSseTransports.size}`
 					);
-				});
+					// Explicitly remove listener to prevent memory leak
+					req.removeListener('close', closeHandler);
+				};
+				
+				// Use 'once' instead of 'on' to automatically remove listener
+				req.once('close', closeHandler);
 
 				// Handle transport errors
 				sseTransport.onerror = (error: unknown) => {
 					logger.error('[MCP SSE Server] SSE transport error:', error);
+					
+					// Clear heartbeat on error
+					const heartbeatInterval = this.heartbeatIntervals.get(sseTransport.sessionId);
+					if (heartbeatInterval) {
+						clearInterval(heartbeatInterval);
+						this.heartbeatIntervals.delete(sseTransport.sessionId);
+					}
+
 					this.activeSseTransports.delete(sseTransport.sessionId);
+					// Also remove the close listener to prevent dangling listeners
+					req.removeListener('close', closeHandler);
 				};
 			} catch (error) {
 				logger.error('[MCP SSE Server] Error setting up SSE transport:', error);
@@ -272,6 +401,7 @@ export class McpSseServer {
 			activeSseTransports: this.activeSseTransports.size,
 			sessionIds: Array.from(this.activeSseTransports.keys()),
 			isRunning: !!this.httpServer,
+			activeHeartbeats: this.heartbeatIntervals.size,
 		};
 	}
 
