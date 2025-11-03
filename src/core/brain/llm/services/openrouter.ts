@@ -220,25 +220,60 @@ export class OpenRouterService implements ILLMService {
 				logger.debug(`Direct generate using OpenRouter native fallback with models: ${this.fallbackModels.join(', ')}`);
 			}
 
-			// Make direct API call with native fallback support
-			const response = await this.client.chat.completions.create(requestConfig);
+			// Make direct API call with native fallback support and retry logic
+			let attempts = 0;
+			const MAX_ATTEMPTS = 3;
+			
+			while (attempts < MAX_ATTEMPTS) {
+				attempts++;
+				try {
+					const response = await this.client.chat.completions.create(requestConfig);
 
-			const responseText = response.choices[0]?.message?.content || '';
+					const responseText = response.choices[0]?.message?.content || '';
+					
+					// Validate response has content
+					if (!responseText.trim() && (!response.usage || response.usage.total_tokens === 0)) {
+						logger.warn(`Direct generate returned empty response with 0 tokens. Attempt ${attempts}/${MAX_ATTEMPTS}`);
+						if (attempts >= MAX_ATTEMPTS) {
+							throw new Error('OpenRouter direct generate returned empty response after all retries');
+						}
+						await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
+						continue;
+					}
 
-			// Log which model was actually used (OpenRouter returns this in response)
-			const usedModel = response.model || this.model;
-			if (usedModel !== this.model) {
-				logger.info(`Direct generate used fallback model: ${usedModel}`);
-			} else {
-				logger.debug(`Direct generate used primary model: ${usedModel}`);
+					// Log which model was actually used (OpenRouter returns this in response)
+					const usedModel = response.model || this.model;
+					if (usedModel !== this.model) {
+						logger.info(`Direct generate used fallback model: ${usedModel}`);
+					} else {
+						logger.debug(`Direct generate used primary model: ${usedModel}`);
+					}
+
+					logger.debug('OpenRouterService: Direct generate completed', {
+						responseLength: responseText.length,
+						usedModel: usedModel,
+						tokens: response.usage?.total_tokens,
+					});
+
+					return responseText;
+				} catch (error) {
+					const apiError = error as any;
+					const statusCode = apiError.status || apiError.response?.status;
+					
+					if (attempts >= MAX_ATTEMPTS || (statusCode && ![429, 502, 503, 504].includes(statusCode))) {
+						throw error;
+					}
+					
+					const delay = statusCode === 429 
+						? 2000 * attempts // 2s, 4s, 6s for rate limits
+						: 1000 * attempts; // 1s, 2s, 3s for gateway errors
+					
+					logger.debug(`Direct generate retry in ${delay}ms (${statusCode})...`);
+					await new Promise(resolve => setTimeout(resolve, delay));
+				}
 			}
 
-			logger.debug('OpenRouterService: Direct generate completed', {
-				responseLength: responseText.length,
-				usedModel: usedModel,
-			});
-
-			return responseText;
+			throw new Error('Direct generate failed after maximum retry attempts');
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			logger.error('OpenRouterService: Direct generate failed', {
@@ -269,7 +304,7 @@ export class OpenRouterService implements ILLMService {
 		userInput: string
 	): Promise<{ message: any }> {
 		let attempts = 0;
-		const MAX_ATTEMPTS = 3;
+		const MAX_ATTEMPTS = 5; // Increased from 3 to 5 for better reliability
 
 		// Add a log of the number of tools in response
 		logger.debug(`Tools in OpenRouter response: ${tools.length}`);
@@ -308,6 +343,18 @@ export class OpenRouterService implements ILLMService {
 					throw new Error('Received empty message from OpenRouter API');
 				}
 
+				// Validate that we actually got content or tool calls (not 0 tokens)
+				const hasContent = message.content && message.content.trim().length > 0;
+				const hasToolCalls = message.tool_calls && message.tool_calls.length > 0;
+				const hasUsage = response.usage && response.usage.total_tokens > 0;
+
+				if (!hasContent && !hasToolCalls) {
+					logger.warn(`OpenRouter returned empty response (no content, no tool calls). Usage: ${JSON.stringify(response.usage)}`);
+					if (hasUsage && response.usage.total_tokens === 0) {
+						throw new Error('OpenRouter returned 0 tokens - model may not support this request format');
+					}
+				}
+
 				// Log which model was actually used (OpenRouter returns this in response)
 				const usedModel = response.model || this.model;
 				if (usedModel !== this.model) {
@@ -316,31 +363,107 @@ export class OpenRouterService implements ILLMService {
 					logger.debug(`OpenRouter used primary model: ${usedModel}`);
 				}
 
+				// Log token usage for debugging
+				if (response.usage) {
+					logger.debug(`OpenRouter token usage: prompt=${response.usage.prompt_tokens}, completion=${response.usage.completion_tokens}, total=${response.usage.total_tokens}`);
+				}
+
 				return { message };
 			} catch (error) {
 				const apiError = error as any;
+				const statusCode = apiError.status || apiError.response?.status || apiError.code;
+				const errorMessage = apiError.message || JSON.stringify(apiError);
+
 				logger.error(
-					`Error in OpenRouter API call (Attempt ${attempts}/${MAX_ATTEMPTS}): ${apiError.message || JSON.stringify(apiError, null, 2)}`,
-					{ status: apiError.status, headers: apiError.headers }
+					`Error in OpenRouter API call (Attempt ${attempts}/${MAX_ATTEMPTS}): ${errorMessage}`,
+					{ 
+						status: statusCode, 
+						headers: apiError.headers || apiError.response?.headers,
+						model: this.model
+					}
 				);
 
-				if (apiError.status === 400 && apiError.error?.code === 'context_length_exceeded') {
-					logger.warn(
-						`Context length exceeded. ContextManager compression might not be sufficient. Error details: ${JSON.stringify(apiError.error)}`
-					);
+				// Handle specific error types
+				if (statusCode === 400) {
+					if (apiError.error?.code === 'context_length_exceeded') {
+						logger.warn(
+							`Context length exceeded. ContextManager compression might not be sufficient. Error details: ${JSON.stringify(apiError.error)}`
+						);
+						// Don't retry context length errors
+						throw error;
+					}
+					// Other 400 errors might be recoverable (e.g., invalid model temporarily)
+					logger.warn(`400 error - may be recoverable, will retry`);
 				}
 
-				if (attempts >= MAX_ATTEMPTS) {
-					logger.error(`Failed to get response from OpenRouter after ${MAX_ATTEMPTS} attempts.`);
+				// Check if error is retryable
+				const isRetryable = this.isRetryableError(statusCode);
+				if (attempts >= MAX_ATTEMPTS || !isRetryable) {
+					if (!isRetryable) {
+						logger.error(`Non-retryable error encountered: ${statusCode} - ${errorMessage}`);
+					} else {
+						logger.error(`Failed to get response from OpenRouter after ${MAX_ATTEMPTS} attempts.`);
+					}
 					throw error;
 				}
 
-				// Wait before retrying (OpenRouter handles model fallback, we only retry on network errors)
-				await new Promise(resolve => setTimeout(resolve, 500 * attempts));
+				// Calculate exponential backoff with jitter for retryable errors
+				const delay = this.calculateRetryDelay(attempts, statusCode, apiError);
+				logger.info(`Retrying OpenRouter API call in ${delay}ms... (Attempt ${attempts + 1}/${MAX_ATTEMPTS})`);
+				
+				await new Promise(resolve => setTimeout(resolve, delay));
 			}
 		}
 
 		throw new Error('Failed to get response after maximum retry attempts');
+	}
+
+	/**
+	 * Determines if an error is retryable based on status code
+	 */
+	private isRetryableError(statusCode: number | undefined): boolean {
+		if (!statusCode) {
+			// Network errors are retryable
+			return true;
+		}
+
+		// Non-retryable errors
+		if (statusCode === 401 || statusCode === 403) {
+			return false; // Authentication/authorization errors
+		}
+
+		// Retryable errors: 429 (rate limit), 500, 502, 503, 504, 529 (Cloudflare), 400 (may be temporary)
+		return statusCode === 400 || statusCode === 429 || statusCode >= 500;
+	}
+
+	/**
+	 * Calculates retry delay with exponential backoff, jitter, and respect for rate limits
+	 */
+	private calculateRetryDelay(attempt: number, statusCode: number | undefined, apiError: any): number {
+		// Check for Retry-After header (429 rate limit)
+		if (statusCode === 429) {
+			const retryAfter = apiError?.headers?.['retry-after'] || apiError?.response?.headers?.['retry-after'];
+			if (retryAfter) {
+				const delaySeconds = parseInt(retryAfter, 10);
+				if (!isNaN(delaySeconds) && delaySeconds > 0) {
+					logger.debug(`Using Retry-After header: ${delaySeconds} seconds`);
+					return (delaySeconds + 1) * 1000; // Add 1 second buffer
+				}
+			}
+			// If no Retry-After header, use longer exponential backoff for rate limits
+			return Math.min(1000 * Math.pow(2, attempt) + Math.random() * 1000, 30000); // Max 30 seconds
+		}
+
+		// For 502/503 (gateway errors), use aggressive retry with exponential backoff
+		if (statusCode === 502 || statusCode === 503) {
+			return Math.min(500 * Math.pow(2, attempt - 1) + Math.random() * 500, 10000); // Max 10 seconds
+		}
+
+		// For other retryable errors, use exponential backoff with jitter
+		// Base delay: 1s, 2s, 4s, 8s, 16s with jitter
+		const baseDelay = Math.min(1000 * Math.pow(2, attempt - 1), 16000);
+		const jitter = Math.random() * 1000; // Random jitter up to 1 second
+		return baseDelay + jitter;
 	}
 
 	private formatToolsForOpenRouter(tools: ToolSet): any[] {
