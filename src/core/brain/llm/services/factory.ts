@@ -127,6 +127,8 @@ function _createLLMService(
 			const openai = new OpenAIClass({
 				apiKey,
 				baseURL,
+				timeout: 120000, // 120 seconds timeout for long-running requests
+				maxRetries: 0, // We handle retries manually with better error handling
 				defaultHeaders: {
 					'HTTP-Referer': 'https://github.com/byterover/cipher',
 					'X-Title': 'Cipher Memory Agent',
