@@ -433,64 +433,78 @@ async function getAgentStatsResource(agent: MemAgent): Promise<any> {
 }
 
 /**
- * Register agent prompts as MCP prompts
+ * Register agent prompts as MCP prompts (Dynamic Templates)
  */
 async function registerAgentPrompts(server: Server, agent: MemAgent): Promise<void> {
-	logger.debug('[MCP Handler] Registering agent prompts');
+	logger.debug('[MCP Handler] Registering dynamic agent prompts');
 
-	// Register list prompts handler
+	// Import prompt templates
+	const { PROMPT_TEMPLATES, getPromptTemplate } = await import(
+		'../../core/prompts/prompt-templates.js'
+	);
+
+	// Register list prompts handler - expose all templates with examples
 	server.setRequestHandler(ListPromptsRequestSchema, async () => {
-		return {
-			prompts: [
-				{
-					name: 'system_prompt',
-					description: 'Get the current system prompt used by the Cipher agent',
-				},
-			],
-		};
+		const prompts = PROMPT_TEMPLATES.map(template => ({
+			name: template.name,
+			description: template.description,
+			arguments: template.arguments?.map(arg => ({
+				name: arg.name,
+				description: arg.description,
+				required: arg.required,
+			})),
+			// Add example_prompts to _meta for Google Antigravity
+			_meta: template.example_prompts
+				? {
+					example_prompts: template.example_prompts,
+				  }
+				: undefined,
+		}));
+
+		logger.info(`[MCP Handler] Exposing ${prompts.length} dynamic prompt templates with examples`);
+		return { prompts };
 	});
 
-	// Register get prompt handler
+	// Register get prompt handler - generate content dynamically
 	server.setRequestHandler(GetPromptRequestSchema, async request => {
-		const { name } = request.params;
+		const { name, arguments: args = {} } = request.params;
 
-		logger.info(`[MCP Handler] Prompt requested: ${name}`);
+		logger.info(`[MCP Handler] Prompt requested: ${name}`, { args });
 
-		switch (name) {
-			case 'system_prompt':
-				return await getSystemPrompt(agent);
-			default:
-				throw new Error(`Unknown prompt: ${name}`);
+		// Find the template
+		const template = getPromptTemplate(name);
+		if (!template) {
+			throw new Error(`Unknown prompt: ${name}`);
+		}
+
+		try {
+			// Generate prompt content using the template's generator
+			const content = await template.generator(args, agent);
+
+			return {
+				messages: [
+					{
+						role: 'assistant',
+						content: {
+							type: 'text',
+							text: content,
+						},
+					},
+				],
+			};
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			logger.error(`[MCP Handler] Error generating prompt '${name}'`, {
+				error: errorMessage,
+			});
+
+			throw new Error(`Failed to generate prompt '${name}': ${errorMessage}`);
 		}
 	});
+
+	logger.info('[MCP Handler] Dynamic prompts registered successfully');
 }
 
-/**
- * Get system prompt
- */
-async function getSystemPrompt(agent: MemAgent): Promise<any> {
-	try {
-		const systemPrompt = await agent.promptManager.generateSystemPrompt();
-		const systemPromptContent = systemPrompt.content;
-
-		return {
-			messages: [
-				{
-					role: 'assistant',
-					content: {
-						type: 'text',
-						text: systemPromptContent,
-					},
-				},
-			],
-		};
-	} catch (error) {
-		const errorMessage = error instanceof Error ? error.message : String(error);
-		logger.error('[MCP Handler] Error getting system prompt', { error: errorMessage });
-
-		throw new Error(`Failed to get system prompt: ${errorMessage}`);
-	}
-}
 
 /**
  * Initialize agent card resource data
