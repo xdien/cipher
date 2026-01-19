@@ -346,11 +346,11 @@ export class OpenRouterService implements ILLMService {
 				// Validate that we actually got content or tool calls (not 0 tokens)
 				const hasContent = message.content && message.content.trim().length > 0;
 				const hasToolCalls = message.tool_calls && message.tool_calls.length > 0;
-				const hasUsage = response.usage?.total_tokens const hasUsage = response.usage && response.usage.total_tokens > 0;const hasUsage = response.usage && response.usage.total_tokens > 0; response.usage.total_tokens > 0;
+				const hasUsage = response.usage && response.usage.total_tokens > 0;
 
 				if (!hasContent && !hasToolCalls) {
 					logger.warn(`OpenRouter returned empty response (no content, no tool calls). Usage: ${JSON.stringify(response.usage)}`);
-					if (hasUsage if (hasUsage && response.usage.total_tokens === 0) {if (hasUsage && response.usage.total_tokens === 0) { response.usage?.total_tokens === 0) {
+					if (hasUsage && response.usage.total_tokens === 0) {
 						throw new Error('OpenRouter returned 0 tokens - model may not support this request format');
 					}
 				}
